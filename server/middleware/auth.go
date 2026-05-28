@@ -6,7 +6,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"server/services"
 	"server/utils"
 )
 
@@ -29,14 +28,14 @@ func AuthMiddleware() gin.HandlerFunc {
 		token := parts[1]
 		claims, err := utils.ParseToken(token)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": services.ErrTokenExpired.Error()})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "token已过期"})
 			c.Abort()
 			return
 		}
 
 		_, err = utils.Redis.Get(utils.Ctx, "blacklist:"+claims.ID).Result()
 		if err == nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": services.ErrTokenBlacklisted.Error()})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "token已被拉黑"})
 			c.Abort()
 			return
 		}

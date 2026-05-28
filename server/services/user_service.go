@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"server/models"
 	"server/utils"
 )
@@ -9,7 +10,7 @@ type UserService struct{}
 
 func (s *UserService) Login(email, account, mobile, password, captchaID, captchaCode string) (*models.User, string, error) {
 	if !utils.VerifyCaptcha(captchaID, captchaCode) {
-		return nil, "", ErrInvalidCaptcha
+		return nil, "", errors.New("验证码错误")
 	}
 
 	var user models.User
@@ -22,19 +23,19 @@ func (s *UserService) Login(email, account, mobile, password, captchaID, captcha
 	} else if mobile != "" {
 		err = utils.DB.Where("mobile = ?", mobile).First(&user).Error
 	} else {
-		return nil, "", ErrUserNotFound
+		return nil, "", errors.New("用户不存在")
 	}
 
 	if err != nil {
-		return nil, "", ErrUserNotFound
+		return nil, "", errors.New("用户不存在")
 	}
 
 	if user.Status != 1 {
-		return nil, "", ErrUserDisabled
+		return nil, "", errors.New("用户已禁用")
 	}
 
 	if !user.ComparePassword(password) {
-		return nil, "", ErrInvalidPassword
+		return nil, "", errors.New("密码错误")
 	}
 
 	token, err := utils.GenerateToken(user.ID, user.Email)
@@ -58,7 +59,7 @@ func (s *UserService) Logout(token string) error {
 func (s *UserService) GetUserByID(userID uint) (*models.User, error) {
 	var user models.User
 	if err := utils.DB.First(&user, userID).Error; err != nil {
-		return nil, ErrUserNotFound
+		return nil, errors.New("用户不存在")
 	}
 	return &user, nil
 }
