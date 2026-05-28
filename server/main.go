@@ -20,7 +20,8 @@ func main() {
 
 	utils.DB.AutoMigrate(&models.User{})
 
-	router := gin.Default()
+	router := gin.New()
+	router.Use(middleware.GinLogger(), gin.Recovery())
 	router.SetTrustedProxies([]string{"127.0.0.1"})
 	router.Use(middleware.CorsMiddleware())
 
