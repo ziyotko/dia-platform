@@ -20,7 +20,7 @@ func NewAuthController() *AuthController {
 }
 
 func (c *AuthController) GetCaptcha(ctx *gin.Context) {
-	id, b64s, _, err := utils.GenerateCaptcha()
+	id, b64s, err := utils.GenerateCaptcha()
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "生成验证码失败"})
 		return
