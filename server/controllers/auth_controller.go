@@ -1,8 +1,6 @@
 package controllers
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 
 	"server/services"
@@ -22,10 +20,10 @@ func NewAuthController() *AuthController {
 func (c *AuthController) GetCaptcha(ctx *gin.Context) {
 	id, b64s, err := utils.GenerateCaptcha()
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "生成验证码失败"})
+		ctx.JSON(200, utils.Error(1, "生成验证码失败"))
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{"captcha_id": id, "captcha_img": b64s})
+	ctx.JSON(200, utils.Success("获取验证码成功", gin.H{"captcha_id": id, "captcha_img": b64s}))
 }
 
 func (c *AuthController) Login(ctx *gin.Context) {
@@ -39,46 +37,46 @@ func (c *AuthController) Login(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "参数错误"})
+		ctx.JSON(200, utils.Error(1, "参数错误"))
 		return
 	}
 
 	user, token, err := c.userService.Login(req.Email, req.Account, req.Mobile, req.Password, req.CaptchaID, req.CaptchaCode)
 	if err != nil {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		ctx.JSON(200, utils.Error(1, err.Error()))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{
+	ctx.JSON(200, utils.Success("登录成功", gin.H{
 		"user":  user,
 		"token": token,
-	})
+	}))
 }
 
 func (c *AuthController) Logout(ctx *gin.Context) {
 	token := ctx.GetHeader("Authorization")
 	if token == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "未提供token"})
+		ctx.JSON(200, utils.Error(1, "未提供token"))
 		return
 	}
 
 	token = token[7:]
 	err := c.userService.Logout(token)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "登出失败"})
+		ctx.JSON(200, utils.Error(1, "登出失败"))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "登出成功"})
+	ctx.JSON(200, utils.Success("登出成功", nil))
 }
 
 func (c *AuthController) GetProfile(ctx *gin.Context) {
 	userID := ctx.GetUint("userID")
 	user, err := c.userService.GetUserByID(userID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(200, utils.Error(1, err.Error()))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"user": user})
+	ctx.JSON(200, utils.Success("获取用户信息成功", gin.H{"user": user}))
 }

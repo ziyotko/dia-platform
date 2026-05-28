@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -13,14 +12,14 @@ func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "未提供token"})
+			c.JSON(200, utils.Error(1, "未提供token"))
 			c.Abort()
 			return
 		}
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "token格式错误"})
+			c.JSON(200, utils.Error(1, "token格式错误"))
 			c.Abort()
 			return
 		}
@@ -28,14 +27,14 @@ func AuthMiddleware() gin.HandlerFunc {
 		token := parts[1]
 		claims, err := utils.ParseToken(token)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "token已过期"})
+			c.JSON(200, utils.Error(1, "token已过期"))
 			c.Abort()
 			return
 		}
 
 		_, err = utils.Redis.Get(utils.Ctx, "blacklist:"+claims.ID).Result()
 		if err == nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "token已被拉黑"})
+			c.JSON(200, utils.Error(1, "token已被拉黑"))
 			c.Abort()
 			return
 		}
