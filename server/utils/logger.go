@@ -27,8 +27,8 @@ func InitLogger() {
 	Logger.SetOutput(&lumberjack.Logger{
 		Filename:   logFileName,
 		MaxSize:    100,  // 单个文件最大大小（MB）
-		MaxBackups: 30,   // 保留的旧日志文件最大数量
-		MaxAge:     7,    // 保留日志文件的最大天数
+		MaxBackups: 1000, // 保留的旧日志文件最大数量
+		MaxAge:     180,  // 保留日志文件的最大天数
 		Compress:   true, // 是否压缩旧日志文件
 	})
 
