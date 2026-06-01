@@ -19,79 +19,7 @@
           text-color="#2c3e50"
           active-text-color="#409eff"
         >
-          <el-menu-item index="/dashboard">
-            <el-icon><HomeFilled /></el-icon>
-            <template #title>欢迎首页</template>
-          </el-menu-item>
-
-          <el-sub-menu index="/system">
-            <template #title>
-              <el-icon><Tools /></el-icon>
-              <span>系统管理</span>
-            </template>
-            <el-menu-item index="/users">
-              <el-icon><UserFilled /></el-icon>
-              <template #title>用户管理</template>
-            </el-menu-item>
-            <el-menu-item index="/roles">
-              <el-icon><Avatar /></el-icon>
-              <template #title>角色管理</template>
-            </el-menu-item>
-            <el-menu-item index="/menus">
-              <el-icon><Menu /></el-icon>
-              <template #title>菜单管理</template>
-            </el-menu-item>
-            <el-menu-item index="/logs">
-              <el-icon><List /></el-icon>
-              <template #title>操作日志</template>
-            </el-menu-item>
-          </el-sub-menu>
-
-          <el-sub-menu index="/content">
-            <template #title>
-              <el-icon><Document /></el-icon>
-              <span>内容管理</span>
-            </template>
-            <el-menu-item index="/content/article">
-              <el-icon><Document /></el-icon>
-              <template #title>文章管理</template>
-            </el-menu-item>
-            <el-menu-item index="/content/category">
-              <el-icon><Folder /></el-icon>
-              <template #title>分类管理</template>
-            </el-menu-item>
-            <el-menu-item index="/content/tag">
-              <el-icon><PriceTag /></el-icon>
-              <template #title>标签管理</template>
-            </el-menu-item>
-            <el-menu-item index="/content/comment">
-              <el-icon><ChatDotSquare /></el-icon>
-              <template #title>评论管理</template>
-            </el-menu-item>
-            <el-menu-item index="/content/ad">
-              <el-icon><Promotion /></el-icon>
-              <template #title>广告管理</template>
-            </el-menu-item>
-            <el-menu-item index="/content/link">
-              <el-icon><Link /></el-icon>
-              <template #title>友链管理</template>
-            </el-menu-item>
-          </el-sub-menu>
-
-          <el-sub-menu index="/personal">
-            <template #title>
-              <el-icon><User /></el-icon>
-              <span>个人中心</span>
-            </template>
-            <el-menu-item index="/profile">
-              <el-icon><Document /></el-icon>
-              <template #title>个人信息</template>
-            </el-menu-item>
-            <el-menu-item index="/settings">
-              <el-icon><Setting /></el-icon>
-              <template #title>系统设置</template>
-            </el-menu-item>
-          </el-sub-menu>
+          <sidebar-menu-item v-for="menu in menuList" :key="menu.id" :menu="menu" />
         </el-menu>
       </el-scrollbar>
     </el-aside>
@@ -150,40 +78,68 @@
 </template>
 
 <script setup lang="ts">
+import { h, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElSubMenu, ElMenuItem, ElIcon } from 'element-plus'
+import * as Icons from '@element-plus/icons-vue'
 import {
   Platform,
-  HomeFilled,
-  Tools,
-  UserFilled,
-  Avatar,
-  Menu,
-  List,
-  User,
-  Document,
-  Setting,
   Fold,
   Expand,
   FullScreen,
   ArrowDown,
   SwitchButton,
-  Folder,
-  PriceTag,
-  ChatDotSquare,
-  Promotion,
-  Link
+  User,
+  Setting
 } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
+import { getMenuTree, type MenuItem } from '@/api/menus'
 import Breadcrumb from '@/components/Breadcrumb.vue'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const appStore = useAppStore()
-
+const menuList = ref<MenuItem[]>([])
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
+
+const SidebarMenuItem = {
+  name: 'SidebarMenuItem',
+  props: { menu: { type: Object, required: true } },
+  setup(props: { menu: MenuItem }) {
+    return () => {
+      const menu = props.menu
+      const iconComp = menu.icon ? (Icons as Record<string, any>)[menu.icon] : null
+      if (menu.type === 'directory' && menu.children && menu.children.length > 0) {
+        return h(ElSubMenu, { index: menu.path || String(menu.id) }, {
+          title: () => [
+            iconComp ? h(ElIcon, null, () => h(iconComp)) : null,
+            h('span', null, menu.name)
+          ],
+          default: () => menu.children!.map((child) => h(SidebarMenuItem, { menu: child }))
+        })
+      }
+      return h(ElMenuItem, { index: menu.path || String(menu.id) }, {
+        default: () => iconComp ? h(ElIcon, null, () => h(iconComp)) : null,
+        title: () => menu.name
+      })
+    }
+  }
+}
+
+const fetchMenus = async () => {
+  try {
+    const res: any = await getMenuTree()
+    menuList.value = res.data || []
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+onMounted(() => {
+  fetchMenus()
+})
 
 const toggleFullScreen = () => {
   if (!document.fullscreenElement) {

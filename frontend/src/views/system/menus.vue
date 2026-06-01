@@ -122,16 +122,18 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete, CirclePlus } from '@element-plus/icons-vue'
+import { getMenuList, createMenu, updateMenu, deleteMenu, type MenuItem, type MenuForm } from '@/api/menus'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const submitLoading = ref(false)
 const formRef = ref()
+const tableData = ref<MenuItem[]>([])
 
-const form = reactive({
-  id: undefined as number | undefined,
-  parentId: undefined as number | undefined,
+const form = reactive<MenuForm>({
+  id: undefined,
+  parentId: undefined,
   name: '',
   path: '',
   component: '',
@@ -147,43 +149,20 @@ const formRules = {
   sort: [{ required: true, message: '请输入排序', trigger: 'blur' }]
 }
 
-const tableData = ref([
-  {
-    id: 1,
-    name: '系统管理',
-    path: '/system',
-    component: '',
-    icon: 'Tools',
-    type: 'directory',
-    sort: 1,
-    status: 1,
-    children: [
-      { id: 11, name: '用户管理', path: '/users', component: 'views/system/users.vue', icon: 'UserFilled', type: 'menu', sort: 1, status: 1 },
-      { id: 12, name: '角色管理', path: '/roles', component: 'views/system/roles.vue', icon: 'Avatar', type: 'menu', sort: 2, status: 1 },
-      { id: 13, name: '菜单管理', path: '/menus', component: 'views/system/menus.vue', icon: 'Menu', type: 'menu', sort: 3, status: 1 },
-      { id: 14, name: '操作日志', path: '/logs', component: 'views/system/logs.vue', icon: 'List', type: 'menu', sort: 4, status: 1 }
-    ]
-  },
-  {
-    id: 2,
-    name: '个人中心',
-    path: '/personal',
-    component: '',
-    icon: 'User',
-    type: 'directory',
-    sort: 2,
-    status: 1,
-    children: [
-      { id: 21, name: '个人信息', path: '/profile', component: 'views/profile/index.vue', icon: 'Document', type: 'menu', sort: 1, status: 1 },
-      { id: 22, name: '系统设置', path: '/settings', component: 'views/settings/index.vue', icon: 'Setting', type: 'menu', sort: 2, status: 1 }
-    ]
-  }
-])
+const menuTreeData = ref<MenuItem[]>([])
 
-const menuTreeData = ref([
-  { id: 0, name: '顶级菜单' },
-  ...tableData.value
-])
+const fetchMenus = async () => {
+  loading.value = true
+  try {
+    const res: any = await getMenuList()
+    tableData.value = res.data || []
+    menuTreeData.value = [{ id: 0, parentId: 0, name: '顶级菜单', path: '', component: '', icon: '', type: 'directory', sort: 0, status: 1, children: [] }, ...tableData.value]
+  } catch (error) {
+    console.error(error)
+  } finally {
+    loading.value = false
+  }
+}
 
 const handleAdd = () => {
   dialogTitle.value = '新增菜单'
@@ -191,26 +170,42 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
-const handleAddChild = (row: any) => {
+const handleAddChild = (row: MenuItem) => {
   dialogTitle.value = '新增子菜单'
   resetForm()
   form.parentId = row.id
   dialogVisible.value = true
 }
 
-const handleEdit = (row: any) => {
+const handleEdit = (row: MenuItem) => {
   dialogTitle.value = '编辑菜单'
-  Object.assign(form, row)
+  Object.assign(form, {
+    id: row.id,
+    parentId: row.parentId === 0 ? undefined : row.parentId,
+    name: row.name,
+    path: row.path,
+    component: row.component,
+    icon: row.icon,
+    type: row.type,
+    sort: row.sort,
+    status: row.status
+  })
   dialogVisible.value = true
 }
 
-const handleDelete = (row: any) => {
+const handleDelete = (row: MenuItem) => {
   ElMessageBox.confirm(`确定要删除菜单 "${row.name}" 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    ElMessage.success('删除成功')
+  }).then(async () => {
+    try {
+      await deleteMenu(row.id)
+      ElMessage.success('删除成功')
+      fetchMenus()
+    } catch (error) {
+      console.error(error)
+    }
   })
 }
 
@@ -218,11 +213,23 @@ const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
   submitLoading.value = true
-  setTimeout(() => {
-    submitLoading.value = false
+  try {
+    const data = { ...form }
+    if (!data.parentId) data.parentId = 0
+    if (data.id) {
+      await updateMenu(data.id, data)
+      ElMessage.success('修改成功')
+    } else {
+      await createMenu(data)
+      ElMessage.success('新增成功')
+    }
     dialogVisible.value = false
-    ElMessage.success(form.id ? '修改成功' : '新增成功')
-  }, 500)
+    fetchMenus()
+  } catch (error) {
+    console.error(error)
+  } finally {
+    submitLoading.value = false
+  }
 }
 
 const resetForm = () => {
@@ -238,10 +245,7 @@ const resetForm = () => {
 }
 
 onMounted(() => {
-  loading.value = true
-  setTimeout(() => {
-    loading.value = false
-  }, 300)
+  fetchMenus()
 })
 </script>
 
