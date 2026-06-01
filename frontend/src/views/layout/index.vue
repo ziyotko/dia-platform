@@ -47,6 +47,37 @@
             </el-menu-item>
           </el-sub-menu>
 
+          <el-sub-menu index="/content">
+            <template #title>
+              <el-icon><Document /></el-icon>
+              <span>内容管理</span>
+            </template>
+            <el-menu-item index="/content/article">
+              <el-icon><Document /></el-icon>
+              <template #title>文章管理</template>
+            </el-menu-item>
+            <el-menu-item index="/content/category">
+              <el-icon><Folder /></el-icon>
+              <template #title>分类管理</template>
+            </el-menu-item>
+            <el-menu-item index="/content/tag">
+              <el-icon><PriceTag /></el-icon>
+              <template #title>标签管理</template>
+            </el-menu-item>
+            <el-menu-item index="/content/comment">
+              <el-icon><ChatDotSquare /></el-icon>
+              <template #title>评论管理</template>
+            </el-menu-item>
+            <el-menu-item index="/content/ad">
+              <el-icon><Promotion /></el-icon>
+              <template #title>广告管理</template>
+            </el-menu-item>
+            <el-menu-item index="/content/link">
+              <el-icon><Link /></el-icon>
+              <template #title>友链管理</template>
+            </el-menu-item>
+          </el-sub-menu>
+
           <el-sub-menu index="/personal">
             <template #title>
               <el-icon><User /></el-icon>
@@ -136,7 +167,12 @@ import {
   Expand,
   FullScreen,
   ArrowDown,
-  SwitchButton
+  SwitchButton,
+  Folder,
+  PriceTag,
+  ChatDotSquare,
+  Promotion,
+  Link
 } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
