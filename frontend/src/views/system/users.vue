@@ -5,6 +5,9 @@
         <el-form-item label="用户名">
           <el-input v-model="queryForm.username" placeholder="请输入用户名" clearable />
         </el-form-item>
+        <el-form-item label="用户账号">
+          <el-input v-model="queryForm.account" placeholder="请输入用户账号" clearable />
+        </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="queryForm.status" placeholder="全部状态" clearable style="width: 120px">
             <el-option label="启用" :value="1" />
@@ -35,6 +38,7 @@
       <el-table :data="tableData" v-loading="loading" border stripe>
         <el-table-column type="index" width="60" align="center" />
         <el-table-column prop="username" label="用户名" min-width="120" />
+        <el-table-column prop="account" label="用户账号" min-width="120" />
         <el-table-column prop="nickname" label="昵称" min-width="120" />
         <el-table-column prop="email" label="邮箱" min-width="180" />
         <el-table-column prop="phone" label="手机号" min-width="130" />
@@ -88,6 +92,9 @@
       >
         <el-form-item label="用户名" prop="username">
           <el-input v-model="form.username" placeholder="请输入用户名" />
+        </el-form-item>
+        <el-form-item label="用户账号" prop="account">
+          <el-input v-model="form.account" placeholder="请输入用户账号" />
         </el-form-item>
         <el-form-item label="昵称" prop="nickname">
           <el-input v-model="form.nickname" placeholder="请输入昵称" />
@@ -143,12 +150,14 @@ const queryForm = reactive({
   page: 1,
   pageSize: 10,
   username: '',
+  account: '',
   status: undefined as number | undefined
 })
 
 const form = reactive({
   id: undefined as number | undefined,
   username: '',
+  account: '',
   nickname: '',
   email: '',
   phone: '',
@@ -158,6 +167,7 @@ const form = reactive({
 
 const formRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  account: [{ required: true, message: '请输入用户账号', trigger: 'blur' }],
   nickname: [{ required: true, message: '请输入昵称', trigger: 'blur' }],
   email: [
     { required: true, message: '请输入邮箱', trigger: 'blur' },
@@ -175,6 +185,7 @@ const handleSearch = () => {
 
 const resetQuery = () => {
   queryForm.username = ''
+  queryForm.account = ''
   queryForm.status = undefined
   queryForm.page = 1
   fetchData()
@@ -187,6 +198,7 @@ const fetchData = async () => {
       page: queryForm.page,
       pageSize: queryForm.pageSize,
       username: queryForm.username || undefined,
+      account: queryForm.account || undefined,
       status: queryForm.status
     })
     tableData.value = res.data.list || []
@@ -209,6 +221,7 @@ const handleEdit = (row: any) => {
   Object.assign(form, {
     id: row.id,
     username: row.username,
+    account: row.account,
     nickname: row.nickname,
     email: row.email,
     phone: row.phone,
@@ -252,6 +265,7 @@ const handleSubmit = async () => {
     if (form.id) {
       await updateUser(form.id, {
         username: form.username,
+        account: form.account,
         nickname: form.nickname,
         email: form.email,
         phone: form.phone,
@@ -262,6 +276,7 @@ const handleSubmit = async () => {
     } else {
       await createUser({
         username: form.username,
+        account: form.account,
         nickname: form.nickname,
         email: form.email,
         phone: form.phone,
@@ -282,6 +297,7 @@ const handleSubmit = async () => {
 const resetForm = () => {
   form.id = undefined
   form.username = ''
+  form.account = ''
   form.nickname = ''
   form.email = ''
   form.phone = ''
