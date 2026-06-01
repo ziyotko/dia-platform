@@ -19,6 +19,7 @@ type UserController struct {
 type UserListItem struct {
 	ID         uint   `json:"id"`
 	Username   string `json:"username"`
+	Account    string `json:"account"`
 	Nickname   string `json:"nickname"`
 	Email      string `json:"email"`
 	Phone      string `json:"phone"`
@@ -37,6 +38,7 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("pageSize", "10"))
 	username := ctx.Query("username")
+	account := ctx.Query("account")
 	statusStr := ctx.Query("status")
 
 	if page < 1 {
@@ -52,7 +54,7 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 		status = &s
 	}
 
-	result, err := c.userService.GetUserList(page, pageSize, username, status)
+	result, err := c.userService.GetUserList(page, pageSize, username, account, status)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取用户列表失败"))
 		return
@@ -63,6 +65,7 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 		item := UserListItem{
 			ID:         user.ID,
 			Username:   user.Username,
+			Account:    user.Account,
 			Nickname:   user.Nickname,
 			Email:      user.Email,
 			Phone:      user.Mobile,
@@ -90,6 +93,7 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 	var req struct {
 		Username string `json:"username"`
 		Nickname string `json:"nickname"`
+		Account  string `json:"account"`
 		Email    string `json:"email" binding:"required,email"`
 		Phone    string `json:"phone"`
 		Password string `json:"password"`
@@ -102,7 +106,7 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		return
 	}
 
-	err := c.userService.CreateUser(req.Username, req.Nickname, req.Email, req.Password, req.Phone, req.Status, req.RoleIds)
+	err := c.userService.CreateUser(req.Username, req.Nickname, req.Account, req.Email, req.Password, req.Phone, req.Status, req.RoleIds)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "创建用户失败: "+err.Error()))
 		return
@@ -122,6 +126,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 	var req struct {
 		Username string `json:"username"`
 		Nickname string `json:"nickname"`
+		Account  string `json:"account"`
 		Email    string `json:"email" binding:"required,email"`
 		Phone    string `json:"phone"`
 		Password string `json:"password"`
@@ -134,7 +139,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 		return
 	}
 
-	err = c.userService.UpdateUser(uint(id), req.Username, req.Nickname, req.Email, req.Password, req.Phone, req.Status, req.RoleIds)
+	err = c.userService.UpdateUser(uint(id), req.Username, req.Nickname, req.Account, req.Email, req.Password, req.Phone, req.Status, req.RoleIds)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "更新用户失败: "+err.Error()))
 		return
@@ -203,6 +208,7 @@ func (c *UserController) GetUserByID(ctx *gin.Context) {
 	item := UserListItem{
 		ID:         user.ID,
 		Username:   user.Username,
+		Account:    user.Account,
 		Nickname:   user.Nickname,
 		Email:      user.Email,
 		Phone:      user.Mobile,
@@ -230,6 +236,7 @@ func (c *UserController) convertUsers(users []models.User) []UserListItem {
 		list[i] = UserListItem{
 			ID:         user.ID,
 			Username:   user.Username,
+			Account:    user.Account,
 			Nickname:   user.Nickname,
 			Email:      user.Email,
 			Phone:      user.Mobile,

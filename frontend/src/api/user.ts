@@ -4,12 +4,14 @@ export interface UserQuery {
   page?: number
   pageSize?: number
   username?: string
+  account?: string
   status?: number
 }
 
 export interface UserForm {
   id?: number
   username: string
+  account: string
   nickname: string
   email: string
   phone: string

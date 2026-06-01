@@ -72,7 +72,7 @@ func (s *UserService) GetUserByID(userID uint) (*models.User, error) {
 	return &user, nil
 }
 
-func (s *UserService) GetUserList(page, pageSize int, username string, status *int) (*UserListResult, error) {
+func (s *UserService) GetUserList(page, pageSize int, username, account string, status *int) (*UserListResult, error) {
 	var users []models.User
 	var total int64
 
@@ -80,6 +80,9 @@ func (s *UserService) GetUserList(page, pageSize int, username string, status *i
 
 	if username != "" {
 		query = query.Where("username LIKE ?", "%"+username+"%")
+	}
+	if account != "" {
+		query = query.Where("account LIKE ?", "%"+account+"%")
 	}
 	if status != nil {
 		query = query.Where("status = ?", *status)
@@ -102,7 +105,7 @@ func (s *UserService) GetUserList(page, pageSize int, username string, status *i
 	}, nil
 }
 
-func (s *UserService) CreateUser(username, nickname, email, password, phone string, status int, roleIds []int) error {
+func (s *UserService) CreateUser(username, nickname, account, email, password, phone string, status int, roleIds []int) error {
 	if password == "" {
 		password = "123456"
 	}
@@ -110,6 +113,7 @@ func (s *UserService) CreateUser(username, nickname, email, password, phone stri
 	user := &models.User{
 		Username: username,
 		Nickname: nickname,
+		Account:  account,
 		Email:    email,
 		Password: password,
 		Mobile:   phone,
@@ -127,10 +131,11 @@ func (s *UserService) CreateUser(username, nickname, email, password, phone stri
 	return utils.DB.Create(user).Error
 }
 
-func (s *UserService) UpdateUser(id uint, username, nickname, email, password, phone string, status int, roleIds []int) error {
+func (s *UserService) UpdateUser(id uint, username, nickname, account, email, password, phone string, status int, roleIds []int) error {
 	updates := map[string]interface{}{
 		"username": username,
 		"nickname": nickname,
+		"account":  account,
 		"email":    email,
 		"phone":    phone,
 		"status":   status,
