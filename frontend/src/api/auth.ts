@@ -1,10 +1,10 @@
 import request from '@/utils/request'
 
 export interface LoginData {
-  username: string
+  account: string
   password: string
-  captchaId: string
-  captchaCode: string
+  captcha_id: string
+  captcha_code: string
 }
 
 export interface LoginResult {
@@ -18,17 +18,17 @@ export interface LoginResult {
 }
 
 export function getCaptcha() {
-  return request.get<{ captchaId: string; imageBase64: string }>('/auth/captcha')
+  return request.get<{ captcha_id: string; captcha_img: string }>('/captcha')
 }
 
 export function login(data: LoginData) {
-  return request.post<LoginResult>('/auth/login', data)
+  return request.post<LoginResult>('/login', data)
 }
 
 export function getUserInfo() {
-  return request.get('/auth/info')
+  return request.get('/profile')
 }
 
 export function logout() {
-  return request.post('/auth/logout')
+  return request.post('/logout')
 }

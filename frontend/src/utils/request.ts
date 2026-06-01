@@ -3,7 +3,7 @@ import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 
 const request = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/miicapi',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
@@ -26,7 +26,7 @@ request.interceptors.request.use(
 request.interceptors.response.use(
   (response) => {
     const res = response.data
-    if (res.code !== 200) {
+    if (res.code !== 0 && res.code !== 200) {
       ElMessage.error(res.message || '请求失败')
       if (res.code === 401) {
         const userStore = useUserStore()

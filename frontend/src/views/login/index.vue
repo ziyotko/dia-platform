@@ -117,9 +117,9 @@ const rules = {
 const refreshCaptcha = async () => {
   try {
     const res: any = await getCaptcha()
-    captchaId.value = res.data.captchaId
-    captchaImage.value = res.data.imageBase64
-    form.captchaId = res.data.captchaId
+    captchaId.value = res.data.captcha_id
+    captchaImage.value = res.data.captcha_img
+    form.captchaId = res.data.captcha_id
   } catch {
     ElMessage.warning('验证码加载失败，请稍后重试')
   }
@@ -132,10 +132,10 @@ const handleLogin = async () => {
   loading.value = true
   try {
     const res: any = await login({
-      username: form.username,
+      account: form.username,
       password: form.password,
-      captchaId: captchaId.value,
-      captchaCode: form.captchaCode
+      captcha_id: captchaId.value,
+      captcha_code: form.captchaCode
     })
     userStore.setToken(res.data.token)
     userStore.setUserInfo(res.data.user)
