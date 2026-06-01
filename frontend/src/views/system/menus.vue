@@ -98,19 +98,19 @@
           <el-input v-model="form.component" placeholder="请输入组件路径" />
         </el-form-item>
         <el-form-item label="菜单图标">
-          <el-input v-model="form.icon" placeholder="请选择图标" readonly>
-            <template #prefix>
-              <el-icon v-if="form.icon"><component :is="form.icon" /></el-icon>
-            </template>
-            <template #append>
-              <el-button v-if="form.icon" @click="clearIcon">
-                <el-icon><Close /></el-icon>
-              </el-button>
-              <el-button @click="iconPickerVisible = true">
-                <el-icon><Search /></el-icon>
-              </el-button>
-            </template>
-          </el-input>
+          <div class="icon-select-row">
+            <el-input v-model="form.icon" placeholder="请选择图标" readonly style="flex: 1">
+              <template #prefix>
+                <el-icon v-if="form.icon"><component :is="form.icon" /></el-icon>
+              </template>
+            </el-input>
+            <el-button v-if="form.icon" @click="clearIcon">
+              <el-icon><Close /></el-icon>
+            </el-button>
+            <el-button @click="iconPickerVisible = true">
+              <el-icon><Search /></el-icon>
+            </el-button>
+          </div>
         </el-form-item>
         <el-form-item label="显示排序" prop="sort">
           <el-input-number v-model="form.sort" :min="0" style="width: 100%" />
@@ -329,6 +329,12 @@ onMounted(() => {
       color: #2c3e50;
     }
   }
+}
+
+.icon-select-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .icon-grid {
