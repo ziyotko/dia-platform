@@ -94,8 +94,8 @@
             </el-form-item>
             <el-form-item label="侧边栏风格">
               <el-radio-group v-model="sidebarStyle">
-                <el-radio-button label="light">浅色</el-radio-button>
-                <el-radio-button label="dark">深色</el-radio-button>
+                <el-radio-button value="light">浅色</el-radio-button>
+                <el-radio-button value="dark">深色</el-radio-button>
               </el-radio-group>
             </el-form-item>
             <el-form-item label="开启标签页">

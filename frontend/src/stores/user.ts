@@ -8,9 +8,21 @@ export interface UserInfo {
   avatar: string
 }
 
+const USER_INFO_KEY = 'user_info'
+
+function getStoredUserInfo(): UserInfo | null {
+  const stored = localStorage.getItem(USER_INFO_KEY)
+  if (!stored) return null
+  try {
+    return JSON.parse(stored) as UserInfo
+  } catch {
+    return null
+  }
+}
+
 export const useUserStore = defineStore('user', () => {
   const token = ref<string>(localStorage.getItem('token') || '')
-  const userInfo = ref<UserInfo | null>(null)
+  const userInfo = ref<UserInfo | null>(getStoredUserInfo())
 
   const isLoggedIn = computed(() => !!token.value)
 
@@ -21,12 +33,14 @@ export const useUserStore = defineStore('user', () => {
 
   function setUserInfo(info: UserInfo) {
     userInfo.value = info
+    localStorage.setItem(USER_INFO_KEY, JSON.stringify(info))
   }
 
   function logout() {
     token.value = ''
     userInfo.value = null
     localStorage.removeItem('token')
+    localStorage.removeItem(USER_INFO_KEY)
   }
 
   return {

@@ -62,9 +62,9 @@
             <div class="card-header">
               <span>访问趋势</span>
               <el-radio-group v-model="chartPeriod" size="small">
-                <el-radio-button label="week">本周</el-radio-button>
-                <el-radio-button label="month">本月</el-radio-button>
-                <el-radio-button label="year">全年</el-radio-button>
+                <el-radio-button value="week">本周</el-radio-button>
+                <el-radio-button value="month">本月</el-radio-button>
+                <el-radio-button value="year">全年</el-radio-button>
               </el-radio-group>
             </div>
           </template>
@@ -83,7 +83,7 @@
           <template #header>
             <div class="card-header">
               <span>系统公告</span>
-              <el-link type="primary" :underline="false">更多</el-link>
+              <el-link type="primary" underline="never">更多</el-link>
             </div>
           </template>
           <div class="notice-list">
