@@ -10,6 +10,7 @@ import (
 
 func SetupRoutes(router *gin.Engine) {
 	authController := controllers.NewAuthController()
+	userController := controllers.NewUserController()
 	apiPrefix := config.AppConfig.Server.ApiPrefix
 
 	public := router.Group(apiPrefix)
@@ -23,5 +24,12 @@ func SetupRoutes(router *gin.Engine) {
 	{
 		protected.POST("/logout", authController.Logout)
 		protected.GET("/profile", authController.GetProfile)
+
+		protected.GET("/users", userController.GetUsers)
+		protected.POST("/users", userController.CreateUser)
+		protected.GET("/users/:id", userController.GetUserByID)
+		protected.PUT("/users/:id", userController.UpdateUser)
+		protected.DELETE("/users/:id", userController.DeleteUser)
+		protected.PATCH("/users/:id/status", userController.UpdateUserStatus)
 	}
 }

@@ -130,12 +130,13 @@ import {
   Edit,
   Delete
 } from '@element-plus/icons-vue'
+import { getUserList, createUser, updateUser, deleteUser, updateUserStatus } from '@/api/user'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const submitLoading = ref(false)
-const total = ref(100)
+const total = ref(0)
 const formRef = ref()
 
 const queryForm = reactive({
@@ -165,13 +166,7 @@ const formRules = {
   roleIds: [{ required: true, message: '请选择角色', trigger: 'change', type: 'array' }]
 }
 
-const tableData = ref([
-  { id: 1, username: 'admin', nickname: '管理员', email: 'admin@example.com', phone: '13800138000', status: 1, createTime: '2026-01-15 10:30:00' },
-  { id: 2, username: 'editor', nickname: '编辑员', email: 'editor@example.com', phone: '13800138001', status: 1, createTime: '2026-02-20 14:22:00' },
-  { id: 3, username: 'user01', nickname: '张三', email: 'zhangsan@example.com', phone: '13800138002', status: 0, createTime: '2026-03-10 09:15:00' },
-  { id: 4, username: 'user02', nickname: '李四', email: 'lisi@example.com', phone: '13800138003', status: 1, createTime: '2026-04-05 16:45:00' },
-  { id: 5, username: 'user03', nickname: '王五', email: 'wangwu@example.com', phone: '13800138004', status: 1, createTime: '2026-05-01 11:20:00' }
-])
+const tableData = ref<any[]>([])
 
 const handleSearch = () => {
   queryForm.page = 1
@@ -185,11 +180,22 @@ const resetQuery = () => {
   fetchData()
 }
 
-const fetchData = () => {
+const fetchData = async () => {
   loading.value = true
-  setTimeout(() => {
+  try {
+    const res: any = await getUserList({
+      page: queryForm.page,
+      pageSize: queryForm.pageSize,
+      username: queryForm.username || undefined,
+      status: queryForm.status
+    })
+    tableData.value = res.data.list || []
+    total.value = res.data.total || 0
+  } catch (error) {
+    console.error('获取用户列表失败', error)
+  } finally {
     loading.value = false
-  }, 500)
+  }
 }
 
 const handleAdd = () => {
@@ -200,7 +206,15 @@ const handleAdd = () => {
 
 const handleEdit = (row: any) => {
   dialogTitle.value = '编辑用户'
-  Object.assign(form, row)
+  Object.assign(form, {
+    id: row.id,
+    username: row.username,
+    nickname: row.nickname,
+    email: row.email,
+    phone: row.phone,
+    status: row.status,
+    roleIds: row.roleIds || []
+  })
   dialogVisible.value = true
 }
 
@@ -209,25 +223,60 @@ const handleDelete = (row: any) => {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    ElMessage.success('删除成功')
+  }).then(async () => {
+    try {
+      await deleteUser(row.id)
+      ElMessage.success('删除成功')
+      fetchData()
+    } catch (error) {
+      console.error('删除用户失败', error)
+    }
   })
 }
 
-const handleStatusChange = (_row: any, val: number) => {
-  ElMessage.success(`用户状态已${val === 1 ? '启用' : '禁用'}`)
+const handleStatusChange = async (row: any, val: number) => {
+  try {
+    await updateUserStatus(row.id, val)
+    ElMessage.success(`用户状态已${val === 1 ? '启用' : '禁用'}`)
+  } catch (error) {
+    row.status = val === 1 ? 0 : 1
+    console.error('更新状态失败', error)
+  }
 }
 
 const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
   submitLoading.value = true
-  setTimeout(() => {
-    submitLoading.value = false
+  try {
+    if (form.id) {
+      await updateUser(form.id, {
+        username: form.username,
+        nickname: form.nickname,
+        email: form.email,
+        phone: form.phone,
+        status: form.status,
+        roleIds: form.roleIds
+      })
+      ElMessage.success('修改成功')
+    } else {
+      await createUser({
+        username: form.username,
+        nickname: form.nickname,
+        email: form.email,
+        phone: form.phone,
+        status: form.status,
+        roleIds: form.roleIds
+      })
+      ElMessage.success('新增成功')
+    }
     dialogVisible.value = false
-    ElMessage.success(form.id ? '修改成功' : '新增成功')
     fetchData()
-  }, 500)
+  } catch (error) {
+    console.error('提交失败', error)
+  } finally {
+    submitLoading.value = false
+  }
 }
 
 const resetForm = () => {

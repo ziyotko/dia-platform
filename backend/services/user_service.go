@@ -2,11 +2,19 @@ package services
 
 import (
 	"errors"
+	"strconv"
+	"strings"
+
 	"server/models"
 	"server/utils"
 )
 
 type UserService struct{}
+
+type UserListResult struct {
+	Total int64         `json:"total"`
+	List  []models.User `json:"list"`
+}
 
 func (s *UserService) Login(email, account, mobile, password, captchaID, captchaCode string) (*models.User, string, error) {
 	if !utils.VerifyCaptcha(captchaID, captchaCode) {
@@ -62,4 +70,112 @@ func (s *UserService) GetUserByID(userID uint) (*models.User, error) {
 		return nil, errors.New("用户不存在")
 	}
 	return &user, nil
+}
+
+func (s *UserService) GetUserList(page, pageSize int, username string, status *int) (*UserListResult, error) {
+	var users []models.User
+	var total int64
+
+	query := utils.DB.Model(&models.User{})
+
+	if username != "" {
+		query = query.Where("username LIKE ?", "%"+username+"%")
+	}
+	if status != nil {
+		query = query.Where("status = ?", *status)
+	}
+
+	err := query.Count(&total).Error
+	if err != nil {
+		return nil, err
+	}
+
+	offset := (page - 1) * pageSize
+	err = query.Order("id DESC").Offset(offset).Limit(pageSize).Find(&users).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &UserListResult{
+		Total: total,
+		List:  users,
+	}, nil
+}
+
+func (s *UserService) CreateUser(username, nickname, email, password, phone string, status int, roleIds []int) error {
+	if password == "" {
+		password = "123456"
+	}
+
+	user := &models.User{
+		Username: username,
+		Nickname: nickname,
+		Email:    email,
+		Password: password,
+		Mobile:   phone,
+		Status:   status,
+	}
+
+	if len(roleIds) > 0 {
+		roleIdsStr := make([]string, len(roleIds))
+		for i, id := range roleIds {
+			roleIdsStr[i] = strconv.Itoa(id)
+		}
+		user.RoleIds = strings.Join(roleIdsStr, ",")
+	}
+
+	return utils.DB.Create(user).Error
+}
+
+func (s *UserService) UpdateUser(id uint, username, nickname, email, password, phone string, status int, roleIds []int) error {
+	updates := map[string]interface{}{
+		"username": username,
+		"nickname": nickname,
+		"email":    email,
+		"phone":    phone,
+		"status":   status,
+	}
+
+	if password != "" {
+		updates["password"] = password
+	}
+
+	if len(roleIds) > 0 {
+		roleIdsStr := make([]string, len(roleIds))
+		for i, id := range roleIds {
+			roleIdsStr[i] = strconv.Itoa(id)
+		}
+		updates["role_ids"] = strings.Join(roleIdsStr, ",")
+	}
+
+	return utils.DB.Model(&models.User{}).Where("id = ?", id).Updates(updates).Error
+}
+
+func (s *UserService) DeleteUser(id uint) error {
+	return utils.DB.Delete(&models.User{}, id).Error
+}
+
+func (s *UserService) UpdateUserStatus(id uint, status int) error {
+	return utils.DB.Model(&models.User{}).Where("id = ?", id).Update("status", status).Error
+}
+
+func (s *UserService) GetUserRoleIds(userId uint) ([]int, error) {
+	var user models.User
+	if err := utils.DB.First(&user, userId).Error; err != nil {
+		return nil, err
+	}
+
+	if user.RoleIds == "" {
+		return []int{}, nil
+	}
+
+	roleIdStrs := strings.Split(user.RoleIds, ",")
+	roleIds := make([]int, 0, len(roleIdStrs))
+	for _, idStr := range roleIdStrs {
+		if id, err := strconv.Atoi(strings.TrimSpace(idStr)); err == nil {
+			roleIds = append(roleIds, id)
+		}
+	}
+
+	return roleIds, nil
 }
