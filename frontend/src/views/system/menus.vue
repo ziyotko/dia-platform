@@ -98,7 +98,19 @@
           <el-input v-model="form.component" placeholder="请输入组件路径" />
         </el-form-item>
         <el-form-item label="菜单图标">
-          <el-input v-model="form.icon" placeholder="请输入图标名称" />
+          <el-input v-model="form.icon" placeholder="请选择图标" readonly>
+            <template #prefix>
+              <el-icon v-if="form.icon"><component :is="form.icon" /></el-icon>
+            </template>
+            <template #append>
+              <el-button v-if="form.icon" @click="clearIcon">
+                <el-icon><Close /></el-icon>
+              </el-button>
+              <el-button @click="iconPickerVisible = true">
+                <el-icon><Search /></el-icon>
+              </el-button>
+            </template>
+          </el-input>
         </el-form-item>
         <el-form-item label="显示排序" prop="sort">
           <el-input-number v-model="form.sort" :min="0" style="width: 100%" />
@@ -115,13 +127,47 @@
         <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="iconPickerVisible"
+      title="选择图标"
+      width="640px"
+      append-to-body
+      destroy-on-close
+    >
+      <el-input
+        v-model="iconSearch"
+        placeholder="搜索图标名称"
+        clearable
+        style="margin-bottom: 16px"
+      />
+      <el-scrollbar max-height="400px">
+        <div class="icon-grid">
+          <div
+            v-for="name in filteredIcons"
+            :key="name"
+            class="icon-item"
+            :class="{ active: form.icon === name }"
+            @click="selectIcon(name)"
+          >
+            <el-icon size="20"><component :is="name" /></el-icon>
+            <span class="icon-name">{{ name }}</span>
+          </div>
+        </div>
+      </el-scrollbar>
+      <template #footer>
+        <el-button @click="clearIcon">清空图标</el-button>
+        <el-button @click="iconPickerVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Edit, Delete, CirclePlus } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, CirclePlus, Search, Close } from '@element-plus/icons-vue'
+import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import { getMenuList, createMenu, updateMenu, deleteMenu, type MenuItem, type MenuForm } from '@/api/menus'
 
 const loading = ref(false)
@@ -130,6 +176,26 @@ const dialogTitle = ref('')
 const submitLoading = ref(false)
 const formRef = ref()
 const tableData = ref<MenuItem[]>([])
+const iconPickerVisible = ref(false)
+const iconSearch = ref('')
+
+const iconNames = Object.keys(ElementPlusIconsVue)
+
+const filteredIcons = computed(() => {
+  if (!iconSearch.value) return iconNames
+  const keyword = iconSearch.value.toLowerCase()
+  return iconNames.filter((name) => name.toLowerCase().includes(keyword))
+})
+
+const selectIcon = (name: string) => {
+  form.icon = name
+  iconPickerVisible.value = false
+}
+
+const clearIcon = () => {
+  form.icon = ''
+  iconPickerVisible.value = false
+}
 
 const form = reactive<MenuForm>({
   id: undefined,
@@ -261,6 +327,44 @@ onMounted(() => {
       align-items: center;
       font-weight: 600;
       color: #2c3e50;
+    }
+  }
+}
+
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 8px;
+
+  .icon-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 4px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+
+    &:hover {
+      background: #f5f9ff;
+      border-color: #d9ecff;
+    }
+
+    &.active {
+      background: rgba(64, 158, 255, 0.12);
+      border-color: #409eff;
+    }
+
+    .icon-name {
+      margin-top: 4px;
+      font-size: 11px;
+      color: #606266;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   }
 }
