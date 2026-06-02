@@ -2,8 +2,10 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"server/models"
 	"server/utils"
@@ -42,8 +44,44 @@ func (s *UserService) Login(email, account, mobile, password, captchaID, captcha
 		return nil, "", errors.New("用户已禁用")
 	}
 
-	if !user.ComparePassword(password) {
-		return nil, "", errors.New("密码错误")
+	settingsService := SettingsService{}
+	settings, err := settingsService.GetSettings()
+	if err != nil {
+		return nil, "", errors.New("获取系统设置失败")
+	}
+
+	if settings.LockEnabled {
+		if user.LockedUntil != nil && user.LockedUntil.After(time.Now()) {
+			remaining := int(time.Until(*user.LockedUntil).Minutes()) + 1
+			return nil, "", fmt.Errorf("登录失败次数过多，请 %d 分钟后重试", remaining)
+		}
+
+		if !user.ComparePassword(password) {
+			user.LoginFailCount++
+			if user.LoginFailCount >= settings.MaxFailCount {
+				lockUntil := time.Now().Add(time.Duration(settings.LockDuration) * time.Minute)
+				user.LockedUntil = &lockUntil
+				user.LoginFailCount = 0
+				utils.DB.Model(&user).Updates(map[string]interface{}{
+					"login_fail_count": 0,
+					"locked_until":     lockUntil,
+				})
+				return nil, "", fmt.Errorf("登录失败次数过多，账号已锁定 %d 分钟", settings.LockDuration)
+			}
+			utils.DB.Model(&user).Update("login_fail_count", user.LoginFailCount)
+			return nil, "", errors.New("密码错误")
+		}
+
+		if user.LoginFailCount > 0 || user.LockedUntil != nil {
+			utils.DB.Model(&user).Updates(map[string]interface{}{
+				"login_fail_count": 0,
+				"locked_until":     nil,
+			})
+		}
+	} else {
+		if !user.ComparePassword(password) {
+			return nil, "", errors.New("密码错误")
+		}
 	}
 
 	token, err := utils.GenerateToken(user.ID, user.Email)
