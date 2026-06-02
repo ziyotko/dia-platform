@@ -110,9 +110,11 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { User, Message, Phone, Location, Clock } from '@element-plus/icons-vue'
+import { useUserStore } from '@/stores/user'
 import { getUserInfo, updateProfile, changePassword } from '@/api/auth'
 import type { ProfileUser } from '@/api/auth'
 
+const userStore = useUserStore()
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
 
 const profileLoading = ref(false)
@@ -230,6 +232,12 @@ const loadProfile = async () => {
     form.email = data.email || ''
     form.phone = data.phone || ''
     form.bio = data.bio || ''
+    if (userStore.userInfo) {
+      userStore.setUserInfo({
+        ...userStore.userInfo,
+        nickname: data.nickname || data.username
+      })
+    }
   } catch {
     ElMessage.error('获取用户信息失败')
   } finally {
