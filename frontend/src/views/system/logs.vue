@@ -109,10 +109,11 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, RefreshRight, Delete, View } from '@element-plus/icons-vue'
+import { getLogList, clearLogs } from '@/api/log'
 
 const loading = ref(false)
 const detailVisible = ref(false)
-const total = ref(200)
+const total = ref(0)
 
 const queryForm = reactive({
   page: 1,
@@ -135,13 +136,7 @@ const detailData = reactive({
   createTime: ''
 })
 
-const tableData = ref([
-  { id: 1, username: 'admin', type: 'LOGIN', module: '认证模块', description: '用户登录成功', method: 'POST', path: '/api/auth/login', params: '{"username":"admin"}', ip: '192.168.1.100', ua: 'Mozilla/5.0', duration: 120, createTime: '2026-06-01 09:30:22' },
-  { id: 2, username: 'admin', type: 'CREATE', module: '用户管理', description: '新增用户 editor', method: 'POST', path: '/api/users', params: '{"username":"editor"}', ip: '192.168.1.100', ua: 'Mozilla/5.0', duration: 85, createTime: '2026-06-01 09:35:10' },
-  { id: 3, username: 'editor', type: 'UPDATE', module: '内容管理', description: '修改文章《系统公告》', method: 'PUT', path: '/api/articles/5', params: '{"title":"系统公告"}', ip: '192.168.1.101', ua: 'Mozilla/5.0', duration: 2100, createTime: '2026-06-01 10:12:45' },
-  { id: 4, username: 'admin', type: 'DELETE', module: '角色管理', description: '删除角色 visitor', method: 'DELETE', path: '/api/roles/4', params: '{}', ip: '192.168.1.100', ua: 'Mozilla/5.0', duration: 65, createTime: '2026-06-01 11:05:33' },
-  { id: 5, username: 'user01', type: 'READ', module: '个人信息', description: '查询个人资料', method: 'GET', path: '/api/users/3', params: '{}', ip: '192.168.1.102', ua: 'Mozilla/5.0', duration: 45, createTime: '2026-06-01 11:30:18' }
-])
+const tableData = ref<any[]>([])
 
 const typeMap: Record<string, { label: string; color: string }> = {
   CREATE: { label: '新增', color: 'success' },
@@ -167,11 +162,29 @@ const resetQuery = () => {
   fetchData()
 }
 
-const fetchData = () => {
+const fetchData = async () => {
   loading.value = true
-  setTimeout(() => {
+  try {
+    const params: any = {
+      page: queryForm.page,
+      pageSize: queryForm.pageSize,
+      username: queryForm.username,
+      type: queryForm.type
+    }
+    if (queryForm.dateRange && queryForm.dateRange.length === 2) {
+      params.startDate = queryForm.dateRange[0]
+      params.endDate = queryForm.dateRange[1]
+    }
+    const res: any = await getLogList(params)
+    if (res.code === 0 || res.code === 200) {
+      tableData.value = res.data.list || []
+      total.value = res.data.total || 0
+    }
+  } catch (error) {
+    console.error(error)
+  } finally {
     loading.value = false
-  }, 500)
+  }
 }
 
 const handleClear = () => {
@@ -179,8 +192,16 @@ const handleClear = () => {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    ElMessage.success('日志已清空')
+  }).then(async () => {
+    try {
+      const res: any = await clearLogs()
+      if (res.code === 0 || res.code === 200) {
+        ElMessage.success('日志已清空')
+        fetchData()
+      }
+    } catch (error) {
+      console.error(error)
+    }
   })
 }
 
@@ -246,6 +267,11 @@ onMounted(() => {
     font-size: 12px;
     overflow-x: auto;
     margin: 0;
+  }
+
+  :deep(.el-descriptions__label) {
+    width: 100px;
+    white-space: nowrap;
   }
 }
 </style>

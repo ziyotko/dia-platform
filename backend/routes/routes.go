@@ -13,16 +13,18 @@ func SetupRoutes(router *gin.Engine) {
 	userController := controllers.NewUserController()
 	menuController := controllers.NewMenuController()
 	roleController := controllers.NewRoleController()
+	logController := controllers.NewLogController()
 	apiPrefix := config.AppConfig.Server.ApiPrefix
 
 	public := router.Group(apiPrefix)
+	public.Use(middleware.OperationLog())
 	{
 		public.GET("/captcha", authController.GetCaptcha)
 		public.POST("/login", authController.Login)
 	}
 
 	protected := router.Group(apiPrefix)
-	protected.Use(middleware.AuthMiddleware())
+	protected.Use(middleware.AuthMiddleware(), middleware.OperationLog())
 	{
 		protected.POST("/logout", authController.Logout)
 		protected.GET("/profile", authController.GetProfile)
@@ -48,5 +50,8 @@ func SetupRoutes(router *gin.Engine) {
 		protected.POST("/roles", roleController.CreateRole)
 		protected.PUT("/roles/:id", roleController.UpdateRole)
 		protected.DELETE("/roles/:id", roleController.DeleteRole)
+
+		protected.GET("/logs", logController.GetLogs)
+		protected.DELETE("/logs", logController.ClearLogs)
 	}
 }
