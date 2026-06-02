@@ -29,6 +29,25 @@ func (c *SettingsController) GetSettings(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("获取设置成功", settings))
 }
 
+func (c *SettingsController) GetPublicSiteInfo(ctx *gin.Context) {
+	settings, err := c.settingsService.GetSettings()
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Success("获取成功", gin.H{
+			"siteName":  "门户网站管理后台",
+			"logo":      "",
+			"icp":       "",
+			"copyright": "门户网站管理系统 版权所有",
+		}))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("获取成功", gin.H{
+		"siteName":  settings.SiteName,
+		"logo":      settings.Logo,
+		"icp":       settings.Icp,
+		"copyright": settings.Copyright,
+	}))
+}
+
 func (c *SettingsController) UpdateSettings(ctx *gin.Context) {
 	var req models.Settings
 	if err := ctx.ShouldBindJSON(&req); err != nil {

@@ -23,6 +23,7 @@ func SetupRoutes(router *gin.Engine) {
 	{
 		public.GET("/captcha", authController.GetCaptcha)
 		public.POST("/login", authController.Login)
+		public.GET("/site-info", settingsController.GetPublicSiteInfo)
 	}
 
 	protected := router.Group(apiPrefix)

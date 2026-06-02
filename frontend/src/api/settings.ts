@@ -23,10 +23,21 @@ export interface Settings {
   breadcrumb: boolean
 }
 
+export interface SiteInfo {
+  siteName: string
+  logo: string
+  icp: string
+  copyright: string
+}
+
 export function getSettings() {
   return request.get<Settings>('/settings')
 }
 
 export function updateSettings(data: Partial<Settings>) {
   return request.put('/settings', data)
+}
+
+export function getPublicSiteInfo() {
+  return request.get<SiteInfo>('/site-info')
 }

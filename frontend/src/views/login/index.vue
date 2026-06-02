@@ -3,9 +3,9 @@
     <div class="login-box">
       <div class="login-left">
         <div class="login-brand">
-          <el-icon size="48" color="#409eff"><Platform /></el-icon>
-          <h1>门户网站管理后台</h1>
-          <p>Portal Management System</p>
+          <img v-if="siteInfo.logo" :src="resolveLogoUrl(siteInfo.logo)" alt="logo" class="login-logo" />
+          <el-icon v-else size="48" color="#409eff"><Platform /></el-icon>
+          <h1>{{ siteInfo.siteName }}</h1>
         </div>
         <div class="login-features">
           <div class="feature-item">
@@ -81,7 +81,11 @@
       </div>
     </div>
     <div class="login-footer">
-      <p> 门户网站管理系统 版权所有</p>
+      <div class="footer-content">
+        <span v-if="siteInfo.copyright">{{ siteInfo.copyright }}</span>
+        <i v-if="siteInfo.copyright && siteInfo.icp" class="footer-dot" />
+        <span v-if="siteInfo.icp">{{ siteInfo.icp }}</span>
+      </div>
     </div>
   </div>
 </template>
@@ -93,6 +97,7 @@ import { ElMessage } from 'element-plus'
 import { User, Lock, Grid, Platform, Check } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { getCaptcha, login } from '@/api/auth'
+import { getPublicSiteInfo } from '@/api/settings'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -107,6 +112,39 @@ const form = reactive({
   captchaId: '',
   captchaCode: ''
 })
+
+const siteInfo = reactive({
+  siteName: '门户网站管理后台',
+  logo: '',
+  icp: '',
+  copyright: '门户网站管理系统 版权所有'
+})
+
+const resolveLogoUrl = (url: string) => {
+  if (!url) return ''
+  if (url.startsWith('http')) return url
+  return `${window.location.origin}${url}`
+}
+
+const loadSiteInfo = async () => {
+  try {
+    const res: any = await getPublicSiteInfo()
+    if (res.data) {
+      siteInfo.siteName = res.data.siteName || siteInfo.siteName
+      siteInfo.logo = res.data.logo || ''
+      siteInfo.icp = res.data.icp || ''
+      siteInfo.copyright = res.data.copyright || siteInfo.copyright
+
+      document.title = siteInfo.siteName
+      const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null
+      if (favicon && siteInfo.logo) {
+        favicon.href = resolveLogoUrl(siteInfo.logo)
+      }
+    }
+  } catch {
+    // 使用默认值
+  }
+}
 
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
@@ -150,6 +188,7 @@ const handleLogin = async () => {
 
 onMounted(() => {
   refreshCaptcha()
+  loadSiteInfo()
 })
 </script>
 
@@ -209,6 +248,13 @@ onMounted(() => {
 .login-brand {
   text-align: center;
   margin-bottom: 50px;
+
+  .login-logo {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    border-radius: 8px;
+  }
 
   h1 {
     font-size: 24px;
@@ -323,10 +369,28 @@ onMounted(() => {
 }
 
 .login-footer {
-  margin-top: 24px;
-  color: #909399;
-  font-size: 13px;
+  margin-top: 32px;
+  padding: 12px 24px;
+  color: #7a8b9a;
+  font-size: 12px;
   z-index: 1;
+  text-align: center;
+
+  .footer-content {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .footer-dot {
+    width: 3px;
+    height: 3px;
+    background: #b0c4de;
+    border-radius: 50%;
+    display: inline-block;
+  }
 }
 
 @media (max-width: 768px) {
