@@ -14,12 +14,24 @@ const parsedTheme = storedTheme
     })()
   : null
 
+const storedSecurity = localStorage.getItem('app-security')
+const parsedSecurity = storedSecurity
+  ? (() => {
+      try {
+        return JSON.parse(storedSecurity)
+      } catch {
+        return null
+      }
+    })()
+  : null
+
 export const useAppStore = defineStore('app', () => {
   const sidebarCollapsed = ref(false)
   const themeColor = ref(parsedTheme?.themeColor || '#409eff')
   const sidebarStyle = ref<SidebarStyle>(parsedTheme?.sidebarStyle || 'light')
   const tagsView = ref(parsedTheme?.tagsView ?? true)
   const breadcrumb = ref(parsedTheme?.breadcrumb ?? true)
+  const minPasswordLength = ref(parsedSecurity?.minPasswordLength ?? 8)
 
   function toggleSidebar() {
     sidebarCollapsed.value = !sidebarCollapsed.value
@@ -61,16 +73,31 @@ export const useAppStore = defineStore('app', () => {
     applyTheme()
   }
 
+  function setSecuritySettings(settings: {
+    minPasswordLength?: number
+  }) {
+    if (settings.minPasswordLength !== undefined) minPasswordLength.value = settings.minPasswordLength
+
+    localStorage.setItem(
+      'app-security',
+      JSON.stringify({
+        minPasswordLength: minPasswordLength.value
+      })
+    )
+  }
+
   return {
     sidebarCollapsed,
     themeColor,
     sidebarStyle,
     tagsView,
     breadcrumb,
+    minPasswordLength,
     refreshKey,
     toggleSidebar,
     triggerRefresh,
     applyTheme,
-    setThemeSettings
+    setThemeSettings,
+    setSecuritySettings
   }
 })

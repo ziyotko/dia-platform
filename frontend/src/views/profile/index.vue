@@ -91,7 +91,7 @@
               <el-input v-model="pwdForm.oldPassword" type="password" show-password clearable placeholder="请输入原密码" maxlength="20" />
             </el-form-item>
             <el-form-item label="新密码" prop="newPassword">
-              <el-input v-model="pwdForm.newPassword" type="password" show-password clearable placeholder="请输入新密码" maxlength="20" />
+              <el-input v-model="pwdForm.newPassword" type="password" show-password clearable :placeholder="`请输入新密码，长度不少于${appStore.minPasswordLength}位`" maxlength="20" />
             </el-form-item>
             <el-form-item label="确认密码" prop="confirmPassword">
               <el-input v-model="pwdForm.confirmPassword" type="password" show-password clearable placeholder="请再次输入新密码" maxlength="20" />
@@ -107,7 +107,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { User, Message, Phone, Location, Clock } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
@@ -163,11 +163,11 @@ const pwdForm = reactive({
   confirmPassword: ''
 })
 
-const pwdRules = {
+const pwdRules = computed(() => ({
   oldPassword: [{ required: true, message: '请输入原密码', trigger: 'blur' }],
   newPassword: [
     { required: true, message: '请输入新密码', trigger: 'blur' },
-    { min: 6, message: '密码长度不能少于6位', trigger: 'blur' }
+    { min: appStore.minPasswordLength, message: `密码长度不能少于${appStore.minPasswordLength}位`, trigger: 'blur' }
   ],
   confirmPassword: [
     { required: true, message: '请确认密码', trigger: 'blur' },
@@ -182,7 +182,7 @@ const pwdRules = {
       trigger: 'blur'
     }
   ]
-}
+}))
 
 const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false)

@@ -39,9 +39,6 @@
 
         <el-tab-pane label="安全设置" name="security">
           <el-form :model="securityForm" label-width="160px" class="settings-form">
-            <el-form-item label="登录验证码">
-              <el-switch v-model="securityForm.captchaEnabled" />
-            </el-form-item>
             <el-form-item label="登录失败锁定">
               <el-switch v-model="securityForm.lockEnabled" />
             </el-form-item>
@@ -210,6 +207,10 @@ const loadSettings = async () => {
     securityForm.lockDuration = data.lockDuration ?? 30
     securityForm.minPasswordLength = data.minPasswordLength ?? 8
     securityForm.tokenExpire = data.tokenExpire ?? 24
+
+    appStore.setSecuritySettings({
+      minPasswordLength: securityForm.minPasswordLength
+    })
     emailForm.smtpHost = data.smtpHost || ''
     emailForm.smtpPort = data.smtpPort || ''
     emailForm.fromEmail = data.fromEmail || ''
@@ -281,14 +282,17 @@ const handleSaveBasic = () => {
   })
 }
 
-const handleSaveSecurity = () => {
-  doSave({
+const handleSaveSecurity = async () => {
+  await doSave({
     captchaEnabled: securityForm.captchaEnabled,
     lockEnabled: securityForm.lockEnabled,
     maxFailCount: securityForm.maxFailCount,
     lockDuration: securityForm.lockDuration,
     minPasswordLength: securityForm.minPasswordLength,
     tokenExpire: securityForm.tokenExpire
+  })
+  appStore.setSecuritySettings({
+    minPasswordLength: securityForm.minPasswordLength
   })
 }
 

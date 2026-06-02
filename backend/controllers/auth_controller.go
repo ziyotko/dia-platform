@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"math"
 	"time"
 
@@ -146,7 +147,7 @@ func (c *AuthController) ChangePassword(ctx *gin.Context) {
 	userID := ctx.GetUint("userID")
 	var req struct {
 		OldPassword string `json:"oldPassword" binding:"required"`
-		NewPassword string `json:"newPassword" binding:"required,min=6"`
+		NewPassword string `json:"newPassword" binding:"required"`
 	}
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -154,7 +155,19 @@ func (c *AuthController) ChangePassword(ctx *gin.Context) {
 		return
 	}
 
-	err := c.userService.ChangePassword(userID, req.OldPassword, req.NewPassword)
+	settingsService := &services.SettingsService{}
+	settings, err := settingsService.GetSettings()
+	if err != nil {
+		ctx.JSON(200, utils.Error(1, "获取安全设置失败"))
+		return
+	}
+
+	if len(req.NewPassword) < settings.MinPasswordLength {
+		ctx.JSON(200, utils.Error(1, fmt.Sprintf("密码长度不能少于%d位", settings.MinPasswordLength)))
+		return
+	}
+
+	err = c.userService.ChangePassword(userID, req.OldPassword, req.NewPassword)
 	if err != nil {
 		ctx.JSON(200, utils.Error(1, err.Error()))
 		return
