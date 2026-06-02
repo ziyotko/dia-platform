@@ -16,7 +16,14 @@ type Claims struct {
 }
 
 func GenerateToken(userID uint, email string) (string, error) {
-	expireTime := time.Now().Add(time.Hour * time.Duration(config.AppConfig.JWT.ExpiresHour))
+	expiresHour := config.AppConfig.JWT.ExpiresHour
+	var settings struct {
+		TokenExpire int `gorm:"column:token_expire"`
+	}
+	if err := DB.Table("settings").Select("token_expire").Limit(1).Scan(&settings).Error; err == nil && settings.TokenExpire > 0 {
+		expiresHour = settings.TokenExpire
+	}
+	expireTime := time.Now().Add(time.Hour * time.Duration(expiresHour))
 	claims := Claims{
 		UserID: userID,
 		Email:  email,
