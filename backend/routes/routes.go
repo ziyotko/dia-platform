@@ -12,6 +12,7 @@ func SetupRoutes(router *gin.Engine) {
 	authController := controllers.NewAuthController()
 	userController := controllers.NewUserController()
 	menuController := controllers.NewMenuController()
+	roleController := controllers.NewRoleController()
 	apiPrefix := config.AppConfig.Server.ApiPrefix
 
 	public := router.Group(apiPrefix)
@@ -38,5 +39,14 @@ func SetupRoutes(router *gin.Engine) {
 		protected.POST("/menus", menuController.CreateMenu)
 		protected.PUT("/menus/:id", menuController.UpdateMenu)
 		protected.DELETE("/menus/:id", menuController.DeleteMenu)
+
+		protected.GET("/roles", roleController.GetRoles)
+		protected.GET("/roles/all", roleController.GetAllRoles)
+		protected.GET("/roles/:id/permissions", roleController.GetRolePermissions)
+		protected.PUT("/roles/:id/permissions", roleController.UpdateRolePermissions)
+		protected.GET("/roles/:id", roleController.GetRoleByID)
+		protected.POST("/roles", roleController.CreateRole)
+		protected.PUT("/roles/:id", roleController.UpdateRole)
+		protected.DELETE("/roles/:id", roleController.DeleteRole)
 	}
 }

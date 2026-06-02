@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -18,10 +20,11 @@ func main() {
 	utils.InitDB()
 	utils.InitRedis()
 
-	utils.DB.AutoMigrate(&models.User{}, &models.Menu{})
+	utils.DB.AutoMigrate(&models.User{}, &models.Menu{}, &models.Role{})
 
 	initSuperAdmin()
 	initMenus()
+	initRoles()
 
 	router := gin.New()
 	router.Use(middleware.GinLogger(), gin.Recovery())
@@ -105,4 +108,81 @@ func initMenus() {
 	}
 
 	utils.Logger.Info("Menus initialized successfully")
+}
+
+func initRoles() {
+	var count int64
+	utils.DB.Model(&models.Role{}).Count(&count)
+	if count > 0 {
+		return
+	}
+
+	var menus []models.Menu
+	if err := utils.DB.Find(&menus).Error; err != nil {
+		utils.Logger.Errorf("Failed to get menus for role init: %v", err)
+		return
+	}
+
+	menuIDMap := make(map[string]uint)
+	var allMenuIDs []string
+	for _, m := range menus {
+		menuIDMap[m.Name] = m.ID
+		allMenuIDs = append(allMenuIDs, strconv.FormatUint(uint64(m.ID), 10))
+	}
+
+	joinIDs := func(names ...string) string {
+		ids := []string{}
+		for _, name := range names {
+			if id, ok := menuIDMap[name]; ok {
+				ids = append(ids, strconv.FormatUint(uint64(id), 10))
+			}
+		}
+		return strings.Join(ids, ",")
+	}
+
+	roles := []models.Role{
+		{
+			Name:        "系统管理员",
+			Code:        "super_admin",
+			Description: "拥有全站配置、用户管理、角色权限分配、安全设置等最高权限，不可被其他角色替代",
+			Status:      1,
+			Permissions: strings.Join(allMenuIDs, ","),
+		},
+		{
+			Name:        "内容编辑人员",
+			Code:        "operator",
+			Description: "负责发布、编辑、删除内容（文章、页面、媒体等），通常无权管理用户或系统设置",
+			Status:      1,
+			Permissions: joinIDs("欢迎首页", "内容管理", "文章管理", "分类管理", "标签管理", "评论管理", "广告管理", "友链管理", "个人中心", "个人信息", "系统设置"),
+		},
+		{
+			Name:        "审批人",
+			Code:        "approver",
+			Description: "专门审核待发布内容或敏感操作（如删除、置顶），确保合规性，权限通常仅限审批流相关功能",
+			Status:      1,
+			Permissions: joinIDs("欢迎首页", "文章管理", "评论管理", "个人中心", "个人信息"),
+		},
+		{
+			Name:        "投稿人",
+			Code:        "contributor",
+			Description: "可撰写或上传内容，但需经审核才能发布，不能直接发布或修改他人内容",
+			Status:      1,
+			Permissions: joinIDs("欢迎首页", "文章管理", "个人中心", "个人信息"),
+		},
+		{
+			Name:        "访客",
+			Code:        "visitor",
+			Description: "仅查看后台数据或报表（如数据分析岗），无编辑权限，多见于内部协作型门户",
+			Status:      1,
+			Permissions: joinIDs("欢迎首页", "个人中心", "个人信息"),
+		},
+	}
+
+	for i := range roles {
+		if err := utils.DB.Create(&roles[i]).Error; err != nil {
+			utils.Logger.Errorf("Failed to create role %s: %v", roles[i].Code, err)
+		}
+	}
+
+	utils.Logger.Info("Roles initialized successfully")
 }

@@ -105,6 +105,7 @@
       v-model="permissionVisible"
       title="分配权限"
       width="500px"
+      destroy-on-close
     >
       <el-tree
         ref="treeRef"
@@ -116,14 +117,14 @@
       />
       <template #footer>
         <el-button @click="permissionVisible = false">取消</el-button>
-        <el-button type="primary" @click="handlePermissionSubmit">确定</el-button>
+        <el-button type="primary" :loading="permissionLoading" @click="handlePermissionSubmit">确定</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Search,
@@ -133,15 +134,26 @@ import {
   Delete,
   Key
 } from '@element-plus/icons-vue'
+import {
+  getRoleList,
+  createRole,
+  updateRole,
+  deleteRole,
+  getMenuTree,
+  getRolePermissions,
+  updateRolePermissions
+} from '@/api/role'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
 const permissionVisible = ref(false)
+const permissionLoading = ref(false)
 const dialogTitle = ref('')
 const submitLoading = ref(false)
-const total = ref(50)
+const total = ref(0)
 const formRef = ref()
 const treeRef = ref()
+const currentRoleId = ref<number>(0)
 
 const queryForm = reactive({
   page: 1,
@@ -162,43 +174,15 @@ const formRules = {
   code: [{ required: true, message: '请输入角色编码', trigger: 'blur' }]
 }
 
-const tableData = ref([
-  { id: 1, name: '超级管理员', code: 'super_admin', description: '系统最高权限，可操作所有功能', status: 1, createTime: '2026-01-10 09:00:00' },
-  { id: 2, name: '内容管理员', code: 'content_admin', description: '负责内容发布、编辑、审核', status: 1, createTime: '2026-01-15 10:30:00' },
-  { id: 3, name: '普通用户', code: 'common_user', description: '普通注册用户权限', status: 1, createTime: '2026-02-01 14:00:00' },
-  { id: 4, name: '访客', code: 'visitor', description: '仅浏览权限', status: 0, createTime: '2026-03-10 08:20:00' }
-])
+const tableData = ref<any[]>([])
+const permissionData = ref<any[]>([])
 
-const permissionData = ref([
-  {
-    id: 1,
-    name: '系统管理',
-    children: [
-      { id: 11, name: '用户管理' },
-      { id: 12, name: '角色管理' },
-      { id: 13, name: '菜单管理' },
-      { id: 14, name: '操作日志' }
-    ]
-  },
-  {
-    id: 2,
-    name: '内容管理',
-    children: [
-      { id: 21, name: '文章管理' },
-      { id: 22, name: '分类管理' },
-      { id: 23, name: '标签管理' },
-      { id: 24, name: '评论管理' }
-    ]
-  },
-  {
-    id: 3,
-    name: '个人中心',
-    children: [
-      { id: 31, name: '个人信息' },
-      { id: 32, name: '系统设置' }
-    ]
-  }
-])
+const formatTime = (dateStr: string) => {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  const pad = (n: number) => n.toString().padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
 
 const handleSearch = () => {
   queryForm.page = 1
@@ -211,11 +195,25 @@ const resetQuery = () => {
   fetchData()
 }
 
-const fetchData = () => {
+const fetchData = async () => {
   loading.value = true
-  setTimeout(() => {
+  try {
+    const res: any = await getRoleList(queryForm)
+    if (res && res.code === 0) {
+      const list = res.data.list || []
+      tableData.value = list.map((item: any) => ({
+        ...item,
+        createTime: formatTime(item.createdAt)
+      }))
+      total.value = res.data.total || 0
+    } else {
+      ElMessage.error(res?.message || '获取角色列表失败')
+    }
+  } catch (error) {
+    ElMessage.error('获取角色列表失败')
+  } finally {
     loading.value = false
-  }, 500)
+  }
 }
 
 const handleAdd = () => {
@@ -235,31 +233,93 @@ const handleDelete = (row: any) => {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    ElMessage.success('删除成功')
+  }).then(async () => {
+    try {
+      const res: any = await deleteRole(row.id)
+      if (res && res.code === 0) {
+        ElMessage.success('删除成功')
+        fetchData()
+      } else {
+        ElMessage.error(res?.message || '删除失败')
+      }
+    } catch {
+      ElMessage.error('删除失败')
+    }
   })
 }
 
-const handlePermission = (_row: any) => {
+const handlePermission = async (row: any) => {
+  currentRoleId.value = row.id
   permissionVisible.value = true
+  try {
+    const [menuRes, permRes]: any[] = await Promise.all([
+      getMenuTree(),
+      getRolePermissions(row.id)
+    ])
+    if (menuRes && menuRes.code === 0) {
+      permissionData.value = menuRes.data || []
+    }
+    if (permRes && permRes.code === 0) {
+      const perms = permRes.data || []
+      nextTick(() => {
+        treeRef.value?.setCheckedKeys(perms)
+      })
+    }
+  } catch {
+    ElMessage.error('获取权限数据失败')
+  }
 }
 
-const handlePermissionSubmit = () => {
-  treeRef.value?.getCheckedKeys()
-  ElMessage.success('权限分配成功')
-  permissionVisible.value = false
+const handlePermissionSubmit = async () => {
+  if (!currentRoleId.value) return
+  const checkedKeys = treeRef.value?.getCheckedKeys() || []
+  const halfCheckedKeys = treeRef.value?.getHalfCheckedKeys() || []
+  const allKeys = [...checkedKeys, ...halfCheckedKeys]
+  permissionLoading.value = true
+  try {
+    const res: any = await updateRolePermissions(currentRoleId.value, allKeys)
+    if (res && res.code === 0) {
+      ElMessage.success('权限分配成功')
+      permissionVisible.value = false
+    } else {
+      ElMessage.error(res?.message || '权限分配失败')
+    }
+  } catch {
+    ElMessage.error('权限分配失败')
+  } finally {
+    permissionLoading.value = false
+  }
 }
 
 const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
   submitLoading.value = true
-  setTimeout(() => {
+  try {
+    const payload = {
+      name: form.name,
+      code: form.code,
+      description: form.description,
+      status: form.status
+    }
+    let res: any
+    if (form.id) {
+      res = await updateRole(form.id, payload)
+    } else {
+      res = await createRole(payload)
+    }
+    if (res && res.code === 0) {
+      ElMessage.success(form.id ? '修改成功' : '新增成功')
+      dialogVisible.value = false
+      fetchData()
+    } else {
+      ElMessage.error(res?.message || (form.id ? '修改失败' : '新增失败'))
+    }
+  } catch {
+    ElMessage.error(form.id ? '修改失败' : '新增失败')
+  } finally {
     submitLoading.value = false
-    dialogVisible.value = false
-    ElMessage.success(form.id ? '修改成功' : '新增成功')
-    fetchData()
-  }, 500)
+  }
 }
 
 const resetForm = () => {
