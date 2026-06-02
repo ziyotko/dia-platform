@@ -216,7 +216,7 @@ const handleChangePassword = async () => {
     pwdForm.newPassword = ''
     pwdForm.confirmPassword = ''
   } catch {
-    // request interceptor 已处理错误提示
+    ElMessage.error('密码修改失败')
   } finally {
     pwdLoading.value = false
   }
