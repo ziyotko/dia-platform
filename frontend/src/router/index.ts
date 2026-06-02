@@ -23,28 +23,35 @@ const router = createRouter({
           meta: { title: '欢迎首页', icon: 'HomeFilled' }
         },
         {
-          path: 'users',
-          name: 'Users',
-          component: () => import('@/views/system/users.vue'),
-          meta: { title: '用户管理', icon: 'UserFilled' }
-        },
-        {
-          path: 'roles',
-          name: 'Roles',
-          component: () => import('@/views/system/roles.vue'),
-          meta: { title: '角色管理', icon: 'Avatar' }
-        },
-        {
-          path: 'menus',
-          name: 'Menus',
-          component: () => import('@/views/system/menus.vue'),
-          meta: { title: '菜单管理', icon: 'Menu' }
-        },
-        {
-          path: 'logs',
-          name: 'Logs',
-          component: () => import('@/views/system/logs.vue'),
-          meta: { title: '操作日志', icon: 'List' }
+          path: 'system',
+          name: 'System',
+          meta: { title: '系统管理', icon: 'Setting' },
+          children: [
+            {
+              path: 'users',
+              name: 'Users',
+              component: () => import('@/views/system/users.vue'),
+              meta: { title: '用户管理', icon: 'UserFilled' }
+            },
+            {
+              path: 'roles',
+              name: 'Roles',
+              component: () => import('@/views/system/roles.vue'),
+              meta: { title: '角色管理', icon: 'Avatar' }
+            },
+            {
+              path: 'menus',
+              name: 'Menus',
+              component: () => import('@/views/system/menus.vue'),
+              meta: { title: '菜单管理', icon: 'Menu' }
+            },
+            {
+              path: 'logs',
+              name: 'Logs',
+              component: () => import('@/views/system/logs.vue'),
+              meta: { title: '操作日志', icon: 'List' }
+            }
+          ]
         },
         {
           path: 'profile',
