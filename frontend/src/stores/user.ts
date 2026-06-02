@@ -42,6 +42,7 @@ export const useUserStore = defineStore('user', () => {
     userInfo.value = null
     localStorage.removeItem('token')
     localStorage.removeItem(USER_INFO_KEY)
+    localStorage.removeItem('app-theme')
   }
 
   return {

@@ -235,7 +235,36 @@ const loadSettings = async () => {
 const doSave = async (data: Partial<Settings>) => {
   loading.value = true
   try {
-    await updateSettings(data)
+    const payload: Partial<Settings> = {
+      siteName: basicForm.siteName,
+      logo: basicForm.logo,
+      icp: basicForm.icp,
+      copyright: basicForm.copyright,
+      captchaEnabled: securityForm.captchaEnabled,
+      lockEnabled: securityForm.lockEnabled,
+      maxFailCount: securityForm.maxFailCount,
+      lockDuration: securityForm.lockDuration,
+      minPasswordLength: securityForm.minPasswordLength,
+      tokenExpire: securityForm.tokenExpire,
+      smtpHost: emailForm.smtpHost,
+      smtpPort: emailForm.smtpPort,
+      fromEmail: emailForm.fromEmail,
+      fromName: emailForm.fromName,
+      emailPassword: emailForm.password,
+      ssl: emailForm.ssl,
+      themeColor: themeColor.value,
+      sidebarStyle: sidebarStyle.value,
+      tagsView: tagsView.value,
+      breadcrumb: breadcrumb.value
+    }
+
+    Object.entries(data).forEach(([key, value]) => {
+      if (value !== undefined) {
+        (payload as any)[key] = value
+      }
+    })
+
+    await updateSettings(payload)
     ElMessage.success('保存成功')
   } catch {
   } finally {

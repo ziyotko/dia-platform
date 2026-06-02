@@ -7,7 +7,7 @@
     >
       <div class="logo">
         <el-icon size="28" :color="appStore.themeColor"><Platform /></el-icon>
-        <span v-show="!appStore.sidebarCollapsed" class="logo-text">管理后台</span>
+
       </div>
       <el-scrollbar class="menu-scrollbar">
         <el-menu

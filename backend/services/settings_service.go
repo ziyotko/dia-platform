@@ -56,5 +56,5 @@ func (s *SettingsService) UpdateSettings(settings *models.Settings) error {
 		return result.Error
 	}
 	settings.ID = existing.ID
-	return utils.DB.Model(&existing).Updates(settings).Error
+	return utils.DB.Model(&existing).Select("*").Omit("created_at", "deleted_at").Updates(settings).Error
 }
