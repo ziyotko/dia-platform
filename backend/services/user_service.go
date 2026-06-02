@@ -137,7 +137,7 @@ func (s *UserService) UpdateUser(id uint, username, nickname, account, email, pa
 		"nickname": nickname,
 		"account":  account,
 		"email":    email,
-		"phone":    phone,
+		"mobile":   phone,
 		"status":   status,
 	}
 

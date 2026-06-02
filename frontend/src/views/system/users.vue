@@ -107,9 +107,12 @@
         </el-form-item>
         <el-form-item label="角色" prop="roleIds">
           <el-select v-model="form.roleIds" multiple placeholder="请选择角色" style="width: 100%">
-            <el-option label="超级管理员" :value="1" />
-            <el-option label="内容管理员" :value="2" />
-            <el-option label="普通用户" :value="3" />
+            <el-option
+              v-for="role in roleOptions"
+              :key="role.id"
+              :label="role.name"
+              :value="role.id"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="状态" prop="status">
@@ -138,6 +141,7 @@ import {
   Delete
 } from '@element-plus/icons-vue'
 import { getUserList, createUser, updateUser, deleteUser, updateUserStatus } from '@/api/user'
+import { getAllRoles } from '@/api/role'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -181,6 +185,18 @@ const formRules = {
 }
 
 const tableData = ref<any[]>([])
+const roleOptions = ref<any[]>([])
+
+const fetchRoles = async () => {
+  try {
+    const res: any = await getAllRoles()
+    if (res && res.code === 0) {
+      roleOptions.value = res.data || []
+    }
+  } catch (error) {
+    console.error('获取角色列表失败', error)
+  }
+}
 
 const handleSearch = () => {
   queryForm.page = 1
@@ -321,6 +337,7 @@ const handleCurrentChange = (val: number) => {
 
 onMounted(() => {
   fetchData()
+  fetchRoles()
 })
 </script>
 
