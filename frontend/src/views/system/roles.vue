@@ -177,6 +177,21 @@ const formRules = {
 const tableData = ref<any[]>([])
 const permissionData = ref<any[]>([])
 
+const getLeafNodeIds = (nodes: any[]): number[] => {
+  const result: number[] = []
+  const traverse = (data: any[]) => {
+    data.forEach((node: any) => {
+      if (!node.children || node.children.length === 0) {
+        result.push(Number(node.id))
+      } else {
+        traverse(node.children)
+      }
+    })
+  }
+  traverse(nodes)
+  return result
+}
+
 const formatTime = (dateStr: string) => {
   if (!dateStr) return ''
   const d = new Date(dateStr)
@@ -261,8 +276,10 @@ const handlePermission = async (row: any) => {
     }
     if (permRes && permRes.code === 0) {
       const perms = permRes.data || []
+      const leafIds = getLeafNodeIds(permissionData.value)
+      const validPerms = perms.filter((id: number) => leafIds.includes(Number(id)))
       nextTick(() => {
-        treeRef.value?.setCheckedKeys(perms)
+        treeRef.value?.setCheckedKeys(validPerms)
       })
     }
   } catch {
@@ -275,9 +292,11 @@ const handlePermissionSubmit = async () => {
   const checkedKeys = treeRef.value?.getCheckedKeys() || []
   const halfCheckedKeys = treeRef.value?.getHalfCheckedKeys() || []
   const allKeys = [...checkedKeys, ...halfCheckedKeys]
+  const leafIds = getLeafNodeIds(permissionData.value)
+  const finalKeys = allKeys.filter((key: number) => leafIds.includes(Number(key)))
   permissionLoading.value = true
   try {
-    const res: any = await updateRolePermissions(currentRoleId.value, allKeys)
+    const res: any = await updateRolePermissions(currentRoleId.value, finalKeys)
     if (res && res.code === 0) {
       ElMessage.success('权限分配成功')
       permissionVisible.value = false

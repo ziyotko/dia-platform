@@ -72,6 +72,12 @@ const router = createRouter({
           meta: { title: '内容管理', icon: 'Document' },
           children: [
             {
+              path: 'column',
+              name: 'Column',
+              component: () => import('@/views/content/column.vue'),
+              meta: { title: '栏目', icon: 'Memo' }
+            },
+            {
               path: 'article',
               name: 'Article',
               component: () => import('@/views/content/article.vue'),
