@@ -42,6 +42,7 @@ type RedisConfig struct {
 	Port     string `mapstructure:"port"`
 	Password string `mapstructure:"password"`
 	DB       int    `mapstructure:"db"`
+	DB1      int    `mapstructure:"db1"`
 }
 
 type JWTConfig struct {

@@ -19,7 +19,7 @@ func SetupRoutes(router *gin.Engine) {
 	apiPrefix := config.AppConfig.Server.ApiPrefix
 
 	public := router.Group(apiPrefix)
-	public.Use(middleware.OperationLog())
+	public.Use(middleware.ReplayProtectionMiddleware(), middleware.OperationLog())
 	{
 		public.GET("/captcha", authController.GetCaptcha)
 		public.POST("/login", authController.Login)
@@ -27,7 +27,7 @@ func SetupRoutes(router *gin.Engine) {
 	}
 
 	protected := router.Group(apiPrefix)
-	protected.Use(middleware.AuthMiddleware(), middleware.OperationLog())
+	protected.Use(middleware.ReplayProtectionMiddleware(), middleware.AuthMiddleware(), middleware.OperationLog())
 	{
 		protected.POST("/logout", authController.Logout)
 		protected.GET("/profile", authController.GetProfile)

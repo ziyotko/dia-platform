@@ -18,7 +18,8 @@ func main() {
 	config.InitConfig()
 	utils.InitLogger()
 	utils.InitDB()
-	utils.InitRedis()
+	utils.InitRedisCaptcha()
+	utils.InitRedisAnti()
 
 	utils.DB.AutoMigrate(&models.User{}, &models.Menu{}, &models.Role{}, &models.OperationLog{}, &models.Settings{})
 

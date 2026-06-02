@@ -16,6 +16,8 @@ request.interceptors.request.use(
     if (userStore.token) {
       config.headers.Authorization = `Bearer ${userStore.token}`
     }
+    config.headers['X-Request-Timestamp'] = Date.now().toString()
+    config.headers['X-Request-Nonce'] = crypto.randomUUID()
     return config
   },
   (error) => {

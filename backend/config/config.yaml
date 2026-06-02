@@ -24,6 +24,8 @@ redis:
   port: 6379
   password: ""
   db: 0
+  db1: 1
+
 
 jwt:
   secret: your-256-bit-secret-key-here-must-be-at-least-32-characters
