@@ -174,7 +174,7 @@
           <el-col :span="12">
             <el-form-item label="页面类型" prop="pageType">
               <el-select v-model="pageForm.pageType" placeholder="请选择页面类型" disabled style="width: 100%">
-                <el-option label="首页" value="home" />
+                <el-option label="门户页" value="home" />
                 <el-option label="列表页" value="list" />
                 <el-option label="详情页" value="detail" />
               </el-select>
@@ -187,8 +187,8 @@
           </el-col>
         </el-row>
         <el-form-item label="绑定模板" prop="template">
-          <el-select v-model="pageForm.template" placeholder="请选择页面模板" clearable style="width: 100%">
-            <el-option-group label="首页模板">
+          <el-select v-model="pageForm.template" placeholder="请选择门户页模板" clearable style="width: 100%">
+            <el-option-group label="门户页模板">
               <el-option label="default-home" value="default-home" />
               <el-option label="portal-home" value="portal-home" />
             </el-option-group>
@@ -273,7 +273,7 @@
         </el-form-item>
         <el-form-item label="绑定模板" prop="template">
           <el-select v-model="columnForm.template" placeholder="请选择页面模板" clearable style="width: 100%">
-            <el-option-group label="首页模板">
+            <el-option-group label="门户页模板">
               <el-option label="default-home" value="default-home" />
               <el-option label="portal-home" value="portal-home" />
             </el-option-group>
@@ -403,8 +403,8 @@ const columnFormRules = {
 const pageTypeList = computed(() => [
   {
     value: 'home',
-    label: '首页',
-    description: '网站入口首页',
+    label: '门户页',
+    description: '网站综合首页',
     bgColor: '#e6f7ef',
     color: '#52c41a'
   },
