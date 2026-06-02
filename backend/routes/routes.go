@@ -14,6 +14,7 @@ func SetupRoutes(router *gin.Engine) {
 	menuController := controllers.NewMenuController()
 	roleController := controllers.NewRoleController()
 	logController := controllers.NewLogController()
+	settingsController := controllers.NewSettingsController()
 	apiPrefix := config.AppConfig.Server.ApiPrefix
 
 	public := router.Group(apiPrefix)
@@ -56,5 +57,8 @@ func SetupRoutes(router *gin.Engine) {
 
 		protected.GET("/logs", logController.GetLogs)
 		protected.DELETE("/logs", logController.ClearLogs)
+
+		protected.GET("/settings", settingsController.GetSettings)
+		protected.PUT("/settings", settingsController.UpdateSettings)
 	}
 }

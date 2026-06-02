@@ -29,7 +29,7 @@
               <el-input v-model="basicForm.copyright" placeholder="请输入版权信息" />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" @click="handleSaveBasic">保存设置</el-button>
+              <el-button type="primary" :loading="loading" @click="handleSaveBasic">保存设置</el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
@@ -55,7 +55,7 @@
               <el-input-number v-model="securityForm.tokenExpire" :min="1" :max="72" />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" @click="handleSaveSecurity">保存设置</el-button>
+              <el-button type="primary" :loading="loading" @click="handleSaveSecurity">保存设置</el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
@@ -82,7 +82,7 @@
             </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="handleTestEmail">测试连接</el-button>
-              <el-button type="primary" @click="handleSaveEmail">保存设置</el-button>
+              <el-button type="primary" :loading="loading" @click="handleSaveEmail">保存设置</el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
@@ -105,7 +105,7 @@
               <el-switch v-model="breadcrumb" />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" @click="handleSaveTheme">保存设置</el-button>
+              <el-button type="primary" :loading="loading" @click="handleSaveTheme">保存设置</el-button>
               <el-button @click="handleResetTheme">恢复默认</el-button>
             </el-form-item>
           </el-form>
@@ -116,17 +116,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
+import { getSettings, updateSettings } from '@/api/settings'
+import type { Settings } from '@/api/settings'
 
 const activeTab = ref('basic')
+const loading = ref(false)
 
 const basicForm = reactive({
-  siteName: '门户网站管理后台',
+  siteName: '',
   logo: '',
-  icp: '京ICP备12345678号',
-  copyright: ' 门户网站管理系统 版权所有'
+  icp: '',
+  copyright: ''
 })
 
 const securityForm = reactive({
@@ -139,10 +142,10 @@ const securityForm = reactive({
 })
 
 const emailForm = reactive({
-  smtpHost: 'smtp.example.com',
-  smtpPort: '587',
-  fromEmail: 'noreply@example.com',
-  fromName: '系统通知',
+  smtpHost: '',
+  smtpPort: '',
+  fromEmail: '',
+  fromName: '',
   password: '',
   ssl: true
 })
@@ -152,16 +155,75 @@ const sidebarStyle = ref('light')
 const tagsView = ref(true)
 const breadcrumb = ref(true)
 
+const loadSettings = async () => {
+  try {
+    const res: any = await getSettings()
+    const data = res.data as Settings
+    basicForm.siteName = data.siteName || ''
+    basicForm.logo = data.logo || ''
+    basicForm.icp = data.icp || ''
+    basicForm.copyright = data.copyright || ''
+    securityForm.captchaEnabled = data.captchaEnabled ?? true
+    securityForm.lockEnabled = data.lockEnabled ?? true
+    securityForm.maxFailCount = data.maxFailCount ?? 5
+    securityForm.lockDuration = data.lockDuration ?? 30
+    securityForm.minPasswordLength = data.minPasswordLength ?? 8
+    securityForm.tokenExpire = data.tokenExpire ?? 24
+    emailForm.smtpHost = data.smtpHost || ''
+    emailForm.smtpPort = data.smtpPort || ''
+    emailForm.fromEmail = data.fromEmail || ''
+    emailForm.fromName = data.fromName || ''
+    emailForm.password = data.emailPassword || ''
+    emailForm.ssl = data.ssl ?? true
+    themeColor.value = data.themeColor || '#409eff'
+    sidebarStyle.value = data.sidebarStyle || 'light'
+    tagsView.value = data.tagsView ?? true
+    breadcrumb.value = data.breadcrumb ?? true
+  } catch {
+    ElMessage.error('获取设置失败')
+  }
+}
+
+const doSave = async (data: Partial<Settings>) => {
+  loading.value = true
+  try {
+    await updateSettings(data)
+    ElMessage.success('保存成功')
+  } catch {
+  } finally {
+    loading.value = false
+  }
+}
+
 const handleSaveBasic = () => {
-  ElMessage.success('基础设置已保存')
+  doSave({
+    siteName: basicForm.siteName,
+    logo: basicForm.logo,
+    icp: basicForm.icp,
+    copyright: basicForm.copyright
+  })
 }
 
 const handleSaveSecurity = () => {
-  ElMessage.success('安全设置已保存')
+  doSave({
+    captchaEnabled: securityForm.captchaEnabled,
+    lockEnabled: securityForm.lockEnabled,
+    maxFailCount: securityForm.maxFailCount,
+    lockDuration: securityForm.lockDuration,
+    minPasswordLength: securityForm.minPasswordLength,
+    tokenExpire: securityForm.tokenExpire
+  })
 }
 
 const handleSaveEmail = () => {
-  ElMessage.success('邮件设置已保存')
+  doSave({
+    smtpHost: emailForm.smtpHost,
+    smtpPort: emailForm.smtpPort,
+    fromEmail: emailForm.fromEmail,
+    fromName: emailForm.fromName,
+    emailPassword: emailForm.password,
+    ssl: emailForm.ssl
+  })
 }
 
 const handleTestEmail = () => {
@@ -169,7 +231,12 @@ const handleTestEmail = () => {
 }
 
 const handleSaveTheme = () => {
-  ElMessage.success('主题设置已保存')
+  doSave({
+    themeColor: themeColor.value,
+    sidebarStyle: sidebarStyle.value,
+    tagsView: tagsView.value,
+    breadcrumb: breadcrumb.value
+  })
 }
 
 const handleResetTheme = () => {
@@ -177,8 +244,17 @@ const handleResetTheme = () => {
   sidebarStyle.value = 'light'
   tagsView.value = true
   breadcrumb.value = true
-  ElMessage.success('已恢复默认主题')
+  doSave({
+    themeColor: themeColor.value,
+    sidebarStyle: sidebarStyle.value,
+    tagsView: tagsView.value,
+    breadcrumb: breadcrumb.value
+  })
 }
+
+onMounted(() => {
+  loadSettings()
+})
 </script>
 
 <style scoped lang="scss">

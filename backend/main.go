@@ -20,7 +20,7 @@ func main() {
 	utils.InitDB()
 	utils.InitRedis()
 
-	utils.DB.AutoMigrate(&models.User{}, &models.Menu{}, &models.Role{}, &models.OperationLog{})
+	utils.DB.AutoMigrate(&models.User{}, &models.Menu{}, &models.Role{}, &models.OperationLog{}, &models.Settings{})
 
 	initSuperAdmin()
 	initMenus()
