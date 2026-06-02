@@ -14,6 +14,7 @@ export interface LoginResult {
     username: string
     nickname: string
     avatar: string
+    roleIds: number[]
   }
 }
 

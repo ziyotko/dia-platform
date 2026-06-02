@@ -51,13 +51,7 @@
             </div>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="profile">
-                  <el-icon><User /></el-icon>个人中心
-                </el-dropdown-item>
-                <el-dropdown-item command="settings">
-                  <el-icon><Setting /></el-icon>系统设置
-                </el-dropdown-item>
-                <el-dropdown-item divided command="logout">
+                <el-dropdown-item  command="logout">
                   <el-icon><SwitchButton /></el-icon>退出登录
                 </el-dropdown-item>
               </el-dropdown-menu>
@@ -89,12 +83,10 @@ import {
   FullScreen,
   ArrowDown,
   SwitchButton,
-  User,
-  Setting
 } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
-import { getMenuTree, type MenuItem } from '@/api/menus'
+import { getUserMenus, type MenuItem } from '@/api/menus'
 import Breadcrumb from '@/components/Breadcrumb.vue'
 
 const route = useRoute()
@@ -130,7 +122,7 @@ const SidebarMenuItem = {
 
 const fetchMenus = async () => {
   try {
-    const res: any = await getMenuTree()
+    const res: any = await getUserMenus()
     menuList.value = res.data || []
   } catch (error) {
     console.error(error)
@@ -151,12 +143,6 @@ const toggleFullScreen = () => {
 
 const handleCommand = (command: string) => {
   switch (command) {
-    case 'profile':
-      router.push('/profile')
-      break
-    case 'settings':
-      router.push('/settings')
-      break
     case 'logout':
       ElMessageBox.confirm('确定要退出登录吗？', '提示', {
         confirmButtonText: '确定',

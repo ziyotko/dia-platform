@@ -28,6 +28,64 @@ func (s *MenuService) GetAllMenus() ([]models.Menu, error) {
 	return buildMenuTree(menus, 0), nil
 }
 
+func (s *MenuService) GetUserMenus(userID uint) ([]models.Menu, error) {
+	userService := &UserService{}
+	roleIds, err := userService.GetUserRoleIds(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	permMap := make(map[uint]bool)
+	roleService := &RoleService{}
+	for _, roleId := range roleIds {
+		perms, err := roleService.GetRolePermissions(uint(roleId))
+		if err != nil {
+			continue
+		}
+		for _, pid := range perms {
+			permMap[pid] = true
+		}
+	}
+
+	var allMenus []models.Menu
+	err = utils.DB.Where("status = ?", 1).Order("sort ASC, id ASC").Find(&allMenus).Error
+	if err != nil {
+		return nil, err
+	}
+
+	menuMap := make(map[uint]models.Menu)
+	for _, m := range allMenus {
+		menuMap[m.ID] = m
+	}
+
+	keepMap := make(map[uint]bool)
+	for _, m := range allMenus {
+		if permMap[m.ID] {
+			cur := m
+			for {
+				keepMap[cur.ID] = true
+				if cur.ParentID == 0 {
+					break
+				}
+				parent, ok := menuMap[cur.ParentID]
+				if !ok {
+					break
+				}
+				cur = parent
+			}
+		}
+	}
+
+	var filtered []models.Menu
+	for _, m := range allMenus {
+		if keepMap[m.ID] {
+			filtered = append(filtered, m)
+		}
+	}
+
+	return buildMenuTree(filtered, 0), nil
+}
+
 func (s *MenuService) GetMenuByID(id uint) (*models.Menu, error) {
 	var menu models.Menu
 	if err := utils.DB.First(&menu, id).Error; err != nil {

@@ -6,6 +6,7 @@ export interface UserInfo {
   username: string
   nickname: string
   avatar: string
+  roleIds: number[]
 }
 
 const USER_INFO_KEY = 'user_info'

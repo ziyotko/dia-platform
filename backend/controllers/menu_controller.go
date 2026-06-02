@@ -39,6 +39,16 @@ func (c *MenuController) GetMenuTree(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("获取菜单树成功", menus))
 }
 
+func (c *MenuController) GetUserMenus(ctx *gin.Context) {
+	userID := ctx.GetUint("userID")
+	menus, err := c.menuService.GetUserMenus(userID)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取用户菜单失败"))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("获取用户菜单成功", menus))
+}
+
 func (c *MenuController) CreateMenu(ctx *gin.Context) {
 	var req models.Menu
 	if err := ctx.ShouldBindJSON(&req); err != nil {

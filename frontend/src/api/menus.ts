@@ -35,6 +35,10 @@ export function getMenuTree() {
   return request.get('/menus/tree')
 }
 
+export function getUserMenus() {
+  return request.get('/menus/user')
+}
+
 export function createMenu(data: MenuForm) {
   return request.post('/menus', data)
 }

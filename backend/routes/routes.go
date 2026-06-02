@@ -38,6 +38,7 @@ func SetupRoutes(router *gin.Engine) {
 
 		protected.GET("/menus", menuController.GetMenus)
 		protected.GET("/menus/tree", menuController.GetMenuTree)
+		protected.GET("/menus/user", menuController.GetUserMenus)
 		protected.POST("/menus", menuController.CreateMenu)
 		protected.PUT("/menus/:id", menuController.UpdateMenu)
 		protected.DELETE("/menus/:id", menuController.DeleteMenu)
