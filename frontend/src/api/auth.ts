@@ -18,6 +18,34 @@ export interface LoginResult {
   }
 }
 
+export interface ProfileUser {
+  id: number
+  username: string
+  nickname: string
+  email: string
+  phone: string
+  account: string
+  roleName: string
+  avatar: string
+  createdAt: string
+  onlineDays: number
+  articleCount: number
+  operationCount: number
+  bio: string
+}
+
+export interface ProfileForm {
+  nickname: string
+  email: string
+  phone: string
+  bio: string
+}
+
+export interface ChangePasswordForm {
+  oldPassword: string
+  newPassword: string
+}
+
 export function getCaptcha() {
   return request.get<{ captcha_id: string; captcha_img: string }>('/captcha')
 }
@@ -27,7 +55,15 @@ export function login(data: LoginData) {
 }
 
 export function getUserInfo() {
-  return request.get('/profile')
+  return request.get<{ user: ProfileUser }>('/profile')
+}
+
+export function updateProfile(data: ProfileForm) {
+  return request.put('/profile', data)
+}
+
+export function changePassword(data: ChangePasswordForm) {
+  return request.put('/profile/password', data)
 }
 
 export function logout() {

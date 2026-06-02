@@ -28,6 +28,8 @@ func SetupRoutes(router *gin.Engine) {
 	{
 		protected.POST("/logout", authController.Logout)
 		protected.GET("/profile", authController.GetProfile)
+		protected.PUT("/profile", authController.UpdateProfile)
+		protected.PUT("/profile/password", authController.ChangePassword)
 
 		protected.GET("/users", userController.GetUsers)
 		protected.POST("/users", userController.CreateUser)

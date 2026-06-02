@@ -2,39 +2,39 @@
   <div class="page-container">
     <el-row :gutter="20">
       <el-col :xs="24" :md="8">
-        <el-card shadow="hover" class="profile-card">
+        <el-card shadow="hover" class="profile-card" v-loading="profileLoading">
           <div class="profile-header">
-            <el-avatar :size="100" :src="userStore.userInfo?.avatar || defaultAvatar" />
-            <h3>{{ userStore.userInfo?.nickname || userStore.userInfo?.username }}</h3>
-            <p>{{ userStore.userInfo?.username }}</p>
-            <el-tag type="primary">超级管理员</el-tag>
+            <el-avatar :size="100" :src="profile.avatar || defaultAvatar" />
+            <h3>{{ profile.nickname || profile.username }}</h3>
+            <p>{{ profile.username }}</p>
+            <el-tag type="primary">{{ profile.roleName || '用户' }}</el-tag>
           </div>
           <div class="profile-stats">
             <div class="stat-item">
-              <div class="stat-num">128</div>
+              <div class="stat-num">{{ profile.articleCount }}</div>
               <div class="stat-label">发布文章</div>
             </div>
             <div class="stat-item">
-              <div class="stat-num">1,024</div>
+              <div class="stat-num">{{ profile.operationCount }}</div>
               <div class="stat-label">操作次数</div>
             </div>
             <div class="stat-item">
-              <div class="stat-num">365</div>
+              <div class="stat-num">{{ profile.onlineDays }}</div>
               <div class="stat-label">在线天数</div>
             </div>
           </div>
           <div class="profile-info">
             <div class="info-item">
               <el-icon><User /></el-icon>
-              <span>管理员</span>
+              <span>{{ profile.roleName || '用户' }}</span>
             </div>
             <div class="info-item">
               <el-icon><Message /></el-icon>
-              <span>admin@example.com</span>
+              <span>{{ profile.email || '-' }}</span>
             </div>
             <div class="info-item">
               <el-icon><Phone /></el-icon>
-              <span>13800138000</span>
+              <span>{{ profile.phone || '-' }}</span>
             </div>
             <div class="info-item">
               <el-icon><Location /></el-icon>
@@ -42,7 +42,7 @@
             </div>
             <div class="info-item">
               <el-icon><Clock /></el-icon>
-              <span>注册于 2026-01-15</span>
+              <span>注册于 {{ profile.createdAt }}</span>
             </div>
           </div>
         </el-card>
@@ -88,13 +88,13 @@
             label-width="100px"
           >
             <el-form-item label="原密码" prop="oldPassword">
-              <el-input v-model="pwdForm.oldPassword" type="password" show-password placeholder="请输入原密码" />
+              <el-input v-model="pwdForm.oldPassword" type="password" show-password clearable placeholder="请输入原密码" maxlength="20" />
             </el-form-item>
             <el-form-item label="新密码" prop="newPassword">
-              <el-input v-model="pwdForm.newPassword" type="password" show-password placeholder="请输入新密码" />
+              <el-input v-model="pwdForm.newPassword" type="password" show-password clearable placeholder="请输入新密码" maxlength="20" />
             </el-form-item>
             <el-form-item label="确认密码" prop="confirmPassword">
-              <el-input v-model="pwdForm.confirmPassword" type="password" show-password placeholder="请再次输入新密码" />
+              <el-input v-model="pwdForm.confirmPassword" type="password" show-password clearable placeholder="请再次输入新密码" maxlength="20" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" :loading="pwdLoading" @click="handleChangePassword">确认修改</el-button>
@@ -110,10 +110,27 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { User, Message, Phone, Location, Clock } from '@element-plus/icons-vue'
-import { useUserStore } from '@/stores/user'
+import { getUserInfo, updateProfile, changePassword } from '@/api/auth'
+import type { ProfileUser } from '@/api/auth'
 
-const userStore = useUserStore()
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
+
+const profileLoading = ref(false)
+const profile = reactive<ProfileUser>({
+  id: 0,
+  username: '',
+  nickname: '',
+  email: '',
+  phone: '',
+  account: '',
+  roleName: '',
+  avatar: '',
+  createdAt: '',
+  onlineDays: 0,
+  articleCount: 0,
+  operationCount: 0,
+  bio: ''
+})
 
 const formRef = ref()
 const pwdFormRef = ref()
@@ -167,27 +184,61 @@ const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
   submitLoading.value = true
-  setTimeout(() => {
-    submitLoading.value = false
+  try {
+    await updateProfile({
+      nickname: form.nickname,
+      email: form.email,
+      phone: form.phone,
+      bio: form.bio
+    })
     ElMessage.success('保存成功')
-  }, 500)
+    await loadProfile()
+  } catch {
+    // request interceptor 已处理错误提示
+  } finally {
+    submitLoading.value = false
+  }
 }
 
 const handleChangePassword = async () => {
   const valid = await pwdFormRef.value?.validate().catch(() => false)
   if (!valid) return
   pwdLoading.value = true
-  setTimeout(() => {
-    pwdLoading.value = false
+  try {
+    await changePassword({
+      oldPassword: pwdForm.oldPassword,
+      newPassword: pwdForm.newPassword
+    })
     ElMessage.success('密码修改成功')
     pwdForm.oldPassword = ''
     pwdForm.newPassword = ''
     pwdForm.confirmPassword = ''
-  }, 500)
+  } catch {
+    // request interceptor 已处理错误提示
+  } finally {
+    pwdLoading.value = false
+  }
+}
+
+const loadProfile = async () => {
+  profileLoading.value = true
+  try {
+    const res: any = await getUserInfo()
+    const data = res.data.user as ProfileUser
+    Object.assign(profile, data)
+    form.nickname = data.nickname || ''
+    form.email = data.email || ''
+    form.phone = data.phone || ''
+    form.bio = data.bio || ''
+  } catch {
+    ElMessage.error('获取用户信息失败')
+  } finally {
+    profileLoading.value = false
+  }
 }
 
 onMounted(() => {
-  form.nickname = userStore.userInfo?.nickname || ''
+  loadProfile()
 })
 </script>
 

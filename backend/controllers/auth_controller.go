@@ -1,6 +1,9 @@
 package controllers
 
 import (
+	"math"
+	"time"
+
 	"github.com/gin-gonic/gin"
 
 	"server/services"
@@ -9,11 +12,15 @@ import (
 
 type AuthController struct {
 	userService *services.UserService
+	roleService *services.RoleService
+	logService  *services.LogService
 }
 
 func NewAuthController() *AuthController {
 	return &AuthController{
 		userService: &services.UserService{},
+		roleService: &services.RoleService{},
+		logService:  &services.LogService{},
 	}
 }
 
@@ -78,5 +85,80 @@ func (c *AuthController) GetProfile(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(200, utils.Success("获取用户信息成功", gin.H{"user": user}))
+	roleIds, _ := c.userService.GetUserRoleIds(user.ID)
+	roleName := "用户"
+	if len(roleIds) > 0 {
+		role, err := c.roleService.GetRoleByID(uint(roleIds[0]))
+		if err == nil {
+			roleName = role.Name
+		}
+	}
+
+	opCount, _ := c.logService.GetUserOperationCount(user.ID)
+	onlineDays := int(math.Floor(time.Since(user.CreatedAt).Hours() / 24))
+	if onlineDays < 1 {
+		onlineDays = 1
+	}
+
+	ctx.JSON(200, utils.Success("获取用户信息成功", gin.H{
+		"user": gin.H{
+			"id":             user.ID,
+			"username":       user.Username,
+			"nickname":       user.Nickname,
+			"email":          user.Email,
+			"phone":          user.Mobile,
+			"account":        user.Account,
+			"roleName":       roleName,
+			"avatar":         "",
+			"createdAt":      user.CreatedAt.Format("2006-01-02"),
+			"onlineDays":     onlineDays,
+			"articleCount":   0,
+			"operationCount": opCount,
+			"bio":            user.Bio,
+		},
+	}))
+}
+
+func (c *AuthController) UpdateProfile(ctx *gin.Context) {
+	userID := ctx.GetUint("userID")
+	var req struct {
+		Nickname string `json:"nickname"`
+		Email    string `json:"email" binding:"required,email"`
+		Phone    string `json:"phone"`
+		Bio      string `json:"bio"`
+	}
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(200, utils.Error(1, "参数错误: "+err.Error()))
+		return
+	}
+
+	err := c.userService.UpdateProfile(userID, req.Nickname, req.Email, req.Phone, req.Bio)
+	if err != nil {
+		ctx.JSON(200, utils.Error(1, "更新失败: "+err.Error()))
+		return
+	}
+
+	ctx.JSON(200, utils.Success("更新成功", nil))
+}
+
+func (c *AuthController) ChangePassword(ctx *gin.Context) {
+	userID := ctx.GetUint("userID")
+	var req struct {
+		OldPassword string `json:"oldPassword" binding:"required"`
+		NewPassword string `json:"newPassword" binding:"required,min=6"`
+	}
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(200, utils.Error(1, "参数错误: "+err.Error()))
+		return
+	}
+
+	err := c.userService.ChangePassword(userID, req.OldPassword, req.NewPassword)
+	if err != nil {
+		ctx.JSON(200, utils.Error(1, err.Error()))
+		return
+	}
+
+	ctx.JSON(200, utils.Success("密码修改成功", nil))
 }

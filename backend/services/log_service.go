@@ -8,7 +8,7 @@ import (
 type LogService struct{}
 
 type LogListResult struct {
-	Total int64                `json:"total"`
+	Total int64                 `json:"total"`
 	List  []models.OperationLog `json:"list"`
 }
 
@@ -51,4 +51,10 @@ func (s *LogService) ClearLogs() error {
 
 func (s *LogService) CreateLog(log *models.OperationLog) error {
 	return utils.DB.Create(log).Error
+}
+
+func (s *LogService) GetUserOperationCount(userID uint) (int64, error) {
+	var count int64
+	err := utils.DB.Model(&models.OperationLog{}).Where("user_id = ?", userID).Count(&count).Error
+	return count, err
 }

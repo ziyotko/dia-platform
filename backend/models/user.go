@@ -17,6 +17,7 @@ type User struct {
 	Sex      int    `gorm:"default:0" json:"sex"`
 	Status   int    `gorm:"default:1" json:"status"`
 	RoleIds  string `gorm:"size:255" json:"roleIds"`
+	Bio      string `gorm:"size:500" json:"bio"`
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) (err error) {

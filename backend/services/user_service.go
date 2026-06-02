@@ -164,6 +164,26 @@ func (s *UserService) UpdateUserStatus(id uint, status int) error {
 	return utils.DB.Model(&models.User{}).Where("id = ?", id).Update("status", status).Error
 }
 
+func (s *UserService) UpdateProfile(id uint, nickname, email, phone, bio string) error {
+	return utils.DB.Model(&models.User{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"nickname": nickname,
+		"email":    email,
+		"mobile":   phone,
+		"bio":      bio,
+	}).Error
+}
+
+func (s *UserService) ChangePassword(id uint, oldPassword, newPassword string) error {
+	user, err := s.GetUserByID(id)
+	if err != nil {
+		return err
+	}
+	if !user.ComparePassword(oldPassword) {
+		return errors.New("原密码错误")
+	}
+	return utils.DB.Model(&models.User{}).Where("id = ?", id).Update("password", newPassword).Error
+}
+
 func (s *UserService) GetUserRoleIds(userId uint) ([]int, error) {
 	var user models.User
 	if err := utils.DB.First(&user, userId).Error; err != nil {
