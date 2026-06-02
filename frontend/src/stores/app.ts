@@ -1,17 +1,76 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
+export type SidebarStyle = 'light' | 'dark'
+
+const storedTheme = localStorage.getItem('app-theme')
+const parsedTheme = storedTheme
+  ? (() => {
+      try {
+        return JSON.parse(storedTheme)
+      } catch {
+        return null
+      }
+    })()
+  : null
+
 export const useAppStore = defineStore('app', () => {
   const sidebarCollapsed = ref(false)
-  const themeColor = ref('#409eff')
+  const themeColor = ref(parsedTheme?.themeColor || '#409eff')
+  const sidebarStyle = ref<SidebarStyle>(parsedTheme?.sidebarStyle || 'light')
+  const tagsView = ref(parsedTheme?.tagsView ?? true)
+  const breadcrumb = ref(parsedTheme?.breadcrumb ?? true)
 
   function toggleSidebar() {
     sidebarCollapsed.value = !sidebarCollapsed.value
   }
 
+  const refreshKey = ref(0)
+
+  function triggerRefresh() {
+    refreshKey.value++
+  }
+
+  function applyTheme() {
+    const root = document.documentElement
+    root.style.setProperty('--el-color-primary', themeColor.value)
+    root.style.setProperty('--primary-color', themeColor.value)
+  }
+
+  function setThemeSettings(settings: {
+    themeColor?: string
+    sidebarStyle?: SidebarStyle
+    tagsView?: boolean
+    breadcrumb?: boolean
+  }) {
+    if (settings.themeColor !== undefined) themeColor.value = settings.themeColor
+    if (settings.sidebarStyle !== undefined) sidebarStyle.value = settings.sidebarStyle
+    if (settings.tagsView !== undefined) tagsView.value = settings.tagsView
+    if (settings.breadcrumb !== undefined) breadcrumb.value = settings.breadcrumb
+
+    localStorage.setItem(
+      'app-theme',
+      JSON.stringify({
+        themeColor: themeColor.value,
+        sidebarStyle: sidebarStyle.value,
+        tagsView: tagsView.value,
+        breadcrumb: breadcrumb.value
+      })
+    )
+
+    applyTheme()
+  }
+
   return {
     sidebarCollapsed,
     themeColor,
-    toggleSidebar
+    sidebarStyle,
+    tagsView,
+    breadcrumb,
+    refreshKey,
+    toggleSidebar,
+    triggerRefresh,
+    applyTheme,
+    setThemeSettings
   }
 })

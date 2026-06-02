@@ -119,14 +119,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
+import { useAppStore } from '@/stores/app'
 import { getSettings, updateSettings } from '@/api/settings'
 import type { Settings } from '@/api/settings'
 
 const userStore = useUserStore()
+const appStore = useAppStore()
 const activeTab = ref('basic')
 const loading = ref(false)
 
@@ -218,6 +220,13 @@ const loadSettings = async () => {
     sidebarStyle.value = data.sidebarStyle || 'light'
     tagsView.value = data.tagsView ?? true
     breadcrumb.value = data.breadcrumb ?? true
+
+    appStore.setThemeSettings({
+      themeColor: themeColor.value,
+      sidebarStyle: sidebarStyle.value as 'light' | 'dark',
+      tagsView: tagsView.value,
+      breadcrumb: breadcrumb.value
+    })
   } catch {
     ElMessage.error('获取设置失败')
   }
@@ -276,6 +285,12 @@ const handleSaveTheme = () => {
     tagsView: tagsView.value,
     breadcrumb: breadcrumb.value
   })
+  appStore.setThemeSettings({
+    themeColor: themeColor.value,
+    sidebarStyle: sidebarStyle.value as 'light' | 'dark',
+    tagsView: tagsView.value,
+    breadcrumb: breadcrumb.value
+  })
 }
 
 const handleResetTheme = () => {
@@ -289,7 +304,17 @@ const handleResetTheme = () => {
     tagsView: tagsView.value,
     breadcrumb: breadcrumb.value
   })
+  appStore.setThemeSettings({
+    themeColor: themeColor.value,
+    sidebarStyle: sidebarStyle.value as 'light' | 'dark',
+    tagsView: tagsView.value,
+    breadcrumb: breadcrumb.value
+  })
 }
+
+watch(() => appStore.refreshKey, () => {
+  loadSettings()
+})
 
 onMounted(() => {
   loadSettings()

@@ -3,9 +3,10 @@
     <el-aside
       :width="appStore.sidebarCollapsed ? '64px' : '220px'"
       class="sidebar"
+      :class="{ dark: appStore.sidebarStyle === 'dark' }"
     >
       <div class="logo">
-        <el-icon size="28" color="#409eff"><Platform /></el-icon>
+        <el-icon size="28" :color="appStore.themeColor"><Platform /></el-icon>
         <span v-show="!appStore.sidebarCollapsed" class="logo-text">管理后台</span>
       </div>
       <el-scrollbar class="menu-scrollbar">
@@ -16,8 +17,9 @@
           router
           class="sidebar-menu"
           background-color="transparent"
-          text-color="#2c3e50"
-          active-text-color="#409eff"
+          :text-color="appStore.sidebarStyle === 'dark' ? '#bfcbd9' : '#2c3e50'"
+          :active-text-color="appStore.themeColor"
+          @select="handleMenuSelect"
         >
           <sidebar-menu-item v-for="menu in menuList" :key="menu.id" :menu="menu" />
         </el-menu>
@@ -35,7 +37,7 @@
             <Fold v-if="!appStore.sidebarCollapsed" />
             <Expand v-else />
           </el-icon>
-          <breadcrumb />
+          <breadcrumb v-if="appStore.breadcrumb" />
         </div>
         <div class="header-right">
           <el-tooltip content="全屏" placement="bottom">
@@ -59,6 +61,8 @@
           </el-dropdown>
         </div>
       </el-header>
+
+      <tags-view v-if="appStore.tagsView" />
 
       <el-main class="main-content">
         <router-view v-slot="{ Component }">
@@ -88,6 +92,7 @@ import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
 import { getUserMenus, type MenuItem } from '@/api/menus'
 import Breadcrumb from '@/components/Breadcrumb.vue'
+import TagsView from '@/components/TagsView.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -133,6 +138,12 @@ onMounted(() => {
   fetchMenus()
 })
 
+const handleMenuSelect = (index: string) => {
+  if (index === route.path) {
+    appStore.triggerRefresh()
+  }
+}
+
 const toggleFullScreen = () => {
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen()
@@ -167,9 +178,47 @@ const handleCommand = (command: string) => {
 .sidebar {
   background: linear-gradient(180deg, #f0f7ff 0%, #e6f2ff 100%);
   border-right: 1px solid #d9ecff;
-  transition: width 0.3s;
+  transition: width 0.3s, background 0.3s;
   display: flex;
   flex-direction: column;
+
+  &.dark {
+    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+    border-right-color: #0f3460;
+
+    .logo {
+      border-bottom-color: #0f3460;
+
+      .logo-text {
+        color: #fff;
+      }
+    }
+
+    .sidebar-menu {
+      :deep(.el-menu-item) {
+        color: #bfcbd9;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.05) !important;
+          color: #fff;
+        }
+
+        &.is-active {
+          background: rgba(64, 158, 255, 0.2) !important;
+          color: var(--el-color-primary);
+        }
+      }
+
+      :deep(.el-sub-menu__title) {
+        color: #bfcbd9;
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.05) !important;
+          color: #fff;
+        }
+      }
+    }
+  }
 }
 
 .logo {
@@ -180,12 +229,14 @@ const handleCommand = (command: string) => {
   gap: 10px;
   border-bottom: 1px solid #d9ecff;
   padding: 0 16px;
+  transition: border-color 0.3s;
 
   .logo-text {
     font-size: 18px;
     font-weight: 600;
     color: #2c3e50;
     white-space: nowrap;
+    transition: color 0.3s;
   }
 }
 
@@ -200,6 +251,7 @@ const handleCommand = (command: string) => {
   :deep(.el-menu-item) {
     margin: 4px 12px;
     border-radius: 8px;
+    transition: background 0.3s, color 0.3s;
 
     &:hover {
       background: rgba(64, 158, 255, 0.08) !important;
@@ -214,6 +266,7 @@ const handleCommand = (command: string) => {
   :deep(.el-sub-menu__title) {
     margin: 4px 12px;
     border-radius: 8px;
+    transition: background 0.3s, color 0.3s;
 
     &:hover {
       background: rgba(64, 158, 255, 0.08) !important;

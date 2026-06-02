@@ -107,14 +107,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { User, Message, Phone, Location, Clock } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
+import { useAppStore } from '@/stores/app'
 import { getUserInfo, updateProfile, changePassword } from '@/api/auth'
 import type { ProfileUser } from '@/api/auth'
 
 const userStore = useUserStore()
+const appStore = useAppStore()
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
 
 const profileLoading = ref(false)
@@ -244,6 +246,10 @@ const loadProfile = async () => {
     profileLoading.value = false
   }
 }
+
+watch(() => appStore.refreshKey, () => {
+  loadProfile()
+})
 
 onMounted(() => {
   loadProfile()
