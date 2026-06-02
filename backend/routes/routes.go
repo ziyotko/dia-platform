@@ -15,6 +15,7 @@ func SetupRoutes(router *gin.Engine) {
 	roleController := controllers.NewRoleController()
 	logController := controllers.NewLogController()
 	settingsController := controllers.NewSettingsController()
+	uploadController := controllers.NewUploadController()
 	apiPrefix := config.AppConfig.Server.ApiPrefix
 
 	public := router.Group(apiPrefix)
@@ -60,5 +61,7 @@ func SetupRoutes(router *gin.Engine) {
 
 		protected.GET("/settings", settingsController.GetSettings)
 		protected.PUT("/settings", settingsController.UpdateSettings)
+
+		protected.POST("/upload", uploadController.UploadFile)
 	}
 }

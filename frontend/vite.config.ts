@@ -16,6 +16,10 @@ export default defineConfig({
       '/miicapi': {
         target: 'http://localhost:8080',
         changeOrigin: true
+      },
+      '/uploads': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
       }
     }
   }

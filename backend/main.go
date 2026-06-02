@@ -31,6 +31,8 @@ func main() {
 	router.SetTrustedProxies([]string{"127.0.0.1"})
 	router.Use(middleware.CorsMiddleware())
 
+	router.Static("/uploads", "./uploads")
+
 	routes.SetupRoutes(router)
 
 	addr := fmt.Sprintf("%s:%s", config.AppConfig.Server.Host, config.AppConfig.Server.Port)

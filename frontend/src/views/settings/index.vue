@@ -14,11 +14,14 @@
             <el-form-item label="系统Logo">
               <el-upload
                 class="logo-uploader"
-                action="#"
-                :auto-upload="false"
+                action="/miicapi/upload"
+                :headers="uploadHeaders"
+                accept="image/*"
                 :show-file-list="false"
+                :on-success="handleLogoSuccess"
+                :before-upload="beforeLogoUpload"
               >
-                <img v-if="basicForm.logo" :src="basicForm.logo" class="logo-preview" />
+                <img v-if="basicForm.logo" :src="resolveLogoUrl(basicForm.logo)" class="logo-preview" />
                 <el-icon v-else class="logo-icon"><Plus /></el-icon>
               </el-upload>
             </el-form-item>
@@ -119,11 +122,47 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
+import { useUserStore } from '@/stores/user'
 import { getSettings, updateSettings } from '@/api/settings'
 import type { Settings } from '@/api/settings'
 
+const userStore = useUserStore()
 const activeTab = ref('basic')
 const loading = ref(false)
+
+const uploadHeaders = ref({
+  Authorization: `Bearer ${userStore.token}`
+})
+
+const resolveLogoUrl = (url: string) => {
+  if (!url) return ''
+  if (url.startsWith('http')) return url
+  return `${window.location.origin}${url}`
+}
+
+const handleLogoSuccess = (res: any) => {
+  if (res.code === 0 || res.code === 200) {
+    basicForm.logo = res.data.url
+    ElMessage.success('上传成功')
+  } else {
+    ElMessage.error(res.message || '上传失败')
+  }
+}
+
+const beforeLogoUpload = (file: File) => {
+  const isImage = file.type.startsWith('image/')
+  const isLt2M = file.size / 1024 / 1024 < 2
+
+  if (!isImage) {
+    ElMessage.error('请上传图片文件')
+    return false
+  }
+  if (!isLt2M) {
+    ElMessage.error('图片大小不能超过 2MB')
+    return false
+  }
+  return true
+}
 
 const basicForm = reactive({
   siteName: '',
