@@ -312,7 +312,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Plus,
@@ -331,6 +331,12 @@ import {
   updatePage,
   deletePage
 } from '@/api/page'
+import {
+  getColumns,
+  createColumn,
+  updateColumn,
+  deleteColumn
+} from '@/api/column'
 import { getTemplateList } from '@/api/template'
 
 interface PageItem {
@@ -519,6 +525,23 @@ const fetchTemplates = async () => {
   }
 }
 
+const fetchColumns = async () => {
+  if (!selectedPage.value) return
+  columnLoading.value = true
+  try {
+    const res: any = await getColumns({ pageId: selectedPage.value.id })
+    allColumns.value = res.data || []
+  } catch (error) {
+    console.error('获取栏目列表失败', error)
+  } finally {
+    columnLoading.value = false
+  }
+}
+
+watch(() => selectedPage.value, () => {
+  fetchColumns()
+})
+
 const handleTypeChange = (type: string) => {
   activePageType.value = type
   selectedPage.value = null
@@ -648,49 +671,71 @@ const handleEditColumn = (row: ColumnItem) => {
   columnDialogVisible.value = true
 }
 
-const handleDeleteColumn = (row: ColumnItem) => {
+const handleDeleteColumn = async (row: ColumnItem) => {
   const hasChildren = allColumns.value.some(c => c.parentId === row.id)
   const msg = hasChildren
     ? `栏目 "${row.name}" 下存在子栏目，确定要一并删除吗？`
     : `确定要删除栏目 "${row.name}" 吗？`
-  ElMessageBox.confirm(msg, '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => {
+  try {
+    await ElMessageBox.confirm(msg, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await deleteColumn(row.id)
     ElMessage.success('删除成功')
-    allColumns.value = allColumns.value.filter(c => c.id !== row.id && c.parentId !== row.id)
-  })
+    fetchColumns()
+  } catch (error) {
+    // cancel
+  }
 }
 
-const handleColumnStatusChange = async (_row: ColumnItem, val: number) => {
-  ElMessage.success(`栏目状态已${val === 1 ? '启用' : '禁用'}`)
+const handleColumnStatusChange = async (row: ColumnItem, val: number) => {
+  try {
+    await updateColumn(row.id, {
+      name: row.name,
+      code: row.code,
+      pageId: row.pageId,
+      parentId: row.parentId,
+      routePath: row.routePath,
+      template: row.template,
+      description: row.description,
+      sort: row.sort,
+      status: val
+    })
+    ElMessage.success(`栏目状态已${val === 1 ? '启用' : '禁用'}`)
+  } catch (error) {
+    row.status = val === 1 ? 0 : 1
+  }
 }
 
 const handleColumnSubmit = async () => {
   const valid = await columnFormRef.value?.validate().catch(() => false)
   if (!valid) return
   columnSubmitLoading.value = true
-  setTimeout(() => {
+  try {
+    const payload = {
+      name: columnForm.name || '',
+      code: columnForm.code || '',
+      pageId: columnForm.pageId ?? 0,
+      parentId: columnForm.parentId,
+      routePath: columnForm.routePath || '',
+      template: columnForm.template || '',
+      description: columnForm.description,
+      sort: columnForm.sort ?? 0,
+      status: columnForm.status ?? 1
+    }
+    if (columnForm.id) {
+      await updateColumn(columnForm.id, payload)
+    } else {
+      await createColumn(payload)
+    }
     ElMessage.success(columnForm.id ? '修改成功' : '新增成功')
     columnDialogVisible.value = false
-    if (!columnForm.id) {
-      allColumns.value.push({
-        id: Date.now(),
-        pageId: columnForm.pageId ?? 0,
-        parentId: columnForm.parentId,
-        name: columnForm.name || '',
-        code: columnForm.code || '',
-        routePath: columnForm.routePath || '',
-        template: columnForm.template || '',
-        description: columnForm.description,
-        sort: columnForm.sort ?? 0,
-        status: columnForm.status ?? 1,
-        createTime: new Date().toLocaleString()
-      })
-    }
+    fetchColumns()
+  } finally {
     columnSubmitLoading.value = false
-  }, 500)
+  }
 }
 
 const resetColumnForm = () => {
@@ -709,17 +754,6 @@ const resetColumnForm = () => {
 onMounted(() => {
   fetchData()
   fetchTemplates()
-  // 栏目数据暂用本地模拟，待接入栏目接口后移除
-  allColumns.value = [
-    { id: 101, name: '新闻中心', code: 'news-center', pageId: 2, routePath: '/news', sort: 1, status: 1, createTime: '2026-01-05 10:00:00' },
-    { id: 102, name: '公司新闻', code: 'company-news', pageId: 2, parentId: 101, routePath: '/news/company', sort: 1, status: 1, createTime: '2026-01-06 10:00:00' },
-    { id: 103, name: '行业动态', code: 'industry-news', pageId: 2, parentId: 101, routePath: '/news/industry', sort: 2, status: 1, createTime: '2026-01-07 11:00:00' },
-    { id: 104, name: '国际新闻', code: 'global-news', pageId: 2, parentId: 101, routePath: '/news/global', sort: 3, status: 1, createTime: '2026-01-09 09:00:00' },
-    { id: 201, name: '产品服务', code: 'product-service', pageId: 3, routePath: '/product', sort: 1, status: 1, createTime: '2026-01-10 14:30:00' },
-    { id: 202, name: '智能硬件', code: 'smart-hardware', pageId: 3, parentId: 201, routePath: '/product/hardware', sort: 1, status: 1, createTime: '2026-01-12 10:00:00' },
-    { id: 203, name: '软件服务', code: 'software-service', pageId: 3, parentId: 201, routePath: '/product/software', sort: 2, status: 1, createTime: '2026-01-13 11:00:00' },
-    { id: 301, name: '招贤纳士', code: 'careers', pageId: 4, routePath: '/careers', sort: 1, status: 1, createTime: '2026-02-02 09:00:00' }
-  ]
 })
 </script>
 
