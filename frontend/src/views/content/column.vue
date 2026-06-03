@@ -11,8 +11,9 @@
         <div class="type-icon" :style="{ backgroundColor: type.bgColor, color: type.color }">
           <el-icon :size="28">
             <HomeFilled v-if="type.value === 'home'" />
-            <List v-else-if="type.value === 'list'" />
-            <Document v-else />
+            <List v-else-if="type.value === 'column'" />
+            <Document v-else-if="type.value === 'detail'" />
+            <Grid v-else />
           </el-icon>
         </div>
         <div class="type-info">
@@ -174,9 +175,10 @@
           <el-col :span="12">
             <el-form-item label="页面类型" prop="pageType">
               <el-select v-model="pageForm.pageType" placeholder="请选择页面类型" disabled style="width: 100%">
-                <el-option label="门户页" value="home" />
-                <el-option label="列表页" value="list" />
+                <el-option label="首页" value="home" />
+                <el-option label="栏目页" value="column" />
                 <el-option label="详情页" value="detail" />
+                <el-option label="专题页" value="special" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -187,12 +189,12 @@
           </el-col>
         </el-row>
         <el-form-item label="绑定模板" prop="template">
-          <el-select v-model="pageForm.template" placeholder="请选择门户页模板" clearable style="width: 100%">
-            <el-option-group label="门户页模板">
+          <el-select v-model="pageForm.template" placeholder="请选择首页模板" clearable style="width: 100%">
+            <el-option-group label="首页模板">
               <el-option label="default-home" value="default-home" />
               <el-option label="portal-home" value="portal-home" />
             </el-option-group>
-            <el-option-group label="列表页模板">
+            <el-option-group label="栏目页模板">
               <el-option label="article-list" value="article-list" />
               <el-option label="news-list" value="news-list" />
               <el-option label="image-list" value="image-list" />
@@ -200,6 +202,10 @@
             <el-option-group label="详情页模板">
               <el-option label="article-detail" value="article-detail" />
               <el-option label="page-detail" value="page-detail" />
+            </el-option-group>
+            <el-option-group label="专题页模板">
+              <el-option label="special-event" value="special-event" />
+              <el-option label="special-activity" value="special-activity" />
             </el-option-group>
           </el-select>
         </el-form-item>
@@ -273,11 +279,11 @@
         </el-form-item>
         <el-form-item label="绑定模板" prop="template">
           <el-select v-model="columnForm.template" placeholder="请选择页面模板" clearable style="width: 100%">
-            <el-option-group label="门户页模板">
+            <el-option-group label="首页模板">
               <el-option label="default-home" value="default-home" />
               <el-option label="portal-home" value="portal-home" />
             </el-option-group>
-            <el-option-group label="列表页模板">
+            <el-option-group label="栏目页模板">
               <el-option label="article-list" value="article-list" />
               <el-option label="news-list" value="news-list" />
               <el-option label="image-list" value="image-list" />
@@ -285,6 +291,10 @@
             <el-option-group label="详情页模板">
               <el-option label="article-detail" value="article-detail" />
               <el-option label="page-detail" value="page-detail" />
+            </el-option-group>
+            <el-option-group label="专题页模板">
+              <el-option label="special-event" value="special-event" />
+              <el-option label="special-activity" value="special-activity" />
             </el-option-group>
           </el-select>
         </el-form-item>
@@ -317,14 +327,15 @@ import {
   ArrowRight,
   HomeFilled,
   List,
-  Document
+  Document,
+  Grid
 } from '@element-plus/icons-vue'
 
 interface PageItem {
   id: number
   name: string
   code: string
-  pageType: 'home' | 'list' | 'detail'
+  pageType: 'home' | 'column' | 'detail' | 'special'
   routePath: string
   template: string
   description?: string
@@ -403,15 +414,15 @@ const columnFormRules = {
 const pageTypeList = computed(() => [
   {
     value: 'home',
-    label: '门户页',
-    description: '网站综合首页',
+    label: '首页',
+    description: '网站门户页',
     bgColor: '#e6f7ef',
     color: '#52c41a'
   },
   {
-    value: 'list',
-    label: '列表页',
-    description: '文章列表聚合页',
+    value: 'column',
+    label: '栏目页',
+    description: '文章栏目聚合页',
     bgColor: '#e6f2ff',
     color: '#409eff'
   },
@@ -421,11 +432,18 @@ const pageTypeList = computed(() => [
     description: '内容详情展示页',
     bgColor: '#fff7e6',
     color: '#fa8c16'
+  },
+  {
+    value: 'special',
+    label: '专题页',
+    description: '专题活动展示页',
+    bgColor: '#f0e6ff',
+    color: '#722ed1'
   }
 ])
 
 const currentTypeLabel = computed(() => {
-  const map: Record<string, string> = { home: '首页', list: '列表页', detail: '详情页' }
+  const map: Record<string, string> = { home: '首页', column: '栏目页', detail: '详情页', special: '专题页' }
   return map[activePageType.value] || ''
 })
 
@@ -469,12 +487,13 @@ const fetchData = async () => {
   try {
     allPages.value = [
       { id: 1, name: '网站首页', code: 'home', pageType: 'home', routePath: '/', template: 'portal-home', status: 1, createTime: '2026-01-01 08:00:00' },
-      { id: 2, name: '新闻列表页', code: 'news-list', pageType: 'list', routePath: '/news', template: 'article-list', status: 1, createTime: '2026-01-05 09:30:00' },
-      { id: 3, name: '产品列表页', code: 'product-list', pageType: 'list', routePath: '/product', template: 'image-list', status: 1, createTime: '2026-01-10 14:00:00' },
-      { id: 4, name: '招聘列表页', code: 'careers-list', pageType: 'list', routePath: '/careers', template: 'article-list', status: 0, createTime: '2026-02-01 10:00:00' },
+      { id: 2, name: '新闻栏目页', code: 'news-list', pageType: 'column', routePath: '/news', template: 'article-list', status: 1, createTime: '2026-01-05 09:30:00' },
+      { id: 3, name: '产品栏目页', code: 'product-list', pageType: 'column', routePath: '/product', template: 'image-list', status: 1, createTime: '2026-01-10 14:00:00' },
+      { id: 4, name: '招聘栏目页', code: 'careers-list', pageType: 'column', routePath: '/careers', template: 'article-list', status: 0, createTime: '2026-02-01 10:00:00' },
       { id: 5, name: '文章详情页', code: 'article-detail', pageType: 'detail', routePath: '/article/:id', template: 'article-detail', status: 1, createTime: '2026-01-08 12:00:00' },
       { id: 6, name: '产品详情页', code: 'product-detail', pageType: 'detail', routePath: '/product/:id', template: 'page-detail', status: 1, createTime: '2026-01-11 15:00:00' },
-      { id: 7, name: '关于我们页', code: 'about-page', pageType: 'detail', routePath: '/about', template: 'page-detail', status: 1, createTime: '2026-01-15 09:00:00' }
+      { id: 7, name: '关于我们页', code: 'about-page', pageType: 'detail', routePath: '/about', template: 'page-detail', status: 1, createTime: '2026-01-15 09:00:00' },
+      { id: 8, name: '年度大会专题', code: 'annual-event', pageType: 'special', routePath: '/event/2026', template: 'special-event', status: 1, createTime: '2026-03-01 09:00:00' }
     ]
 
     allColumns.value = [
@@ -681,7 +700,7 @@ onMounted(() => {
 .page-container {
   .type-section {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 20px;
     margin-bottom: 20px;
 
