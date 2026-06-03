@@ -440,7 +440,11 @@ const fetchData = async () => {
       { id: 4, name: '新闻栏目', code: 'news-list', type: 'column', description: '新闻资讯栏目，带时间轴样式', status: 1, pageCount: 1, createTime: '2026-01-10 14:00:00' },
       { id: 5, name: '图片栏目', code: 'image-list', type: 'column', description: '产品图片瀑布流展示', status: 1, pageCount: 1, createTime: '2026-01-12 11:00:00' },
       { id: 6, name: '文章详情', code: 'article-detail', type: 'detail', description: '文章内容详情页，带目录导航', status: 1, pageCount: 1, createTime: '2026-01-15 09:00:00' },
-      { id: 7, name: '页面详情', code: 'page-detail', type: 'detail', description: '通用单页详情模板', status: 1, pageCount: 1, createTime: '2026-01-18 16:00:00' }
+      { id: 7, name: '页面详情', code: 'page-detail', type: 'detail', description: '通用单页详情模板', status: 1, pageCount: 1, createTime: '2026-01-18 16:00:00' },
+      { id: 8, name: '党建专题', code: 'party-building', type: 'special', description: '党建工作专题页，红色主题风格', status: 1, pageCount: 1, createTime: '2026-02-10 09:00:00' },
+      { id: 9, name: '会议活动专题', code: 'conference', type: 'special', description: '行业会议与活动专题，议程与报名展示', status: 1, pageCount: 1, createTime: '2026-02-15 10:30:00' },
+      { id: 10, name: '周年庆专题', code: 'anniversary', type: 'special', description: '企业周年庆典专题，时间轴与成果展示', status: 1, pageCount: 1, createTime: '2026-02-20 14:00:00' },
+      { id: 11, name: '企业文化专题', code: 'culture', type: 'special', description: '企业文化宣传专题，价值观与风采展示', status: 1, pageCount: 1, createTime: '2026-02-25 11:00:00' }
     ]
     total.value = tableData.value.length
   } finally {
