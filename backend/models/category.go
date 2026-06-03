@@ -1,0 +1,19 @@
+package models
+
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
+
+type Category struct {
+	ID          uint           `gorm:"primarykey" json:"id"`
+	CreatedAt   time.Time      `json:"createTime"`
+	UpdatedAt   time.Time      `json:"updatedAt"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deletedAt"`
+	Name        string         `gorm:"size:100;not null" json:"name"`
+	Code        string         `gorm:"size:100;not null" json:"code"`
+	Description string         `gorm:"size:500" json:"description"`
+	Sort        int            `gorm:"default:0" json:"sort"`
+	Status      int            `gorm:"default:1" json:"status"`
+}

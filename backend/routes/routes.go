@@ -19,6 +19,8 @@ func SetupRoutes(router *gin.Engine) {
 	templateController := controllers.NewTemplateController()
 	pageController := controllers.NewPageController()
 	columnController := controllers.NewColumnController()
+	categoryController := controllers.NewCategoryController()
+	tagController := controllers.NewTagController()
 	apiPrefix := config.AppConfig.Server.ApiPrefix
 
 	public := router.Group(apiPrefix)
@@ -84,5 +86,19 @@ func SetupRoutes(router *gin.Engine) {
 		protected.POST("/columns", columnController.CreateColumn)
 		protected.PUT("/columns/:id", columnController.UpdateColumn)
 		protected.DELETE("/columns/:id", columnController.DeleteColumn)
+
+		protected.GET("/categories", categoryController.GetCategories)
+		protected.GET("/categories/all", categoryController.GetAllCategories)
+		protected.POST("/categories", categoryController.CreateCategory)
+		protected.PUT("/categories/:id", categoryController.UpdateCategory)
+		protected.DELETE("/categories/:id", categoryController.DeleteCategory)
+		protected.PATCH("/categories/:id/status", categoryController.UpdateCategoryStatus)
+
+		protected.GET("/tags", tagController.GetTags)
+		protected.GET("/tags/all", tagController.GetAllTags)
+		protected.POST("/tags", tagController.CreateTag)
+		protected.PUT("/tags/:id", tagController.UpdateTag)
+		protected.DELETE("/tags/:id", tagController.DeleteTag)
+		protected.PATCH("/tags/:id/status", tagController.UpdateTagStatus)
 	}
 }

@@ -35,7 +35,6 @@
       <el-table :data="tableData" v-loading="loading" border stripe>
         <el-table-column type="index" width="60" align="center" />
         <el-table-column prop="name" label="标签名称" min-width="150" />
-        <el-table-column prop="articleCount" label="文章数" width="100" align="center" />
         <el-table-column prop="color" label="标签颜色" width="120" align="center">
           <template #default="{ row }">
             <div class="color-preview">
@@ -123,6 +122,13 @@ import {
   Edit,
   Delete
 } from '@element-plus/icons-vue'
+import {
+  getTags,
+  createTag,
+  updateTag,
+  updateTagStatus,
+  deleteTag
+} from '@/api/tag'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -155,15 +161,17 @@ const tableData = ref<any[]>([])
 const fetchData = async () => {
   loading.value = true
   try {
-    const mockData = [
-      { id: 1, name: 'Vue', articleCount: 28, color: '#67c23a', status: 1, createTime: '2026-01-10 09:00:00' },
-      { id: 2, name: 'React', articleCount: 18, color: '#409eff', status: 1, createTime: '2026-01-15 10:30:00' },
-      { id: 3, name: 'Node.js', articleCount: 15, color: '#e6a23c', status: 1, createTime: '2026-02-01 14:00:00' },
-      { id: 4, name: '前端', articleCount: 42, color: '#f56c6c', status: 1, createTime: '2026-03-10 08:20:00' },
-      { id: 5, name: '后端', articleCount: 22, color: '#909399', status: 0, createTime: '2026-04-05 11:00:00' }
-    ]
-    tableData.value = mockData
-    total.value = mockData.length
+    const params: any = {
+      page: queryForm.page,
+      pageSize: queryForm.pageSize
+    }
+    if (queryForm.name) params.name = queryForm.name
+    if (queryForm.status !== undefined) params.status = queryForm.status
+    const res: any = await getTags(params)
+    tableData.value = res.data?.list || []
+    total.value = res.data?.total || 0
+  } catch (error) {
+    // request interceptor 已处理错误提示
   } finally {
     loading.value = false
   }
@@ -203,26 +211,39 @@ const handleDelete = (row: any) => {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
+  }).then(async () => {
+    await deleteTag(row.id)
     ElMessage.success('删除成功')
     fetchData()
   })
 }
 
-const handleStatusChange = async (_row: any, val: number) => {
-  ElMessage.success(`标签状态已${val === 1 ? '启用' : '禁用'}`)
+const handleStatusChange = async (row: any, val: number) => {
+  try {
+    await updateTagStatus(row.id, val)
+    ElMessage.success(`标签状态已${val === 1 ? '启用' : '禁用'}`)
+  } catch {
+    row.status = val === 1 ? 0 : 1
+  }
 }
 
 const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
   submitLoading.value = true
-  setTimeout(() => {
-    ElMessage.success(form.id ? '修改成功' : '新增成功')
+  try {
+    if (form.id) {
+      await updateTag(form.id, { ...form })
+      ElMessage.success('修改成功')
+    } else {
+      await createTag({ ...form })
+      ElMessage.success('新增成功')
+    }
     dialogVisible.value = false
     fetchData()
+  } finally {
     submitLoading.value = false
-  }, 500)
+  }
 }
 
 const resetForm = () => {

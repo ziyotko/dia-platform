@@ -37,7 +37,6 @@
         <el-table-column prop="name" label="分类名称" min-width="150" />
         <el-table-column prop="code" label="分类编码" min-width="140" />
         <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="articleCount" label="文章数" width="100" align="center" />
         <el-table-column prop="sort" label="排序" width="100" align="center" />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
@@ -124,6 +123,13 @@ import {
   Edit,
   Delete
 } from '@element-plus/icons-vue'
+import {
+  getCategories,
+  createCategory,
+  updateCategory,
+  updateCategoryStatus,
+  deleteCategory
+} from '@/api/category'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -158,14 +164,17 @@ const tableData = ref<any[]>([])
 const fetchData = async () => {
   loading.value = true
   try {
-    const mockData = [
-      { id: 1, name: '技术文章', code: 'tech', description: '技术分享与教程', articleCount: 56, sort: 1, status: 1, createTime: '2026-01-10 09:00:00' },
-      { id: 2, name: '行业资讯', code: 'news', description: '行业最新动态', articleCount: 32, sort: 2, status: 1, createTime: '2026-01-15 10:30:00' },
-      { id: 3, name: '公司动态', code: 'company', description: '公司内部新闻', articleCount: 18, sort: 3, status: 1, createTime: '2026-02-01 14:00:00' },
-      { id: 4, name: '产品文档', code: 'product', description: '产品使用文档', articleCount: 12, sort: 4, status: 0, createTime: '2026-03-10 08:20:00' }
-    ]
-    tableData.value = mockData
-    total.value = mockData.length
+    const params: any = {
+      page: queryForm.page,
+      pageSize: queryForm.pageSize
+    }
+    if (queryForm.name) params.name = queryForm.name
+    if (queryForm.status !== undefined) params.status = queryForm.status
+    const res: any = await getCategories(params)
+    tableData.value = res.data?.list || []
+    total.value = res.data?.total || 0
+  } catch (error) {
+    // request interceptor 已处理错误提示
   } finally {
     loading.value = false
   }
@@ -207,26 +216,39 @@ const handleDelete = (row: any) => {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
+  }).then(async () => {
+    await deleteCategory(row.id)
     ElMessage.success('删除成功')
     fetchData()
   })
 }
 
-const handleStatusChange = async (_row: any, val: number) => {
-  ElMessage.success(`分类状态已${val === 1 ? '启用' : '禁用'}`)
+const handleStatusChange = async (row: any, val: number) => {
+  try {
+    await updateCategoryStatus(row.id, val)
+    ElMessage.success(`分类状态已${val === 1 ? '启用' : '禁用'}`)
+  } catch {
+    row.status = val === 1 ? 0 : 1
+  }
 }
 
 const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
   submitLoading.value = true
-  setTimeout(() => {
-    ElMessage.success(form.id ? '修改成功' : '新增成功')
+  try {
+    if (form.id) {
+      await updateCategory(form.id, { ...form })
+      ElMessage.success('修改成功')
+    } else {
+      await createCategory({ ...form })
+      ElMessage.success('新增成功')
+    }
     dialogVisible.value = false
     fetchData()
+  } finally {
     submitLoading.value = false
-  }, 500)
+  }
 }
 
 const resetForm = () => {
