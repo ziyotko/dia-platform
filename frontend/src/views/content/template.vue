@@ -45,7 +45,18 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="pageCount" label="应用页面数" width="110" align="center" />
+        <el-table-column label="应用页面数" width="110" align="center">
+          <template #default="{ row }">
+            <el-tag
+              :type="row.pageCount > 0 ? 'primary' : 'info'"
+              size="small"
+              style="cursor: pointer"
+              @click="handleViewPages(row)"
+            >
+              {{ row.pageCount }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
@@ -272,6 +283,31 @@
         </div>
       </div>
     </el-dialog>
+
+    <!-- 关联页面弹窗 -->
+    <el-dialog
+      v-model="linkDialogVisible"
+      :title="`关联页面 - ${linkTemplateName}`"
+      width="700px"
+      destroy-on-close
+    >
+      <el-empty v-if="!linkPages.length" description="暂无关联页面" :image-size="80" />
+      <el-table v-else :data="linkPages" border stripe max-height="400">
+        <el-table-column prop="name" label="页面名称" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="code" label="页面编码" min-width="120" />
+        <el-table-column prop="routePath" label="访问路径" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="pageType" label="页面类型" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag :type="typeTagType(row.pageType)" size="small">{{ typeLabel(row.pageType) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="status" label="状态" width="80" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">{{ row.status === 1 ? '启用' : '禁用' }}</el-tag>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
   </div>
 </template>
 
@@ -308,6 +344,7 @@ import {
   updateTemplateStatus,
   saveTemplateDesign
 } from '@/api/template'
+import { getPages } from '@/api/page'
 
 interface TemplateItem {
   id: number
@@ -349,6 +386,10 @@ const draggedComp = ref<ComponentItem | null>(null)
 
 const previewDialogVisible = ref(false)
 const previewRow = ref<TemplateItem | null>(null)
+
+const linkDialogVisible = ref(false)
+const linkPages = ref<any[]>([])
+const linkTemplateName = ref('')
 
 const queryForm = reactive({
   name: '',
@@ -658,6 +699,18 @@ const handleDesignSave = async () => {
 const handlePreview = (row: TemplateItem) => {
   previewRow.value = row
   previewDialogVisible.value = true
+}
+
+const handleViewPages = async (row: TemplateItem) => {
+  if (!row.pageCount) return
+  linkTemplateName.value = row.name
+  try {
+    const res: any = await getPages({ templateId: row.id })
+    linkPages.value = res.data || []
+    linkDialogVisible.value = true
+  } catch (error) {
+    console.error('获取关联页面失败', error)
+  }
 }
 
 onMounted(() => {

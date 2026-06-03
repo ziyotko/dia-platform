@@ -188,24 +188,19 @@
             </el-form-item>
           </el-col>
         </el-row>
-        <el-form-item label="绑定模板" prop="template">
-          <el-select v-model="pageForm.template" placeholder="请选择首页模板" clearable style="width: 100%">
-            <el-option-group label="首页模板">
-              <el-option label="default-home" value="default-home" />
-              <el-option label="portal-home" value="portal-home" />
-            </el-option-group>
-            <el-option-group label="栏目页模板">
-              <el-option label="article-list" value="article-list" />
-              <el-option label="news-list" value="news-list" />
-              <el-option label="image-list" value="image-list" />
-            </el-option-group>
-            <el-option-group label="详情页模板">
-              <el-option label="article-detail" value="article-detail" />
-              <el-option label="page-detail" value="page-detail" />
-            </el-option-group>
-            <el-option-group label="专题页模板">
-              <el-option label="special-event" value="special-event" />
-              <el-option label="special-activity" value="special-activity" />
+        <el-form-item label="绑定模板" prop="templateId">
+          <el-select v-model="pageForm.templateId" placeholder="请选择模板" clearable style="width: 100%">
+            <el-option-group
+              v-for="group in templateGroups"
+              :key="group.label"
+              :label="group.label"
+            >
+              <el-option
+                v-for="item in group.options"
+                :key="item.id"
+                :label="item.name"
+                :value="item.id"
+              />
             </el-option-group>
           </el-select>
         </el-form-item>
@@ -330,6 +325,13 @@ import {
   Document,
   Grid
 } from '@element-plus/icons-vue'
+import {
+  getPages,
+  createPage,
+  updatePage,
+  deletePage
+} from '@/api/page'
+import { getTemplateList } from '@/api/template'
 
 interface PageItem {
   id: number
@@ -337,7 +339,8 @@ interface PageItem {
   code: string
   pageType: 'home' | 'column' | 'detail' | 'special'
   routePath: string
-  template: string
+  templateId?: number
+  template?: string
   description?: string
   status: number
   createTime: string
@@ -382,10 +385,13 @@ const pageForm = reactive<Partial<PageItem>>({
   code: '',
   pageType: 'home',
   routePath: '',
+  templateId: undefined,
   template: '',
   description: '',
   status: 1
 })
+
+const templateList = ref<any[]>([])
 
 const pageFormRules = {
   name: [{ required: true, message: '请输入页面名称', trigger: 'blur' }],
@@ -451,6 +457,15 @@ const pageTableData = computed(() => {
   return allPages.value.filter(p => p.pageType === activePageType.value)
 })
 
+const templateGroups = computed(() => {
+  const typeMap: Record<string, string> = { home: '首页模板', column: '栏目页模板', detail: '详情页模板', special: '专题页模板' }
+  const type = pageForm.pageType || activePageType.value
+  const label = typeMap[type] || '模板'
+  const options = templateList.value.filter((t: any) => t.type === type)
+  if (!options.length) return []
+  return [{ label, options }]
+})
+
 const columnTableData = computed(() => {
   if (!selectedPage.value) return []
   const pageId = selectedPage.value.id
@@ -485,37 +500,29 @@ const columnTreeOptions = computed(() => {
 const fetchData = async () => {
   pageLoading.value = true
   try {
-    allPages.value = [
-      { id: 1, name: '网站首页', code: 'home', pageType: 'home', routePath: '/', template: 'portal-home', status: 1, createTime: '2026-01-01 08:00:00' },
-      { id: 2, name: '新闻栏目页', code: 'news-list', pageType: 'column', routePath: '/news', template: 'article-list', status: 1, createTime: '2026-01-05 09:30:00' },
-      { id: 3, name: '产品栏目页', code: 'product-list', pageType: 'column', routePath: '/product', template: 'image-list', status: 1, createTime: '2026-01-10 14:00:00' },
-      { id: 4, name: '招聘栏目页', code: 'careers-list', pageType: 'column', routePath: '/careers', template: 'article-list', status: 0, createTime: '2026-02-01 10:00:00' },
-      { id: 5, name: '文章详情页', code: 'article-detail', pageType: 'detail', routePath: '/article/:id', template: 'article-detail', status: 1, createTime: '2026-01-08 12:00:00' },
-      { id: 6, name: '产品详情页', code: 'product-detail', pageType: 'detail', routePath: '/product/:id', template: 'page-detail', status: 1, createTime: '2026-01-11 15:00:00' },
-      { id: 7, name: '关于我们页', code: 'about-page', pageType: 'detail', routePath: '/about', template: 'page-detail', status: 1, createTime: '2026-01-15 09:00:00' },
-      { id: 8, name: '年度大会专题', code: 'annual-event', pageType: 'special', routePath: '/event/2026', template: 'special-event', status: 1, createTime: '2026-03-01 09:00:00' }
-    ]
-
-    allColumns.value = [
-      { id: 101, name: '新闻中心', code: 'news-center', pageId: 2, routePath: '/news', sort: 1, status: 1, createTime: '2026-01-05 10:00:00' },
-      { id: 102, name: '公司新闻', code: 'company-news', pageId: 2, parentId: 101, routePath: '/news/company', sort: 1, status: 1, createTime: '2026-01-06 10:00:00' },
-      { id: 103, name: '行业动态', code: 'industry-news', pageId: 2, parentId: 101, routePath: '/news/industry', sort: 2, status: 1, createTime: '2026-01-07 11:00:00' },
-      { id: 104, name: '国际新闻', code: 'global-news', pageId: 2, parentId: 101, routePath: '/news/global', sort: 3, status: 1, createTime: '2026-01-09 09:00:00' },
-      { id: 201, name: '产品服务', code: 'product-service', pageId: 3, routePath: '/product', sort: 1, status: 1, createTime: '2026-01-10 14:30:00' },
-      { id: 202, name: '智能硬件', code: 'smart-hardware', pageId: 3, parentId: 201, routePath: '/product/hardware', sort: 1, status: 1, createTime: '2026-01-12 10:00:00' },
-      { id: 203, name: '软件服务', code: 'software-service', pageId: 3, parentId: 201, routePath: '/product/software', sort: 2, status: 1, createTime: '2026-01-13 11:00:00' },
-      { id: 301, name: '招贤纳士', code: 'careers', pageId: 4, routePath: '/careers', sort: 1, status: 1, createTime: '2026-02-02 09:00:00' }
-    ]
-
+    const res: any = await getPages({ pageType: activePageType.value })
+    allPages.value = res.data || []
     selectedPage.value = null
+  } catch (error) {
+    console.error('获取页面列表失败', error)
   } finally {
     pageLoading.value = false
+  }
+}
+
+const fetchTemplates = async () => {
+  try {
+    const res: any = await getTemplateList({ pageSize: 100 })
+    templateList.value = res.data.list || []
+  } catch (error) {
+    console.error('获取模板列表失败', error)
   }
 }
 
 const handleTypeChange = (type: string) => {
   activePageType.value = type
   selectedPage.value = null
+  fetchData()
 }
 
 const handlePageSelect = (row: PageItem) => {
@@ -536,6 +543,7 @@ const handleEditPage = (row: PageItem) => {
     code: row.code,
     pageType: row.pageType,
     routePath: row.routePath,
+    templateId: row.templateId,
     template: row.template,
     description: row.description,
     status: row.status
@@ -552,9 +560,10 @@ const handleDeletePage = (row: PageItem) => {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
+  }).then(async () => {
+    await deletePage(row.id)
     ElMessage.success('删除成功')
-    allPages.value = allPages.value.filter(p => p.id !== row.id)
+    fetchData()
     if (selectedPage.value?.id === row.id) {
       selectedPage.value = null
     }
@@ -569,24 +578,29 @@ const handlePageSubmit = async () => {
   const valid = await pageFormRef.value?.validate().catch(() => false)
   if (!valid) return
   pageSubmitLoading.value = true
-  setTimeout(() => {
+  try {
+    const selectedTemplate = templateList.value.find((t: any) => t.id === pageForm.templateId)
+    const payload = {
+      name: pageForm.name || '',
+      code: pageForm.code || '',
+      pageType: pageForm.pageType || activePageType.value,
+      routePath: pageForm.routePath || '',
+      templateId: pageForm.templateId,
+      template: selectedTemplate?.code || selectedTemplate?.name || '',
+      description: pageForm.description,
+      status: pageForm.status ?? 1
+    }
+    if (pageForm.id) {
+      await updatePage(pageForm.id, payload)
+    } else {
+      await createPage(payload)
+    }
     ElMessage.success(pageForm.id ? '修改成功' : '新增成功')
     pageDialogVisible.value = false
-    if (!pageForm.id) {
-      allPages.value.push({
-        id: Date.now(),
-        name: pageForm.name || '',
-        code: pageForm.code || '',
-        pageType: pageForm.pageType as any,
-        routePath: pageForm.routePath || '',
-        template: pageForm.template || '',
-        description: pageForm.description,
-        status: pageForm.status ?? 1,
-        createTime: new Date().toLocaleString()
-      })
-    }
+    fetchData()
+  } finally {
     pageSubmitLoading.value = false
-  }, 500)
+  }
 }
 
 const resetPageForm = () => {
@@ -595,6 +609,7 @@ const resetPageForm = () => {
   pageForm.code = ''
   pageForm.pageType = activePageType.value as any
   pageForm.routePath = ''
+  pageForm.templateId = undefined
   pageForm.template = ''
   pageForm.description = ''
   pageForm.status = 1
@@ -693,6 +708,18 @@ const resetColumnForm = () => {
 
 onMounted(() => {
   fetchData()
+  fetchTemplates()
+  // 栏目数据暂用本地模拟，待接入栏目接口后移除
+  allColumns.value = [
+    { id: 101, name: '新闻中心', code: 'news-center', pageId: 2, routePath: '/news', sort: 1, status: 1, createTime: '2026-01-05 10:00:00' },
+    { id: 102, name: '公司新闻', code: 'company-news', pageId: 2, parentId: 101, routePath: '/news/company', sort: 1, status: 1, createTime: '2026-01-06 10:00:00' },
+    { id: 103, name: '行业动态', code: 'industry-news', pageId: 2, parentId: 101, routePath: '/news/industry', sort: 2, status: 1, createTime: '2026-01-07 11:00:00' },
+    { id: 104, name: '国际新闻', code: 'global-news', pageId: 2, parentId: 101, routePath: '/news/global', sort: 3, status: 1, createTime: '2026-01-09 09:00:00' },
+    { id: 201, name: '产品服务', code: 'product-service', pageId: 3, routePath: '/product', sort: 1, status: 1, createTime: '2026-01-10 14:30:00' },
+    { id: 202, name: '智能硬件', code: 'smart-hardware', pageId: 3, parentId: 201, routePath: '/product/hardware', sort: 1, status: 1, createTime: '2026-01-12 10:00:00' },
+    { id: 203, name: '软件服务', code: 'software-service', pageId: 3, parentId: 201, routePath: '/product/software', sort: 2, status: 1, createTime: '2026-01-13 11:00:00' },
+    { id: 301, name: '招贤纳士', code: 'careers', pageId: 4, routePath: '/careers', sort: 1, status: 1, createTime: '2026-02-02 09:00:00' }
+  ]
 })
 </script>
 

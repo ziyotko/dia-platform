@@ -17,6 +17,7 @@ func SetupRoutes(router *gin.Engine) {
 	settingsController := controllers.NewSettingsController()
 	uploadController := controllers.NewUploadController()
 	templateController := controllers.NewTemplateController()
+	pageController := controllers.NewPageController()
 	apiPrefix := config.AppConfig.Server.ApiPrefix
 
 	public := router.Group(apiPrefix)
@@ -72,5 +73,10 @@ func SetupRoutes(router *gin.Engine) {
 		protected.DELETE("/templates/:id", templateController.DeleteTemplate)
 		protected.PATCH("/templates/:id/status", templateController.UpdateTemplateStatus)
 		protected.PUT("/templates/:id/design", templateController.SaveTemplateDesign)
+
+		protected.GET("/pages", pageController.GetPages)
+		protected.POST("/pages", pageController.CreatePage)
+		protected.PUT("/pages/:id", pageController.UpdatePage)
+		protected.DELETE("/pages/:id", pageController.DeletePage)
 	}
 }

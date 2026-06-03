@@ -1,0 +1,88 @@
+package controllers
+
+import (
+	"net/http"
+	"strconv"
+
+	"github.com/gin-gonic/gin"
+
+	"server/models"
+	"server/services"
+	"server/utils"
+)
+
+type PageController struct {
+	pageService *services.PageService
+}
+
+func NewPageController() *PageController {
+	return &PageController{
+		pageService: &services.PageService{},
+	}
+}
+
+func (c *PageController) GetPages(ctx *gin.Context) {
+	pageType := ctx.Query("pageType")
+	templateIDStr := ctx.Query("templateId")
+	var templateID uint
+	if templateIDStr != "" {
+		if id, err := strconv.ParseUint(templateIDStr, 10, 32); err == nil {
+			templateID = uint(id)
+		}
+	}
+	pages, err := c.pageService.GetPages(pageType, templateID)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取页面列表失败"))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("获取页面列表成功", pages))
+}
+
+func (c *PageController) CreatePage(ctx *gin.Context) {
+	var req models.Page
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		return
+	}
+	err := c.pageService.CreatePage(&req)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "创建页面失败: "+err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("创建页面成功", nil))
+}
+
+func (c *PageController) UpdatePage(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "页面ID无效"))
+		return
+	}
+	var req models.Page
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		return
+	}
+	err = c.pageService.UpdatePage(uint(id), &req)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "更新页面失败: "+err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("更新页面成功", nil))
+}
+
+func (c *PageController) DeletePage(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "页面ID无效"))
+		return
+	}
+	err = c.pageService.DeletePage(uint(id))
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "删除页面失败: "+err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("删除页面成功", nil))
+}
