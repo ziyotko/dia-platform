@@ -300,6 +300,14 @@ import {
   Link,
   Calendar
 } from '@element-plus/icons-vue'
+import {
+  getTemplateList,
+  createTemplate,
+  updateTemplate,
+  deleteTemplate,
+  updateTemplateStatus,
+  saveTemplateDesign
+} from '@/api/template'
 
 interface TemplateItem {
   id: number
@@ -311,6 +319,7 @@ interface TemplateItem {
   pageCount: number
   createTime: string
   sourceCode?: string
+  layout?: string
 }
 
 interface ComponentItem {
@@ -433,20 +442,16 @@ const typeTagType = (type: string) => {
 const fetchData = async () => {
   loading.value = true
   try {
-    tableData.value = [
-      { id: 1, name: '默认门户首页', code: 'default-home', type: 'home', description: '网站综合首页，包含轮播、宫格、文章列表等模块', status: 1, pageCount: 1, createTime: '2026-01-01 08:00:00' },
-      { id: 2, name: '门户首页', code: 'portal-home', type: 'home', description: '企业门户风格首页，大气简洁', status: 1, pageCount: 1, createTime: '2026-01-05 09:30:00' },
-      { id: 3, name: '文章栏目', code: 'article-list', type: 'column', description: '标准文章栏目模板，左侧分类右侧列表', status: 1, pageCount: 2, createTime: '2026-01-08 10:00:00' },
-      { id: 4, name: '新闻栏目', code: 'news-list', type: 'column', description: '新闻资讯栏目，带时间轴样式', status: 1, pageCount: 1, createTime: '2026-01-10 14:00:00' },
-      { id: 5, name: '图片栏目', code: 'image-list', type: 'column', description: '产品图片瀑布流展示', status: 1, pageCount: 1, createTime: '2026-01-12 11:00:00' },
-      { id: 6, name: '文章详情', code: 'article-detail', type: 'detail', description: '文章内容详情页，带目录导航', status: 1, pageCount: 1, createTime: '2026-01-15 09:00:00' },
-      { id: 7, name: '页面详情', code: 'page-detail', type: 'detail', description: '通用单页详情模板', status: 1, pageCount: 1, createTime: '2026-01-18 16:00:00' },
-      { id: 8, name: '党建专题', code: 'party-building', type: 'special', description: '党建工作专题页，红色主题风格', status: 1, pageCount: 1, createTime: '2026-02-10 09:00:00' },
-      { id: 9, name: '会议活动专题', code: 'conference', type: 'special', description: '行业会议与活动专题，议程与报名展示', status: 1, pageCount: 1, createTime: '2026-02-15 10:30:00' },
-      { id: 10, name: '周年庆专题', code: 'anniversary', type: 'special', description: '企业周年庆典专题，时间轴与成果展示', status: 1, pageCount: 1, createTime: '2026-02-20 14:00:00' },
-      { id: 11, name: '企业文化专题', code: 'culture', type: 'special', description: '企业文化宣传专题，价值观与风采展示', status: 1, pageCount: 1, createTime: '2026-02-25 11:00:00' }
-    ]
-    total.value = tableData.value.length
+    const res: any = await getTemplateList({
+      page: queryForm.page,
+      pageSize: queryForm.pageSize,
+      name: queryForm.name || undefined,
+      type: queryForm.type || undefined
+    })
+    tableData.value = res.data.list || []
+    total.value = res.data.total || 0
+  } catch (error) {
+    console.error('获取模板列表失败', error)
   } finally {
     loading.value = false
   }
@@ -494,38 +499,58 @@ const handleDelete = (row: TemplateItem) => {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    ElMessage.success('删除成功')
-    tableData.value = tableData.value.filter(t => t.id !== row.id)
+  }).then(async () => {
+    try {
+      await deleteTemplate(row.id)
+      ElMessage.success('删除成功')
+      fetchData()
+    } catch (error) {
+      console.error('删除模板失败', error)
+    }
   })
 }
 
-const handleStatusChange = async (_row: TemplateItem, val: number) => {
-  ElMessage.success(`模板状态已${val === 1 ? '启用' : '禁用'}`)
+const handleStatusChange = async (row: TemplateItem, val: number) => {
+  try {
+    await updateTemplateStatus(row.id, val)
+    ElMessage.success(`模板状态已${val === 1 ? '启用' : '禁用'}`)
+  } catch (error) {
+    row.status = val === 1 ? 0 : 1
+    console.error('更新状态失败', error)
+  }
 }
 
 const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
   submitLoading.value = true
-  setTimeout(() => {
-    ElMessage.success(form.id ? '修改成功' : '新增成功')
-    dialogVisible.value = false
-    if (!form.id) {
-      tableData.value.unshift({
-        id: Date.now(),
+  try {
+    if (form.id) {
+      await updateTemplate(form.id, {
         name: form.name || '',
         code: form.code || '',
-        type: (form.type || 'home') as any,
+        type: form.type || 'home',
         description: form.description,
-        status: form.status ?? 1,
-        pageCount: 0,
-        createTime: new Date().toLocaleString()
+        status: form.status ?? 1
       })
-      total.value = tableData.value.length
+      ElMessage.success('修改成功')
+    } else {
+      await createTemplate({
+        name: form.name || '',
+        code: form.code || '',
+        type: form.type || 'home',
+        description: form.description,
+        status: form.status ?? 1
+      })
+      ElMessage.success('新增成功')
     }
+    dialogVisible.value = false
+    fetchData()
+  } catch (error) {
+    console.error('提交失败', error)
+  } finally {
     submitLoading.value = false
-  }, 500)
+  }
 }
 
 const resetForm = () => {
@@ -544,6 +569,19 @@ const handleDesign = (row: TemplateItem) => {
   canvasItems.value = []
   activeCanvasIndex.value = null
   activeDesignTab.value = 'visual'
+
+  if (row.layout) {
+    try {
+      const parsed = JSON.parse(row.layout) as Omit<ComponentItem, 'icon'>[]
+      canvasItems.value = parsed.map(item => {
+        const lib = componentLibrary.find(c => c.type === item.type)
+        return { ...item, icon: lib?.icon || Document } as ComponentItem
+      })
+    } catch {
+      canvasItems.value = []
+    }
+  }
+
   designDialogVisible.value = true
 }
 
@@ -591,13 +629,30 @@ const removeItem = (index: number) => {
   }
 }
 
-const handleDesignSave = () => {
+const handleDesignSave = async () => {
   designSubmitLoading.value = true
-  setTimeout(() => {
+  try {
+    const layout = JSON.stringify(canvasItems.value.map(item => ({
+      type: item.type,
+      label: item.label,
+      id: item.id,
+      bgColor: item.bgColor,
+      marginTop: item.marginTop,
+      marginBottom: item.marginBottom,
+      fullWidth: item.fullWidth
+    })))
+    await saveTemplateDesign(designForm.id!, {
+      sourceCode: designForm.sourceCode,
+      layout
+    })
     ElMessage.success('模板设计保存成功')
     designDialogVisible.value = false
+    fetchData()
+  } catch (error) {
+    console.error('保存设计失败', error)
+  } finally {
     designSubmitLoading.value = false
-  }, 500)
+  }
 }
 
 const handlePreview = (row: TemplateItem) => {

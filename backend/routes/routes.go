@@ -16,6 +16,7 @@ func SetupRoutes(router *gin.Engine) {
 	logController := controllers.NewLogController()
 	settingsController := controllers.NewSettingsController()
 	uploadController := controllers.NewUploadController()
+	templateController := controllers.NewTemplateController()
 	apiPrefix := config.AppConfig.Server.ApiPrefix
 
 	public := router.Group(apiPrefix)
@@ -64,5 +65,12 @@ func SetupRoutes(router *gin.Engine) {
 		protected.PUT("/settings", settingsController.UpdateSettings)
 
 		protected.POST("/upload", uploadController.UploadFile)
+
+		protected.GET("/templates", templateController.GetTemplates)
+		protected.POST("/templates", templateController.CreateTemplate)
+		protected.PUT("/templates/:id", templateController.UpdateTemplate)
+		protected.DELETE("/templates/:id", templateController.DeleteTemplate)
+		protected.PATCH("/templates/:id/status", templateController.UpdateTemplateStatus)
+		protected.PUT("/templates/:id/design", templateController.SaveTemplateDesign)
 	}
 }
