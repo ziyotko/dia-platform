@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { getUserMenus, type MenuItem } from '@/api/menus'
 
 export interface UserInfo {
   id: number
@@ -24,6 +25,8 @@ function getStoredUserInfo(): UserInfo | null {
 export const useUserStore = defineStore('user', () => {
   const token = ref<string>(localStorage.getItem('token') || '')
   const userInfo = ref<UserInfo | null>(getStoredUserInfo())
+  const menuList = ref<MenuItem[]>([])
+  const hasFetchedMenus = ref(false)
 
   const isLoggedIn = computed(() => !!token.value)
 
@@ -37,9 +40,31 @@ export const useUserStore = defineStore('user', () => {
     localStorage.setItem(USER_INFO_KEY, JSON.stringify(info))
   }
 
+  /**
+   * 获取用户菜单并动态生成路由
+   */
+  async function fetchUserMenusAndGenerateRoutes() {
+    const { addDynamicRoutes } = await import('@/router')
+    const res: any = await getUserMenus()
+    const menus = res.data || []
+    menuList.value = menus
+    addDynamicRoutes(menus)
+    hasFetchedMenus.value = true
+  }
+
+  /**
+   * 重置动态路由状态（用于重新登录等场景）
+   */
+  function resetDynamicRoutes() {
+    menuList.value = []
+    hasFetchedMenus.value = false
+  }
+
   function logout() {
     token.value = ''
     userInfo.value = null
+    menuList.value = []
+    hasFetchedMenus.value = false
     localStorage.removeItem('token')
     localStorage.removeItem(USER_INFO_KEY)
     localStorage.removeItem('app-theme')
@@ -48,9 +73,13 @@ export const useUserStore = defineStore('user', () => {
   return {
     token,
     userInfo,
+    menuList,
+    hasFetchedMenus,
     isLoggedIn,
     setToken,
     setUserInfo,
+    fetchUserMenusAndGenerateRoutes,
+    resetDynamicRoutes,
     logout
   }
 })

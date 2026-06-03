@@ -76,7 +76,7 @@
 </template>
 
 <script setup lang="ts">
-import { h, ref, onMounted } from 'vue'
+import { h, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, ElSubMenu, ElMenuItem, ElIcon } from 'element-plus'
 import * as Icons from '@element-plus/icons-vue'
@@ -90,7 +90,7 @@ import {
 } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
-import { getUserMenus, type MenuItem } from '@/api/menus'
+import type { MenuItem } from '@/api/menus'
 import { getPublicSiteInfo } from '@/api/settings'
 import Breadcrumb from '@/components/Breadcrumb.vue'
 import TagsView from '@/components/TagsView.vue'
@@ -99,7 +99,7 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const appStore = useAppStore()
-const menuList = ref<MenuItem[]>([])
+const menuList = computed(() => userStore.menuList)
 const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
 
 const SidebarMenuItem = {
@@ -108,9 +108,10 @@ const SidebarMenuItem = {
   setup(props: { menu: MenuItem }) {
     return () => {
       const menu = props.menu
+      const indexPath = menu.path.startsWith('/') ? menu.path : '/' + menu.path
       const iconComp = menu.icon ? (Icons as Record<string, any>)[menu.icon] : null
       if (menu.type === 'directory' && menu.children && menu.children.length > 0) {
-        return h(ElSubMenu, { index: menu.path || String(menu.id) }, {
+        return h(ElSubMenu, { index: indexPath }, {
           title: () => [
             iconComp ? h(ElIcon, null, () => h(iconComp)) : null,
             h('span', null, menu.name)
@@ -118,20 +119,11 @@ const SidebarMenuItem = {
           default: () => menu.children!.map((child) => h(SidebarMenuItem, { menu: child }))
         })
       }
-      return h(ElMenuItem, { index: menu.path || String(menu.id) }, {
+      return h(ElMenuItem, { index: indexPath }, {
         default: () => iconComp ? h(ElIcon, null, () => h(iconComp)) : null,
         title: () => menu.name
       })
     }
-  }
-}
-
-const fetchMenus = async () => {
-  try {
-    const res: any = await getUserMenus()
-    menuList.value = res.data || []
-  } catch (error) {
-    console.error(error)
   }
 }
 
@@ -157,7 +149,6 @@ const loadSiteInfo = async () => {
 }
 
 onMounted(() => {
-  fetchMenus()
   loadSiteInfo()
 })
 

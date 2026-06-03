@@ -177,6 +177,7 @@ const handleLogin = async () => {
     })
     userStore.setToken(res.data.token)
     userStore.setUserInfo(res.data.user)
+    await userStore.fetchUserMenusAndGenerateRoutes()
     ElMessage.success('登录成功')
     router.push('/')
   } catch {
