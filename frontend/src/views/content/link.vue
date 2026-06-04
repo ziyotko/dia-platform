@@ -5,6 +5,36 @@
         <el-form-item label="网站名称">
           <el-input v-model="queryForm.name" placeholder="请输入网站名称" clearable />
         </el-form-item>
+        <el-form-item label="友链位置">
+          <el-select
+            v-model="queryForm.pageId"
+            placeholder="选择页面"
+            clearable
+            style="width: 140px"
+            @change="onQueryPageChange"
+          >
+            <el-option
+              v-for="item in pageList"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
+          <el-select
+            v-model="queryForm.columnId"
+            placeholder="选择栏目"
+            clearable
+            style="width: 140px; margin-left: 8px"
+            :disabled="!queryForm.pageId"
+          >
+            <el-option
+              v-for="item in queryColumnList"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="queryForm.status" placeholder="全部状态" clearable style="width: 120px">
             <el-option label="启用" :value="1" />
@@ -35,15 +65,26 @@
       <el-table :data="tableData" v-loading="loading" border stripe>
         <el-table-column type="index" width="60" align="center" />
         <el-table-column prop="name" label="网站名称" min-width="150" />
+        <el-table-column label="友链位置" min-width="180">
+          <template #default="{ row }">
+            <div v-if="row.pageName">
+              <el-tag size="small" type="info">{{ row.pageName }}</el-tag>
+              <el-icon class="position-arrow"><ArrowRight /></el-icon>
+              <el-tag size="small">{{ row.columnName || '默认' }}</el-tag>
+            </div>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="url" label="网站链接" min-width="220" show-overflow-tooltip>
           <template #default="{ row }">
-            <el-link :href="row.url" target="_blank" type="primary">{{ row.url }}</el-link>
+            <el-link v-if="row.url" :href="row.url" target="_blank" type="primary">{{ row.url }}</el-link>
+            <span v-else>-</span>
           </template>
         </el-table-column>
         <el-table-column prop="logo" label="Logo" width="80" align="center">
           <template #default="{ row }">
             <el-avatar v-if="row.logo" :size="36" :src="row.logo" />
-            <el-avatar v-else :size="36">{{ row.name.charAt(0) }}</el-avatar>
+            <el-avatar v-else :size="36">{{ row.name?.charAt(0) }}</el-avatar>
           </template>
         </el-table-column>
         <el-table-column prop="description" label="网站描述" min-width="200" show-overflow-tooltip />
@@ -87,17 +128,53 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="500px"
+      width="560px"
       destroy-on-close
+      :close-on-click-modal="false"
     >
       <el-form
         ref="formRef"
         :model="form"
         :rules="formRules"
-        label-width="80px"
+        label-width="90px"
       >
         <el-form-item label="网站名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入网站名称" />
+        </el-form-item>
+        <el-form-item label="友链位置" prop="pageId">
+          <el-row :gutter="8" style="width: 100%">
+            <el-col :span="12">
+              <el-select
+                v-model="form.pageId"
+                placeholder="选择页面"
+                style="width: 100%"
+                @change="onFormPageChange"
+              >
+                <el-option
+                  v-for="item in pageList"
+                  :key="item.id"
+                  :label="item.name"
+                  :value="item.id"
+                />
+              </el-select>
+            </el-col>
+            <el-col :span="12">
+              <el-select
+                v-model="form.columnId"
+                placeholder="选择栏目"
+                style="width: 100%"
+                :disabled="!form.pageId"
+                clearable
+              >
+                <el-option
+                  v-for="item in formColumnList"
+                  :key="item.id"
+                  :label="item.name"
+                  :value="item.id"
+                />
+              </el-select>
+            </el-col>
+          </el-row>
         </el-form-item>
         <el-form-item label="网站链接" prop="url">
           <el-input v-model="form.url" placeholder="请输入网站链接" />
@@ -108,15 +185,21 @@
         <el-form-item label="网站描述" prop="description">
           <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入网站描述" />
         </el-form-item>
-        <el-form-item label="排序" prop="sort">
-          <el-input-number v-model="form.sort" :min="0" :max="999" />
-        </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-radio-group v-model="form.status">
-            <el-radio :value="1">启用</el-radio>
-            <el-radio :value="0">禁用</el-radio>
-          </el-radio-group>
-        </el-form-item>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="排序" prop="sort">
+              <el-input-number v-model="form.sort" :min="0" :max="999" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="状态" prop="status">
+              <el-radio-group v-model="form.status">
+                <el-radio :value="1">启用</el-radio>
+                <el-radio :value="0">禁用</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -134,8 +217,19 @@ import {
   RefreshRight,
   Plus,
   Edit,
-  Delete
+  Delete,
+  ArrowRight
 } from '@element-plus/icons-vue'
+
+import {
+  getLinks,
+  createLink,
+  updateLink,
+  deleteLink,
+  updateLinkStatus
+} from '@/api/link'
+import { getPages } from '@/api/page'
+import { getColumns } from '@/api/column'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -148,6 +242,8 @@ const queryForm = reactive({
   page: 1,
   pageSize: 10,
   name: '',
+  pageId: undefined as number | undefined,
+  columnId: undefined as number | undefined,
   status: undefined as number | undefined
 })
 
@@ -157,12 +253,15 @@ const form = reactive({
   url: '',
   logo: '',
   description: '',
+  pageId: undefined as number | undefined,
+  columnId: undefined as number | undefined,
   sort: 0,
   status: 1
 })
 
 const formRules = {
   name: [{ required: true, message: '请输入网站名称', trigger: 'blur' }],
+  pageId: [{ required: true, message: '请选择友链位置', trigger: 'change' }],
   url: [
     { required: true, message: '请输入网站链接', trigger: 'blur' },
     { pattern: /^https?:\/\/.+/, message: '链接格式不正确', trigger: 'blur' }
@@ -170,18 +269,58 @@ const formRules = {
 }
 
 const tableData = ref<any[]>([])
+const pageList = ref<any[]>([])
+const queryColumnList = ref<any[]>([])
+const formColumnList = ref<any[]>([])
+
+const fetchPages = async () => {
+  try {
+    const res: any = await getPages()
+    pageList.value = res.data || []
+  } catch {
+    // ignore
+  }
+}
+
+const loadColumnsByPage = async (pageId: number | undefined, target: 'query' | 'form') => {
+  const list = target === 'query' ? queryColumnList : formColumnList
+  list.value = []
+  if (!pageId) return
+  try {
+    const res: any = await getColumns({ pageId })
+    list.value = res.data || []
+  } catch {
+    // ignore
+  }
+}
+
+const onQueryPageChange = (val: number | undefined) => {
+  queryForm.columnId = undefined
+  loadColumnsByPage(val, 'query')
+}
+
+const onFormPageChange = (val: number | undefined) => {
+  form.columnId = undefined
+  loadColumnsByPage(val, 'form')
+}
 
 const fetchData = async () => {
   loading.value = true
   try {
-    const mockData = [
-      { id: 1, name: 'Vue.js 官方', url: 'https://vuejs.org', logo: 'https://vuejs.org/logo.svg', description: '渐进式 JavaScript 框架', sort: 1, status: 1, createTime: '2026-01-10 09:00:00' },
-      { id: 2, name: 'Element Plus', url: 'https://element-plus.org', logo: '', description: '基于 Vue 3 的组件库', sort: 2, status: 1, createTime: '2026-01-15 10:30:00' },
-      { id: 3, name: 'Vite', url: 'https://vitejs.dev', logo: '', description: '下一代前端构建工具', sort: 3, status: 1, createTime: '2026-02-01 14:00:00' },
-      { id: 4, name: 'MDN Web Docs', url: 'https://developer.mozilla.org', logo: '', description: 'Web 技术文档', sort: 4, status: 0, createTime: '2026-03-10 08:20:00' }
-    ]
-    tableData.value = mockData
-    total.value = mockData.length
+    const params: any = {
+      page: queryForm.page,
+      pageSize: queryForm.pageSize,
+      name: queryForm.name || undefined,
+      pageId: queryForm.pageId || undefined,
+      columnId: queryForm.columnId || undefined,
+      status: queryForm.status !== undefined ? queryForm.status : undefined
+    }
+    const res: any = await getLinks(params)
+    const data = res.data || {}
+    tableData.value = data.list || []
+    total.value = data.total || 0
+  } catch (error: any) {
+    ElMessage.error(error?.message || '获取友链列表失败')
   } finally {
     loading.value = false
   }
@@ -194,8 +333,11 @@ const handleSearch = () => {
 
 const resetQuery = () => {
   queryForm.name = ''
+  queryForm.pageId = undefined
+  queryForm.columnId = undefined
   queryForm.status = undefined
   queryForm.page = 1
+  queryColumnList.value = []
   fetchData()
 }
 
@@ -205,14 +347,20 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
-const handleEdit = (row: any) => {
+const handleEdit = async (row: any) => {
   dialogTitle.value = '编辑友链'
+  resetForm()
+  if (row.pageId) {
+    await loadColumnsByPage(row.pageId, 'form')
+  }
   Object.assign(form, {
     id: row.id,
     name: row.name,
     url: row.url,
     logo: row.logo,
     description: row.description,
+    pageId: row.pageId,
+    columnId: row.columnId,
     sort: row.sort,
     status: row.status
   })
@@ -224,26 +372,56 @@ const handleDelete = (row: any) => {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    ElMessage.success('删除成功')
-    fetchData()
+  }).then(async () => {
+    try {
+      await deleteLink(row.id)
+      ElMessage.success('删除成功')
+      fetchData()
+    } catch (error: any) {
+      ElMessage.error(error?.message || '删除失败')
+    }
   })
 }
 
-const handleStatusChange = async (_row: any, val: number) => {
-  ElMessage.success(`友链状态已${val === 1 ? '启用' : '禁用'}`)
+const handleStatusChange = async (row: any, val: number) => {
+  try {
+    await updateLinkStatus(row.id, val)
+    ElMessage.success(`友链已${val === 1 ? '启用' : '禁用'}`)
+  } catch (error: any) {
+    ElMessage.error(error?.message || '状态更新失败')
+    row.status = val === 1 ? 0 : 1
+  }
 }
 
 const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
   submitLoading.value = true
-  setTimeout(() => {
-    ElMessage.success(form.id ? '修改成功' : '新增成功')
+  try {
+    const payload = {
+      name: form.name,
+      url: form.url,
+      logo: form.logo,
+      description: form.description,
+      pageId: form.pageId as number,
+      columnId: form.columnId,
+      sort: form.sort,
+      status: form.status
+    }
+    if (form.id) {
+      await updateLink(form.id, payload)
+      ElMessage.success('修改成功')
+    } else {
+      await createLink(payload)
+      ElMessage.success('新增成功')
+    }
     dialogVisible.value = false
     fetchData()
+  } catch (error: any) {
+    ElMessage.error(error?.message || '提交失败')
+  } finally {
     submitLoading.value = false
-  }, 500)
+  }
 }
 
 const resetForm = () => {
@@ -252,8 +430,12 @@ const resetForm = () => {
   form.url = ''
   form.logo = ''
   form.description = ''
+  form.pageId = undefined
+  form.columnId = undefined
   form.sort = 0
   form.status = 1
+  formColumnList.value = []
+  formRef.value?.resetFields()
 }
 
 const handleSizeChange = (val: number) => {
@@ -267,6 +449,7 @@ const handleCurrentChange = (val: number) => {
 }
 
 onMounted(() => {
+  fetchPages()
   fetchData()
 })
 </script>
@@ -296,6 +479,12 @@ onMounted(() => {
     margin-top: 20px;
     display: flex;
     justify-content: flex-end;
+  }
+
+  .position-arrow {
+    margin: 0 4px;
+    color: #909399;
+    vertical-align: middle;
   }
 }
 </style>

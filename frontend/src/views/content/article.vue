@@ -61,6 +61,8 @@
           </template>
         </el-table-column>
         <el-table-column prop="author" label="作者" width="100" />
+        <el-table-column prop="authorCode" label="作者code" width="120" />
+        <el-table-column prop="source" label="来源" width="140" show-overflow-tooltip />
         <el-table-column prop="views" label="阅读量" width="100" align="center" />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
@@ -163,6 +165,13 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
+            <el-form-item label="来源" prop="source">
+              <el-input v-model="form.source" placeholder="请输入文章来源" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
             <el-form-item label="是否置顶" prop="isTop">
               <el-radio-group v-model="form.isTop">
                 <el-radio :value="1">置顶</el-radio>
@@ -204,6 +213,7 @@
         <h2>{{ previewData.title }}</h2>
         <div class="preview-meta">
           <span>作者：{{ previewData.author }}</span>
+          <span>来源：{{ previewData.source }}</span>
           <span>分类：{{ previewData.categoryName }}</span>
           <span>时间：{{ previewData.createTime }}</span>
         </div>
@@ -265,7 +275,8 @@ const form = reactive({
   content: '',
   status: 0,
   isTop: 0,
-  cover: ''
+  cover: '',
+  source: ''
 })
 
 const formRules = {
@@ -611,7 +622,8 @@ const handleEdit = async (row: any) => {
     content: row.content || '',
     status: row.status,
     isTop: row.isTop,
-    cover: row.cover || ''
+    cover: row.cover || '',
+    source: row.source || ''
   })
   dialogVisible.value = true
 }
@@ -632,6 +644,8 @@ const previewVisible = ref(false)
 const previewData = reactive({
   title: '',
   author: '',
+  authorCode: '',
+  source: '',
   categoryName: '',
   createTime: '',
   summary: '',
@@ -642,6 +656,7 @@ const handlePreview = (row: any) => {
   Object.assign(previewData, {
     title: row.title,
     author: row.author,
+    source: row.source || '',
     categoryName: row.categoryName,
     createTime: row.createTime,
     summary: row.summary || '',
@@ -663,7 +678,8 @@ const handleSubmit = async () => {
       content: form.content,
       status: form.status,
       isTop: form.isTop,
-      cover: form.cover
+      cover: form.cover,
+      source: form.source
     }
     if (form.id) {
       await updateArticle(form.id, data)
@@ -689,6 +705,7 @@ const resetForm = () => {
   form.status = 0
   form.isTop = 0
   form.cover = ''
+  form.source = ''
 }
 
 const handleSizeChange = (val: number) => {

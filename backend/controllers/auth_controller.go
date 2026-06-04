@@ -12,16 +12,18 @@ import (
 )
 
 type AuthController struct {
-	userService *services.UserService
-	roleService *services.RoleService
-	logService  *services.LogService
+	userService    *services.UserService
+	roleService    *services.RoleService
+	logService     *services.LogService
+	articleService *services.ArticleService
 }
 
 func NewAuthController() *AuthController {
 	return &AuthController{
-		userService: &services.UserService{},
-		roleService: &services.RoleService{},
-		logService:  &services.LogService{},
+		userService:    &services.UserService{},
+		roleService:    &services.RoleService{},
+		logService:     &services.LogService{},
+		articleService: &services.ArticleService{},
 	}
 }
 
@@ -100,6 +102,7 @@ func (c *AuthController) GetProfile(ctx *gin.Context) {
 	if onlineDays < 1 {
 		onlineDays = 1
 	}
+	articleCount := c.articleService.GetArticleCountByAuthor(user.Username)
 
 	ctx.JSON(200, utils.Success("获取用户信息成功", gin.H{
 		"user": gin.H{
@@ -113,7 +116,7 @@ func (c *AuthController) GetProfile(ctx *gin.Context) {
 			"avatar":         "",
 			"createdAt":      user.CreatedAt.Format("2006-01-02"),
 			"onlineDays":     onlineDays,
-			"articleCount":   0,
+			"articleCount":   articleCount,
 			"operationCount": opCount,
 			"bio":            user.Bio,
 		},

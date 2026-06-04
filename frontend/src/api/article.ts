@@ -10,6 +10,7 @@ export interface ArticleForm {
   status: number
   isTop: number
   cover: string
+  source: string
 }
 
 export function getArticles(params: { title?: string; categoryId?: number; status?: number; page?: number; pageSize?: number }) {

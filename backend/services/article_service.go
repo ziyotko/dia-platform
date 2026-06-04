@@ -73,6 +73,8 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 			"is_top":      article.IsTop,
 			"cover":       article.Cover,
 			"author":      article.Author,
+			"author_code": article.AuthorCode,
+			"source":      article.Source,
 		}
 		if err := tx.Model(&old).Updates(updates).Error; err != nil {
 			return err
@@ -109,4 +111,10 @@ func (s *ArticleService) DeleteArticle(id uint) error {
 		}
 		return tx.Delete(&article).Error
 	})
+}
+
+func (s *ArticleService) GetArticleCountByAuthor(author string) int64 {
+	var count int64
+	utils.DB.Model(&models.Article{}).Where("author = ?", author).Count(&count)
+	return count
 }

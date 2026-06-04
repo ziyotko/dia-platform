@@ -78,6 +78,8 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 			"isTop":        a.IsTop,
 			"cover":        a.Cover,
 			"author":       a.Author,
+			"authorCode":   a.AuthorCode,
+			"source":       a.Source,
 			"views":        a.Views,
 			"tagIds":       tagIds,
 			"createTime":   a.CreatedAt.Format("2006-01-02 15:04:05"),
@@ -121,6 +123,8 @@ func (c *ArticleController) GetArticleByID(ctx *gin.Context) {
 		"isTop":      article.IsTop,
 		"cover":      article.Cover,
 		"author":     article.Author,
+		"authorCode": article.AuthorCode,
+		"source":     article.Source,
 		"views":      article.Views,
 		"tagIds":     tagIds,
 		"createTime": article.CreatedAt.Format("2006-01-02 15:04:05"),
@@ -142,6 +146,7 @@ func (c *ArticleController) CreateArticle(ctx *gin.Context) {
 	user, err := c.userService.GetUserByID(userID)
 	if err == nil && user != nil {
 		req.Article.Author = user.Username
+		req.Article.AuthorCode = user.Account
 	}
 
 	err = c.articleService.CreateArticle(&req.Article, req.TagIds)
@@ -172,6 +177,7 @@ func (c *ArticleController) UpdateArticle(ctx *gin.Context) {
 	user, err := c.userService.GetUserByID(userID)
 	if err == nil && user != nil {
 		req.Article.Author = user.Username
+		req.Article.AuthorCode = user.Account
 	}
 
 	err = c.articleService.UpdateArticle(uint(id), &req.Article, req.TagIds)
