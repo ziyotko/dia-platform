@@ -30,14 +30,15 @@ func (s *ColumnService) UpdateColumn(id uint, column *models.Column) error {
 		return err
 	}
 	updates := map[string]interface{}{
-		"name":        column.Name,
-		"code":        column.Code,
-		"page_id":     column.PageID,
-		"parent_id":   column.ParentID,
-		"route_path":  column.RoutePath,
-		"description": column.Description,
-		"sort":        column.Sort,
-		"status":      column.Status,
+		"name":         column.Name,
+		"code":         column.Code,
+		"page_id":      column.PageID,
+		"parent_id":    column.ParentID,
+		"route_path":   column.RoutePath,
+		"description":  column.Description,
+		"sort":         column.Sort,
+		"status":       column.Status,
+		"display_type": column.DisplayType,
 	}
 	return utils.DB.Model(&old).Updates(updates).Error
 }

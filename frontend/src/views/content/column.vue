@@ -115,6 +115,13 @@
           </template>
         </el-table-column>
         <el-table-column prop="sort" label="排序" width="80" align="center" />
+        <el-table-column prop="displayType" label="展示方式" width="120" align="center">
+          <template #default="{ row }">
+            <el-tag size="small" type="info">
+              {{ displayTypeMap[row.displayType] || '其他展示' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-switch
@@ -269,6 +276,16 @@
         <el-form-item label="栏目描述" prop="description">
           <el-input v-model="columnForm.description" type="textarea" :rows="3" placeholder="请输入栏目描述" />
         </el-form-item>
+        <el-form-item label="展示方式" prop="displayType">
+          <el-select v-model="columnForm.displayType" placeholder="请选择展示方式" style="width: 100%">
+            <el-option
+              v-for="opt in displayTypeOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :value="opt.value"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="columnForm.status">
             <el-radio :value="1">启用</el-radio>
@@ -335,6 +352,7 @@ interface ColumnItem {
   description?: string
   sort: number
   status: number
+  displayType: number
   createTime: string
   children?: ColumnItem[]
 }
@@ -377,6 +395,26 @@ const pageFormRules = {
   routePath: [{ required: true, message: '请输入访问路径', trigger: 'blur' }]
 }
 
+const displayTypeMap: Record<number, string> = {
+  1: '轮播展示',
+  2: '新闻列表展示',
+  3: '图片展示',
+  4: '广告展示',
+  5: '友链展示',
+  6: 'tab页展示',
+  9: '其他展示'
+}
+
+const displayTypeOptions = [
+  { label: '轮播展示', value: 1 },
+  { label: '新闻列表展示', value: 2 },
+  { label: '图片展示', value: 3 },
+  { label: '广告展示', value: 4 },
+  { label: '友链展示', value: 5 },
+  { label: 'tab页展示', value: 6 },
+  { label: '其他展示', value: 9 }
+]
+
 const columnForm = reactive<Partial<ColumnItem>>({
   id: undefined,
   pageId: undefined,
@@ -386,7 +424,8 @@ const columnForm = reactive<Partial<ColumnItem>>({
   routePath: '',
   description: '',
   sort: 0,
-  status: 1
+  status: 1,
+  displayType: 1
 })
 
 const columnFormRules = {
@@ -646,7 +685,8 @@ const handleEditColumn = (row: ColumnItem) => {
     routePath: row.routePath,
     description: row.description,
     sort: row.sort,
-    status: row.status
+    status: row.status,
+    displayType: row.displayType
   })
   columnDialogVisible.value = true
 }
@@ -680,7 +720,8 @@ const handleColumnStatusChange = async (row: ColumnItem, val: number) => {
       routePath: row.routePath,
       description: row.description,
       sort: row.sort,
-      status: val
+      status: val,
+      displayType: row.displayType
     })
     ElMessage.success(`栏目状态已${val === 1 ? '启用' : '禁用'}`)
   } catch (error) {
@@ -701,7 +742,8 @@ const handleColumnSubmit = async () => {
       routePath: columnForm.routePath || '',
       description: columnForm.description,
       sort: columnForm.sort ?? 0,
-      status: columnForm.status ?? 1
+      status: columnForm.status ?? 1,
+      displayType: columnForm.displayType ?? 1
     }
     if (columnForm.id) {
       await updateColumn(columnForm.id, payload)
@@ -726,6 +768,7 @@ const resetColumnForm = () => {
   columnForm.description = ''
   columnForm.sort = 0
   columnForm.status = 1
+  columnForm.displayType = 1
 }
 
 onMounted(() => {

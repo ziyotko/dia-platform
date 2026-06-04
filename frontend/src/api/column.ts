@@ -11,6 +11,7 @@ export interface ColumnForm {
   description?: string
   sort: number
   status: number
+  displayType: number
 }
 
 export function getColumns(params?: { pageId?: number; parentId?: number }) {

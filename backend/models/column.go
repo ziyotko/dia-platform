@@ -21,6 +21,7 @@ type Column struct {
 	Description string         `gorm:"size:500" json:"description"`
 	Sort        int            `gorm:"default:0" json:"sort"`
 	Status      int            `gorm:"default:1" json:"status"`
+	DisplayType int            `gorm:"default:1" json:"displayType"`
 }
 
 func (c Column) MarshalJSON() ([]byte, error) {
