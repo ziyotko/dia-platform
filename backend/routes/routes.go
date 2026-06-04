@@ -22,6 +22,7 @@ func SetupRoutes(router *gin.Engine) {
 	categoryController := controllers.NewCategoryController()
 	tagController := controllers.NewTagController()
 	articleController := controllers.NewArticleController()
+	adController := controllers.NewAdController()
 	deptController := controllers.NewDepartmentController()
 	apiPrefix := config.AppConfig.Server.ApiPrefix
 
@@ -109,6 +110,13 @@ func SetupRoutes(router *gin.Engine) {
 		protected.PUT("/articles/:id", articleController.UpdateArticle)
 		protected.DELETE("/articles/:id", articleController.DeleteArticle)
 		protected.PATCH("/articles/:id/status", articleController.UpdateArticleStatus)
+
+		protected.GET("/ads", adController.GetAds)
+		protected.GET("/ads/:id", adController.GetAdByID)
+		protected.POST("/ads", adController.CreateAd)
+		protected.PUT("/ads/:id", adController.UpdateAd)
+		protected.DELETE("/ads/:id", adController.DeleteAd)
+		protected.PATCH("/ads/:id/status", adController.UpdateAdStatus)
 
 		protected.GET("/departments", deptController.GetDepartments)
 		protected.GET("/departments/tree", deptController.GetDepartmentTree)

@@ -6,11 +6,33 @@
           <el-input v-model="queryForm.name" placeholder="请输入广告名称" clearable />
         </el-form-item>
         <el-form-item label="广告位置">
-          <el-select v-model="queryForm.position" placeholder="全部位置" clearable style="width: 140px">
-            <el-option label="首页轮播" value="home_banner" />
-            <el-option label="侧边栏" value="sidebar" />
-            <el-option label="文章底部" value="article_bottom" />
-            <el-option label="弹窗广告" value="popup" />
+          <el-select
+            v-model="queryForm.pageId"
+            placeholder="选择页面"
+            clearable
+            style="width: 140px"
+            @change="onQueryPageChange"
+          >
+            <el-option
+              v-for="item in pageList"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
+          <el-select
+            v-model="queryForm.columnId"
+            placeholder="选择栏目"
+            clearable
+            style="width: 140px; margin-left: 8px"
+            :disabled="!queryForm.pageId"
+          >
+            <el-option
+              v-for="item in queryColumnList"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
@@ -43,9 +65,14 @@
       <el-table :data="tableData" v-loading="loading" border stripe>
         <el-table-column type="index" width="60" align="center" />
         <el-table-column prop="name" label="广告名称" min-width="160" />
-        <el-table-column prop="position" label="广告位置" width="120">
+        <el-table-column label="广告位置" min-width="180">
           <template #default="{ row }">
-            <el-tag>{{ positionMap[row.position] || row.position }}</el-tag>
+            <div v-if="row.pageName">
+              <el-tag size="small" type="info">{{ row.pageName }}</el-tag>
+              <el-icon class="position-arrow"><ArrowRight /></el-icon>
+              <el-tag size="small">{{ row.columnName || '默认' }}</el-tag>
+            </div>
+            <span v-else>-</span>
           </template>
         </el-table-column>
         <el-table-column prop="image" label="广告图片" width="120" align="center">
@@ -60,7 +87,12 @@
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="link" label="跳转链接" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="link" label="跳转链接" min-width="200" show-overflow-tooltip>
+          <template #default="{ row }">
+            <el-link v-if="row.link" :href="row.link" target="_blank" type="primary">{{ row.link }}</el-link>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="sort" label="排序" width="80" align="center" />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
@@ -102,8 +134,9 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="600px"
+      width="640px"
       destroy-on-close
+      :close-on-click-modal="false"
     >
       <el-form
         ref="formRef"
@@ -114,23 +147,41 @@
         <el-form-item label="广告名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入广告名称" />
         </el-form-item>
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="广告位置" prop="position">
-              <el-select v-model="form.position" placeholder="请选择位置" style="width: 100%">
-                <el-option label="首页轮播" value="home_banner" />
-                <el-option label="侧边栏" value="sidebar" />
-                <el-option label="文章底部" value="article_bottom" />
-                <el-option label="弹窗广告" value="popup" />
+        <el-form-item label="广告位置" prop="pageId">
+          <el-row :gutter="8" style="width: 100%">
+            <el-col :span="12">
+              <el-select
+                v-model="form.pageId"
+                placeholder="选择页面"
+                style="width: 100%"
+                @change="onFormPageChange"
+              >
+                <el-option
+                  v-for="item in pageList"
+                  :key="item.id"
+                  :label="item.name"
+                  :value="item.id"
+                />
               </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="排序" prop="sort">
-              <el-input-number v-model="form.sort" :min="0" :max="999" style="width: 100%" />
-            </el-form-item>
-          </el-col>
-        </el-row>
+            </el-col>
+            <el-col :span="12">
+              <el-select
+                v-model="form.columnId"
+                placeholder="选择栏目"
+                style="width: 100%"
+                :disabled="!form.pageId"
+                clearable
+              >
+                <el-option
+                  v-for="item in formColumnList"
+                  :key="item.id"
+                  :label="item.name"
+                  :value="item.id"
+                />
+              </el-select>
+            </el-col>
+          </el-row>
+        </el-form-item>
         <el-form-item label="跳转链接" prop="link">
           <el-input v-model="form.link" placeholder="请输入跳转链接" />
         </el-form-item>
@@ -139,22 +190,43 @@
         </el-form-item>
         <el-row :gutter="16">
           <el-col :span="12">
+            <el-form-item label="排序" prop="sort">
+              <el-input-number v-model="form.sort" :min="0" :max="999" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="状态" prop="status">
+              <el-radio-group v-model="form.status">
+                <el-radio :value="1">上架</el-radio>
+                <el-radio :value="0">下架</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
             <el-form-item label="开始时间" prop="startTime">
-              <el-date-picker v-model="form.startTime" type="datetime" placeholder="选择开始时间" style="width: 100%" />
+              <el-date-picker
+                v-model="form.startTime"
+                type="datetime"
+                placeholder="选择开始时间"
+                style="width: 100%"
+                value-format="YYYY-MM-DD HH:mm:ss"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="结束时间" prop="endTime">
-              <el-date-picker v-model="form.endTime" type="datetime" placeholder="选择结束时间" style="width: 100%" />
+              <el-date-picker
+                v-model="form.endTime"
+                type="datetime"
+                placeholder="选择结束时间"
+                style="width: 100%"
+                value-format="YYYY-MM-DD HH:mm:ss"
+              />
             </el-form-item>
           </el-col>
         </el-row>
-        <el-form-item label="状态" prop="status">
-          <el-radio-group v-model="form.status">
-            <el-radio :value="1">上架</el-radio>
-            <el-radio :value="0">下架</el-radio>
-          </el-radio-group>
-        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -172,8 +244,19 @@ import {
   RefreshRight,
   Plus,
   Edit,
-  Delete
+  Delete,
+  ArrowRight
 } from '@element-plus/icons-vue'
+
+import {
+  getAds,
+  createAd,
+  updateAd,
+  deleteAd,
+  updateAdStatus
+} from '@/api/ad'
+import { getPages } from '@/api/page'
+import { getColumns } from '@/api/column'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -182,25 +265,20 @@ const submitLoading = ref(false)
 const total = ref(0)
 const formRef = ref()
 
-const positionMap: Record<string, string> = {
-  home_banner: '首页轮播',
-  sidebar: '侧边栏',
-  article_bottom: '文章底部',
-  popup: '弹窗广告'
-}
-
 const queryForm = reactive({
   page: 1,
   pageSize: 10,
   name: '',
-  position: '',
+  pageId: undefined as number | undefined,
+  columnId: undefined as number | undefined,
   status: undefined as number | undefined
 })
 
 const form = reactive({
   id: undefined as number | undefined,
   name: '',
-  position: '',
+  pageId: undefined as number | undefined,
+  columnId: undefined as number | undefined,
   image: '',
   link: '',
   sort: 0,
@@ -211,23 +289,63 @@ const form = reactive({
 
 const formRules = {
   name: [{ required: true, message: '请输入广告名称', trigger: 'blur' }],
-  position: [{ required: true, message: '请选择广告位置', trigger: 'change' }],
+  pageId: [{ required: true, message: '请选择广告位置', trigger: 'change' }],
   link: [{ required: true, message: '请输入跳转链接', trigger: 'blur' }]
 }
 
 const tableData = ref<any[]>([])
+const pageList = ref<any[]>([])
+const queryColumnList = ref<any[]>([])
+const formColumnList = ref<any[]>([])
+
+const fetchPages = async () => {
+  try {
+    const res: any = await getPages()
+    pageList.value = res.data || []
+  } catch {
+    // ignore
+  }
+}
+
+const loadColumnsByPage = async (pageId: number | undefined, target: 'query' | 'form') => {
+  const list = target === 'query' ? queryColumnList : formColumnList
+  list.value = []
+  if (!pageId) return
+  try {
+    const res: any = await getColumns({ pageId })
+    list.value = res.data || []
+  } catch {
+    // ignore
+  }
+}
+
+const onQueryPageChange = (val: number | undefined) => {
+  queryForm.columnId = undefined
+  loadColumnsByPage(val, 'query')
+}
+
+const onFormPageChange = (val: number | undefined) => {
+  form.columnId = undefined
+  loadColumnsByPage(val, 'form')
+}
 
 const fetchData = async () => {
   loading.value = true
   try {
-    const mockData = [
-      { id: 1, name: '618大促活动', position: 'home_banner', image: 'https://picsum.photos/400/200?random=1', link: 'https://example.com/promo', sort: 1, status: 1, startTime: '2026-05-01 00:00:00', endTime: '2026-06-20 23:59:59' },
-      { id: 2, name: '新品上线', position: 'sidebar', image: 'https://picsum.photos/400/200?random=2', link: 'https://example.com/new', sort: 2, status: 1, startTime: '2026-05-15 00:00:00', endTime: '2026-07-15 23:59:59' },
-      { id: 3, name: '会员招募', position: 'article_bottom', image: 'https://picsum.photos/400/200?random=3', link: 'https://example.com/vip', sort: 1, status: 0, startTime: '2026-04-01 00:00:00', endTime: '2026-05-31 23:59:59' },
-      { id: 4, name: '问卷调查', position: 'popup', image: '', link: 'https://example.com/survey', sort: 1, status: 1, startTime: '2026-05-20 00:00:00', endTime: '2026-06-20 23:59:59' }
-    ]
-    tableData.value = mockData
-    total.value = mockData.length
+    const params: any = {
+      page: queryForm.page,
+      pageSize: queryForm.pageSize,
+      name: queryForm.name || undefined,
+      pageId: queryForm.pageId || undefined,
+      columnId: queryForm.columnId || undefined,
+      status: queryForm.status !== undefined ? queryForm.status : undefined
+    }
+    const res: any = await getAds(params)
+    const data = res.data || {}
+    tableData.value = data.list || []
+    total.value = data.total || 0
+  } catch (error: any) {
+    ElMessage.error(error?.message || '获取广告列表失败')
   } finally {
     loading.value = false
   }
@@ -240,9 +358,11 @@ const handleSearch = () => {
 
 const resetQuery = () => {
   queryForm.name = ''
-  queryForm.position = ''
+  queryForm.pageId = undefined
+  queryForm.columnId = undefined
   queryForm.status = undefined
   queryForm.page = 1
+  queryColumnList.value = []
   fetchData()
 }
 
@@ -252,12 +372,17 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
-const handleEdit = (row: any) => {
+const handleEdit = async (row: any) => {
   dialogTitle.value = '编辑广告'
+  resetForm()
+  if (row.pageId) {
+    await loadColumnsByPage(row.pageId, 'form')
+  }
   Object.assign(form, {
     id: row.id,
     name: row.name,
-    position: row.position,
+    pageId: row.pageId,
+    columnId: row.columnId,
     image: row.image,
     link: row.link,
     sort: row.sort,
@@ -273,38 +398,72 @@ const handleDelete = (row: any) => {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    ElMessage.success('删除成功')
-    fetchData()
+  }).then(async () => {
+    try {
+      await deleteAd(row.id)
+      ElMessage.success('删除成功')
+      fetchData()
+    } catch (error: any) {
+      ElMessage.error(error?.message || '删除失败')
+    }
   })
 }
 
-const handleStatusChange = async (_row: any, val: number) => {
-  ElMessage.success(`广告已${val === 1 ? '上架' : '下架'}`)
+const handleStatusChange = async (row: any, val: number) => {
+  try {
+    await updateAdStatus(row.id, val)
+    ElMessage.success(`广告已${val === 1 ? '上架' : '下架'}`)
+  } catch (error: any) {
+    ElMessage.error(error?.message || '状态更新失败')
+    row.status = val === 1 ? 0 : 1
+  }
 }
 
 const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
   submitLoading.value = true
-  setTimeout(() => {
-    ElMessage.success(form.id ? '修改成功' : '新增成功')
+  try {
+    const payload = {
+      name: form.name,
+      pageId: form.pageId as number,
+      columnId: form.columnId,
+      image: form.image,
+      link: form.link,
+      sort: form.sort,
+      status: form.status,
+      startTime: form.startTime || undefined,
+      endTime: form.endTime || undefined
+    }
+    if (form.id) {
+      await updateAd(form.id, payload)
+      ElMessage.success('修改成功')
+    } else {
+      await createAd(payload)
+      ElMessage.success('新增成功')
+    }
     dialogVisible.value = false
     fetchData()
+  } catch (error: any) {
+    ElMessage.error(error?.message || '提交失败')
+  } finally {
     submitLoading.value = false
-  }, 500)
+  }
 }
 
 const resetForm = () => {
   form.id = undefined
   form.name = ''
-  form.position = ''
+  form.pageId = undefined
+  form.columnId = undefined
   form.image = ''
   form.link = ''
   form.sort = 0
   form.status = 1
   form.startTime = ''
   form.endTime = ''
+  formColumnList.value = []
+  formRef.value?.resetFields()
 }
 
 const handleSizeChange = (val: number) => {
@@ -318,6 +477,7 @@ const handleCurrentChange = (val: number) => {
 }
 
 onMounted(() => {
+  fetchPages()
   fetchData()
 })
 </script>
@@ -347,6 +507,12 @@ onMounted(() => {
     margin-top: 20px;
     display: flex;
     justify-content: flex-end;
+  }
+
+  .position-arrow {
+    margin: 0 4px;
+    color: #909399;
+    vertical-align: middle;
   }
 }
 </style>

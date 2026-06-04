@@ -1,0 +1,298 @@
+package controllers
+
+import (
+	"net/http"
+	"strconv"
+	"time"
+
+	"github.com/gin-gonic/gin"
+
+	"server/models"
+	"server/services"
+	"server/utils"
+)
+
+type AdController struct {
+	adService *services.AdService
+}
+
+func NewAdController() *AdController {
+	return &AdController{
+		adService: &services.AdService{},
+	}
+}
+
+func (c *AdController) GetAds(ctx *gin.Context) {
+	name := ctx.Query("name")
+	pageIDStr := ctx.Query("pageId")
+	columnIDStr := ctx.Query("columnId")
+	statusStr := ctx.Query("status")
+	pageStr := ctx.DefaultQuery("page", "1")
+	pageSizeStr := ctx.DefaultQuery("pageSize", "10")
+
+	pageID := 0
+	if pageIDStr != "" {
+		if id, err := strconv.Atoi(pageIDStr); err == nil {
+			pageID = id
+		}
+	}
+	columnID := 0
+	if columnIDStr != "" {
+		if id, err := strconv.Atoi(columnIDStr); err == nil {
+			columnID = id
+		}
+	}
+	status := -1
+	if statusStr != "" {
+		if s, err := strconv.Atoi(statusStr); err == nil {
+			status = s
+		}
+	}
+	page, _ := strconv.Atoi(pageStr)
+	if page < 1 {
+		page = 1
+	}
+	pageSize, _ := strconv.Atoi(pageSizeStr)
+	if pageSize < 1 {
+		pageSize = 10
+	}
+
+	ads, total, err := c.adService.GetAds(name, pageID, columnID, status, page, pageSize)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取广告列表失败"))
+		return
+	}
+
+	// 补充页面和栏目名称
+	var pageIDs []uint
+	var columnIDs []uint
+	for _, a := range ads {
+		if a.PageID > 0 {
+			pageIDs = append(pageIDs, a.PageID)
+		}
+		if a.ColumnID > 0 {
+			columnIDs = append(columnIDs, a.ColumnID)
+		}
+	}
+
+	pageMap := make(map[uint]string)
+	columnMap := make(map[uint]string)
+	if len(pageIDs) > 0 {
+		var pages []models.Page
+		utils.DB.Where("id IN ?", pageIDs).Find(&pages)
+		for _, p := range pages {
+			pageMap[p.ID] = p.Name
+		}
+	}
+	if len(columnIDs) > 0 {
+		var columns []models.Column
+		utils.DB.Where("id IN ?", columnIDs).Find(&columns)
+		for _, col := range columns {
+			columnMap[col.ID] = col.Name
+		}
+	}
+
+	var list []gin.H
+	for _, a := range ads {
+		list = append(list, gin.H{
+			"id":         a.ID,
+			"name":       a.Name,
+			"pageId":     a.PageID,
+			"pageName":   pageMap[a.PageID],
+			"columnId":   a.ColumnID,
+			"columnName": columnMap[a.ColumnID],
+			"image":      a.Image,
+			"link":       a.Link,
+			"sort":       a.Sort,
+			"status":     a.Status,
+			"startTime":  formatTime(a.StartTime),
+			"endTime":    formatTime(a.EndTime),
+			"createTime": a.CreatedAt.Format("2006-01-02 15:04:05"),
+		})
+	}
+
+	ctx.JSON(http.StatusOK, utils.Success("获取广告列表成功", gin.H{
+		"list":     list,
+		"total":    total,
+		"page":     page,
+		"pageSize": pageSize,
+	}))
+}
+
+func (c *AdController) GetAdByID(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "广告ID无效"))
+		return
+	}
+	ad, err := c.adService.GetAdByID(uint(id))
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取广告失败"))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.Success("获取广告成功", gin.H{
+		"id":        ad.ID,
+		"name":      ad.Name,
+		"pageId":    ad.PageID,
+		"columnId":  ad.ColumnID,
+		"image":     ad.Image,
+		"link":      ad.Link,
+		"sort":      ad.Sort,
+		"status":    ad.Status,
+		"startTime": formatTime(ad.StartTime),
+		"endTime":   formatTime(ad.EndTime),
+	}))
+}
+
+func (c *AdController) CreateAd(ctx *gin.Context) {
+	var req struct {
+		Name      string `json:"name"`
+		PageID    uint   `json:"pageId"`
+		ColumnID  uint   `json:"columnId"`
+		Image     string `json:"image"`
+		Link      string `json:"link"`
+		Sort      int    `json:"sort"`
+		Status    int    `json:"status"`
+		StartTime string `json:"startTime"`
+		EndTime   string `json:"endTime"`
+	}
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		return
+	}
+	startTime, err := parseTime(req.StartTime)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "开始时间格式错误"))
+		return
+	}
+	endTime, err := parseTime(req.EndTime)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "结束时间格式错误"))
+		return
+	}
+	ad := &models.Ad{
+		Name:      req.Name,
+		PageID:    req.PageID,
+		ColumnID:  req.ColumnID,
+		Image:     req.Image,
+		Link:      req.Link,
+		Sort:      req.Sort,
+		Status:    req.Status,
+		StartTime: startTime,
+		EndTime:   endTime,
+	}
+	err = c.adService.CreateAd(ad)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "创建广告失败: "+err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("创建广告成功", nil))
+}
+
+func (c *AdController) UpdateAd(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "广告ID无效"))
+		return
+	}
+	var req struct {
+		Name      string `json:"name"`
+		PageID    uint   `json:"pageId"`
+		ColumnID  uint   `json:"columnId"`
+		Image     string `json:"image"`
+		Link      string `json:"link"`
+		Sort      int    `json:"sort"`
+		Status    int    `json:"status"`
+		StartTime string `json:"startTime"`
+		EndTime   string `json:"endTime"`
+	}
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		return
+	}
+	startTime, err := parseTime(req.StartTime)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "开始时间格式错误"))
+		return
+	}
+	endTime, err := parseTime(req.EndTime)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "结束时间格式错误"))
+		return
+	}
+	ad := &models.Ad{
+		Name:      req.Name,
+		PageID:    req.PageID,
+		ColumnID:  req.ColumnID,
+		Image:     req.Image,
+		Link:      req.Link,
+		Sort:      req.Sort,
+		Status:    req.Status,
+		StartTime: startTime,
+		EndTime:   endTime,
+	}
+	err = c.adService.UpdateAd(uint(id), ad)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "更新广告失败: "+err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("更新广告成功", nil))
+}
+
+func (c *AdController) UpdateAdStatus(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "广告ID无效"))
+		return
+	}
+	var req struct {
+		Status int `json:"status"`
+	}
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误"))
+		return
+	}
+	err = c.adService.UpdateAdStatus(uint(id), req.Status)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "更新状态失败"))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("更新状态成功", nil))
+}
+
+func (c *AdController) DeleteAd(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "广告ID无效"))
+		return
+	}
+	err = c.adService.DeleteAd(uint(id))
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "删除广告失败: "+err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("删除广告成功", nil))
+}
+
+func formatTime(t *time.Time) string {
+	if t == nil {
+		return ""
+	}
+	return t.Format("2006-01-02 15:04:05")
+}
+
+func parseTime(s string) (*time.Time, error) {
+	if s == "" {
+		return nil, nil
+	}
+	t, err := time.ParseInLocation("2006-01-02 15:04:05", s, time.Local)
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
