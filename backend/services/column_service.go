@@ -35,7 +35,6 @@ func (s *ColumnService) UpdateColumn(id uint, column *models.Column) error {
 		"page_id":     column.PageID,
 		"parent_id":   column.ParentID,
 		"route_path":  column.RoutePath,
-		"template":    column.Template,
 		"description": column.Description,
 		"sort":        column.Sort,
 		"status":      column.Status,

@@ -114,12 +114,6 @@
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="template" label="绑定模板" min-width="140" show-overflow-tooltip>
-          <template #default="{ row }">
-            <span v-if="row.template">{{ row.template }}</span>
-            <span v-else style="color: #c0c4cc">未绑定</span>
-          </template>
-        </el-table-column>
         <el-table-column prop="sort" label="排序" width="80" align="center" />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
@@ -272,27 +266,6 @@
         <el-form-item label="访问路径" prop="routePath">
           <el-input v-model="columnForm.routePath" placeholder="如 /news/company" />
         </el-form-item>
-        <el-form-item label="绑定模板" prop="template">
-          <el-select v-model="columnForm.template" placeholder="请选择页面模板" clearable style="width: 100%">
-            <el-option-group label="首页模板">
-              <el-option label="default-home" value="default-home" />
-              <el-option label="portal-home" value="portal-home" />
-            </el-option-group>
-            <el-option-group label="栏目页模板">
-              <el-option label="article-list" value="article-list" />
-              <el-option label="news-list" value="news-list" />
-              <el-option label="image-list" value="image-list" />
-            </el-option-group>
-            <el-option-group label="详情页模板">
-              <el-option label="article-detail" value="article-detail" />
-              <el-option label="page-detail" value="page-detail" />
-            </el-option-group>
-            <el-option-group label="专题页模板">
-              <el-option label="special-event" value="special-event" />
-              <el-option label="special-activity" value="special-activity" />
-            </el-option-group>
-          </el-select>
-        </el-form-item>
         <el-form-item label="栏目描述" prop="description">
           <el-input v-model="columnForm.description" type="textarea" :rows="3" placeholder="请输入栏目描述" />
         </el-form-item>
@@ -359,7 +332,6 @@ interface ColumnItem {
   pageId: number
   parentId?: number
   routePath?: string
-  template?: string
   description?: string
   sort: number
   status: number
@@ -412,7 +384,6 @@ const columnForm = reactive<Partial<ColumnItem>>({
   name: '',
   code: '',
   routePath: '',
-  template: '',
   description: '',
   sort: 0,
   status: 1
@@ -472,12 +443,18 @@ const templateGroups = computed(() => {
   return [{ label, options }]
 })
 
+const isRootColumn = (item: ColumnItem) => !item.parentId || item.parentId === 0
+
 const columnTableData = computed(() => {
   if (!selectedPage.value) return []
   const pageId = selectedPage.value.id
   const buildTree = (items: ColumnItem[], parentId?: number): ColumnItem[] => {
     return items
-      .filter(item => item.pageId === pageId && item.parentId === parentId)
+      .filter(item => {
+        if (item.pageId !== pageId) return false
+        if (parentId === undefined) return isRootColumn(item)
+        return item.parentId === parentId
+      })
       .sort((a, b) => a.sort - b.sort)
       .map(item => ({
         ...item,
@@ -492,7 +469,11 @@ const columnTreeOptions = computed(() => {
   const pageId = selectedPage.value.id
   const buildOptions = (items: ColumnItem[], parentId?: number): any[] => {
     return items
-      .filter(item => item.pageId === pageId && item.parentId === parentId)
+      .filter(item => {
+        if (item.pageId !== pageId) return false
+        if (parentId === undefined) return isRootColumn(item)
+        return item.parentId === parentId
+      })
       .sort((a, b) => a.sort - b.sort)
       .map(item => ({
         id: item.id,
@@ -663,7 +644,6 @@ const handleEditColumn = (row: ColumnItem) => {
     name: row.name,
     code: row.code,
     routePath: row.routePath,
-    template: row.template,
     description: row.description,
     sort: row.sort,
     status: row.status
@@ -698,7 +678,6 @@ const handleColumnStatusChange = async (row: ColumnItem, val: number) => {
       pageId: row.pageId,
       parentId: row.parentId,
       routePath: row.routePath,
-      template: row.template,
       description: row.description,
       sort: row.sort,
       status: val
@@ -720,7 +699,6 @@ const handleColumnSubmit = async () => {
       pageId: columnForm.pageId ?? 0,
       parentId: columnForm.parentId,
       routePath: columnForm.routePath || '',
-      template: columnForm.template || '',
       description: columnForm.description,
       sort: columnForm.sort ?? 0,
       status: columnForm.status ?? 1
@@ -745,7 +723,6 @@ const resetColumnForm = () => {
   columnForm.name = ''
   columnForm.code = ''
   columnForm.routePath = ''
-  columnForm.template = ''
   columnForm.description = ''
   columnForm.sort = 0
   columnForm.status = 1
