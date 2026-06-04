@@ -19,5 +19,6 @@ type Department struct {
 	Sort        int            `gorm:"default:0" json:"sort"`
 	Status      int            `gorm:"default:1" json:"status"`
 	Description string         `gorm:"size:255" json:"description"`
+	UserCount   int            `gorm:"default:0" json:"userCount"`
 	UserIds     string         `gorm:"size:500" json:"userIds"`
 }

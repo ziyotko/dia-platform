@@ -110,5 +110,8 @@ func (s *DepartmentService) AssignDepartmentUsers(id uint, userIds []int) error 
 	for i, uid := range userIds {
 		ids[i] = strconv.Itoa(uid)
 	}
-	return utils.DB.Model(&models.Department{}).Where("id = ?", id).Update("user_ids", strings.Join(ids, ",")).Error
+	return utils.DB.Model(&models.Department{}).Where("id = ?", id).UpdateColumns(map[string]interface{}{
+		"user_ids":   strings.Join(ids, ","),
+		"user_count": len(userIds),
+	}).Error
 }

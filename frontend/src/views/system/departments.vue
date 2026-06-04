@@ -50,6 +50,7 @@
         <el-table-column prop="code" label="部门编码" min-width="140" />
         <el-table-column prop="leader" label="负责人" min-width="120" />
         <el-table-column prop="leaderCode" label="负责人编码" min-width="140" />
+        <el-table-column prop="userCount" label="人员数量" width="100" align="center" />
         <el-table-column prop="sort" label="排序" width="80" align="center" />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
@@ -221,6 +222,7 @@ interface DeptItem {
   sort: number
   status: number
   description: string
+  userCount: number
   createTime: string
   children?: DeptItem[]
   hasChildren?: boolean
@@ -537,6 +539,7 @@ const handleUserSubmit = async () => {
     if (res && res.code === 0) {
       ElMessage.success('人员分配成功')
       userDialogVisible.value = false
+      fetchData()
     } else {
       ElMessage.error(res?.message || '人员分配失败')
     }

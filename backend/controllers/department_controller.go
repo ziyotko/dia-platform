@@ -38,8 +38,9 @@ func buildDeptTree(list []models.Department) []gin.H {
 			"leaderCode":  item.LeaderCode,
 			"sort":        item.Sort,
 			"status":      item.Status,
-			"description": item.Description,
-			"createTime":  item.CreatedAt.Format("2006-01-02 15:04:05"),
+		"description": item.Description,
+		"userCount":   item.UserCount,
+		"createTime":  item.CreatedAt.Format("2006-01-02 15:04:05"),
 			"children":    []gin.H{},
 			"hasChildren": false,
 		}
