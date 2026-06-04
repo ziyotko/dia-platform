@@ -7,8 +7,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"server/utils"
+
+	"github.com/gin-gonic/gin"
 )
 
 type UploadController struct{}
