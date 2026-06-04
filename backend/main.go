@@ -21,11 +21,12 @@ func main() {
 	utils.InitRedisCaptcha()
 	utils.InitRedisAnti()
 
-	utils.DB.AutoMigrate(&models.User{}, &models.Menu{}, &models.Role{}, &models.OperationLog{}, &models.Settings{}, &models.Template{}, &models.Page{}, &models.Column{}, &models.Category{}, &models.Tag{})
+	utils.DB.AutoMigrate(&models.User{}, &models.Menu{}, &models.Role{}, &models.OperationLog{}, &models.Settings{}, &models.Template{}, &models.Page{}, &models.Column{}, &models.Category{}, &models.Tag{}, &models.Department{})
 
 	initSuperAdmin()
 	initMenus()
 	initRoles()
+	initDepartments()
 
 	router := gin.New()
 	router.Use(middleware.GinLogger(), gin.Recovery())
@@ -93,7 +94,8 @@ func initMenus() {
 		{ParentID: systemID, Name: "用户管理", Path: "/users", Component: "views/system/users.vue", Icon: "UserFilled", Type: "menu", Sort: 1, Status: 1},
 		{ParentID: systemID, Name: "角色管理", Path: "/roles", Component: "views/system/roles.vue", Icon: "Avatar", Type: "menu", Sort: 2, Status: 1},
 		{ParentID: systemID, Name: "菜单管理", Path: "/menus", Component: "views/system/menus.vue", Icon: "Menu", Type: "menu", Sort: 3, Status: 1},
-		{ParentID: systemID, Name: "操作日志", Path: "/logs", Component: "views/system/logs.vue", Icon: "List", Type: "menu", Sort: 4, Status: 1},
+		{ParentID: systemID, Name: "部门管理", Path: "/departments", Component: "views/system/departments.vue", Icon: "OfficeBuilding", Type: "menu", Sort: 4, Status: 1},
+		{ParentID: systemID, Name: "操作日志", Path: "/logs", Component: "views/system/logs.vue", Icon: "List", Type: "menu", Sort: 5, Status: 1},
 		{ParentID: contentID, Name: "文章管理", Path: "/content/article", Component: "views/content/article.vue", Icon: "Document", Type: "menu", Sort: 1, Status: 1},
 		{ParentID: contentID, Name: "分类管理", Path: "/content/category", Component: "views/content/category.vue", Icon: "Folder", Type: "menu", Sort: 2, Status: 1},
 		{ParentID: contentID, Name: "标签管理", Path: "/content/tag", Component: "views/content/tag.vue", Icon: "PriceTag", Type: "menu", Sort: 3, Status: 1},
@@ -111,6 +113,48 @@ func initMenus() {
 	}
 
 	utils.Logger.Info("Menus initialized successfully")
+}
+
+func initDepartments() {
+	var count int64
+	utils.DB.Model(&models.Department{}).Count(&count)
+	if count > 0 {
+		return
+	}
+
+	departments := []models.Department{
+		{ParentID: 0, Name: "总公司", Code: "HQ", Leader: "张三", Sort: 1, Status: 1, Description: "公司总部"},
+		{ParentID: 0, Name: "技术研发部", Code: "RD", Leader: "李四", Sort: 2, Status: 1, Description: "负责产品研发"},
+		{ParentID: 0, Name: "产品部", Code: "PD", Leader: "孙七", Sort: 3, Status: 1, Description: "产品设计与规划"},
+		{ParentID: 0, Name: "市场部", Code: "MK", Leader: "周八", Sort: 4, Status: 0, Description: "市场推广与运营"},
+	}
+
+	for i := range departments {
+		if err := utils.DB.Create(&departments[i]).Error; err != nil {
+			utils.Logger.Errorf("Failed to create department: %v", err)
+		}
+	}
+
+	var hqID uint
+	utils.DB.Model(&models.Department{}).Where("code = ?", "HQ").Select("id").Scan(&hqID)
+	var rdID uint
+	utils.DB.Model(&models.Department{}).Where("code = ?", "RD").Select("id").Scan(&rdID)
+	var mkID uint
+	utils.DB.Model(&models.Department{}).Where("code = ?", "MK").Select("id").Scan(&mkID)
+
+	subDepts := []models.Department{
+		{ParentID: hqID, Name: "前端组", Code: "RD-FE", Leader: "王五", Sort: 1, Status: 1, Description: "前端开发"},
+		{ParentID: rdID, Name: "后端组", Code: "RD-BE", Leader: "赵六", Sort: 2, Status: 1, Description: "后端开发"},
+		{ParentID: mkID, Name: "品牌组", Code: "MK-BR", Leader: "吴九", Sort: 1, Status: 1, Description: "品牌建设"},
+	}
+
+	for i := range subDepts {
+		if err := utils.DB.Create(&subDepts[i]).Error; err != nil {
+			utils.Logger.Errorf("Failed to create sub department: %v", err)
+		}
+	}
+
+	utils.Logger.Info("Departments initialized successfully")
 }
 
 func initRoles() {

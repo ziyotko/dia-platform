@@ -181,6 +181,15 @@ import {
   User,
   OfficeBuilding
 } from '@element-plus/icons-vue'
+import {
+  getDepartmentList,
+  createDepartment,
+  updateDepartment,
+  deleteDepartment,
+  getDepartmentUsers,
+  assignDepartmentUsers
+} from '@/api/department'
+import { getUserList } from '@/api/user'
 
 interface DeptItem {
   id: number
@@ -219,7 +228,6 @@ const userTableRef = ref()
 const currentDeptId = ref<number>(0)
 const currentDeptName = ref('')
 const selectedUserIds = ref<number[]>([])
-const deptUserMap = ref<Record<number, number[]>>({})
 
 const queryForm = reactive({
   name: '',
@@ -244,17 +252,7 @@ const formRules = {
   sort: [{ required: true, message: '请输入排序', trigger: 'blur' }]
 }
 
-// 模拟用户数据
-const userOptions = ref<UserItem[]>([
-  { id: 1, username: '张三', account: 'zhangsan', nickname: '张三', phone: '13800138001' },
-  { id: 2, username: '李四', account: 'lisi', nickname: '李四', phone: '13800138002' },
-  { id: 3, username: '王五', account: 'wangwu', nickname: '王五', phone: '13800138003' },
-  { id: 4, username: '赵六', account: 'zhaoliu', nickname: '赵六', phone: '13800138004' },
-  { id: 5, username: '孙七', account: 'sunqi', nickname: '孙七', phone: '13800138005' },
-  { id: 6, username: '周八', account: 'zhouba', nickname: '周八', phone: '13800138006' },
-  { id: 7, username: '吴九', account: 'wujiu', nickname: '吴九', phone: '13800138007' },
-  { id: 8, username: '郑十', account: 'zhengshi', nickname: '郑十', phone: '13800138008' }
-])
+const userOptions = ref<UserItem[]>([])
 
 const filteredUserOptions = computed(() => {
   if (!userSearch.value) return userOptions.value
@@ -266,95 +264,6 @@ const filteredUserOptions = computed(() => {
       u.nickname.toLowerCase().includes(keyword)
   )
 })
-
-// 生成模拟部门数据
-const generateMockData = (): DeptItem[] => {
-  return [
-    {
-      id: 1,
-      parentId: 0,
-      name: '总公司',
-      code: 'HQ',
-      leader: '张三',
-      sort: 1,
-      status: 1,
-      description: '公司总部',
-      createTime: '2024-01-15 09:30:00',
-      children: [
-        {
-          id: 2,
-          parentId: 1,
-          name: '技术研发部',
-          code: 'RD',
-          leader: '李四',
-          sort: 1,
-          status: 1,
-          description: '负责产品研发',
-          createTime: '2024-01-16 10:00:00',
-          children: [
-            {
-              id: 5,
-              parentId: 2,
-              name: '前端组',
-              code: 'RD-FE',
-              leader: '王五',
-              sort: 1,
-              status: 1,
-              description: '前端开发',
-              createTime: '2024-02-01 14:00:00'
-            },
-            {
-              id: 6,
-              parentId: 2,
-              name: '后端组',
-              code: 'RD-BE',
-              leader: '赵六',
-              sort: 2,
-              status: 1,
-              description: '后端开发',
-              createTime: '2024-02-01 14:30:00'
-            }
-          ]
-        },
-        {
-          id: 3,
-          parentId: 1,
-          name: '产品部',
-          code: 'PD',
-          leader: '孙七',
-          sort: 2,
-          status: 1,
-          description: '产品设计与规划',
-          createTime: '2024-01-17 11:00:00'
-        },
-        {
-          id: 4,
-          parentId: 1,
-          name: '市场部',
-          code: 'MK',
-          leader: '周八',
-          sort: 3,
-          status: 0,
-          description: '市场推广与运营',
-          createTime: '2024-01-18 09:00:00',
-          children: [
-            {
-              id: 7,
-              parentId: 4,
-              name: '品牌组',
-              code: 'MK-BR',
-              leader: '吴九',
-              sort: 1,
-              status: 1,
-              description: '品牌建设',
-              createTime: '2024-03-01 10:00:00'
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
 
 const deptTreeSelectData = computed(() => {
   return [{ id: 0, parentId: 0, name: '顶级部门', children: [], hasChildren: false }, ...tableData.value]
@@ -387,35 +296,28 @@ function filterTree(nodes: DeptItem[], predicate: (item: DeptItem) => boolean): 
   return result
 }
 
-function flattenTree(nodes: DeptItem[]): DeptItem[] {
-  const result: DeptItem[] = []
-  const traverse = (list: DeptItem[]) => {
-    for (const node of list) {
-      result.push(node)
-      if (node.children && node.children.length > 0) {
-        traverse(node.children)
-      }
-    }
-  }
-  traverse(nodes)
-  return result
-}
-
 const handleSearch = () => {
-  // 前端过滤，无需重置页码
+  fetchData()
 }
 
 const resetQuery = () => {
   queryForm.name = ''
   queryForm.status = undefined
+  fetchData()
 }
 
 const fetchData = async () => {
   loading.value = true
   try {
-    // 模拟接口延迟
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    tableData.value = generateMockData()
+    const res: any = await getDepartmentList({
+      name: queryForm.name || undefined,
+      status: queryForm.status
+    })
+    if (res && res.code === 0) {
+      tableData.value = res.data.list || []
+    } else {
+      ElMessage.error(res?.message || '获取部门列表失败')
+    }
   } catch (error) {
     console.error('获取部门列表失败', error)
   } finally {
@@ -460,71 +362,19 @@ const handleDelete = (row: DeptItem) => {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    removeDeptById(tableData.value, row.id)
-    ElMessage.success('删除成功')
+  }).then(async () => {
+    try {
+      const res: any = await deleteDepartment(row.id)
+      if (res && res.code === 0) {
+        ElMessage.success('删除成功')
+        fetchData()
+      } else {
+        ElMessage.error(res?.message || '删除失败')
+      }
+    } catch (error) {
+      console.error('删除部门失败', error)
+    }
   })
-}
-
-function removeDeptById(nodes: DeptItem[], id: number): boolean {
-  for (let i = 0; i < nodes.length; i++) {
-    if (nodes[i].id === id) {
-      nodes.splice(i, 1)
-      return true
-    }
-    if (nodes[i].children && nodes[i].children!.length > 0) {
-      const removed = removeDeptById(nodes[i].children!, id)
-      if (removed) return true
-    }
-  }
-  return false
-}
-
-function findDeptById(nodes: DeptItem[], id: number): DeptItem | undefined {
-  for (const node of nodes) {
-    if (node.id === id) return node
-    if (node.children && node.children.length > 0) {
-      const found = findDeptById(node.children, id)
-      if (found) return found
-    }
-  }
-  return undefined
-}
-
-function addOrUpdateDept(nodes: DeptItem[], item: DeptItem, parentId?: number): boolean {
-  if (item.id) {
-    // 更新
-    for (const node of nodes) {
-      if (node.id === item.id) {
-        Object.assign(node, item)
-        return true
-      }
-      if (node.children && node.children.length > 0) {
-        const updated = addOrUpdateDept(node.children, item, parentId)
-        if (updated) return true
-      }
-    }
-  } else {
-    // 新增
-    const targetParentId = parentId || 0
-    if (targetParentId === 0) {
-      nodes.push(item)
-      return true
-    }
-    for (const node of nodes) {
-      if (node.id === targetParentId) {
-        if (!node.children) node.children = []
-        node.children.push(item)
-        node.hasChildren = true
-        return true
-      }
-      if (node.children && node.children.length > 0) {
-        const added = addOrUpdateDept(node.children, item, parentId)
-        if (added) return true
-      }
-    }
-  }
-  return false
 }
 
 const handleSubmit = async () => {
@@ -532,27 +382,28 @@ const handleSubmit = async () => {
   if (!valid) return
   submitLoading.value = true
   try {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    const payload: DeptItem = {
-      id: form.id || Date.now(),
+    const payload = {
       parentId: form.parentId || 0,
       name: form.name,
       code: form.code,
       leader: form.leader,
       sort: form.sort,
       status: form.status,
-      description: form.description,
-      createTime: form.id ? '' : new Date().toLocaleString().replace(/\//g, '-'),
-      children: []
+      description: form.description
     }
+    let res: any
     if (form.id) {
-      addOrUpdateDept(tableData.value, payload)
-      ElMessage.success('修改成功')
+      res = await updateDepartment(form.id, payload)
     } else {
-      addOrUpdateDept(tableData.value, payload, payload.parentId)
-      ElMessage.success('新增成功')
+      res = await createDepartment(payload)
     }
-    dialogVisible.value = false
+    if (res && res.code === 0) {
+      ElMessage.success(form.id ? '修改成功' : '新增成功')
+      dialogVisible.value = false
+      fetchData()
+    } else {
+      ElMessage.error(res?.message || (form.id ? '修改失败' : '新增失败'))
+    }
   } catch (error) {
     console.error('提交失败', error)
   } finally {
@@ -571,21 +422,43 @@ const resetForm = () => {
   form.description = ''
 }
 
-// 部门选人
+const fetchUsers = async () => {
+  try {
+    const res: any = await getUserList({ page: 1, pageSize: 1000 })
+    if (res && res.code === 0) {
+      userOptions.value = (res.data.list || []).map((u: any) => ({
+        id: u.id,
+        username: u.username,
+        account: u.account,
+        nickname: u.nickname,
+        phone: u.phone || u.mobile || ''
+      }))
+    }
+  } catch (error) {
+    console.error('获取用户列表失败', error)
+  }
+}
+
 const handleAssignUsers = async (row: DeptItem) => {
   currentDeptId.value = row.id
   currentDeptName.value = row.name
   userDialogVisible.value = true
   userLoading.value = true
-  selectedUserIds.value = deptUserMap.value[row.id] || []
+  selectedUserIds.value = []
   try {
-    await new Promise((resolve) => setTimeout(resolve, 200))
+    await fetchUsers()
+    const res: any = await getDepartmentUsers(row.id)
+    if (res && res.code === 0) {
+      selectedUserIds.value = res.data || []
+    }
     nextTick(() => {
       const rows = userOptions.value.filter((u) => selectedUserIds.value.includes(u.id))
       rows.forEach((r) => {
         userTableRef.value?.toggleRowSelection(r, true)
       })
     })
+  } catch (error) {
+    console.error('获取部门用户失败', error)
   } finally {
     userLoading.value = false
   }
@@ -598,10 +471,13 @@ const handleUserSelectionChange = (selection: UserItem[]) => {
 const handleUserSubmit = async () => {
   userSubmitLoading.value = true
   try {
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    deptUserMap.value[currentDeptId.value] = [...selectedUserIds.value]
-    ElMessage.success('人员分配成功')
-    userDialogVisible.value = false
+    const res: any = await assignDepartmentUsers(currentDeptId.value, selectedUserIds.value)
+    if (res && res.code === 0) {
+      ElMessage.success('人员分配成功')
+      userDialogVisible.value = false
+    } else {
+      ElMessage.error(res?.message || '人员分配失败')
+    }
   } catch (error) {
     console.error('人员分配失败', error)
   } finally {
