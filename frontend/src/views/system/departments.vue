@@ -49,6 +49,7 @@
         </el-table-column>
         <el-table-column prop="code" label="部门编码" min-width="140" />
         <el-table-column prop="leader" label="负责人" min-width="120" />
+        <el-table-column prop="leaderCode" label="负责人编码" min-width="140" />
         <el-table-column prop="sort" label="排序" width="80" align="center" />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
@@ -108,7 +109,25 @@
           <el-input v-model="form.code" placeholder="请输入部门编码" />
         </el-form-item>
         <el-form-item label="负责人" prop="leader">
-          <el-input v-model="form.leader" placeholder="请输入负责人姓名" />
+          <el-select
+            v-model="form.leaderCode"
+            placeholder="请选择负责人"
+            clearable
+            filterable
+            style="width: 100%"
+          >
+            <el-option
+              v-for="user in dialogUserOptions"
+              :key="user.id"
+              :label="user.username"
+              :value="user.account"
+            >
+              <span style="display: flex; align-items: center; justify-content: space-between;">
+                <span>{{ user.username }} ({{ user.account }})</span>
+                <el-icon v-if="form.leaderCode === user.account" color="#409eff"><Check /></el-icon>
+              </span>
+            </el-option>
+          </el-select>
         </el-form-item>
         <el-form-item label="显示排序" prop="sort">
           <el-input-number v-model="form.sort" :min="0" style="width: 100%" />
@@ -169,7 +188,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Search,
@@ -179,7 +198,8 @@ import {
   Delete,
   CirclePlus,
   User,
-  OfficeBuilding
+  OfficeBuilding,
+  Check
 } from '@element-plus/icons-vue'
 import {
   getDepartmentList,
@@ -197,6 +217,7 @@ interface DeptItem {
   name: string
   code: string
   leader: string
+  leaderCode: string
   sort: number
   status: number
   description: string
@@ -240,6 +261,7 @@ const form = reactive({
   name: '',
   code: '',
   leader: '',
+  leaderCode: '',
   sort: 0,
   status: 1,
   description: ''
@@ -253,6 +275,7 @@ const formRules = {
 }
 
 const userOptions = ref<UserItem[]>([])
+const dialogUserOptions = ref<UserItem[]>([])
 
 const filteredUserOptions = computed(() => {
   if (!userSearch.value) return userOptions.value
@@ -325,20 +348,22 @@ const fetchData = async () => {
   }
 }
 
-const handleAdd = () => {
+const handleAdd = async () => {
   dialogTitle.value = '新增部门'
   resetForm()
+  await fetchDialogUsers()
   dialogVisible.value = true
 }
 
-const handleAddChild = (row: DeptItem) => {
+const handleAddChild = async (row: DeptItem) => {
   dialogTitle.value = '新增子部门'
   resetForm()
   form.parentId = row.id
+  await fetchDialogUsers()
   dialogVisible.value = true
 }
 
-const handleEdit = (row: DeptItem) => {
+const handleEdit = async (row: DeptItem) => {
   dialogTitle.value = '编辑部门'
   Object.assign(form, {
     id: row.id,
@@ -346,10 +371,12 @@ const handleEdit = (row: DeptItem) => {
     name: row.name,
     code: row.code,
     leader: row.leader,
+    leaderCode: row.leaderCode,
     sort: row.sort,
     status: row.status,
     description: row.description
   })
+  await fetchDialogUsers()
   dialogVisible.value = true
 }
 
@@ -387,6 +414,7 @@ const handleSubmit = async () => {
       name: form.name,
       code: form.code,
       leader: form.leader,
+      leaderCode: form.leaderCode,
       sort: form.sort,
       status: form.status,
       description: form.description
@@ -417,9 +445,43 @@ const resetForm = () => {
   form.name = ''
   form.code = ''
   form.leader = ''
+  form.leaderCode = ''
   form.sort = 0
   form.status = 1
   form.description = ''
+}
+
+const syncLeaderFromCode = () => {
+  if (!form.leaderCode) {
+    form.leader = ''
+    return
+  }
+  const user = dialogUserOptions.value.find((u) => u.account === form.leaderCode)
+  if (user) {
+    form.leader = user.username
+  } else {
+    form.leader = ''
+  }
+}
+
+watch(() => form.leaderCode, syncLeaderFromCode)
+watch(() => dialogUserOptions.value, syncLeaderFromCode)
+
+const fetchDialogUsers = async () => {
+  try {
+    const res: any = await getUserList({ page: 1, pageSize: 1000, status: 1 })
+    if (res && res.code === 0) {
+      dialogUserOptions.value = (res.data.list || []).map((u: any) => ({
+        id: u.id,
+        username: u.username,
+        account: u.account,
+        nickname: u.nickname,
+        phone: u.phone || u.mobile || ''
+      }))
+    }
+  } catch (error) {
+    console.error('获取用户列表失败', error)
+  }
 }
 
 const fetchUsers = async () => {

@@ -35,6 +35,7 @@ func buildDeptTree(list []models.Department) []gin.H {
 			"name":        item.Name,
 			"code":        item.Code,
 			"leader":      item.Leader,
+			"leaderCode":  item.LeaderCode,
 			"sort":        item.Sort,
 			"status":      item.Status,
 			"description": item.Description,

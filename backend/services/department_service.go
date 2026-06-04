@@ -12,7 +12,7 @@ import (
 type DepartmentService struct{}
 
 type DepartmentListResult struct {
-	Total int64              `json:"total"`
+	Total int64               `json:"total"`
 	List  []models.Department `json:"list"`
 }
 
@@ -66,11 +66,12 @@ func (s *DepartmentService) CreateDepartment(dept *models.Department) error {
 }
 
 func (s *DepartmentService) UpdateDepartment(id uint, dept *models.Department) error {
-	return utils.DB.Model(&models.Department{}).Where("id = ?", id).Updates(map[string]interface{}{
+	return utils.DB.Model(&models.Department{}).Where("id = ?", id).UpdateColumns(map[string]interface{}{
 		"parent_id":   dept.ParentID,
 		"name":        dept.Name,
 		"code":        dept.Code,
 		"leader":      dept.Leader,
+		"leader_code": dept.LeaderCode,
 		"sort":        dept.Sort,
 		"status":      dept.Status,
 		"description": dept.Description,
