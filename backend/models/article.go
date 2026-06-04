@@ -22,6 +22,7 @@ type Article struct {
 	Cover      string         `gorm:"size:500" json:"cover"`
 	Author     string         `gorm:"size:100" json:"author"`
 	Views      int            `gorm:"default:0" json:"views"`
+	StaticAt   *time.Time     `json:"staticAt"`
 	Tags       []Tag          `gorm:"many2many:article_tags;" json:"tags,omitempty"`
 }
 
