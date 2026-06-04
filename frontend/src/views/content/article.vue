@@ -188,6 +188,7 @@
               mode="default"
               @onCreated="handleCreated"
               @onChange="handleEditorChange"
+              @customPaste="handleCustomPaste"
             />
           </div>
         </el-form-item>
@@ -293,6 +294,18 @@ const getRowTags = (row: any) => {
 // 编辑器
 const editorRef = shallowRef<IDomEditor>()
 const toolbarConfig: Partial<IToolbarConfig> = {}
+const base64ToBlob = (base64: string): Blob => {
+  const parts = base64.split(',')
+  const mime = parts[0].match(/:(.*?);/)?.[1] || 'image/png'
+  const bstr = atob(parts[1])
+  let n = bstr.length
+  const u8arr = new Uint8Array(n)
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n)
+  }
+  return new Blob([u8arr], { type: mime })
+}
+
 const editorConfig: Partial<IEditorConfig> = {
   placeholder: '请输入文章内容...',
   MENU_CONF: {
@@ -326,6 +339,201 @@ const handleEditorChange = () => {
   if (formRef.value) {
     formRef.value.validateField('content').catch(() => {})
   }
+}
+
+const skipRTFGroup = (rtf: string, start: number): number => {
+  let i = start
+  if (rtf[i] !== '{') return i
+  let depth = 1
+  i++
+  while (i < rtf.length && depth > 0) {
+    if (rtf[i] === '{') depth++
+    else if (rtf[i] === '}') depth--
+    i++
+  }
+  return i
+}
+
+const extractImagesFromRTF = (rtf: string): Blob[] => {
+  const blobs: Blob[] = []
+  let pos = 0
+  while (true) {
+    const pictIdx = rtf.indexOf('\\pict', pos)
+    if (pictIdx === -1) break
+    let i = pictIdx + 5 // 跳过 \pict
+
+    // 跳过 \pict 后面所有参数控制字和嵌套组（如 {\*\picprop ...} \pngblip \picw123 等）
+    while (i < rtf.length) {
+      if (rtf[i] === '\\') {
+        i++
+        while (i < rtf.length && /[a-zA-Z*]/.test(rtf[i])) i++
+        while (i < rtf.length && /[0-9-]/.test(rtf[i])) i++
+        while (i < rtf.length && /\s/.test(rtf[i])) i++
+      } else if (rtf[i] === '{') {
+        i = skipRTFGroup(rtf, i)
+        while (i < rtf.length && /\s/.test(rtf[i])) i++
+      } else if (/\s/.test(rtf[i])) {
+        i++
+      } else if (rtf[i] === '}') {
+        break
+      } else {
+        break
+      }
+    }
+
+    // 读取十六进制数据
+    let hexStr = ''
+    while (i < rtf.length) {
+      const ch = rtf[i]
+      if (/[0-9a-fA-F]/.test(ch)) {
+        hexStr += ch
+      } else if (/\s/.test(ch)) {
+        // skip whitespace
+      } else if (ch === '}' || ch === '\\' || ch === '{') {
+        break
+      } else {
+        if (hexStr.length > 0) break
+      }
+      i++
+    }
+
+    if (hexStr.length > 0 && hexStr.length % 2 === 0) {
+      const bytes = new Uint8Array(hexStr.length / 2)
+      for (let j = 0; j < hexStr.length; j += 2) {
+        bytes[j / 2] = parseInt(hexStr.substring(j, j + 2), 16)
+      }
+      let type = 'image/png'
+      if (bytes[0] === 0xFF && bytes[1] === 0xD8) type = 'image/jpeg'
+      else if (bytes[0] === 0x47 && bytes[1] === 0x49) type = 'image/gif'
+      else if (bytes[0] === 0x89 && bytes[1] === 0x50) type = 'image/png'
+      else if (bytes[0] === 0x42 && bytes[1] === 0x4D) type = 'image/bmp'
+      blobs.push(new Blob([bytes], { type }))
+    }
+    pos = pictIdx + 1
+  }
+  return blobs
+}
+
+const handleCustomPaste = (editor: IDomEditor, event: ClipboardEvent) => {
+  const html = event.clipboardData?.getData('text/html')
+  const rtf = event.clipboardData?.getData('text/rtf')
+  const hasBase64 = html && html.includes('data:image')
+
+  // 方案1：HTML 中包含 base64 图片，提取并上传
+  if (hasBase64) {
+    event.preventDefault()
+    const div = document.createElement('div')
+    div.innerHTML = html
+    const imgs = div.querySelectorAll('img')
+    Promise.all(
+      Array.from(imgs).map(async (img) => {
+        const src = img.getAttribute('src') || ''
+        if (src.startsWith('data:image')) {
+          try {
+            const blob = base64ToBlob(src)
+            const ext = blob.type.split('/')[1] || 'png'
+            const file = new File([blob], `image.${ext}`, { type: blob.type })
+            const formData = new FormData()
+            formData.append('file', file)
+            const res: any = await request.post('/upload', formData, {
+              headers: { 'Content-Type': 'multipart/form-data' }
+            })
+            const url = res.data?.url || ''
+            if (url) {
+              img.setAttribute('src', url)
+            }
+          } catch {
+            // 上传失败则保留原 base64
+          }
+        }
+      })
+    ).then(() => {
+      editor.dangerouslyInsertHtml(div.innerHTML)
+    })
+    return false
+  }
+
+  // 方案1.5：HTML 有 img 但无 base64，且有 RTF，尝试从 RTF 提取图片
+  if (html && rtf && html.includes('<img') && !hasBase64) {
+    const pictIdx = rtf.indexOf('\\pict')
+    console.log('[paste] rtf has \\pict:', pictIdx !== -1)
+    if (pictIdx !== -1) {
+      console.log('[paste] rtf around \\pict:', rtf.substring(Math.max(0, pictIdx - 100), pictIdx + 300))
+    } else {
+      console.log('[paste] rtf snippet:', rtf.substring(0, 800))
+    }
+    const blobs = extractImagesFromRTF(rtf)
+    console.log('[paste] RTF images extracted:', blobs.length)
+    if (blobs.length > 0) {
+      event.preventDefault()
+      Promise.all(
+        blobs.map((blob) => {
+          const ext = blob.type.split('/')[1] || 'png'
+          const file = new File([blob], `image.${ext}`, { type: blob.type })
+          const formData = new FormData()
+          formData.append('file', file)
+          return request.post('/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          })
+        })
+      ).then((results: any[]) => {
+        const urls = results.map((res) => res.data?.url || '').filter(Boolean)
+        const div = document.createElement('div')
+        div.innerHTML = html
+        const imgs = div.querySelectorAll('img')
+        imgs.forEach((img, index) => {
+          if (urls[index]) {
+            img.setAttribute('src', urls[index])
+          }
+        })
+        // 移除仍然带有本地路径的图片，避免浏览器报 Not allowed to load local resource
+        div.querySelectorAll('img').forEach((img) => {
+          const src = img.getAttribute('src') || ''
+          if (src.startsWith('file://')) {
+            img.remove()
+          }
+        })
+        editor.dangerouslyInsertHtml(div.innerHTML)
+      })
+      return false
+    }
+  }
+
+  // 方案2：剪贴板中有独立的图片文件，直接上传
+  const items = event.clipboardData?.items
+  if (items) {
+    const imageFiles: File[] = []
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith('image/')) {
+        const file = items[i].getAsFile()
+        if (file) imageFiles.push(file)
+      }
+    }
+    if (imageFiles.length > 0) {
+      event.preventDefault()
+      imageFiles.forEach((file) => {
+        const formData = new FormData()
+        formData.append('file', file)
+        request.post('/upload', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        }).then((res: any) => {
+          const url = res.data?.url || ''
+          if (url) {
+            editor.insertNode({
+              type: 'image',
+              src: url,
+              alt: '',
+              href: '',
+              children: [{ text: '' }]
+            } as any)
+          }
+        })
+      })
+      return false
+    }
+  }
+
+  return true
 }
 
 onBeforeUnmount(() => {
