@@ -230,6 +230,7 @@ import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 import type { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor/editor'
 
+import request from '@/utils/request'
 import {
   getArticles,
   createArticle,
@@ -294,7 +295,27 @@ const editorRef = shallowRef<IDomEditor>()
 const toolbarConfig: Partial<IToolbarConfig> = {}
 const editorConfig: Partial<IEditorConfig> = {
   placeholder: '请输入文章内容...',
-  MENU_CONF: {}
+  MENU_CONF: {
+    uploadImage: {
+      async customUpload(file: File, insertFn: (url: string, alt: string, href: string) => void) {
+        const formData = new FormData()
+        formData.append('file', file)
+        try {
+          const res: any = await request.post('/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          })
+          const url = res.data?.url || ''
+          if (url) {
+            insertFn(url, '', '')
+          } else {
+            ElMessage.error('图片上传失败')
+          }
+        } catch {
+          ElMessage.error('图片上传失败')
+        }
+      }
+    }
+  }
 }
 
 const handleCreated = (editor: IDomEditor) => {
@@ -518,6 +539,7 @@ onMounted(() => {
 
     :deep(.el-form-item__content) {
       height: calc(100vh - 360px);
+      display: block;
     }
   }
 }
