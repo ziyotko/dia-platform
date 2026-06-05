@@ -61,7 +61,6 @@
           </template>
         </el-table-column>
         <el-table-column prop="author" label="作者" width="100" />
-        <el-table-column prop="authorCode" label="作者code" width="120" />
         <el-table-column prop="source" label="来源" width="140" show-overflow-tooltip />
         <el-table-column prop="views" label="阅读量" width="100" align="center" />
         <el-table-column prop="status" label="状态" width="100" align="center">

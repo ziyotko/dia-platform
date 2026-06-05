@@ -13,11 +13,13 @@ import (
 
 type LinkController struct {
 	linkService *services.LinkService
+	userService *services.UserService
 }
 
 func NewLinkController() *LinkController {
 	return &LinkController{
 		linkService: &services.LinkService{},
+		userService: &services.UserService{},
 	}
 }
 
@@ -105,6 +107,8 @@ func (c *LinkController) GetLinks(ctx *gin.Context) {
 			"columnName":  columnMap[l.ColumnID],
 			"sort":        l.Sort,
 			"status":      l.Status,
+			"author":      l.Author,
+			"authorCode":  l.AuthorCode,
 			"createTime":  l.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
@@ -140,6 +144,8 @@ func (c *LinkController) GetLinkByID(ctx *gin.Context) {
 		"columnId":    link.ColumnID,
 		"sort":        link.Sort,
 		"status":      link.Status,
+		"author":      link.Author,
+		"authorCode":  link.AuthorCode,
 	}))
 }
 
@@ -149,7 +155,13 @@ func (c *LinkController) CreateLink(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
 		return
 	}
-	err := c.linkService.CreateLink(&req)
+	userID := ctx.GetUint("userID")
+	user, err := c.userService.GetUserByID(userID)
+	if err == nil && user != nil {
+		req.Author = user.Username
+		req.AuthorCode = strconv.FormatUint(uint64(user.ID), 10)
+	}
+	err = c.linkService.CreateLink(&req)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "创建友链失败: "+err.Error()))
 		return
@@ -168,6 +180,12 @@ func (c *LinkController) UpdateLink(ctx *gin.Context) {
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
 		return
+	}
+	userID := ctx.GetUint("userID")
+	user, err := c.userService.GetUserByID(userID)
+	if err == nil && user != nil {
+		req.Author = user.Username
+		req.AuthorCode = strconv.FormatUint(uint64(user.ID), 10)
 	}
 	err = c.linkService.UpdateLink(uint(id), &req)
 	if err != nil {

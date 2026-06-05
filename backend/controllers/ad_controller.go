@@ -13,12 +13,14 @@ import (
 )
 
 type AdController struct {
-	adService *services.AdService
+	adService   *services.AdService
+	userService *services.UserService
 }
 
 func NewAdController() *AdController {
 	return &AdController{
-		adService: &services.AdService{},
+		adService:   &services.AdService{},
+		userService: &services.UserService{},
 	}
 }
 
@@ -107,6 +109,8 @@ func (c *AdController) GetAds(ctx *gin.Context) {
 			"status":     a.Status,
 			"startTime":  formatTime(a.StartTime),
 			"endTime":    formatTime(a.EndTime),
+			"author":     a.Author,
+			"authorCode": a.AuthorCode,
 			"createTime": a.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
@@ -133,16 +137,18 @@ func (c *AdController) GetAdByID(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, utils.Success("获取广告成功", gin.H{
-		"id":        ad.ID,
-		"name":      ad.Name,
-		"pageId":    ad.PageID,
-		"columnId":  ad.ColumnID,
-		"image":     ad.Image,
-		"link":      ad.Link,
-		"sort":      ad.Sort,
-		"status":    ad.Status,
-		"startTime": formatTime(ad.StartTime),
-		"endTime":   formatTime(ad.EndTime),
+		"id":         ad.ID,
+		"name":       ad.Name,
+		"pageId":     ad.PageID,
+		"columnId":   ad.ColumnID,
+		"image":      ad.Image,
+		"link":       ad.Link,
+		"sort":       ad.Sort,
+		"status":     ad.Status,
+		"startTime":  formatTime(ad.StartTime),
+		"endTime":    formatTime(ad.EndTime),
+		"author":     ad.Author,
+		"authorCode": ad.AuthorCode,
 	}))
 }
 
@@ -182,6 +188,12 @@ func (c *AdController) CreateAd(ctx *gin.Context) {
 		Status:    req.Status,
 		StartTime: startTime,
 		EndTime:   endTime,
+	}
+	userID := ctx.GetUint("userID")
+	user, err := c.userService.GetUserByID(userID)
+	if err == nil && user != nil {
+		ad.Author = user.Username
+		ad.AuthorCode = strconv.FormatUint(uint64(user.ID), 10)
 	}
 	err = c.adService.CreateAd(ad)
 	if err != nil {
@@ -233,6 +245,12 @@ func (c *AdController) UpdateAd(ctx *gin.Context) {
 		Status:    req.Status,
 		StartTime: startTime,
 		EndTime:   endTime,
+	}
+	userID := ctx.GetUint("userID")
+	user, err := c.userService.GetUserByID(userID)
+	if err == nil && user != nil {
+		ad.Author = user.Username
+		ad.AuthorCode = strconv.FormatUint(uint64(user.ID), 10)
 	}
 	err = c.adService.UpdateAd(uint(id), ad)
 	if err != nil {

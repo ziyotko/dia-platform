@@ -89,6 +89,7 @@
         </el-table-column>
         <el-table-column prop="description" label="网站描述" min-width="200" show-overflow-tooltip />
         <el-table-column prop="sort" label="排序" width="80" align="center" />
+        <el-table-column prop="author" label="作者" width="100" />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-switch

@@ -146,7 +146,7 @@ func (c *ArticleController) CreateArticle(ctx *gin.Context) {
 	user, err := c.userService.GetUserByID(userID)
 	if err == nil && user != nil {
 		req.Article.Author = user.Username
-		req.Article.AuthorCode = user.Account
+		req.Article.AuthorCode = strconv.FormatUint(uint64(user.ID), 10)
 	}
 
 	err = c.articleService.CreateArticle(&req.Article, req.TagIds)
@@ -177,7 +177,7 @@ func (c *ArticleController) UpdateArticle(ctx *gin.Context) {
 	user, err := c.userService.GetUserByID(userID)
 	if err == nil && user != nil {
 		req.Article.Author = user.Username
-		req.Article.AuthorCode = user.Account
+		req.Article.AuthorCode = strconv.FormatUint(uint64(user.ID), 10)
 	}
 
 	err = c.articleService.UpdateArticle(uint(id), &req.Article, req.TagIds)

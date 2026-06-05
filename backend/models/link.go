@@ -20,6 +20,8 @@ type Link struct {
 	ColumnID    uint           `gorm:"default:0;index" json:"columnId"`
 	Sort        int            `gorm:"default:0" json:"sort"`
 	Status      int            `gorm:"default:1" json:"status"`
+	Author      string         `gorm:"size:100" json:"author"`
+	AuthorCode  string         `gorm:"size:100" json:"authorCode"`
 }
 
 func (l Link) MarshalJSON() ([]byte, error) {
