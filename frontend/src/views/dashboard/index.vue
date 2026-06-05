@@ -144,7 +144,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, reactive, computed } from 'vue'
 import {
   Picture,
   DocumentChecked,
@@ -190,15 +190,44 @@ onMounted(() => {
 
 const chartPeriod = ref('week')
 
-const visitData = [
-  { label: '周一', value: 45 },
-  { label: '周二', value: 62 },
-  { label: '周三', value: 55 },
-  { label: '周四', value: 78 },
-  { label: '周五', value: 68 },
-  { label: '周六', value: 85 },
-  { label: '周日', value: 72 }
-]
+const visitData = computed(() => {
+  if (chartPeriod.value === 'month') {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = now.getMonth()
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+    const data = []
+    for (let i = 1; i <= daysInMonth; i++) {
+      data.push({ label: `${i}日`, value: Math.floor(Math.random() * 60) + 30 })
+    }
+    return data
+  }
+  if (chartPeriod.value === 'year') {
+    return [
+      { label: '1月', value: Math.floor(Math.random() * 60) + 30 },
+      { label: '2月', value: Math.floor(Math.random() * 60) + 30 },
+      { label: '3月', value: Math.floor(Math.random() * 60) + 30 },
+      { label: '4月', value: Math.floor(Math.random() * 60) + 30 },
+      { label: '5月', value: Math.floor(Math.random() * 60) + 30 },
+      { label: '6月', value: Math.floor(Math.random() * 60) + 30 },
+      { label: '7月', value: Math.floor(Math.random() * 60) + 30 },
+      { label: '8月', value: Math.floor(Math.random() * 60) + 30 },
+      { label: '9月', value: Math.floor(Math.random() * 60) + 30 },
+      { label: '10月', value: Math.floor(Math.random() * 60) + 30 },
+      { label: '11月', value: Math.floor(Math.random() * 60) + 30 },
+      { label: '12月', value: Math.floor(Math.random() * 60) + 30 }
+    ]
+  }
+  return [
+    { label: '周一', value: 45 },
+    { label: '周二', value: 62 },
+    { label: '周三', value: 55 },
+    { label: '周四', value: 78 },
+    { label: '周五', value: 68 },
+    { label: '周六', value: 85 },
+    { label: '周日', value: 72 }
+  ]
+})
 
 const notices = [
   { tag: '通知', title: '系统将于今晚进行例行维护', time: '2小时前', type: 'info' as const },
@@ -279,12 +308,17 @@ const quickLinks = [
     color: #2c3e50;
   }
 
+  .chart-placeholder {
+    overflow-x: auto;
+  }
+
   .mock-chart {
     display: flex;
     align-items: flex-end;
     justify-content: space-around;
     height: 200px;
     padding: 20px 0;
+    min-width: 100%;
 
     .bar-item {
       display: flex;
@@ -292,10 +326,12 @@ const quickLinks = [
       align-items: center;
       gap: 8px;
       flex: 1;
+      min-width: 28px;
     }
 
     .bar {
-      width: 32px;
+      width: 60%;
+      max-width: 32px;
       background: linear-gradient(180deg, #409eff 0%, #a0cfff 100%);
       border-radius: 6px 6px 0 0;
       transition: height 0.5s ease;
