@@ -58,3 +58,9 @@ func (s *LogService) GetUserOperationCount(userID uint) (int64, error) {
 	err := utils.DB.Model(&models.OperationLog{}).Where("user_id = ?", userID).Count(&count).Error
 	return count, err
 }
+
+func (s *LogService) GetRecentLoginLogs(limit int) ([]models.LoginLog, error) {
+	var logs []models.LoginLog
+	err := utils.DB.Model(&models.LoginLog{}).Order("id DESC").Limit(limit).Find(&logs).Error
+	return logs, err
+}

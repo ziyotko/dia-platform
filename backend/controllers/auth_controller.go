@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"server/models"
 	"server/services"
 	"server/utils"
 )
@@ -53,10 +54,37 @@ func (c *AuthController) Login(ctx *gin.Context) {
 	}
 
 	user, token, err := c.userService.Login(req.Email, req.Account, req.Mobile, req.Password, req.CaptchaID, req.CaptchaCode)
+
+	username := req.Account
+	if username == "" {
+		username = req.Email
+		if username == "" {
+			username = req.Mobile
+		}
+	}
+
+	browser, os, device := utils.ParseUA(ctx.Request.UserAgent())
+	loginLog := &models.LoginLog{
+		Username: username,
+		IP:       ctx.ClientIP(),
+		Browser:  browser,
+		OS:       os,
+		Device:   device,
+	}
+
 	if err != nil {
+		loginLog.Status = 0
+		utils.DB.Create(loginLog)
 		ctx.JSON(200, utils.Error(1, err.Error()))
 		return
 	}
+
+	loginLog.Username = user.Username
+	if loginLog.Username == "" {
+		loginLog.Username = user.Account
+	}
+	loginLog.Status = 1
+	utils.DB.Create(loginLog)
 
 	ctx.JSON(200, utils.Success("登录成功", gin.H{
 		"user":  user,

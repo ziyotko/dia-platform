@@ -123,10 +123,15 @@
             </div>
           </template>
           <el-table :data="loginLogs" size="small" :show-header="false">
-            <el-table-column prop="time" width="160" />
-            <el-table-column prop="ip" width="140" />
-            <el-table-column prop="device" />
-            <el-table-column width="80">
+            <el-table-column prop="time" width="150" />
+            <el-table-column prop="username" width="90" />
+            <el-table-column prop="ip" width="120" />
+            <el-table-column>
+              <template #default="{ row }">
+                <span>{{ row.browser }} / {{ row.os }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column width="60">
               <template #default="{ row }">
                 <el-tag :type="row.status === '成功' ? 'success' : 'danger'" size="small">{{ row.status }}</el-tag>
               </template>
@@ -146,7 +151,7 @@ import {
   View,
   BellFilled
 } from '@element-plus/icons-vue'
-import { getDashboardStats } from '@/api/dashboard'
+import { getDashboardStats, getLoginLogs } from '@/api/dashboard'
 
 const stats = reactive({
   adCount: 0,
@@ -165,8 +170,22 @@ const fetchStats = async () => {
   }
 }
 
+const loginLogs = ref<any[]>([])
+
+const fetchLoginLogs = async () => {
+  try {
+    const res: any = await getLoginLogs()
+    if (res && res.data) {
+      loginLogs.value = res.data
+    }
+  } catch (error) {
+    // 静默失败
+  }
+}
+
 onMounted(() => {
   fetchStats()
+  fetchLoginLogs()
 })
 
 const chartPeriod = ref('week')
@@ -196,12 +215,7 @@ const quickLinks = [
   { name: '系统设置', icon: 'Setting', path: '/settings', bg: 'rgba(245, 108, 108, 0.1)', color: '#f56c6c' }
 ]
 
-const loginLogs = [
-  { time: '2026-06-01 09:30:22', ip: '192.168.1.100', device: 'Chrome / Windows', status: '成功' },
-  { time: '2026-05-31 18:15:06', ip: '192.168.1.100', device: 'Chrome / Windows', status: '成功' },
-  { time: '2026-05-31 08:42:33', ip: '192.168.1.105', device: 'Safari / macOS', status: '成功' },
-  { time: '2026-05-30 14:20:11', ip: '10.0.0.55', device: 'Firefox / Linux', status: '失败' }
-]
+
 </script>
 
 <style scoped lang="scss">

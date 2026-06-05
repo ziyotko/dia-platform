@@ -29,7 +29,7 @@ func SetupRoutes(router *gin.Engine) {
 	apiPrefix := config.AppConfig.Server.ApiPrefix
 
 	public := router.Group(apiPrefix)
-	public.Use(middleware.ReplayProtectionMiddleware(), middleware.OperationLog())
+	public.Use(middleware.ReplayProtectionMiddleware())
 	{
 		public.GET("/captcha", authController.GetCaptcha)
 		public.POST("/login", authController.Login)
@@ -136,5 +136,6 @@ func SetupRoutes(router *gin.Engine) {
 		protected.DELETE("/departments/:id", deptController.DeleteDepartment)
 
 		protected.GET("/dashboard/stats", dashboardController.GetStats)
+		protected.GET("/dashboard/login-logs", dashboardController.GetLoginLogs)
 	}
 }
