@@ -48,20 +48,21 @@ func getModule(path string) string {
 	}
 
 	moduleMap := map[string]string{
-		"login":    "认证模块",
-		"logout":   "认证模块",
-		"profile":  "个人信息",
-		"users":    "用户管理",
-		"roles":    "角色管理",
-		"menus":    "菜单管理",
-		"articles": "文章管理",
-		"category": "分类管理",
-		"tag":      "标签管理",
-		"comment":  "评论管理",
-		"ad":       "广告管理",
-		"link":     "友链管理",
-		"logs":     "日志管理",
-		"captcha":  "认证模块",
+		"login":     "认证模块",
+		"logout":    "认证模块",
+		"profile":   "个人信息",
+		"users":     "用户管理",
+		"roles":     "角色管理",
+		"menus":     "菜单管理",
+		"articles":  "文章管理",
+		"category":  "分类管理",
+		"tag":       "标签管理",
+		"comment":   "评论管理",
+		"ad":        "广告管理",
+		"link":      "友链管理",
+		"logs":      "日志管理",
+		"captcha":   "认证模块",
+		"dashboard": "统计模块",
 	}
 
 	if module, ok := moduleMap[parts[0]]; ok {
