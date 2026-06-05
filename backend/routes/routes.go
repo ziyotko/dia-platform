@@ -10,6 +10,7 @@ import (
 
 func SetupRoutes(router *gin.Engine) {
 	authController := controllers.NewAuthController()
+	workflowController := controllers.NewWorkflowController()
 	userController := controllers.NewUserController()
 	menuController := controllers.NewMenuController()
 	roleController := controllers.NewRoleController()
@@ -42,6 +43,15 @@ func SetupRoutes(router *gin.Engine) {
 	protected.Use(middleware.ReplayProtectionMiddleware(), middleware.AuthMiddleware(), middleware.OperationLog())
 	{
 		protected.POST("/logout", authController.Logout)
+
+		protected.GET("/workflows", workflowController.GetWorkflows)
+		protected.POST("/workflows", workflowController.CreateWorkflow)
+		protected.GET("/workflows/:id", workflowController.GetWorkflowByID)
+		protected.PUT("/workflows/:id", workflowController.UpdateWorkflow)
+		protected.DELETE("/workflows/:id", workflowController.DeleteWorkflow)
+		protected.PUT("/workflows/:id/nodes", workflowController.SaveWorkflowNodes)
+		protected.GET("/workflows/:id/nodes", workflowController.GetWorkflowNodes)
+
 		protected.GET("/profile", authController.GetProfile)
 		protected.PUT("/profile", authController.UpdateProfile)
 		protected.PUT("/profile/password", authController.ChangePassword)
