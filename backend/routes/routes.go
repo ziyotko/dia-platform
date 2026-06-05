@@ -26,6 +26,7 @@ func SetupRoutes(router *gin.Engine) {
 	linkController := controllers.NewLinkController()
 	deptController := controllers.NewDepartmentController()
 	dashboardController := controllers.NewDashboardController()
+	visitController := controllers.NewVisitController()
 	apiPrefix := config.AppConfig.Server.ApiPrefix
 
 	public := router.Group(apiPrefix)
@@ -34,6 +35,7 @@ func SetupRoutes(router *gin.Engine) {
 		public.GET("/captcha", authController.GetCaptcha)
 		public.POST("/login", authController.Login)
 		public.GET("/site-info", settingsController.GetPublicSiteInfo)
+		public.POST("/visit", visitController.RecordVisit)
 	}
 
 	protected := router.Group(apiPrefix)
