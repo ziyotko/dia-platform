@@ -76,7 +76,20 @@
             <span v-else>-</span>
           </template>
         </el-table-column>
+        <el-table-column prop="isBold" label="加粗" width="80" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.isBold" type="danger">加粗</el-tag>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="defaultColor" label="颜色" width="80" align="center">
+          <template #default="{ row }">
+            <span v-if="row.defaultColor" :style="{ display: 'inline-block', width: '20px', height: '20px', backgroundColor: row.defaultColor, borderRadius: '4px', border: '1px solid #dcdfe6' }" />
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="170" />
+        <el-table-column prop="staticTime" label="静态化时间" width="170" />
         <el-table-column label="操作" width="240" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handlePreview(row)">
@@ -170,12 +183,25 @@
           </el-col>
         </el-row>
         <el-row :gutter="16">
-          <el-col :span="12">
+          <el-col :span="8">
             <el-form-item label="是否置顶" prop="isTop">
               <el-radio-group v-model="form.isTop">
                 <el-radio :value="1">置顶</el-radio>
                 <el-radio :value="0">不置顶</el-radio>
               </el-radio-group>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="是否加粗" prop="isBold">
+              <el-radio-group v-model="form.isBold">
+                <el-radio :value="1">加粗</el-radio>
+                <el-radio :value="0">不加粗</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="默认颜色" prop="defaultColor">
+              <el-color-picker v-model="form.defaultColor" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -274,6 +300,8 @@ const form = reactive({
   content: '',
   status: 0,
   isTop: 0,
+  isBold: 0,
+  defaultColor: '',
   cover: '',
   source: ''
 })
@@ -621,6 +649,8 @@ const handleEdit = async (row: any) => {
     content: row.content || '',
     status: row.status,
     isTop: row.isTop,
+    isBold: row.isBold ?? 0,
+    defaultColor: row.defaultColor || '',
     cover: row.cover || '',
     source: row.source || ''
   })
@@ -677,6 +707,8 @@ const handleSubmit = async () => {
       content: form.content,
       status: form.status,
       isTop: form.isTop,
+      isBold: form.isBold,
+      defaultColor: form.defaultColor,
       cover: form.cover,
       source: form.source
     }
@@ -703,6 +735,8 @@ const resetForm = () => {
   form.content = ''
   form.status = 0
   form.isTop = 0
+  form.isBold = 0
+  form.defaultColor = ''
   form.cover = ''
   form.source = ''
 }

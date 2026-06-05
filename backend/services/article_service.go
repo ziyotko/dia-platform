@@ -65,16 +65,18 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 			return err
 		}
 		updates := map[string]interface{}{
-			"title":       article.Title,
-			"category_id": article.CategoryID,
-			"summary":     article.Summary,
-			"content":     article.Content,
-			"status":      article.Status,
-			"is_top":      article.IsTop,
-			"cover":       article.Cover,
-			"author":      article.Author,
-			"author_code": article.AuthorCode,
-			"source":      article.Source,
+			"title":         article.Title,
+			"category_id":   article.CategoryID,
+			"summary":       article.Summary,
+			"content":       article.Content,
+			"status":        article.Status,
+			"is_top":        article.IsTop,
+			"is_bold":       article.IsBold,
+			"default_color": article.DefaultColor,
+			"cover":         article.Cover,
+			"author":        article.Author,
+			"author_code":   article.AuthorCode,
+			"source":        article.Source,
 		}
 		if err := tx.Model(&old).Updates(updates).Error; err != nil {
 			return err

@@ -9,6 +9,8 @@ export interface ArticleForm {
   content: string
   status: number
   isTop: number
+  isBold: number
+  defaultColor: string
   cover: string
   source: string
 }
