@@ -71,7 +71,7 @@
           <div class="chart-placeholder">
             <div class="mock-chart">
               <div v-for="(item, index) in visitData" :key="index" class="bar-item">
-                <div class="bar" :style="{ height: item.value + '%' }"></div>
+                <div class="bar" :style="{ height: item.value + 'px' }"></div>
                 <div class="bar-label">{{ item.label }}</div>
               </div>
             </div>
@@ -192,40 +192,37 @@ onMounted(() => {
 })
 
 const chartPeriod = ref('week')
-const visitTrendData = ref<{ label: string; value: number }[]>([])
+const visitData = ref<{ label: string; value: number }[]>([
+  { label: '周一', value: 45 },
+  { label: '周二', value: 62 },
+  { label: '周三', value: 55 },
+  { label: '周四', value: 78 },
+  { label: '周五', value: 68 },
+  { label: '周六', value: 85 },
+  { label: '周日', value: 72 }
+])
 
 const fetchVisitTrend = async () => {
   try {
     const res: any = await getVisitTrend(chartPeriod.value)
-    if (res && res.data) {
-      visitTrendData.value = res.data.map((item: any) => ({
+    if (res && Array.isArray(res.data) && res.data.length > 0) {
+      const raw = res.data.map((item: any) => ({
         label: item.label,
-        value: Number(item.value)
+        value: Number(item.value) || 0
+      }))
+      const maxVal = Math.max(...raw.map((i: any) => i.value))
+      visitData.value = raw.map((item: any) => ({
+        label: item.label,
+        value: maxVal > 0 ? Math.round((item.value / maxVal) * 160) + 20 : 20
       }))
     }
   } catch (error) {
-    // 静默失败
+    console.error('fetchVisitTrend error:', error)
   }
 }
 
 watch(chartPeriod, () => {
   fetchVisitTrend()
-})
-
-const visitData = computed(() => {
-  if (visitTrendData.value.length > 0) {
-    return visitTrendData.value
-  }
-  // 默认兜底数据
-  return [
-    { label: '周一', value: 45 },
-    { label: '周二', value: 62 },
-    { label: '周三', value: 55 },
-    { label: '周四', value: 78 },
-    { label: '周五', value: 68 },
-    { label: '周六', value: 85 },
-    { label: '周日', value: 72 }
-  ]
 })
 
 const notices = [

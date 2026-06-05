@@ -72,19 +72,13 @@ func (c *DashboardController) GetVisitTrend(ctx *gin.Context) {
 		monday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).AddDate(0, 0, -(weekday - 1))
 		nextMonday := monday.AddDate(0, 0, 7)
 
-		var rows []struct {
-			Date  string `json:"date"`
-			Count int64  `json:"count"`
-		}
-		utils.DB.Model(&models.SiteAnalytics{}).
-			Select("DATE(visited_at) as date, COUNT(*) as count").
-			Where("visited_at >= ? AND visited_at < ?", monday, nextMonday).
-			Group("DATE(visited_at)").
-			Scan(&rows)
+		var visits []models.SiteAnalytics
+		utils.DB.Where("visited_at >= ? AND visited_at < ?", monday, nextMonday).Find(&visits)
 
 		countMap := make(map[string]int64)
-		for _, row := range rows {
-			countMap[row.Date] = row.Count
+		for _, v := range visits {
+			dateStr := v.VisitedAt.Format("2006-01-02")
+			countMap[dateStr]++
 		}
 
 		days := []string{"周一", "周二", "周三", "周四", "周五", "周六", "周日"}
@@ -99,19 +93,13 @@ func (c *DashboardController) GetVisitTrend(ctx *gin.Context) {
 		endOfMonth := startOfMonth.AddDate(0, 1, 0)
 		daysInMonth := endOfMonth.AddDate(0, 0, -1).Day()
 
-		var rows []struct {
-			Date  string `json:"date"`
-			Count int64  `json:"count"`
-		}
-		utils.DB.Model(&models.SiteAnalytics{}).
-			Select("DATE(visited_at) as date, COUNT(*) as count").
-			Where("visited_at >= ? AND visited_at < ?", startOfMonth, endOfMonth).
-			Group("DATE(visited_at)").
-			Scan(&rows)
+		var visits []models.SiteAnalytics
+		utils.DB.Where("visited_at >= ? AND visited_at < ?", startOfMonth, endOfMonth).Find(&visits)
 
 		countMap := make(map[string]int64)
-		for _, row := range rows {
-			countMap[row.Date] = row.Count
+		for _, v := range visits {
+			dateStr := v.VisitedAt.Format("2006-01-02")
+			countMap[dateStr]++
 		}
 
 		for i := 1; i <= daysInMonth; i++ {
@@ -124,19 +112,13 @@ func (c *DashboardController) GetVisitTrend(ctx *gin.Context) {
 		startOfYear := time.Date(now.Year(), 1, 1, 0, 0, 0, 0, now.Location())
 		endOfYear := startOfYear.AddDate(1, 0, 0)
 
-		var rows []struct {
-			Month string `json:"month"`
-			Count int64  `json:"count"`
-		}
-		utils.DB.Model(&models.SiteAnalytics{}).
-			Select("DATE_FORMAT(visited_at, '%Y-%m') as month, COUNT(*) as count").
-			Where("visited_at >= ? AND visited_at < ?", startOfYear, endOfYear).
-			Group("DATE_FORMAT(visited_at, '%Y-%m')").
-			Scan(&rows)
+		var visits []models.SiteAnalytics
+		utils.DB.Where("visited_at >= ? AND visited_at < ?", startOfYear, endOfYear).Find(&visits)
 
 		countMap := make(map[string]int64)
-		for _, row := range rows {
-			countMap[row.Month] = row.Count
+		for _, v := range visits {
+			monthStr := v.VisitedAt.Format("2006-01")
+			countMap[monthStr]++
 		}
 
 		months := []string{"1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"}
