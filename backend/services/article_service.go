@@ -118,3 +118,9 @@ func (s *ArticleService) GetArticleCountByAuthor(authorCode string) int64 {
 	utils.DB.Model(&models.Article{}).Where("author_code = ?", authorCode).Count(&count)
 	return count
 }
+
+func (s *ArticleService) GetArticleCount() int64 {
+	var count int64
+	utils.DB.Model(&models.Article{}).Count(&count)
+	return count
+}

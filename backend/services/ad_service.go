@@ -75,3 +75,9 @@ func (s *AdService) DeleteAd(id uint) error {
 	}
 	return utils.DB.Delete(&ad).Error
 }
+
+func (s *AdService) GetAdCount() int64 {
+	var count int64
+	utils.DB.Model(&models.Ad{}).Count(&count)
+	return count
+}

@@ -25,6 +25,7 @@ func SetupRoutes(router *gin.Engine) {
 	adController := controllers.NewAdController()
 	linkController := controllers.NewLinkController()
 	deptController := controllers.NewDepartmentController()
+	dashboardController := controllers.NewDashboardController()
 	apiPrefix := config.AppConfig.Server.ApiPrefix
 
 	public := router.Group(apiPrefix)
@@ -133,5 +134,7 @@ func SetupRoutes(router *gin.Engine) {
 		protected.POST("/departments", deptController.CreateDepartment)
 		protected.PUT("/departments/:id", deptController.UpdateDepartment)
 		protected.DELETE("/departments/:id", deptController.DeleteDepartment)
+
+		protected.GET("/dashboard/stats", dashboardController.GetStats)
 	}
 }

@@ -5,11 +5,11 @@
         <el-card class="stat-card" shadow="hover">
           <div class="stat-content">
             <div class="stat-icon" style="background: rgba(64, 158, 255, 0.1); color: #409eff;">
-              <el-icon size="28"><UserFilled /></el-icon>
+              <el-icon size="28"><Picture /></el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-value">1,286</div>
-              <div class="stat-label">注册用户</div>
+              <div class="stat-value">{{ stats.adCount.toLocaleString() }}</div>
+              <div class="stat-label">广告数量</div>
             </div>
           </div>
         </el-card>
@@ -21,7 +21,7 @@
               <el-icon size="28"><DocumentChecked /></el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-value">3,452</div>
+              <div class="stat-value">{{ stats.articleCount.toLocaleString() }}</div>
               <div class="stat-label">内容文章</div>
             </div>
           </div>
@@ -139,13 +139,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, reactive } from 'vue'
 import {
-  UserFilled,
+  Picture,
   DocumentChecked,
   View,
   BellFilled
 } from '@element-plus/icons-vue'
+import { getDashboardStats } from '@/api/dashboard'
+
+const stats = reactive({
+  adCount: 0,
+  articleCount: 0
+})
+
+const fetchStats = async () => {
+  try {
+    const res: any = await getDashboardStats()
+    if (res && res.data) {
+      stats.adCount = res.data.adCount || 0
+      stats.articleCount = res.data.articleCount || 0
+    }
+  } catch (error) {
+    // 静默失败，保持默认值
+  }
+}
+
+onMounted(() => {
+  fetchStats()
+})
 
 const chartPeriod = ref('week')
 
