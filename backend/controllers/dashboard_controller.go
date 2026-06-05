@@ -2,9 +2,11 @@ package controllers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
+	"server/models"
 	"server/services"
 	"server/utils"
 )
@@ -27,9 +29,16 @@ func (c *DashboardController) GetStats(ctx *gin.Context) {
 	adCount := c.adService.GetAdCount()
 	articleCount := c.articleService.GetArticleCount()
 
+	var todayVisit int64
+	now := time.Now()
+	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	endOfDay := startOfDay.Add(24 * time.Hour)
+	utils.DB.Model(&models.SiteAnalytics{}).Where("visited_at >= ? AND visited_at < ?", startOfDay, endOfDay).Count(&todayVisit)
+
 	ctx.JSON(http.StatusOK, utils.Success("获取成功", gin.H{
 		"adCount":      adCount,
 		"articleCount": articleCount,
+		"todayVisit":   todayVisit,
 	}))
 }
 

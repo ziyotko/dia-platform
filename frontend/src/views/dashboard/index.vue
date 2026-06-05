@@ -34,7 +34,7 @@
               <el-icon size="28"><View /></el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-value">89,234</div>
+              <div class="stat-value">{{ stats.todayVisit.toLocaleString() }}</div>
               <div class="stat-label">今日访问</div>
             </div>
           </div>
@@ -155,7 +155,8 @@ import { getDashboardStats, getLoginLogs } from '@/api/dashboard'
 
 const stats = reactive({
   adCount: 0,
-  articleCount: 0
+  articleCount: 0,
+  todayVisit: 0
 })
 
 const fetchStats = async () => {
@@ -164,6 +165,7 @@ const fetchStats = async () => {
     if (res && res.data) {
       stats.adCount = res.data.adCount || 0
       stats.articleCount = res.data.articleCount || 0
+      stats.todayVisit = res.data.todayVisit || 0
     }
   } catch (error) {
     // 静默失败，保持默认值
