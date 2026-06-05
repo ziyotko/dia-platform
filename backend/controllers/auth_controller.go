@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -102,7 +103,7 @@ func (c *AuthController) GetProfile(ctx *gin.Context) {
 	if onlineDays < 1 {
 		onlineDays = 1
 	}
-	articleCount := c.articleService.GetArticleCountByAuthor(user.Username)
+	articleCount := c.articleService.GetArticleCountByAuthor(strconv.FormatUint(uint64(user.ID), 10))
 
 	ctx.JSON(200, utils.Success("获取用户信息成功", gin.H{
 		"user": gin.H{

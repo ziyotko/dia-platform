@@ -113,8 +113,8 @@ func (s *ArticleService) DeleteArticle(id uint) error {
 	})
 }
 
-func (s *ArticleService) GetArticleCountByAuthor(author string) int64 {
+func (s *ArticleService) GetArticleCountByAuthor(authorCode string) int64 {
 	var count int64
-	utils.DB.Model(&models.Article{}).Where("author = ?", author).Count(&count)
+	utils.DB.Model(&models.Article{}).Where("author_code = ?", authorCode).Count(&count)
 	return count
 }
