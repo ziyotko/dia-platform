@@ -68,14 +68,7 @@
               </el-radio-group>
             </div>
           </template>
-          <div class="chart-placeholder">
-            <div class="mock-chart">
-              <div v-for="(item, index) in visitData" :key="index" class="bar-item">
-                <div class="bar" :style="{ height: item.value + 'px' }"></div>
-                <div class="bar-label">{{ item.label }}</div>
-              </div>
-            </div>
-          </div>
+          <div ref="chartRef" class="chart-container"></div>
         </el-card>
       </el-col>
       <el-col :xs="24" :lg="8">
@@ -144,7 +137,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive, computed, watch } from 'vue'
+import { ref, onMounted, reactive, watch, onUnmounted, nextTick } from 'vue'
+import * as echarts from 'echarts'
+import type { ECharts } from 'echarts'
 import {
   Picture,
   DocumentChecked,
@@ -189,6 +184,7 @@ onMounted(() => {
   fetchStats()
   fetchLoginLogs()
   fetchVisitTrend()
+  initChart()
 })
 
 const chartPeriod = ref('week')
@@ -202,19 +198,52 @@ const visitData = ref<{ label: string; value: number }[]>([
   { label: '周日', value: 72 }
 ])
 
+const chartRef = ref<HTMLDivElement | null>(null)
+let chartInstance: ECharts | null = null
+
+const updateChart = () => {
+  if (!chartInstance) return
+  const labels = visitData.value.map(item => item.label)
+  const values = visitData.value.map(item => item.value)
+  chartInstance.setOption({
+    tooltip: { trigger: 'axis' },
+    grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
+    xAxis: { type: 'category', boundaryGap: false, data: labels },
+    yAxis: { type: 'value', minInterval: 1 },
+    series: [{
+      type: 'line',
+      data: values,
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 8,
+      itemStyle: { color: '#409eff' },
+      lineStyle: { width: 3, color: '#409eff' },
+      areaStyle: {
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: 'rgba(64, 158, 255, 0.3)' },
+          { offset: 1, color: 'rgba(64, 158, 255, 0.05)' }
+        ])
+      }
+    }]
+  }, true)
+}
+
+const initChart = () => {
+  if (!chartRef.value) return
+  chartInstance = echarts.init(chartRef.value)
+  updateChart()
+  window.addEventListener('resize', () => chartInstance?.resize())
+}
+
 const fetchVisitTrend = async () => {
   try {
     const res: any = await getVisitTrend(chartPeriod.value)
     if (res && Array.isArray(res.data) && res.data.length > 0) {
-      const raw = res.data.map((item: any) => ({
+      visitData.value = res.data.map((item: any) => ({
         label: item.label,
         value: Number(item.value) || 0
       }))
-      const maxVal = Math.max(...raw.map((i: any) => i.value))
-      visitData.value = raw.map((item: any) => ({
-        label: item.label,
-        value: maxVal > 0 ? Math.round((item.value / maxVal) * 160) + 20 : 20
-      }))
+      nextTick(() => updateChart())
     }
   } catch (error) {
     console.error('fetchVisitTrend error:', error)
@@ -223,6 +252,16 @@ const fetchVisitTrend = async () => {
 
 watch(chartPeriod, () => {
   fetchVisitTrend()
+})
+
+watch(visitData, () => {
+  updateChart()
+}, { deep: true })
+
+onUnmounted(() => {
+  window.removeEventListener('resize', () => chartInstance?.resize())
+  chartInstance?.dispose()
+  chartInstance = null
 })
 
 const notices = [
@@ -304,40 +343,9 @@ const quickLinks = [
     color: #2c3e50;
   }
 
-  .chart-placeholder {
-    overflow-x: auto;
-  }
-
-  .mock-chart {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-around;
-    height: 200px;
-    padding: 20px 0;
-    min-width: 100%;
-
-    .bar-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      flex: 1;
-      min-width: 28px;
-    }
-
-    .bar {
-      width: 60%;
-      max-width: 32px;
-      background: linear-gradient(180deg, #409eff 0%, #a0cfff 100%);
-      border-radius: 6px 6px 0 0;
-      transition: height 0.5s ease;
-      min-height: 20px;
-    }
-
-    .bar-label {
-      font-size: 12px;
-      color: #909399;
-    }
+  .chart-container {
+    width: 100%;
+    height: 300px;
   }
 
   .notice-list {
