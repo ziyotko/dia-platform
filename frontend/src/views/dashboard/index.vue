@@ -273,9 +273,9 @@ const notices = [
 ]
 
 const quickLinks = [
-  { name: '用户管理', icon: 'User', path: '/users', bg: 'rgba(64, 158, 255, 0.1)', color: '#409eff' },
-  { name: '内容发布', icon: 'EditPen', path: '/dashboard', bg: 'rgba(103, 194, 58, 0.1)', color: '#67c23a' },
-  { name: '系统监控', icon: 'Monitor', path: '/dashboard', bg: 'rgba(230, 162, 60, 0.1)', color: '#e6a23c' },
+  { name: '用户管理', icon: 'User', path: '/system/users', bg: 'rgba(64, 158, 255, 0.1)', color: '#409eff' },
+  { name: '内容发布', icon: 'EditPen', path: '/content/article', bg: 'rgba(103, 194, 58, 0.1)', color: '#67c23a' },
+  { name: '广告管理', icon: 'Promotion', path: '/content/ad', bg: 'rgba(230, 162, 60, 0.1)', color: '#e6a23c' },
   { name: '系统设置', icon: 'Setting', path: '/settings', bg: 'rgba(245, 108, 108, 0.1)', color: '#f56c6c' }
 ]
 
