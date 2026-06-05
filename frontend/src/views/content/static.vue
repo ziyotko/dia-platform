@@ -95,84 +95,80 @@
       </div>
     </el-card>
 
-    <!-- 页面静态化状态 -->
-    <el-card shadow="hover" class="table-card">
-      <template #header>
-        <div class="card-header">
-          <span>页面静态化状态</span>
-          <el-button type="primary" link @click="fetchPageList">
-            <el-icon><Refresh /></el-icon>刷新
-          </el-button>
-        </div>
-      </template>
-      <el-table :data="pageList" v-loading="loading" border stripe>
-        <el-table-column type="index" width="60" align="center" />
-        <el-table-column prop="name" label="页面名称" min-width="180" />
-        <el-table-column prop="path" label="访问路径" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="type" label="页面类型" width="120">
-          <template #default="{ row }">
-            <el-tag :type="row.type === '首页' ? 'primary' : row.type === '文章' ? 'success' : 'info'">
-              {{ row.type }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="静态化状态" width="120" align="center">
-          <template #default="{ row }">
-            <el-tag :type="row.status === '已生成' ? 'success' : 'warning'">
-              {{ row.status }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="generateTime" label="生成时间" width="170" />
-        <el-table-column prop="fileSize" label="文件大小" width="120" align="center" />
-        <el-table-column label="操作" width="180" align="center" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" :loading="row.generating" @click="handleGenerateSingle(row)">
-              <el-icon><Refresh /></el-icon>重新生成
+    <!-- Tab 切换区域 -->
+    <el-card shadow="hover" class="tab-card">
+      <el-tabs v-model="activeTab">
+        <el-tab-pane label="页面静态化状态" name="status">
+          <div class="tab-header-actions">
+            <el-button type="primary" link @click="fetchPageList">
+              <el-icon><Refresh /></el-icon>刷新
             </el-button>
-            <el-button link type="success" @click="handlePreview(row)">
-              <el-icon><View /></el-icon>预览
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      <div class="pagination">
-        <el-pagination
-          v-model:current-page="queryForm.page"
-          v-model:page-size="queryForm.pageSize"
-          :page-sizes="[10, 20, 50, 100]"
-          :total="total"
-          layout="total, sizes, prev, pager, next, jumper"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-        />
-      </div>
-    </el-card>
-
-    <!-- 生成日志 -->
-    <el-card shadow="hover" class="log-card">
-      <template #header>
-        <div class="card-header">
-          <span>生成日志</span>
-          <el-button type="danger" link @click="clearLogs">
-            <el-icon><Delete /></el-icon>清空日志
-          </el-button>
-        </div>
-      </template>
-      <el-timeline>
-        <el-timeline-item
-          v-for="(log, index) in logList"
-          :key="index"
-          :type="log.type"
-          :icon="log.icon"
-          :timestamp="log.time"
-        >
-          <div class="log-content">
-            <span class="log-title">{{ log.title }}</span>
-            <span class="log-detail">{{ log.detail }}</span>
           </div>
-        </el-timeline-item>
-      </el-timeline>
+          <el-table :data="pageList" v-loading="loading" border stripe>
+            <el-table-column type="index" width="60" align="center" />
+            <el-table-column prop="name" label="页面名称" min-width="180" />
+            <el-table-column prop="path" label="访问路径" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="type" label="页面类型" width="120">
+              <template #default="{ row }">
+                <el-tag :type="row.type === '首页' ? 'primary' : row.type === '文章' ? 'success' : 'info'">
+                  {{ row.type }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="status" label="静态化状态" width="120" align="center">
+              <template #default="{ row }">
+                <el-tag :type="row.status === '已生成' ? 'success' : 'warning'">
+                  {{ row.status }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="generateTime" label="生成时间" width="170" />
+            <el-table-column prop="fileSize" label="文件大小" width="120" align="center" />
+            <el-table-column label="操作" width="180" align="center" fixed="right">
+              <template #default="{ row }">
+                <el-button link type="primary" :loading="row.generating" @click="handleGenerateSingle(row)">
+                  <el-icon><Refresh /></el-icon>重新生成
+                </el-button>
+                <el-button link type="success" @click="handlePreview(row)">
+                  <el-icon><View /></el-icon>预览
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <div class="pagination">
+            <el-pagination
+              v-model:current-page="queryForm.page"
+              v-model:page-size="queryForm.pageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              :total="total"
+              layout="total, sizes, prev, pager, next, jumper"
+              @size-change="handleSizeChange"
+              @current-change="handleCurrentChange"
+            />
+          </div>
+        </el-tab-pane>
+        <el-tab-pane label="生成日志" name="logs">
+          <div class="tab-header-actions" style="justify-content: flex-end;">
+            <el-button type="danger" link @click="clearLogs">
+              <el-icon><Delete /></el-icon>清空日志
+            </el-button>
+          </div>
+          <el-timeline>
+            <el-timeline-item
+              v-for="(log, index) in logList"
+              :key="index"
+              :type="log.type"
+              :icon="log.icon"
+              :timestamp="log.time"
+            >
+              <div class="log-content">
+                <span class="log-title">{{ log.title }}</span>
+                <span class="log-detail">{{ log.detail }}</span>
+              </div>
+            </el-timeline-item>
+          </el-timeline>
+        </el-tab-pane>
+      </el-tabs>
     </el-card>
   </div>
 </template>
@@ -201,6 +197,7 @@ import {
 const loading = ref(false)
 const generating = ref(false)
 const total = ref(0)
+const activeTab = ref('status')
 
 const statData = reactive({
   generated: 128,
@@ -410,36 +407,20 @@ onMounted(() => {
     }
   }
 
-  .table-card {
-    margin-bottom: 20px;
+  .tab-card {
     border-radius: 12px;
     border: 1px solid #e6f2ff;
 
-    .card-header {
+    .tab-header-actions {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 600;
-      color: #2c3e50;
+      justify-content: flex-end;
+      margin-bottom: 12px;
     }
 
     .pagination {
       margin-top: 20px;
       display: flex;
       justify-content: flex-end;
-    }
-  }
-
-  .log-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
-
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 600;
-      color: #2c3e50;
     }
 
     .log-content {
