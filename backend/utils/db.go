@@ -4,14 +4,26 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"strings"
 	"time"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 	"gorm.io/gorm/schema"
 
 	"server/config"
 )
+
+type gormLogWriter struct{}
+
+func (w *gormLogWriter) Write(p []byte) (n int, err error) {
+	msg := strings.TrimSpace(string(p))
+	if msg != "" {
+		Logger.Info(msg)
+	}
+	return len(p), nil
+}
 
 var DB *gorm.DB
 
@@ -37,7 +49,18 @@ func InitDB() {
 	)
 	println(dsn)
 	var err error
+	newLogger := logger.New(
+		log.New(&gormLogWriter{}, "\r\n", log.LstdFlags),
+		logger.Config{
+			SlowThreshold:             time.Second,
+			LogLevel:                  logger.Info,
+			IgnoreRecordNotFoundError: true,
+			Colorful:                  false,
+		},
+	)
+
 	DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
+		Logger: newLogger,
 		NamingStrategy: schema.NamingStrategy{
 			SingularTable: true,
 		},

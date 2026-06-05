@@ -7,3 +7,7 @@ export function getDashboardStats() {
 export function getLoginLogs() {
   return request.get('/dashboard/login-logs')
 }
+
+export function getVisitTrend(period: string) {
+  return request.get('/dashboard/visit-trend', { params: { period } })
+}

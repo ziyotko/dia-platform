@@ -144,14 +144,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive, computed } from 'vue'
+import { ref, onMounted, reactive, computed, watch } from 'vue'
 import {
   Picture,
   DocumentChecked,
   View,
   BellFilled
 } from '@element-plus/icons-vue'
-import { getDashboardStats, getLoginLogs } from '@/api/dashboard'
+import { getDashboardStats, getLoginLogs, getVisitTrend } from '@/api/dashboard'
 
 const stats = reactive({
   adCount: 0,
@@ -188,38 +188,35 @@ const fetchLoginLogs = async () => {
 onMounted(() => {
   fetchStats()
   fetchLoginLogs()
+  fetchVisitTrend()
 })
 
 const chartPeriod = ref('week')
+const visitTrendData = ref<{ label: string; value: number }[]>([])
+
+const fetchVisitTrend = async () => {
+  try {
+    const res: any = await getVisitTrend(chartPeriod.value)
+    if (res && res.data) {
+      visitTrendData.value = res.data.map((item: any) => ({
+        label: item.label,
+        value: Number(item.value)
+      }))
+    }
+  } catch (error) {
+    // 静默失败
+  }
+}
+
+watch(chartPeriod, () => {
+  fetchVisitTrend()
+})
 
 const visitData = computed(() => {
-  if (chartPeriod.value === 'month') {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = now.getMonth()
-    const daysInMonth = new Date(year, month + 1, 0).getDate()
-    const data = []
-    for (let i = 1; i <= daysInMonth; i++) {
-      data.push({ label: `${i}日`, value: Math.floor(Math.random() * 60) + 30 })
-    }
-    return data
+  if (visitTrendData.value.length > 0) {
+    return visitTrendData.value
   }
-  if (chartPeriod.value === 'year') {
-    return [
-      { label: '1月', value: Math.floor(Math.random() * 60) + 30 },
-      { label: '2月', value: Math.floor(Math.random() * 60) + 30 },
-      { label: '3月', value: Math.floor(Math.random() * 60) + 30 },
-      { label: '4月', value: Math.floor(Math.random() * 60) + 30 },
-      { label: '5月', value: Math.floor(Math.random() * 60) + 30 },
-      { label: '6月', value: Math.floor(Math.random() * 60) + 30 },
-      { label: '7月', value: Math.floor(Math.random() * 60) + 30 },
-      { label: '8月', value: Math.floor(Math.random() * 60) + 30 },
-      { label: '9月', value: Math.floor(Math.random() * 60) + 30 },
-      { label: '10月', value: Math.floor(Math.random() * 60) + 30 },
-      { label: '11月', value: Math.floor(Math.random() * 60) + 30 },
-      { label: '12月', value: Math.floor(Math.random() * 60) + 30 }
-    ]
-  }
+  // 默认兜底数据
   return [
     { label: '周一', value: 45 },
     { label: '周二', value: 62 },
