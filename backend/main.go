@@ -102,6 +102,7 @@ func initMenus() {
 		{ParentID: contentID, Name: "评论管理", Path: "/content/comment", Component: "views/content/comment.vue", Icon: "ChatDotSquare", Type: "menu", Sort: 4, Status: 1},
 		{ParentID: contentID, Name: "广告管理", Path: "/content/ad", Component: "views/content/ad.vue", Icon: "Promotion", Type: "menu", Sort: 5, Status: 1},
 		{ParentID: contentID, Name: "友链管理", Path: "/content/link", Component: "views/content/link.vue", Icon: "Link", Type: "menu", Sort: 6, Status: 1},
+		{ParentID: contentID, Name: "静态化管理", Path: "/content/static", Component: "views/content/static.vue", Icon: "DocumentChecked", Type: "menu", Sort: 7, Status: 1},
 		{ParentID: personalID, Name: "个人信息", Path: "/profile", Component: "views/profile/index.vue", Icon: "Document", Type: "menu", Sort: 1, Status: 1},
 		{ParentID: personalID, Name: "系统设置", Path: "/settings", Component: "views/settings/index.vue", Icon: "Setting", Type: "menu", Sort: 2, Status: 1},
 	}
