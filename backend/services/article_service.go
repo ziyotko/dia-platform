@@ -9,7 +9,7 @@ import (
 
 type ArticleService struct{}
 
-func (s *ArticleService) GetArticles(title string, categoryID int, status int, page int, pageSize int) ([]models.Article, int64, error) {
+func (s *ArticleService) GetArticles(title string, categoryID int, status int, auditStatus int, page int, pageSize int) ([]models.Article, int64, error) {
 	var articles []models.Article
 	var total int64
 	query := utils.DB.Model(&models.Article{})
@@ -21,6 +21,9 @@ func (s *ArticleService) GetArticles(title string, categoryID int, status int, p
 	}
 	if status >= 0 {
 		query = query.Where("status = ?", status)
+	}
+	if auditStatus >= 0 {
+		query = query.Where("audit_status = ?", auditStatus)
 	}
 	err := query.Count(&total).Error
 	if err != nil {
@@ -70,6 +73,7 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 			"summary":       article.Summary,
 			"content":       article.Content,
 			"status":        article.Status,
+			"audit_status":  article.AuditStatus,
 			"is_top":        article.IsTop,
 			"is_bold":       article.IsBold,
 			"default_color": article.DefaultColor,
@@ -100,6 +104,10 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 
 func (s *ArticleService) UpdateArticleStatus(id uint, status int) error {
 	return utils.DB.Model(&models.Article{}).Where("id = ?", id).Update("status", status).Error
+}
+
+func (s *ArticleService) UpdateAuditStatus(id uint, auditStatus int) error {
+	return utils.DB.Model(&models.Article{}).Where("id = ?", id).Update("audit_status", auditStatus).Error
 }
 
 func (s *ArticleService) DeleteArticle(id uint) error {

@@ -8,6 +8,7 @@ export interface ArticleForm {
   summary: string
   content: string
   status: number
+  auditStatus?: number
   isTop: number
   isBold: number
   defaultColor: string
@@ -15,7 +16,7 @@ export interface ArticleForm {
   source: string
 }
 
-export function getArticles(params: { title?: string; categoryId?: number; status?: number; page?: number; pageSize?: number }) {
+export function getArticles(params: { title?: string; categoryId?: number; status?: number; auditStatus?: number; page?: number; pageSize?: number }) {
   return request.get('/articles', { params })
 }
 
@@ -33,6 +34,10 @@ export function updateArticle(id: number, data: ArticleForm) {
 
 export function updateArticleStatus(id: number, status: number) {
   return request.patch(`/articles/${id}/status`, { status })
+}
+
+export function auditArticle(id: number, auditStatus: number) {
+  return request.patch(`/articles/${id}/audit`, { auditStatus })
 }
 
 export function deleteArticle(id: number) {

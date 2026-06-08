@@ -22,6 +22,13 @@
             <el-option label="已下架" :value="2" />
           </el-select>
         </el-form-item>
+        <el-form-item label="审核状态">
+          <el-select v-model="queryForm.auditStatus" placeholder="全部状态" clearable style="width: 120px">
+            <el-option label="待审核" :value="0" />
+            <el-option label="审核中" :value="1" />
+            <el-option label="已审核" :value="2" />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
             <el-icon><Search /></el-icon>查询
@@ -70,6 +77,13 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="auditStatus" label="审核状态" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.auditStatus === 2 ? 'success' : row.auditStatus === 1 ? 'warning' : 'info'">
+              {{ row.auditStatus === 2 ? '已审核' : row.auditStatus === 1 ? '审核中' : '待审核' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="isTop" label="置顶" width="80" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.isTop" type="warning">置顶</el-tag>
@@ -90,13 +104,16 @@
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="170" />
         <el-table-column prop="staticTime" label="静态化时间" width="170" />
-        <el-table-column label="操作" width="240" align="center" fixed="right">
+        <el-table-column label="操作" width="280" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handlePreview(row)">
               <el-icon><View /></el-icon>预览
             </el-button>
             <el-button link type="primary" @click="handleEdit(row)">
               <el-icon><Edit /></el-icon>编辑
+            </el-button>
+            <el-button v-if="row.status === 0" link type="warning" @click="handleAudit(row)">
+              <el-icon><CircleCheck /></el-icon>审核
             </el-button>
             <el-button link type="danger" @click="handleDelete(row)">
               <el-icon><Delete /></el-icon>删除
@@ -260,7 +277,8 @@ import {
   Plus,
   Edit,
   Delete,
-  View
+  View,
+  CircleCheck
 } from '@element-plus/icons-vue'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
@@ -271,7 +289,8 @@ import {
   getArticles,
   createArticle,
   updateArticle,
-  deleteArticle
+  deleteArticle,
+  auditArticle
 } from '@/api/article'
 import { getAllCategories } from '@/api/category'
 import { getAllTags } from '@/api/tag'
@@ -288,7 +307,8 @@ const queryForm = reactive({
   pageSize: 10,
   title: '',
   categoryId: undefined as number | undefined,
-  status: undefined as number | undefined
+  status: undefined as number | undefined,
+  auditStatus: undefined as number | undefined
 })
 
 const form = reactive({
@@ -299,6 +319,7 @@ const form = reactive({
   summary: '',
   content: '',
   status: 0,
+  auditStatus: 0,
   isTop: 0,
   isBold: 0,
   defaultColor: '',
@@ -590,6 +611,7 @@ const fetchData = async () => {
     if (queryForm.title) params.title = queryForm.title
     if (queryForm.categoryId !== undefined) params.categoryId = queryForm.categoryId
     if (queryForm.status !== undefined) params.status = queryForm.status
+    if (queryForm.auditStatus !== undefined) params.auditStatus = queryForm.auditStatus
     const res: any = await getArticles(params)
     tableData.value = res.data?.list || []
     total.value = res.data?.total || 0
@@ -627,6 +649,7 @@ const resetQuery = () => {
   queryForm.title = ''
   queryForm.categoryId = undefined
   queryForm.status = undefined
+  queryForm.auditStatus = undefined
   queryForm.page = 1
   fetchData()
 }
@@ -648,6 +671,7 @@ const handleEdit = async (row: any) => {
     summary: row.summary || '',
     content: row.content || '',
     status: row.status,
+    auditStatus: row.auditStatus ?? 0,
     isTop: row.isTop,
     isBold: row.isBold ?? 0,
     defaultColor: row.defaultColor || '',
@@ -665,6 +689,18 @@ const handleDelete = (row: any) => {
   }).then(async () => {
     await deleteArticle(row.id)
     ElMessage.success('删除成功')
+    fetchData()
+  })
+}
+
+const handleAudit = (row: any) => {
+  ElMessageBox.confirm(`确定要审核通过文章 "${row.title}" 吗？`, '审核确认', {
+    confirmButtonText: '通过',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    await auditArticle(row.id, 2)
+    ElMessage.success('审核成功')
     fetchData()
   })
 }
@@ -706,6 +742,7 @@ const handleSubmit = async () => {
       summary: form.summary,
       content: form.content,
       status: form.status,
+      auditStatus: form.auditStatus,
       isTop: form.isTop,
       isBold: form.isBold,
       defaultColor: form.defaultColor,
@@ -734,6 +771,7 @@ const resetForm = () => {
   form.summary = ''
   form.content = ''
   form.status = 0
+  form.auditStatus = 0
   form.isTop = 0
   form.isBold = 0
   form.defaultColor = ''

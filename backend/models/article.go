@@ -18,6 +18,7 @@ type Article struct {
 	Summary      string         `gorm:"size:500" json:"summary"`
 	Content      string         `gorm:"type:longtext" json:"content"`
 	Status       int            `gorm:"default:0" json:"status"` // 0草稿 1已发布 2已下架
+	AuditStatus  int            `gorm:"default:0" json:"auditStatus"` // 0待审核 1审核中 2已审核
 	IsTop        int            `gorm:"default:0" json:"isTop"`
 	IsBold       int            `gorm:"default:0" json:"isBold"`
 	DefaultColor string         `gorm:"size:20" json:"defaultColor"`

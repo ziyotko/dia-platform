@@ -27,6 +27,7 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 	title := ctx.Query("title")
 	categoryIDStr := ctx.Query("categoryId")
 	statusStr := ctx.Query("status")
+	auditStatusStr := ctx.Query("auditStatus")
 	pageStr := ctx.DefaultQuery("page", "1")
 	pageSizeStr := ctx.DefaultQuery("pageSize", "10")
 
@@ -42,6 +43,12 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 			status = s
 		}
 	}
+	auditStatus := -1
+	if auditStatusStr != "" {
+		if s, err := strconv.Atoi(auditStatusStr); err == nil {
+			auditStatus = s
+		}
+	}
 	page, _ := strconv.Atoi(pageStr)
 	if page < 1 {
 		page = 1
@@ -51,7 +58,7 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 		pageSize = 10
 	}
 
-	articles, total, err := c.articleService.GetArticles(title, categoryID, status, page, pageSize)
+	articles, total, err := c.articleService.GetArticles(title, categoryID, status, auditStatus, page, pageSize)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取文章列表失败"))
 		return
@@ -75,6 +82,7 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 			"summary":      a.Summary,
 			"content":      a.Content,
 			"status":       a.Status,
+			"auditStatus":  a.AuditStatus,
 			"isTop":        a.IsTop,
 			"isBold":       a.IsBold,
 			"defaultColor": a.DefaultColor,
@@ -122,6 +130,7 @@ func (c *ArticleController) GetArticleByID(ctx *gin.Context) {
 		"summary":      article.Summary,
 		"content":      article.Content,
 		"status":       article.Status,
+		"auditStatus":  article.AuditStatus,
 		"isTop":        article.IsTop,
 		"isBold":       article.IsBold,
 		"defaultColor": article.DefaultColor,
@@ -212,6 +221,28 @@ func (c *ArticleController) UpdateArticleStatus(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("更新文章状态成功", nil))
+}
+
+func (c *ArticleController) AuditArticle(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "文章ID无效"))
+		return
+	}
+	var req struct {
+		AuditStatus int `json:"auditStatus"`
+	}
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误"))
+		return
+	}
+	err = c.articleService.UpdateAuditStatus(uint(id), req.AuditStatus)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "审核文章失败"))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("审核文章成功", nil))
 }
 
 func (c *ArticleController) DeleteArticle(ctx *gin.Context) {
