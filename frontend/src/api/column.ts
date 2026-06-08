@@ -12,6 +12,7 @@ export interface ColumnForm {
   sort: number
   status: number
   displayType: number
+  workflowId?: number
 }
 
 export function getColumns(params?: { pageId?: number; parentId?: number }) {

@@ -122,6 +122,12 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="workflow" label="栏目审核" min-width="140" show-overflow-tooltip>
+          <template #default="{ row }">
+            <el-tag v-if="row.workflow" size="small" type="warning">{{ row.workflow.name }}</el-tag>
+            <span v-else style="color: #c0c4cc">未绑定</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-switch
@@ -286,6 +292,16 @@
             />
           </el-select>
         </el-form-item>
+        <el-form-item label="栏目审核" prop="workflowId">
+          <el-select v-model="columnForm.workflowId" placeholder="请选择审核流程（可选）" clearable style="width: 100%">
+            <el-option
+              v-for="wf in workflowList"
+              :key="wf.id"
+              :label="wf.name"
+              :value="wf.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="columnForm.status">
             <el-radio :value="1">启用</el-radio>
@@ -328,6 +344,7 @@ import {
   deleteColumn
 } from '@/api/column'
 import { getTemplateList } from '@/api/template'
+import { getWorkflows } from '@/api/workflow'
 
 interface PageItem {
   id: number
@@ -353,6 +370,8 @@ interface ColumnItem {
   sort: number
   status: number
   displayType: number
+  workflowId?: number
+  workflow?: { id: number; name: string }
   createTime: string
   children?: ColumnItem[]
 }
@@ -425,8 +444,20 @@ const columnForm = reactive<Partial<ColumnItem>>({
   description: '',
   sort: 0,
   status: 1,
-  displayType: 1
+  displayType: 1,
+  workflowId: undefined
 })
+
+const workflowList = ref<any[]>([])
+
+const fetchWorkflows = async () => {
+  try {
+    const res: any = await getWorkflows({ pageSize: 1000 })
+    workflowList.value = (res.data.list || []).filter((w: any) => w.status === 1)
+  } catch (error) {
+    console.error('获取流程列表失败', error)
+  }
+}
 
 const columnFormRules = {
   name: [{ required: true, message: '请输入栏目名称', trigger: 'blur' }],
@@ -686,7 +717,8 @@ const handleEditColumn = (row: ColumnItem) => {
     description: row.description,
     sort: row.sort,
     status: row.status,
-    displayType: row.displayType
+    displayType: row.displayType,
+    workflowId: row.workflowId
   })
   columnDialogVisible.value = true
 }
@@ -721,7 +753,8 @@ const handleColumnStatusChange = async (row: ColumnItem, val: number) => {
       description: row.description,
       sort: row.sort,
       status: val,
-      displayType: row.displayType
+      displayType: row.displayType,
+      workflowId: row.workflowId
     })
     ElMessage.success(`栏目状态已${val === 1 ? '启用' : '禁用'}`)
   } catch (error) {
@@ -743,7 +776,8 @@ const handleColumnSubmit = async () => {
       description: columnForm.description,
       sort: columnForm.sort ?? 0,
       status: columnForm.status ?? 1,
-      displayType: columnForm.displayType ?? 1
+      displayType: columnForm.displayType ?? 1,
+      workflowId: columnForm.workflowId
     }
     if (columnForm.id) {
       await updateColumn(columnForm.id, payload)
@@ -769,11 +803,13 @@ const resetColumnForm = () => {
   columnForm.sort = 0
   columnForm.status = 1
   columnForm.displayType = 1
+  columnForm.workflowId = undefined
 }
 
 onMounted(() => {
   fetchData()
   fetchTemplates()
+  fetchWorkflows()
 })
 </script>
 

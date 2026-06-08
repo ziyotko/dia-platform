@@ -16,7 +16,7 @@ func (s *ColumnService) GetColumns(pageID uint, parentID uint) ([]models.Column,
 	if parentID > 0 {
 		query = query.Where("parent_id = ?", parentID)
 	}
-	err := query.Order("sort ASC, id ASC").Find(&columns).Error
+	err := query.Order("sort ASC, id ASC").Preload("Workflow").Find(&columns).Error
 	return columns, err
 }
 
@@ -39,6 +39,7 @@ func (s *ColumnService) UpdateColumn(id uint, column *models.Column) error {
 		"sort":         column.Sort,
 		"status":       column.Status,
 		"display_type": column.DisplayType,
+		"workflow_id":  column.WorkflowID,
 	}
 	return utils.DB.Model(&old).Updates(updates).Error
 }
