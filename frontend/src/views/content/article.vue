@@ -47,7 +47,7 @@
         <el-table-column type="index" width="60" align="center" />
         <el-table-column prop="title" label="文章标题" min-width="200" show-overflow-tooltip />
         <el-table-column prop="categoryName" label="所属分类" width="120" />
-        <el-table-column label="标签" width="180">
+        <el-table-column label="标签" width="120">
           <template #default="{ row }">
             <el-tag
               v-for="tag in getRowTags(row)"
@@ -63,7 +63,7 @@
         <el-table-column prop="author" label="作者" width="100" />
         <el-table-column prop="source" label="来源" width="140" show-overflow-tooltip />
         <el-table-column prop="views" label="阅读量" width="100" align="center" />
-        <el-table-column prop="status" label="状态" width="100" align="center">
+        <el-table-column prop="status" label="发布状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : row.status === 0 ? 'info' : 'danger'">
               {{ row.status === 1 ? '已发布' : row.status === 0 ? '草稿' : '已下架' }}
