@@ -124,7 +124,7 @@
         </el-table-column>
         <el-table-column prop="workflow" label="栏目审核" min-width="140" show-overflow-tooltip>
           <template #default="{ row }">
-            <el-tag v-if="row.workflow" size="small" type="warning">{{ row.workflow.name }}</el-tag>
+            <el-tag v-if="row.workflow?.name" size="small" type="warning">{{ row.workflow.name }}</el-tag>
             <span v-else style="color: #c0c4cc">未绑定</span>
           </template>
         </el-table-column>
