@@ -125,6 +125,7 @@ func SetupRoutes(router *gin.Engine) {
 		protected.DELETE("/articles/:id", articleController.DeleteArticle)
 		protected.PATCH("/articles/:id/status", articleController.UpdateArticleStatus)
 		protected.PATCH("/articles/:id/audit", articleController.AuditArticle)
+		protected.PUT("/articles/:id/columns", articleController.SetArticleColumns)
 
 		protected.GET("/ads", adController.GetAds)
 		protected.GET("/ads/:id", adController.GetAdByID)

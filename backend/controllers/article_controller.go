@@ -74,6 +74,10 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 		for _, t := range a.Tags {
 			tagIds = append(tagIds, t.ID)
 		}
+		columnIds := make([]uint, 0, len(a.Columns))
+		for _, c := range a.Columns {
+			columnIds = append(columnIds, c.ID)
+		}
 		list = append(list, gin.H{
 			"id":           a.ID,
 			"title":        a.Title,
@@ -92,6 +96,7 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 			"source":       a.Source,
 			"views":        a.Views,
 			"tagIds":       tagIds,
+			"columnIds":    columnIds,
 			"createTime":   a.CreatedAt.Format("2006-01-02 15:04:05"),
 			"updatedAt":    a.UpdatedAt.Format("2006-01-02 15:04:05"),
 		})
@@ -122,6 +127,10 @@ func (c *ArticleController) GetArticleByID(ctx *gin.Context) {
 	for _, t := range article.Tags {
 		tagIds = append(tagIds, t.ID)
 	}
+	columnIds := make([]uint, 0, len(article.Columns))
+	for _, c := range article.Columns {
+		columnIds = append(columnIds, c.ID)
+	}
 
 	ctx.JSON(http.StatusOK, utils.Success("获取文章成功", gin.H{
 		"id":           article.ID,
@@ -140,6 +149,7 @@ func (c *ArticleController) GetArticleByID(ctx *gin.Context) {
 		"source":       article.Source,
 		"views":        article.Views,
 		"tagIds":       tagIds,
+		"columnIds":    columnIds,
 		"createTime":   article.CreatedAt.Format("2006-01-02 15:04:05"),
 		"updatedAt":    article.UpdatedAt.Format("2006-01-02 15:04:05"),
 	}))
@@ -243,6 +253,28 @@ func (c *ArticleController) AuditArticle(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("审核文章成功", nil))
+}
+
+func (c *ArticleController) SetArticleColumns(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "文章ID无效"))
+		return
+	}
+	var req struct {
+		ColumnIds []uint `json:"columnIds"`
+	}
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误"))
+		return
+	}
+	err = c.articleService.SetArticleColumns(uint(id), req.ColumnIds)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "设置文章栏目失败"))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("设置文章栏目成功", nil))
 }
 
 func (c *ArticleController) DeleteArticle(ctx *gin.Context) {

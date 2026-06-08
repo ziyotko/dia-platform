@@ -40,6 +40,10 @@ export function auditArticle(id: number, auditStatus: number) {
   return request.patch(`/articles/${id}/audit`, { auditStatus })
 }
 
+export function setArticleColumns(id: number, columnIds: number[]) {
+  return request.put(`/articles/${id}/columns`, { columnIds })
+}
+
 export function deleteArticle(id: number) {
   return request.delete(`/articles/${id}`)
 }

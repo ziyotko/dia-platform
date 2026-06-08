@@ -103,14 +103,16 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="170" />
-        <el-table-column prop="staticTime" label="静态化时间" width="170" />
-        <el-table-column label="操作" width="280" align="center" fixed="right">
+        <el-table-column label="操作" width="340" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handlePreview(row)">
               <el-icon><View /></el-icon>预览
             </el-button>
             <el-button link type="primary" @click="handleEdit(row)">
               <el-icon><Edit /></el-icon>编辑
+            </el-button>
+            <el-button link type="success" @click="handleSetColumns(row)">
+              <el-icon><FolderOpened /></el-icon>栏目
             </el-button>
             <el-button v-if="row.status === 0" link type="warning" @click="handleAudit(row)">
               <el-icon><CircleCheck /></el-icon>审核
@@ -266,6 +268,27 @@
         <div class="preview-body" v-html="previewData.content" />
       </div>
     </el-dialog>
+
+    <el-dialog v-model="columnDialogVisible" :title="`栏目设置 - ${columnDialogTitle}`" width="500px" destroy-on-close>
+      <el-form label-width="80px">
+        <el-form-item label="选择栏目">
+          <el-select v-model="selectedColumnIds" multiple placeholder="请选择栏目" style="width: 100%">
+            <el-option-group v-for="page in pageList" :key="page.id" :label="page.name">
+              <el-option
+                v-for="col in getColumnsByPage(page.id)"
+                :key="col.id"
+                :label="col.name"
+                :value="col.id"
+              />
+            </el-option-group>
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="columnDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="columnSubmitLoading" @click="handleSubmitColumns">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -280,7 +303,8 @@ import {
   Delete,
   View,
   CircleCheck,
-  CircleClose
+  CircleClose,
+  FolderOpened
 } from '@element-plus/icons-vue'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
@@ -293,10 +317,13 @@ import {
   updateArticle,
   deleteArticle,
   auditArticle,
-  updateArticleStatus
+  updateArticleStatus,
+  setArticleColumns
 } from '@/api/article'
 import { getAllCategories } from '@/api/category'
 import { getAllTags } from '@/api/tag'
+import { getPages } from '@/api/page'
+import { getColumns } from '@/api/column'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -304,6 +331,14 @@ const dialogTitle = ref('')
 const submitLoading = ref(false)
 const total = ref(0)
 const formRef = ref()
+
+const columnDialogVisible = ref(false)
+const columnDialogTitle = ref('')
+const selectedColumnIds = ref<number[]>([])
+const columnSubmitLoading = ref(false)
+const currentArticleId = ref<number | undefined>(undefined)
+const pageList = ref<any[]>([])
+const columnList = ref<any[]>([])
 
 const queryForm = reactive({
   page: 1,
@@ -351,6 +386,28 @@ const tagMap = computed(() => {
 const getRowTags = (row: any) => {
   const ids = row.tagIds || []
   return ids.map((id: number) => tagMap.value[id]).filter(Boolean)
+}
+
+const getColumnsByPage = (pageId: number) => {
+  return columnList.value.filter((col: any) => col.pageId === pageId)
+}
+
+const fetchPages = async () => {
+  try {
+    const res: any = await getPages()
+    pageList.value = res.data || []
+  } catch (error) {
+    // ignore
+  }
+}
+
+const fetchColumns = async () => {
+  try {
+    const res: any = await getColumns()
+    columnList.value = res.data || []
+  } catch (error) {
+    // ignore
+  }
 }
 
 // 编辑器
@@ -718,6 +775,32 @@ const handleOffShelf = (row: any) => {
     ElMessage.success('下线成功')
     fetchData()
   })
+}
+
+const handleSetColumns = async (row: any) => {
+  currentArticleId.value = row.id
+  columnDialogTitle.value = row.title
+  selectedColumnIds.value = row.columnIds || []
+  if (pageList.value.length === 0) {
+    await fetchPages()
+  }
+  if (columnList.value.length === 0) {
+    await fetchColumns()
+  }
+  columnDialogVisible.value = true
+}
+
+const handleSubmitColumns = async () => {
+  if (!currentArticleId.value) return
+  columnSubmitLoading.value = true
+  try {
+    await setArticleColumns(currentArticleId.value, selectedColumnIds.value)
+    ElMessage.success('栏目设置成功')
+    columnDialogVisible.value = false
+    fetchData()
+  } finally {
+    columnSubmitLoading.value = false
+  }
 }
 
 const previewVisible = ref(false)

@@ -30,13 +30,13 @@ func (s *ArticleService) GetArticles(title string, categoryID int, status int, a
 		return nil, 0, err
 	}
 	offset := (page - 1) * pageSize
-	err = query.Preload("Category").Preload("Tags").Order("is_top DESC, id DESC").Limit(pageSize).Offset(offset).Find(&articles).Error
+	err = query.Preload("Category").Preload("Tags").Preload("Columns").Order("is_top DESC, id DESC").Limit(pageSize).Offset(offset).Find(&articles).Error
 	return articles, total, err
 }
 
 func (s *ArticleService) GetArticleByID(id uint) (*models.Article, error) {
 	var article models.Article
-	err := utils.DB.Preload("Category").Preload("Tags").First(&article, id).Error
+	err := utils.DB.Preload("Category").Preload("Tags").Preload("Columns").First(&article, id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -110,6 +110,29 @@ func (s *ArticleService) UpdateAuditStatus(id uint, auditStatus int) error {
 	return utils.DB.Model(&models.Article{}).Where("id = ?", id).Update("audit_status", auditStatus).Error
 }
 
+func (s *ArticleService) SetArticleColumns(id uint, columnIDs []uint) error {
+	return utils.DB.Transaction(func(tx *gorm.DB) error {
+		var article models.Article
+		if err := tx.First(&article, id).Error; err != nil {
+			return err
+		}
+		if len(columnIDs) > 0 {
+			var columns []models.Column
+			for _, cid := range columnIDs {
+				columns = append(columns, models.Column{ID: cid})
+			}
+			if err := tx.Model(&article).Association("Columns").Replace(&columns); err != nil {
+				return err
+			}
+		} else {
+			if err := tx.Model(&article).Association("Columns").Clear(); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 func (s *ArticleService) DeleteArticle(id uint) error {
 	return utils.DB.Transaction(func(tx *gorm.DB) error {
 		var article models.Article
@@ -117,6 +140,9 @@ func (s *ArticleService) DeleteArticle(id uint) error {
 			return err
 		}
 		if err := tx.Model(&article).Association("Tags").Clear(); err != nil {
+			return err
+		}
+		if err := tx.Model(&article).Association("Columns").Clear(); err != nil {
 			return err
 		}
 		return tx.Delete(&article).Error

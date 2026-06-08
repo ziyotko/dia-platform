@@ -27,8 +27,8 @@ type Article struct {
 	AuthorCode   string         `gorm:"size:100" json:"authorCode"`
 	Source       string         `gorm:"size:200" json:"source"`
 	Views        int            `gorm:"default:0" json:"views"`
-	StaticAt     *time.Time     `json:"staticAt"`
 	Tags         []Tag          `gorm:"many2many:article_tags;" json:"tags,omitempty"`
+	Columns      []Column       `gorm:"many2many:article_columns;" json:"columns,omitempty"`
 }
 
 func (a Article) MarshalJSON() ([]byte, error) {
