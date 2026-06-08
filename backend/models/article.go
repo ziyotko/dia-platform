@@ -26,7 +26,7 @@ type Article struct {
 	Author       string         `gorm:"size:100" json:"author"`
 	AuthorCode   string         `gorm:"size:100" json:"authorCode"`
 	Source       string         `gorm:"size:200" json:"source"`
-	Views        int            `gorm:"default:0" json:"views"`
+	ColumnCount  int            `gorm:"column:views;default:0" json:"columnCount"`
 	Tags         []Tag          `gorm:"many2many:article_tags;" json:"tags,omitempty"`
 	Columns      []Column       `gorm:"many2many:article_columns;" json:"columns,omitempty"`
 }

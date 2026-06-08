@@ -69,7 +69,7 @@
         </el-table-column>
         <el-table-column prop="author" label="作者" width="100" />
         <el-table-column prop="source" label="来源" width="140" show-overflow-tooltip />
-        <el-table-column prop="views" label="阅读量" width="100" align="center" />
+        <el-table-column prop="columnCount" label="发布栏目数量" width="120" align="center" />
         <el-table-column prop="status" label="发布状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : row.status === 0 ? 'info' : 'danger'">
