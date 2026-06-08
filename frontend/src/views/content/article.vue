@@ -19,7 +19,7 @@
           <el-select v-model="queryForm.status" placeholder="全部状态" clearable style="width: 120px">
             <el-option label="已发布" :value="1" />
             <el-option label="草稿" :value="0" />
-            <el-option label="已下架" :value="2" />
+            <el-option label="已下线" :value="2" />
           </el-select>
         </el-form-item>
         <el-form-item label="审核状态">
@@ -73,7 +73,7 @@
         <el-table-column prop="status" label="发布状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : row.status === 0 ? 'info' : 'danger'">
-              {{ row.status === 1 ? '已发布' : row.status === 0 ? '草稿' : '已下架' }}
+              {{ row.status === 1 ? '已发布' : row.status === 0 ? '草稿' : '已下线' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -114,6 +114,9 @@
             </el-button>
             <el-button v-if="row.status === 0" link type="warning" @click="handleAudit(row)">
               <el-icon><CircleCheck /></el-icon>审核
+            </el-button>
+            <el-button v-if="row.status === 1" link type="danger" @click="handleOffShelf(row)">
+              <el-icon><CircleClose /></el-icon>下线
             </el-button>
             <el-button link type="danger" @click="handleDelete(row)">
               <el-icon><Delete /></el-icon>删除
@@ -178,12 +181,10 @@
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="发布状态" prop="status">
-              <el-radio-group v-model="form.status">
-                <el-radio :value="1">已发布</el-radio>
-                <el-radio :value="0">草稿</el-radio>
-                <el-radio :value="2">已下架</el-radio>
-              </el-radio-group>
+            <el-form-item label="发布状态">
+              <el-tag :type="form.status === 1 ? 'success' : form.status === 0 ? 'info' : 'danger'">
+                {{ form.status === 1 ? '已发布' : form.status === 0 ? '草稿' : '已下线' }}
+              </el-tag>
             </el-form-item>
           </el-col>
         </el-row>
@@ -278,7 +279,8 @@ import {
   Edit,
   Delete,
   View,
-  CircleCheck
+  CircleCheck,
+  CircleClose
 } from '@element-plus/icons-vue'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
@@ -290,7 +292,8 @@ import {
   createArticle,
   updateArticle,
   deleteArticle,
-  auditArticle
+  auditArticle,
+  updateArticleStatus
 } from '@/api/article'
 import { getAllCategories } from '@/api/category'
 import { getAllTags } from '@/api/tag'
@@ -701,6 +704,18 @@ const handleAudit = (row: any) => {
   }).then(async () => {
     await auditArticle(row.id, 2)
     ElMessage.success('审核成功')
+    fetchData()
+  })
+}
+
+const handleOffShelf = (row: any) => {
+  ElMessageBox.confirm(`确定要下线文章 "${row.title}" 吗？`, '下线确认', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    await updateArticleStatus(row.id, 2)
+    ElMessage.success('下线成功')
     fetchData()
   })
 }
