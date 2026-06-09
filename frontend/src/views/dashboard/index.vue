@@ -209,7 +209,7 @@ const updateChart = () => {
     tooltip: { trigger: 'axis' },
     grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
     xAxis: { type: 'category', boundaryGap: false, data: labels },
-    yAxis: { type: 'value', minInterval: 1 },
+    yAxis: { type: 'value', name: '访问次数', minInterval: 1 },
     series: [{
       type: 'line',
       data: values,
