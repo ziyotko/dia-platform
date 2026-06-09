@@ -286,6 +286,14 @@ const handleCommand = (command: string) => {
       background: rgba(64, 158, 255, 0.08) !important;
     }
   }
+
+  &.el-menu--collapse {
+    :deep(.el-menu-item),
+    :deep(.el-sub-menu__title) {
+      margin-left: 0;
+      margin-right: 0;
+    }
+  }
 }
 
 .header {

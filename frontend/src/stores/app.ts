@@ -25,8 +25,10 @@ const parsedSecurity = storedSecurity
     })()
   : null
 
+const storedCollapsed = localStorage.getItem('sidebar-collapsed')
+
 export const useAppStore = defineStore('app', () => {
-  const sidebarCollapsed = ref(false)
+  const sidebarCollapsed = ref(storedCollapsed === 'true')
   const themeColor = ref(parsedTheme?.themeColor || '#409eff')
   const sidebarStyle = ref<SidebarStyle>(parsedTheme?.sidebarStyle || 'light')
   const tagsView = ref(parsedTheme?.tagsView ?? true)
@@ -35,6 +37,7 @@ export const useAppStore = defineStore('app', () => {
 
   function toggleSidebar() {
     sidebarCollapsed.value = !sidebarCollapsed.value
+    localStorage.setItem('sidebar-collapsed', String(sidebarCollapsed.value))
   }
 
   const refreshKey = ref(0)
