@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -30,15 +31,26 @@ func (c *DashboardController) GetStats(ctx *gin.Context) {
 	articleCount := c.articleService.GetArticleCount()
 
 	var todayVisit int64
+	var todayStaticCount int64
+	var todayAuditCount int64
+	var myArticleCount int64
 	now := time.Now()
 	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	endOfDay := startOfDay.Add(24 * time.Hour)
 	utils.DB.Model(&models.SiteAnalytics{}).Where("visited_at >= ? AND visited_at < ?", startOfDay, endOfDay).Count(&todayVisit)
+	utils.DB.Model(&models.Article{}).Where("created_at >= ? AND created_at < ?", startOfDay, endOfDay).Count(&todayStaticCount)
+	utils.DB.Model(&models.Article{}).Where("created_at >= ? AND created_at < ? AND audit_status = ?", startOfDay, endOfDay, 0).Count(&todayAuditCount)
+
+	userID := ctx.GetUint("userID")
+	utils.DB.Model(&models.Article{}).Where("author_code = ?", strconv.FormatUint(uint64(userID), 10)).Count(&myArticleCount)
 
 	ctx.JSON(http.StatusOK, utils.Success("获取成功", gin.H{
-		"adCount":      adCount,
-		"articleCount": articleCount,
-		"todayVisit":   todayVisit,
+		"adCount":          adCount,
+		"articleCount":     articleCount,
+		"todayVisit":       todayVisit,
+		"todayStaticCount": todayStaticCount,
+		"todayAuditCount":  todayAuditCount,
+		"myArticleCount":   myArticleCount,
 	}))
 }
 

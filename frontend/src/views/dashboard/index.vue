@@ -1,7 +1,7 @@
 <template>
   <div class="dashboard">
     <el-row :gutter="20" class="stat-cards">
-      <el-col :xs="24" :sm="12" :md="6">
+      <el-col :xs="24" :sm="12" :md="4">
         <el-card class="stat-card" shadow="hover">
           <div class="stat-content">
             <div class="stat-icon" style="background: rgba(64, 158, 255, 0.1); color: #409eff;">
@@ -9,12 +9,12 @@
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ stats.adCount.toLocaleString() }}</div>
-              <div class="stat-label">广告数量</div>
+              <div class="stat-label">广告总数</div>
             </div>
           </div>
         </el-card>
       </el-col>
-      <el-col :xs="24" :sm="12" :md="6">
+      <el-col :xs="24" :sm="12" :md="4">
         <el-card class="stat-card" shadow="hover">
           <div class="stat-content">
             <div class="stat-icon" style="background: rgba(103, 194, 58, 0.1); color: #67c23a;">
@@ -22,12 +22,12 @@
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ stats.articleCount.toLocaleString() }}</div>
-              <div class="stat-label">内容文章</div>
+              <div class="stat-label">内容文章总数</div>
             </div>
           </div>
         </el-card>
       </el-col>
-      <el-col :xs="24" :sm="12" :md="6">
+      <el-col :xs="24" :sm="12" :md="4">
         <el-card class="stat-card" shadow="hover">
           <div class="stat-content">
             <div class="stat-icon" style="background: rgba(230, 162, 60, 0.1); color: #e6a23c;">
@@ -35,20 +35,46 @@
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ stats.todayVisit.toLocaleString() }}</div>
-              <div class="stat-label">今日访问</div>
+              <div class="stat-label">今日访问量</div>
             </div>
           </div>
         </el-card>
       </el-col>
-      <el-col :xs="24" :sm="12" :md="6">
+      <el-col :xs="24" :sm="12" :md="4">
         <el-card class="stat-card" shadow="hover">
           <div class="stat-content">
             <div class="stat-icon" style="background: rgba(245, 108, 108, 0.1); color: #f56c6c;">
-              <el-icon size="28"><BellFilled /></el-icon>
+              <el-icon size="28"><Document /></el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-value">12</div>
-              <div class="stat-label">待处理消息</div>
+              <div class="stat-value">{{ stats.todayStaticCount.toLocaleString() }}</div>
+              <div class="stat-label">今日静态化文章</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="4">
+        <el-card class="stat-card" shadow="hover">
+          <div class="stat-content">
+            <div class="stat-icon" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">
+              <el-icon size="28"><Clock /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ stats.todayAuditCount.toLocaleString() }}</div>
+              <div class="stat-label">今日待审核文章</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="4">
+        <el-card class="stat-card" shadow="hover">
+          <div class="stat-content">
+            <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">
+              <el-icon size="28"><EditPen /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ stats.myArticleCount.toLocaleString() }}</div>
+              <div class="stat-label">我的文章数量</div>
             </div>
           </div>
         </el-card>
@@ -75,7 +101,7 @@
         <el-card class="notice-card" shadow="hover">
           <template #header>
             <div class="card-header">
-              <span>系统公告</span>
+              <span>待处理</span>
               <el-link type="primary" underline="never">更多</el-link>
             </div>
           </template>
@@ -144,14 +170,19 @@ import {
   Picture,
   DocumentChecked,
   View,
-  BellFilled
+  Document,
+  Clock,
+  EditPen
 } from '@element-plus/icons-vue'
 import { getDashboardStats, getLoginLogs, getVisitTrend } from '@/api/dashboard'
 
 const stats = reactive({
   adCount: 0,
   articleCount: 0,
-  todayVisit: 0
+  todayVisit: 0,
+  todayStaticCount: 0,
+  todayAuditCount: 0,
+  myArticleCount: 0
 })
 
 const fetchStats = async () => {
@@ -161,6 +192,9 @@ const fetchStats = async () => {
       stats.adCount = res.data.adCount || 0
       stats.articleCount = res.data.articleCount || 0
       stats.todayVisit = res.data.todayVisit || 0
+      stats.todayStaticCount = res.data.todayStaticCount || 0
+      stats.todayAuditCount = res.data.todayAuditCount || 0
+      stats.myArticleCount = res.data.myArticleCount || 0
     }
   } catch (error) {
     // 静默失败，保持默认值
@@ -265,11 +299,12 @@ onUnmounted(() => {
 })
 
 const notices = [
-  { tag: '通知', title: '系统将于今晚进行例行维护', time: '2小时前', type: 'info' as const },
-  { tag: '公告', title: '新版内容编辑器已上线', time: '5小时前', type: 'success' as const },
-  { tag: '预警', title: '检测到异常登录尝试', time: '1天前', type: 'warning' as const },
-  { tag: '通知', title: '请及时更新账户密码', time: '2天前', type: 'info' as const },
-  { tag: '公告', title: '新增数据导出功能', time: '3天前', type: 'success' as const }
+  { tag: '审核', title: '文章《夏季养生指南》待审核', time: '10分钟前', type: 'warning' as const },
+  { tag: '审核', title: '广告位「首页Banner」待审核', time: '30分钟前', type: 'warning' as const },
+  { tag: '反馈', title: '用户反馈问题待处理', time: '1小时前', type: 'danger' as const },
+  { tag: '审核', title: '文章《健康食谱推荐》待审核', time: '2小时前', type: 'warning' as const },
+  { tag: '通知', title: '静态化任务执行失败', time: '3小时前', type: 'danger' as const },
+  { tag: '审核', title: '评论「用户体验很好」待审核', time: '5小时前', type: 'warning' as const }
 ]
 
 const quickLinks = [
