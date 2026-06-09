@@ -129,7 +129,7 @@ func (s *ArticleService) SetArticleColumns(id uint, columnIDs []uint) error {
 				return err
 			}
 		}
-		if err := tx.Model(&article).Update("views", len(columnIDs)).Error; err != nil {
+		if err := tx.Model(&article).Update("column_count", len(columnIDs)).Error; err != nil {
 			return err
 		}
 		return nil

@@ -114,7 +114,7 @@
             <el-button link type="success" @click="handleSetColumns(row)">
               <el-icon><FolderOpened /></el-icon>栏目
             </el-button>
-            <el-button v-if="row.status === 0" link type="warning" @click="handleAudit(row)">
+            <el-button v-if="row.status === 0 && row.columnCount > 0" link type="warning" @click="handleAudit(row)">
               <el-icon><CircleCheck /></el-icon>审核
             </el-button>
             <el-button v-if="row.status === 1" link type="danger" @click="handleOffShelf(row)">
