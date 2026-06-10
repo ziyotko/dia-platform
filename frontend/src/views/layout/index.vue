@@ -6,8 +6,10 @@
       :class="{ dark: appStore.sidebarStyle === 'dark' }"
     >
       <div class="logo">
-        <el-icon size="28" :color="appStore.themeColor"><Platform /></el-icon>
-
+        <div class="logo-icon-wrap">
+          <el-icon size="24" :color="appStore.themeColor"><Platform /></el-icon>
+        </div>
+        <span class="logo-text">管理后台</span>
       </div>
       <el-scrollbar class="menu-scrollbar">
         <el-menu
@@ -203,8 +205,15 @@ const handleCommand = (command: string) => {
     .logo {
       border-bottom-color: #0f3460;
 
+      .logo-icon-wrap {
+        background: linear-gradient(135deg, rgba(64, 158, 255, 0.25) 0%, rgba(64, 158, 255, 0.15) 100%);
+        box-shadow: 0 2px 8px rgba(64, 158, 255, 0.25);
+      }
+
       .logo-text {
-        color: #fff;
+        background: linear-gradient(90deg, #ffffff 0%, #bfcbd9 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
       }
     }
 
@@ -240,17 +249,37 @@ const handleCommand = (command: string) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 12px;
   border-bottom: 1px solid #d9ecff;
   padding: 0 16px;
   transition: border-color 0.3s;
 
+  .logo-icon-wrap {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--el-color-primary-light-8) 0%, var(--el-color-primary-light-9) 100%);
+    box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
+    transition: transform 0.3s;
+
+    &:hover {
+      transform: scale(1.05);
+    }
+  }
+
   .logo-text {
-    font-size: 18px;
-    font-weight: 600;
+    font-size: 20px;
+    font-weight: 700;
     color: #2c3e50;
     white-space: nowrap;
     transition: color 0.3s;
+    letter-spacing: 1px;
+    background: linear-gradient(90deg, #2c3e50 0%, #4a6582 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
 }
 
