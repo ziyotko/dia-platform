@@ -166,6 +166,21 @@ func (s *ArticleService) GetArticleCount() int64 {
 	return count
 }
 
+// RestartArticleAudit 重新提交文章审核（清空旧记录后重新走提交流程）
+func (s *ArticleService) RestartArticleAudit(articleID uint) error {
+	var article models.Article
+	if err := utils.DB.First(&article, articleID).Error; err != nil {
+		return err
+	}
+	if article.Status != 0 {
+		return fmt.Errorf("只有草稿状态的文章可以重新提交审核")
+	}
+	if article.AuditStatus != 2 {
+		return fmt.Errorf("只有已审核状态的文章可以重新提交审核")
+	}
+	return s.StartArticleAudit(articleID)
+}
+
 // StartArticleAudit 提交文章审核，为每个绑定了工作流的栏目创建审核记录
 func (s *ArticleService) StartArticleAudit(articleID uint) error {
 	var article models.Article
@@ -179,6 +194,10 @@ func (s *ArticleService) StartArticleAudit(articleID uint) error {
 		}
 		// 清除旧的审核记录
 		if err := tx.Where("article_id = ?", articleID).Delete(&models.ArticleColumnAudit{}).Error; err != nil {
+			return err
+		}
+		// 清除旧的审核历史记录
+		if err := tx.Where("article_id = ?", articleID).Delete(&models.ArticleColumnAuditHistory{}).Error; err != nil {
 			return err
 		}
 		// 为每个绑定了工作流的栏目创建审核记录

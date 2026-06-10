@@ -40,6 +40,10 @@ export function auditArticle(id: number, auditStatus: number) {
   return request.patch(`/articles/${id}/audit`, { auditStatus })
 }
 
+export function restartArticleAudit(id: number) {
+  return request.post(`/articles/${id}/audit-restart`)
+}
+
 export function getArticleAuditProgress(id: number) {
   return request.get(`/articles/${id}/audit-progress`)
 }

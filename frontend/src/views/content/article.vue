@@ -107,7 +107,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="170" />
-        <el-table-column label="操作" width="340" align="center" fixed="right">
+        <el-table-column label="操作" width="380" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handlePreview(row)">
               <el-icon><View /></el-icon>预览
@@ -120,6 +120,9 @@
             </el-button>
             <el-button v-if="isAuthor(row) && row.status === 0 && row.columnCount > 0 && row.auditStatus === 0" link type="warning" @click="handleAudit(row)">
               <el-icon><CircleCheck /></el-icon>提交审核
+            </el-button>
+            <el-button v-if="isAuthor(row) && row.status === 0 && row.columnCount > 0 && row.auditStatus === 2" link type="warning" @click="handleReAudit(row)">
+              <el-icon><CircleCheck /></el-icon>重新提交审核
             </el-button>
             <el-button v-if="row.status === 1" link type="danger" @click="handleOffShelf(row)">
               <el-icon><CircleClose /></el-icon>下线
@@ -403,6 +406,7 @@ import {
   updateArticle,
   deleteArticle,
   auditArticle,
+  restartArticleAudit,
   updateArticleStatus,
   setArticleColumns,
   getArticleAuditProgress,
@@ -1019,6 +1023,22 @@ const handleAudit = (row: any) => {
   }).then(async () => {
     await auditArticle(row.id, 1)
     ElMessage.success('提交审核成功')
+    fetchData()
+  })
+}
+
+const handleReAudit = (row: any) => {
+  ElMessageBox.confirm(
+    `确定要重新提交文章 "${row.title}" 进行审核吗？此操作将清空之前的栏目审核记录。`,
+    '重新提交审核',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(async () => {
+    await restartArticleAudit(row.id)
+    ElMessage.success('重新提交审核成功')
     fetchData()
   })
 }
