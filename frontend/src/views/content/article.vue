@@ -112,7 +112,7 @@
             <el-button link type="primary" @click="handlePreview(row)">
               <el-icon><View /></el-icon>预览
             </el-button>
-            <el-button v-if="isAuthor(row)" link type="primary" @click="handleEdit(row)">
+            <el-button v-if="isAuthor(row) && row.auditStatus !== 1" link type="primary" @click="handleEdit(row)">
               <el-icon><Edit /></el-icon>编辑
             </el-button>
             <el-button v-if="isAuthor(row)" link type="success" @click="row.auditStatus === 1 ? ElMessage.warning('审核中的文章不能修改栏目') : handleSetColumns(row)">
@@ -824,6 +824,10 @@ const isAuthor = (row: any) => {
 }
 
 const handleEdit = async (row: any) => {
+  if (row.auditStatus === 1) {
+    ElMessage.warning('审核中的文章不能编辑')
+    return
+  }
   dialogTitle.value = '编辑文章'
   resetForm()
   Object.assign(form, {
