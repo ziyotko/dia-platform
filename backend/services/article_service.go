@@ -405,6 +405,10 @@ func (s *ArticleService) CompleteArticleAudit(articleID uint) error {
 			if err := tx.Create(&publish).Error; err != nil {
 				return err
 			}
+			if err := tx.Model(&article).Updates(map[string]interface{}{"status": 1}).Error; err != nil {
+				return err
+			}
+
 		}
 		return nil
 	})
