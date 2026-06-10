@@ -38,11 +38,12 @@ func (c *DashboardController) GetStats(ctx *gin.Context) {
 	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	endOfDay := startOfDay.Add(24 * time.Hour)
 	utils.DB.Model(&models.SiteAnalytics{}).Where("visited_at >= ? AND visited_at < ?", startOfDay, endOfDay).Count(&todayVisit)
-	utils.DB.Model(&models.Article{}).Where("created_at >= ? AND created_at < ?", startOfDay, endOfDay).Count(&todayStaticCount)
-	utils.DB.Model(&models.Article{}).Where("created_at >= ? AND created_at < ? AND audit_status = ?", startOfDay, endOfDay, 0).Count(&todayAuditCount)
 
 	userID := ctx.GetUint("userID")
-	utils.DB.Model(&models.Article{}).Where("author_code = ?", strconv.FormatUint(uint64(userID), 10)).Count(&myArticleCount)
+	userIDStr := strconv.FormatUint(uint64(userID), 10)
+	utils.DB.Model(&models.Article{}).Where("author_code = ? AND status = ?", userIDStr, 1).Count(&myArticleCount)
+	utils.DB.Model(&models.Article{}).Where("author_code = ? AND status = ?", userIDStr, 0).Count(&todayStaticCount)
+	utils.DB.Model(&models.Article{}).Where("author_code = ? AND audit_status = ?", userIDStr, 0).Count(&todayAuditCount)
 
 	ctx.JSON(http.StatusOK, utils.Success("获取成功", gin.H{
 		"adCount":          adCount,

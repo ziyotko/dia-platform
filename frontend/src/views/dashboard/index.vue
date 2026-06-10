@@ -48,7 +48,7 @@
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ stats.todayStaticCount.toLocaleString() }}</div>
-              <div class="stat-label">今日静态化文章</div>
+              <div class="stat-label">我的草稿文章</div>
             </div>
           </div>
         </el-card>
@@ -61,7 +61,7 @@
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ stats.todayAuditCount.toLocaleString() }}</div>
-              <div class="stat-label">今日待审核文章</div>
+              <div class="stat-label">我的待审核文章</div>
             </div>
           </div>
         </el-card>
@@ -74,7 +74,7 @@
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ stats.myArticleCount.toLocaleString() }}</div>
-              <div class="stat-label">我的文章数量</div>
+              <div class="stat-label">我的已发布文章</div>
             </div>
           </div>
         </el-card>
