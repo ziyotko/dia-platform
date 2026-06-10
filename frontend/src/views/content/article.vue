@@ -1178,7 +1178,7 @@ onMounted(() => {
     margin-bottom: 0;
 
     :deep(.el-form-item__content) {
-      height: calc(100vh - 360px);
+      height: calc(100vh - 400px);
       display: block;
     }
   }
