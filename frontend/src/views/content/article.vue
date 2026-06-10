@@ -112,19 +112,19 @@
             <el-button link type="primary" @click="handlePreview(row)">
               <el-icon><View /></el-icon>预览
             </el-button>
-            <el-button link type="primary" @click="handleEdit(row)">
+            <el-button v-if="isAuthor(row)" link type="primary" @click="handleEdit(row)">
               <el-icon><Edit /></el-icon>编辑
             </el-button>
-            <el-button link type="success" @click="handleSetColumns(row)">
+            <el-button v-if="isAuthor(row)" link type="success" @click="row.auditStatus === 1 ? ElMessage.warning('审核中的文章不能修改栏目') : handleSetColumns(row)">
               <el-icon><FolderOpened /></el-icon>栏目
             </el-button>
-            <el-button v-if="row.status === 0 && row.columnCount > 0 && row.auditStatus === 0" link type="warning" @click="handleAudit(row)">
+            <el-button v-if="isAuthor(row) && row.status === 0 && row.columnCount > 0 && row.auditStatus === 0" link type="warning" @click="handleAudit(row)">
               <el-icon><CircleCheck /></el-icon>提交审核
             </el-button>
             <el-button v-if="row.status === 1" link type="danger" @click="handleOffShelf(row)">
               <el-icon><CircleClose /></el-icon>下线
             </el-button>
-            <el-button link type="danger" @click="handleDelete(row)">
+            <el-button v-if="isAuthor(row)" link type="danger" @click="handleDelete(row)">
               <el-icon><Delete /></el-icon>删除
             </el-button>
           </template>
@@ -817,6 +817,10 @@ const handleAdd = () => {
   dialogTitle.value = '新增文章'
   resetForm()
   dialogVisible.value = true
+}
+
+const isAuthor = (row: any) => {
+  return String(currentUserId.value) === String(row.authorCode)
 }
 
 const handleEdit = async (row: any) => {

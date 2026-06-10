@@ -197,6 +197,15 @@ func (c *ArticleController) UpdateArticle(ctx *gin.Context) {
 	}
 
 	userID := ctx.GetUint("userID")
+	article, err := c.articleService.GetArticleByID(uint(id))
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "文章不存在"))
+		return
+	}
+	if strconv.FormatUint(uint64(userID), 10) != article.AuthorCode {
+		ctx.JSON(http.StatusOK, utils.Error(1, "无权操作"))
+		return
+	}
 	user, err := c.userService.GetUserByID(userID)
 	if err == nil && user != nil {
 		req.Article.Author = user.Username
@@ -249,6 +258,16 @@ func (c *ArticleController) AuditArticle(ctx *gin.Context) {
 	}
 	if req.AuditStatus == 1 {
 		// 提交审核
+		userID := ctx.GetUint("userID")
+		article, err := c.articleService.GetArticleByID(uint(id))
+		if err != nil {
+			ctx.JSON(http.StatusOK, utils.Error(1, "文章不存在"))
+			return
+		}
+		if strconv.FormatUint(uint64(userID), 10) != article.AuthorCode {
+			ctx.JSON(http.StatusOK, utils.Error(1, "无权操作"))
+			return
+		}
 		err = c.articleService.StartArticleAudit(uint(id))
 	} else if req.AuditStatus == 2 {
 		// 完成审核
@@ -359,6 +378,16 @@ func (c *ArticleController) SetArticleColumns(ctx *gin.Context) {
 	}
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误"))
+		return
+	}
+	userID := ctx.GetUint("userID")
+	article, err := c.articleService.GetArticleByID(uint(id))
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "文章不存在"))
+		return
+	}
+	if strconv.FormatUint(uint64(userID), 10) != article.AuthorCode {
+		ctx.JSON(http.StatusOK, utils.Error(1, "无权操作"))
 		return
 	}
 	err = c.articleService.SetArticleColumns(uint(id), req.ColumnIds)

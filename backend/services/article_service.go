@@ -32,7 +32,7 @@ func (s *ArticleService) GetArticles(title string, categoryID int, status int, a
 		return nil, 0, err
 	}
 	offset := (page - 1) * pageSize
-	err = query.Preload("Category").Preload("Tags").Preload("Columns").Order("is_top DESC, id DESC").Limit(pageSize).Offset(offset).Find(&articles).Error
+	err = query.Preload("Category").Preload("Tags").Preload("Columns").Order("is_top DESC, created_at DESC").Limit(pageSize).Offset(offset).Find(&articles).Error
 	return articles, total, err
 }
 
