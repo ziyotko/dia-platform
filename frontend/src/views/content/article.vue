@@ -81,8 +81,8 @@
           <template #default="{ row }">
             <el-tag
               :type="row.auditStatus === 2 ? 'success' : row.auditStatus === 1 ? 'warning' : 'info'"
-              :class="{ 'audit-status-clickable': row.auditStatus === 0 && row.columnCount > 0 }"
-              @click="row.auditStatus === 0 && row.columnCount > 0 && handleShowAuditFlow(row)"
+              :class="{ 'audit-status-clickable': row.columnCount > 0 && (row.auditStatus === 0 || row.auditStatus === 1) }"
+              @click="row.columnCount > 0 && (row.auditStatus === 0 || row.auditStatus === 1) && handleShowAuditFlow(row)"
             >
               {{ row.auditStatus === 2 ? '已审核' : row.auditStatus === 1 ? '审核中' : '待审核' }}
             </el-tag>
@@ -118,8 +118,11 @@
             <el-button link type="success" @click="handleSetColumns(row)">
               <el-icon><FolderOpened /></el-icon>栏目
             </el-button>
-            <el-button v-if="row.status === 0 && row.columnCount > 0" link type="warning" @click="handleAudit(row)">
-              <el-icon><CircleCheck /></el-icon>审核
+            <el-button v-if="row.status === 0 && row.columnCount > 0 && row.auditStatus === 0" link type="warning" @click="handleAudit(row)">
+              <el-icon><CircleCheck /></el-icon>提交审核
+            </el-button>
+            <el-button v-if="row.status === 0 && row.auditStatus === 1" link type="success" @click="handleCompleteAudit(row)">
+              <el-icon><CircleCheck /></el-icon>完成审核
             </el-button>
             <el-button v-if="row.status === 1" link type="danger" @click="handleOffShelf(row)">
               <el-icon><CircleClose /></el-icon>下线
@@ -306,18 +309,26 @@
           v-for="(item, index) in auditFlowList"
           :key="index"
           class="audit-flow-card"
+          :class="{ 'audit-flow-rejected': item.auditStatus === 2 }"
         >
           <div class="audit-flow-card-header">
             <div class="audit-flow-index">{{ index + 1 }}</div>
             <div class="audit-flow-column-name">{{ item.columnName }}</div>
-            <el-tag v-if="item.workflow" size="small" type="primary" effect="light">
+            <el-tag v-if="item.auditStatus === 2" size="small" type="danger" effect="light">已驳回</el-tag>
+            <el-tag v-else-if="item.auditStatus === 1" size="small" type="success" effect="light">已通过</el-tag>
+            <el-tag v-else-if="item.workflow && item.auditStatus === 0" size="small" type="warning" effect="light">审核中</el-tag>
+            <el-tag v-else-if="item.workflow" size="small" type="primary" effect="light">
               {{ item.workflow.name }}
             </el-tag>
             <el-tag v-else size="small" type="info" effect="light">未绑定流程</el-tag>
           </div>
           <div v-if="item.workflow" class="audit-flow-card-body">
             <div v-if="item.workflow.nodes && item.workflow.nodes.length > 0" class="audit-flow-steps">
-              <el-steps :active="-1" align-center>
+              <el-steps
+                :active="getStepActive(item)"
+                :finish-status="item.auditStatus === 2 ? 'error' : 'success'"
+                align-center
+              >
                 <el-step
                   v-for="node in item.workflow.nodes"
                   :key="node.id"
@@ -326,6 +337,20 @@
               </el-steps>
             </div>
             <el-empty v-else description="该流程未配置节点" :image-size="60" />
+            <div v-if="item.auditStatus === 0 && item.workflow && item.workflow.nodes && item.workflow.nodes.length > 0">
+              <div v-if="currentUserId === item.currentApproverId" class="audit-flow-actions">
+                <el-button type="primary" size="small" @click="handleAdvanceAuditNode(item.columnId)">
+                  <el-icon><CircleCheck /></el-icon>通过当前节点
+                </el-button>
+                <el-button type="danger" size="small" plain @click="handleRejectAuditNode(item.columnId)">
+                  <el-icon><CircleClose /></el-icon>驳回
+                </el-button>
+              </div>
+              <div v-else class="audit-flow-no-auth">
+                <el-icon><Warning /></el-icon>
+                <span>您不是当前节点审批人，无权操作</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -348,12 +373,14 @@ import {
   View,
   CircleCheck,
   CircleClose,
-  FolderOpened
+  FolderOpened,
+  Warning
 } from '@element-plus/icons-vue'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 import type { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor/editor'
 
+import { useUserStore } from '@/stores/user'
 import request from '@/utils/request'
 import {
   getArticles,
@@ -362,13 +389,19 @@ import {
   deleteArticle,
   auditArticle,
   updateArticleStatus,
-  setArticleColumns
+  setArticleColumns,
+  getArticleAuditProgress,
+  advanceArticleAudit,
+  rejectArticleAudit
 } from '@/api/article'
 import { getWorkflowByID } from '@/api/workflow'
 import { getAllCategories } from '@/api/category'
 import { getAllTags } from '@/api/tag'
 import { getPages } from '@/api/page'
 import { getColumns } from '@/api/column'
+
+const userStore = useUserStore()
+const currentUserId = computed(() => userStore.userInfo?.id || 0)
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -803,24 +836,65 @@ const handleDelete = (row: any) => {
   })
 }
 
+const currentAuditRow = ref<any>(null)
+
+const getStepActive = (item: any) => {
+  if (!item.workflow || !item.workflow.nodes || item.workflow.nodes.length === 0) return -1
+  if (item.auditStatus === 1) return item.workflow.nodes.length
+  if (item.auditStatus === 2) return item.workflow.nodes.length
+  if (item.currentNodeId === 0) return 0
+  const idx = item.workflow.nodes.findIndex((n: any) => n.id === item.currentNodeId)
+  if (idx >= 0) return idx
+  return 0
+}
+
 const handleShowAuditFlow = async (row: any) => {
   auditFlowDialogVisible.value = true
   auditFlowLoading.value = true
   auditFlowList.value = []
   auditFlowArticleTitle.value = row.title || ''
+  currentAuditRow.value = row
   try {
     if (columnList.value.length === 0) {
       await fetchColumns()
     }
     const columnIds = row.columnIds || []
     const columns = columnList.value.filter((col: any) => columnIds.includes(col.id))
+    // 获取审核进度
+    let progressRes: any = { data: [] }
+    if (row.auditStatus === 1) {
+      try {
+        progressRes = await getArticleAuditProgress(row.id)
+      } catch {
+        progressRes = { data: [] }
+      }
+    }
+    const progressList: any[] = progressRes.data || []
     const list: any[] = []
     for (const col of columns) {
-      const item: any = { columnName: col.name, workflow: null }
+      const item: any = {
+        columnId: col.id,
+        columnName: col.name,
+        workflow: null,
+        currentNodeId: 0,
+        auditStatus: -1,
+        currentApproverId: 0
+      }
+      const progress = progressList.find((p: any) => p.columnId === col.id)
+      if (progress) {
+        item.currentNodeId = progress.currentNodeId
+        item.auditStatus = progress.status
+      }
       if (col.workflowId) {
         try {
           const res: any = await getWorkflowByID(col.workflowId)
           item.workflow = res.data || null
+          if (item.workflow && item.workflow.nodes && item.currentNodeId) {
+            const node = item.workflow.nodes.find((n: any) => n.id === item.currentNodeId)
+            if (node) {
+              item.currentApproverId = node.approverId || 0
+            }
+          }
         } catch {
           item.workflow = null
         }
@@ -833,14 +907,66 @@ const handleShowAuditFlow = async (row: any) => {
   }
 }
 
+const handleAdvanceAuditNode = async (columnId: number) => {
+  if (!currentAuditRow.value) return
+  try {
+    const { value } = await ElMessageBox.prompt('请输入审核通过原因（可选）', '审核通过', {
+      confirmButtonText: '确定通过',
+      cancelButtonText: '取消',
+      inputPattern: /^.{0,500}$/,
+      inputErrorMessage: '原因最多500字'
+    })
+    await advanceArticleAudit(currentAuditRow.value.id, columnId, value || '')
+    ElMessage.success('已通过当前节点')
+    handleShowAuditFlow(currentAuditRow.value)
+    fetchData()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error?.message || '操作失败')
+    }
+  }
+}
+
+const handleRejectAuditNode = async (columnId: number) => {
+  if (!currentAuditRow.value) return
+  try {
+    const { value } = await ElMessageBox.prompt('请输入驳回原因', '审核驳回', {
+      confirmButtonText: '确定驳回',
+      cancelButtonText: '取消',
+      inputPattern: /\S+/,
+      inputErrorMessage: '驳回原因不能为空'
+    })
+    await rejectArticleAudit(currentAuditRow.value.id, columnId, value || '')
+    ElMessage.success('已驳回')
+    handleShowAuditFlow(currentAuditRow.value)
+    fetchData()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error?.message || '操作失败')
+    }
+  }
+}
+
 const handleAudit = (row: any) => {
-  ElMessageBox.confirm(`确定要审核通过文章 "${row.title}" 吗？`, '审核确认', {
-    confirmButtonText: '通过',
+  ElMessageBox.confirm(`确定要提交文章 "${row.title}" 进行审核吗？`, '提交审核', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    await auditArticle(row.id, 1)
+    ElMessage.success('提交审核成功')
+    fetchData()
+  })
+}
+
+const handleCompleteAudit = (row: any) => {
+  ElMessageBox.confirm(`确定要完成文章 "${row.title}" 的审核吗？审核通过后文章将变为已审核状态。`, '完成审核', {
+    confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
   }).then(async () => {
     await auditArticle(row.id, 2)
-    ElMessage.success('审核成功')
+    ElMessage.success('审核完成')
     fetchData()
   })
 }
@@ -1131,5 +1257,35 @@ onMounted(() => {
   :deep(.el-step__title) {
     font-size: 13px;
   }
+}
+
+.audit-flow-rejected {
+  border-color: #fde2e2 !important;
+
+  .audit-flow-card-header {
+    background: linear-gradient(90deg, #fef5f5 0%, #ffffff 100%);
+    border-bottom-color: #fde2e2;
+  }
+}
+
+.audit-flow-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed #e6f2ff;
+}
+
+.audit-flow-no-auth {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed #e6f2ff;
+  color: #909399;
+  font-size: 13px;
 }
 </style>

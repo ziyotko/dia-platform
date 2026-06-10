@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"server/models"
 	"server/utils"
 
@@ -162,4 +163,114 @@ func (s *ArticleService) GetArticleCount() int64 {
 	var count int64
 	utils.DB.Model(&models.Article{}).Count(&count)
 	return count
+}
+
+// StartArticleAudit 提交文章审核，为每个绑定了工作流的栏目创建审核记录
+func (s *ArticleService) StartArticleAudit(articleID uint) error {
+	var article models.Article
+	if err := utils.DB.Preload("Columns").First(&article, articleID).Error; err != nil {
+		return err
+	}
+	return utils.DB.Transaction(func(tx *gorm.DB) error {
+		// 更新文章状态为审核中
+		if err := tx.Model(&article).Update("audit_status", 1).Error; err != nil {
+			return err
+		}
+		// 清除旧的审核记录
+		if err := tx.Where("article_id = ?", articleID).Delete(&models.ArticleColumnAudit{}).Error; err != nil {
+			return err
+		}
+		// 为每个绑定了工作流的栏目创建审核记录
+		for _, col := range article.Columns {
+			if col.WorkflowID == nil || *col.WorkflowID == 0 {
+				continue
+			}
+			var firstNode models.WorkflowNode
+			err := tx.Where("workflow_id = ?", *col.WorkflowID).Order("sort_order ASC").First(&firstNode).Error
+			if err != nil {
+				continue // 流程没有节点，跳过
+			}
+			audit := models.ArticleColumnAudit{
+				ArticleID:     articleID,
+				ColumnID:      col.ID,
+				WorkflowID:    *col.WorkflowID,
+				CurrentNodeID: firstNode.ID,
+				Status:        0,
+			}
+			if err := tx.Create(&audit).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// GetArticleAuditProgress 获取文章在各栏目的审核进度
+func (s *ArticleService) GetArticleAuditProgress(articleID uint) ([]models.ArticleColumnAudit, error) {
+	var audits []models.ArticleColumnAudit
+	err := utils.DB.Where("article_id = ?", articleID).Find(&audits).Error
+	return audits, err
+}
+
+// AdvanceArticleAudit 推进指定文章栏目的审核到下一节点
+func (s *ArticleService) AdvanceArticleAudit(articleID uint, columnID uint, userID uint, remark string) error {
+	var audit models.ArticleColumnAudit
+	if err := utils.DB.Where("article_id = ? AND column_id = ?", articleID, columnID).First(&audit).Error; err != nil {
+		return err
+	}
+	if audit.Status != 0 {
+		return nil // 已结束
+	}
+	// 查找当前节点并校验权限
+	var currentNode models.WorkflowNode
+	if err := utils.DB.First(&currentNode, audit.CurrentNodeID).Error; err != nil {
+		return err
+	}
+	if currentNode.ApproverID != 0 && currentNode.ApproverID != userID {
+		return fmt.Errorf("当前节点审批人不是您，无权操作")
+	}
+	// 查找下一个节点
+	var nextNode models.WorkflowNode
+	err := utils.DB.Where("workflow_id = ? AND sort_order > ?", audit.WorkflowID, currentNode.SortOrder).Order("sort_order ASC").First(&nextNode).Error
+	if err != nil {
+		// 没有下一个节点，标记为已通过
+		return utils.DB.Model(&audit).Updates(map[string]interface{}{
+			"status":          1,
+			"current_node_id": 0,
+			"approve_remark":  remark,
+		}).Error
+	}
+	// 推进到下一个节点
+	return utils.DB.Model(&audit).Updates(map[string]interface{}{
+		"current_node_id": nextNode.ID,
+		"approve_remark":  remark,
+	}).Error
+}
+
+// RejectArticleAudit 驳回指定文章栏目的审核
+func (s *ArticleService) RejectArticleAudit(articleID uint, columnID uint, userID uint, remark string) error {
+	var audit models.ArticleColumnAudit
+	if err := utils.DB.Where("article_id = ? AND column_id = ?", articleID, columnID).First(&audit).Error; err != nil {
+		return err
+	}
+	if audit.Status != 0 {
+		return nil
+	}
+	// 查找当前节点并校验权限
+	var currentNode models.WorkflowNode
+	if err := utils.DB.First(&currentNode, audit.CurrentNodeID).Error; err != nil {
+		return err
+	}
+	if currentNode.ApproverID != 0 && currentNode.ApproverID != userID {
+		return fmt.Errorf("当前节点审批人不是您，无权操作")
+	}
+	return utils.DB.Model(&audit).Updates(map[string]interface{}{
+		"status":        2,
+		"reject_remark": remark,
+	}).Error
+}
+
+// CompleteArticleAudit 完成文章审核（所有栏目通过后调用）
+func (s *ArticleService) CompleteArticleAudit(articleID uint) error {
+	return utils.DB.Model(&models.Article{}).Where("id = ?", articleID).Update("audit_status", 2).Error
 }

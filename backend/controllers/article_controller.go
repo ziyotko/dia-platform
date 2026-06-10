@@ -247,12 +247,83 @@ func (c *ArticleController) AuditArticle(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误"))
 		return
 	}
-	err = c.articleService.UpdateAuditStatus(uint(id), req.AuditStatus)
+	if req.AuditStatus == 1 {
+		// 提交审核
+		err = c.articleService.StartArticleAudit(uint(id))
+	} else if req.AuditStatus == 2 {
+		// 完成审核
+		err = c.articleService.CompleteArticleAudit(uint(id))
+	} else {
+		err = c.articleService.UpdateAuditStatus(uint(id), req.AuditStatus)
+	}
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "审核文章失败"))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("审核文章成功", nil))
+}
+
+func (c *ArticleController) GetArticleAuditProgress(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "文章ID无效"))
+		return
+	}
+	audits, err := c.articleService.GetArticleAuditProgress(uint(id))
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取审核进度失败"))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("获取审核进度成功", audits))
+}
+
+func (c *ArticleController) AdvanceArticleAudit(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "文章ID无效"))
+		return
+	}
+	var req struct {
+		ColumnID uint   `json:"columnId"`
+		Remark   string `json:"remark"`
+	}
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误"))
+		return
+	}
+	userID := ctx.GetUint("userID")
+	err = c.articleService.AdvanceArticleAudit(uint(id), req.ColumnID, userID, req.Remark)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("推进审核成功", nil))
+}
+
+func (c *ArticleController) RejectArticleAudit(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "文章ID无效"))
+		return
+	}
+	var req struct {
+		ColumnID uint   `json:"columnId"`
+		Remark   string `json:"remark"`
+	}
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误"))
+		return
+	}
+	userID := ctx.GetUint("userID")
+	err = c.articleService.RejectArticleAudit(uint(id), req.ColumnID, userID, req.Remark)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("驳回审核成功", nil))
 }
 
 func (c *ArticleController) SetArticleColumns(ctx *gin.Context) {

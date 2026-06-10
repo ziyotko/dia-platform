@@ -40,6 +40,18 @@ export function auditArticle(id: number, auditStatus: number) {
   return request.patch(`/articles/${id}/audit`, { auditStatus })
 }
 
+export function getArticleAuditProgress(id: number) {
+  return request.get(`/articles/${id}/audit-progress`)
+}
+
+export function advanceArticleAudit(id: number, columnId: number, remark: string) {
+  return request.post(`/articles/${id}/audit-advance`, { columnId, remark })
+}
+
+export function rejectArticleAudit(id: number, columnId: number, remark: string) {
+  return request.post(`/articles/${id}/audit-reject`, { columnId, remark })
+}
+
 export function setArticleColumns(id: number, columnIds: number[]) {
   return request.put(`/articles/${id}/columns`, { columnIds })
 }
