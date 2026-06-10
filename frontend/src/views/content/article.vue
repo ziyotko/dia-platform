@@ -124,6 +124,9 @@
             <el-button v-if="isAuthor(row) && row.status === 0 && row.columnCount > 0 && row.auditStatus === 2" link type="warning" @click="handleReAudit(row)">
               <el-icon><CircleCheck /></el-icon>重新提交审核
             </el-button>
+            <el-button v-if="isAuthor(row) && row.auditStatus === 1" link type="warning" @click="handleWithdrawAudit(row)">
+              <el-icon><CircleClose /></el-icon>撤回审核
+            </el-button>
             <el-button v-if="row.status === 1" link type="danger" @click="handleOffShelf(row)">
               <el-icon><CircleClose /></el-icon>下线
             </el-button>
@@ -407,6 +410,7 @@ import {
   deleteArticle,
   auditArticle,
   restartArticleAudit,
+  withdrawArticleAudit,
   updateArticleStatus,
   setArticleColumns,
   getArticleAuditProgress,
@@ -1039,6 +1043,18 @@ const handleReAudit = (row: any) => {
   ).then(async () => {
     await restartArticleAudit(row.id)
     ElMessage.success('重新提交审核成功')
+    fetchData()
+  })
+}
+
+const handleWithdrawAudit = (row: any) => {
+  ElMessageBox.confirm(`确定要撤回文章 "${row.title}" 的审核吗？`, '撤回审核', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    await withdrawArticleAudit(row.id)
+    ElMessage.success('撤回审核成功')
     fetchData()
   })
 }

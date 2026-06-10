@@ -126,6 +126,7 @@ func SetupRoutes(router *gin.Engine) {
 		protected.PATCH("/articles/:id/status", articleController.UpdateArticleStatus)
 		protected.PATCH("/articles/:id/audit", articleController.AuditArticle)
 		protected.POST("/articles/:id/audit-restart", articleController.RestartArticleAudit)
+		protected.POST("/articles/:id/audit-withdraw", articleController.WithdrawArticleAudit)
 		protected.GET("/articles/:id/audit-progress", articleController.GetArticleAuditProgress)
 		protected.POST("/articles/:id/audit-advance", articleController.AdvanceArticleAudit)
 		protected.POST("/articles/:id/audit-reject", articleController.RejectArticleAudit)

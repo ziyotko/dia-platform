@@ -105,7 +105,17 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 }
 
 func (s *ArticleService) UpdateArticleStatus(id uint, status int) error {
-	return utils.DB.Model(&models.Article{}).Where("id = ?", id).Update("status", status).Error
+	return utils.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.Article{}).Where("id = ?", id).Update("status", status).Error; err != nil {
+			return err
+		}
+		if status == 2 {
+			if err := tx.Where("article_id = ?", id).Delete(&models.ArticleColumnPublish{}).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (s *ArticleService) UpdateAuditStatus(id uint, auditStatus int) error {
@@ -179,6 +189,29 @@ func (s *ArticleService) RestartArticleAudit(articleID uint) error {
 		return fmt.Errorf("只有已审核状态的文章可以重新提交审核")
 	}
 	return s.StartArticleAudit(articleID)
+}
+
+// WithdrawArticleAudit 撤回文章审核
+func (s *ArticleService) WithdrawArticleAudit(articleID uint) error {
+	var article models.Article
+	if err := utils.DB.First(&article, articleID).Error; err != nil {
+		return err
+	}
+	if article.AuditStatus != 1 {
+		return fmt.Errorf("只有审核中的文章可以撤回审核")
+	}
+	return utils.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&article).Update("audit_status", 0).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("article_id = ?", articleID).Delete(&models.ArticleColumnAudit{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("article_id = ?", articleID).Delete(&models.ArticleColumnAuditHistory{}).Error; err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 // StartArticleAudit 提交文章审核，为每个绑定了工作流的栏目创建审核记录

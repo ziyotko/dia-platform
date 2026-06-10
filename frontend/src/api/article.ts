@@ -44,6 +44,10 @@ export function restartArticleAudit(id: number) {
   return request.post(`/articles/${id}/audit-restart`)
 }
 
+export function withdrawArticleAudit(id: number) {
+  return request.post(`/articles/${id}/audit-withdraw`)
+}
+
 export function getArticleAuditProgress(id: number) {
   return request.get(`/articles/${id}/audit-progress`)
 }

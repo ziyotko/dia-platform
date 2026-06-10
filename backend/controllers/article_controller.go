@@ -267,6 +267,31 @@ func (c *ArticleController) RestartArticleAudit(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("重新提交审核成功", nil))
 }
 
+func (c *ArticleController) WithdrawArticleAudit(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "文章ID无效"))
+		return
+	}
+	userID := ctx.GetUint("userID")
+	article, err := c.articleService.GetArticleByID(uint(id))
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "文章不存在"))
+		return
+	}
+	if strconv.FormatUint(uint64(userID), 10) != article.AuthorCode {
+		ctx.JSON(http.StatusOK, utils.Error(1, "无权操作"))
+		return
+	}
+	err = c.articleService.WithdrawArticleAudit(uint(id))
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, err.Error()))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("撤回审核成功", nil))
+}
+
 func (c *ArticleController) AuditArticle(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
