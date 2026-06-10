@@ -121,9 +121,6 @@
             <el-button v-if="row.status === 0 && row.columnCount > 0 && row.auditStatus === 0" link type="warning" @click="handleAudit(row)">
               <el-icon><CircleCheck /></el-icon>提交审核
             </el-button>
-            <el-button v-if="row.status === 0 && row.auditStatus === 1" link type="success" @click="handleCompleteAudit(row)">
-              <el-icon><CircleCheck /></el-icon>完成审核
-            </el-button>
             <el-button v-if="row.status === 1" link type="danger" @click="handleOffShelf(row)">
               <el-icon><CircleClose /></el-icon>下线
             </el-button>
@@ -326,7 +323,7 @@
             <div v-if="item.workflow.nodes && item.workflow.nodes.length > 0" class="audit-flow-steps">
               <el-steps
                 :active="getStepActive(item)"
-                :finish-status="item.auditStatus === 2 ? 'error' : 'success'"
+                finish-status="success"
                 align-center
               >
                 <el-step
@@ -997,18 +994,6 @@ const handleAudit = (row: any) => {
   }).then(async () => {
     await auditArticle(row.id, 1)
     ElMessage.success('提交审核成功')
-    fetchData()
-  })
-}
-
-const handleCompleteAudit = (row: any) => {
-  ElMessageBox.confirm(`确定要完成文章 "${row.title}" 的审核吗？审核通过后文章将变为已审核状态。`, '完成审核', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    await auditArticle(row.id, 2)
-    ElMessage.success('审核完成')
     fetchData()
   })
 }
