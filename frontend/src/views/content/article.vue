@@ -323,13 +323,13 @@
             <div v-if="item.workflow.nodes && item.workflow.nodes.length > 0" class="audit-flow-steps">
               <el-steps
                 :active="getStepActive(item)"
-                finish-status="success"
                 align-center
               >
                 <el-step
                   v-for="node in item.workflow.nodes"
                   :key="node.id"
                   :title="node.name"
+                  :status="getNodeStatus(item, node.id)"
                 >
                   <template #description>
                     <div v-if="getNodeHistory(item, node.id)" class="audit-step-desc" :class="getNodeHistory(item, node.id).action === 2 ? 'audit-step-reject' : ''">
@@ -875,6 +875,14 @@ const getStepActive = (item: any) => {
 const getNodeHistory = (item: any, nodeId: number) => {
   if (!item.histories || item.histories.length === 0) return null
   return item.histories.find((h: any) => h.nodeId === nodeId) || null
+}
+
+const getNodeStatus = (item: any, nodeId: number) => {
+  const history = getNodeHistory(item, nodeId)
+  if (!history) return 'wait'
+  if (history.action === 1) return 'success'
+  if (history.action === 2) return 'error'
+  return 'wait'
 }
 
 const formatAuditTime = (timeStr: string) => {
