@@ -81,8 +81,8 @@
           <template #default="{ row }">
             <el-tag
               :type="row.auditStatus === 2 ? 'success' : row.auditStatus === 1 ? 'warning' : 'info'"
-              :class="{ 'audit-status-clickable': row.columnCount > 0 && (row.auditStatus === 0 || row.auditStatus === 1) }"
-              @click="row.columnCount > 0 && (row.auditStatus === 0 || row.auditStatus === 1) && handleShowAuditFlow(row)"
+              :class="{ 'audit-status-clickable': row.columnCount > 0 && (row.auditStatus === 0 || row.auditStatus === 1 || row.auditStatus === 2) }"
+              @click="row.columnCount > 0 && (row.auditStatus === 0 || row.auditStatus === 1 || row.auditStatus === 2) && handleShowAuditFlow(row)"
             >
               {{ row.auditStatus === 2 ? '已审核' : row.auditStatus === 1 ? '审核中' : '待审核' }}
             </el-tag>
@@ -112,10 +112,10 @@
             <el-button link type="primary" @click="handlePreview(row)">
               <el-icon><View /></el-icon>预览
             </el-button>
-            <el-button v-if="isAuthor(row) && row.auditStatus !== 1" link type="primary" @click="handleEdit(row)">
+            <el-button v-if="isAuthor(row) && row.auditStatus !== 1 && row.auditStatus !== 2" link type="primary" @click="handleEdit(row)">
               <el-icon><Edit /></el-icon>编辑
             </el-button>
-            <el-button v-if="isAuthor(row)" link type="success" @click="row.auditStatus === 1 ? ElMessage.warning('审核中的文章不能修改栏目') : handleSetColumns(row)">
+            <el-button v-if="isAuthor(row) && row.auditStatus !== 2" link type="success" @click="row.auditStatus === 1 ? ElMessage.warning('审核中的文章不能修改栏目') : handleSetColumns(row)">
               <el-icon><FolderOpened /></el-icon>栏目
             </el-button>
             <el-button v-if="isAuthor(row) && row.status === 0 && row.columnCount > 0 && row.auditStatus === 0" link type="warning" @click="handleAudit(row)">
@@ -904,7 +904,7 @@ const handleShowAuditFlow = async (row: any) => {
     const columns = columnList.value.filter((col: any) => columnIds.includes(col.id))
     // 获取审核进度
     let progressRes: any = { data: [] }
-    if (row.auditStatus === 1) {
+    if (row.auditStatus === 1 || row.auditStatus === 2) {
       try {
         progressRes = await getArticleAuditProgress(row.id)
       } catch {

@@ -263,14 +263,18 @@ func (s *ArticleService) AdvanceArticleAudit(articleID uint, columnID uint, user
 	if err != nil {
 		// 没有下一个节点，标记为已通过，记录通过人信息
 		now := time.Now()
-		return utils.DB.Model(&audit).Updates(map[string]interface{}{
+		if err := utils.DB.Model(&audit).Updates(map[string]interface{}{
 			"status":            1,
 			"current_node_id":   0,
 			"approve_remark":    remark,
 			"approve_user_id":   userID,
 			"approve_user_name": userName,
 			"approve_time":      now,
-		}).Error
+		}).Error; err != nil {
+			return err
+		}
+		s.tryCompleteArticleAudit(articleID)
+		return nil
 	}
 	// 推进到下一个节点
 	return utils.DB.Model(&audit).Updates(map[string]interface{}{
@@ -312,10 +316,14 @@ func (s *ArticleService) RejectArticleAudit(articleID uint, columnID uint, userI
 	if err := utils.DB.Create(&history).Error; err != nil {
 		return err
 	}
-	return utils.DB.Model(&audit).Updates(map[string]interface{}{
+	if err := utils.DB.Model(&audit).Updates(map[string]interface{}{
 		"status":        2,
 		"reject_remark": remark,
-	}).Error
+	}).Error; err != nil {
+		return err
+	}
+	s.tryCompleteArticleAudit(articleID)
+	return nil
 }
 
 // GetArticleAuditHistory 获取文章指定栏目的审核历史
@@ -323,6 +331,17 @@ func (s *ArticleService) GetArticleAuditHistory(articleID uint, columnID uint) (
 	var histories []models.ArticleColumnAuditHistory
 	err := utils.DB.Where("article_id = ? AND column_id = ?", articleID, columnID).Order("created_at ASC").Find(&histories).Error
 	return histories, err
+}
+
+// tryCompleteArticleAudit 检查文章所有栏目流程是否都已结束（通过或驳回），若是则自动完成文章审核
+func (s *ArticleService) tryCompleteArticleAudit(articleID uint) {
+	var pendingCount int64
+	utils.DB.Model(&models.ArticleColumnAudit{}).
+		Where("article_id = ? AND status = ?", articleID, 0).
+		Count(&pendingCount)
+	if pendingCount == 0 {
+		s.CompleteArticleAudit(articleID)
+	}
 }
 
 // CompleteArticleAudit 完成文章审核（所有栏目通过后调用）
