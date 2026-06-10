@@ -160,6 +160,15 @@ func (s *ArticleService) DeleteArticle(id uint) error {
 		if err := tx.Model(&article).Association("Columns").Clear(); err != nil {
 			return err
 		}
+		if err := tx.Where("article_id = ?", id).Delete(&models.ArticleColumnAudit{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("article_id = ?", id).Delete(&models.ArticleColumnAuditHistory{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("article_id = ?", id).Delete(&models.ArticleColumnPublish{}).Error; err != nil {
+			return err
+		}
 		return tx.Delete(&article).Error
 	})
 }
