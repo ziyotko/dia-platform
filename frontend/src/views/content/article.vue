@@ -79,7 +79,11 @@
         </el-table-column>
         <el-table-column prop="auditStatus" label="审核状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.auditStatus === 2 ? 'success' : row.auditStatus === 1 ? 'warning' : 'info'">
+            <el-tag
+              :type="row.auditStatus === 2 ? 'success' : row.auditStatus === 1 ? 'warning' : 'info'"
+              :class="{ 'audit-status-clickable': row.auditStatus === 0 && row.columnCount > 0 }"
+              @click="row.auditStatus === 0 && row.columnCount > 0 && handleShowAuditFlow(row)"
+            >
               {{ row.auditStatus === 2 ? '已审核' : row.auditStatus === 1 ? '审核中' : '待审核' }}
             </el-tag>
           </template>
@@ -289,6 +293,46 @@
         <el-button type="primary" :loading="columnSubmitLoading" @click="handleSubmitColumns">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 审核流程预览 -->
+    <el-dialog v-model="auditFlowDialogVisible" title="栏目审核流程" width="640px" destroy-on-close>
+      <div v-if="auditFlowArticleTitle" class="audit-flow-subtitle">
+        文章：{{ auditFlowArticleTitle }}
+      </div>
+      <el-skeleton v-if="auditFlowLoading" :rows="6" animated />
+      <el-empty v-else-if="auditFlowList.length === 0" description="暂无栏目或未绑定审核流程" />
+      <div v-else class="audit-flow-list">
+        <div
+          v-for="(item, index) in auditFlowList"
+          :key="index"
+          class="audit-flow-card"
+        >
+          <div class="audit-flow-card-header">
+            <div class="audit-flow-index">{{ index + 1 }}</div>
+            <div class="audit-flow-column-name">{{ item.columnName }}</div>
+            <el-tag v-if="item.workflow" size="small" type="primary" effect="light">
+              {{ item.workflow.name }}
+            </el-tag>
+            <el-tag v-else size="small" type="info" effect="light">未绑定流程</el-tag>
+          </div>
+          <div v-if="item.workflow" class="audit-flow-card-body">
+            <div v-if="item.workflow.nodes && item.workflow.nodes.length > 0" class="audit-flow-steps">
+              <el-steps :active="-1" align-center>
+                <el-step
+                  v-for="node in item.workflow.nodes"
+                  :key="node.id"
+                  :title="node.name"
+                />
+              </el-steps>
+            </div>
+            <el-empty v-else description="该流程未配置节点" :image-size="60" />
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="auditFlowDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -320,6 +364,7 @@ import {
   updateArticleStatus,
   setArticleColumns
 } from '@/api/article'
+import { getWorkflowByID } from '@/api/workflow'
 import { getAllCategories } from '@/api/category'
 import { getAllTags } from '@/api/tag'
 import { getPages } from '@/api/page'
@@ -339,6 +384,11 @@ const columnSubmitLoading = ref(false)
 const currentArticleId = ref<number | undefined>(undefined)
 const pageList = ref<any[]>([])
 const columnList = ref<any[]>([])
+
+const auditFlowDialogVisible = ref(false)
+const auditFlowLoading = ref(false)
+const auditFlowList = ref<any[]>([])
+const auditFlowArticleTitle = ref('')
 
 const queryForm = reactive({
   page: 1,
@@ -753,6 +803,36 @@ const handleDelete = (row: any) => {
   })
 }
 
+const handleShowAuditFlow = async (row: any) => {
+  auditFlowDialogVisible.value = true
+  auditFlowLoading.value = true
+  auditFlowList.value = []
+  auditFlowArticleTitle.value = row.title || ''
+  try {
+    if (columnList.value.length === 0) {
+      await fetchColumns()
+    }
+    const columnIds = row.columnIds || []
+    const columns = columnList.value.filter((col: any) => columnIds.includes(col.id))
+    const list: any[] = []
+    for (const col of columns) {
+      const item: any = { columnName: col.name, workflow: null }
+      if (col.workflowId) {
+        try {
+          const res: any = await getWorkflowByID(col.workflowId)
+          item.workflow = res.data || null
+        } catch {
+          item.workflow = null
+        }
+      }
+      list.push(item)
+    }
+    auditFlowList.value = list
+  } finally {
+    auditFlowLoading.value = false
+  }
+}
+
 const handleAudit = (row: any) => {
   ElMessageBox.confirm(`确定要审核通过文章 "${row.title}" 吗？`, '审核确认', {
     confirmButtonText: '通过',
@@ -979,6 +1059,77 @@ onMounted(() => {
   .preview-body {
     line-height: 1.8;
     color: #333;
+  }
+}
+
+.audit-status-clickable {
+  cursor: pointer;
+}
+
+.audit-flow-subtitle {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e6f2ff;
+}
+
+.audit-flow-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.audit-flow-card {
+  background: #fff;
+  border: 1px solid #e6f2ff;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(64, 158, 255, 0.1);
+  }
+}
+
+.audit-flow-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(90deg, #f5faff 0%, #ffffff 100%);
+  border-bottom: 1px solid #e6f2ff;
+}
+
+.audit-flow-index {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #409eff;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(64, 158, 255, 0.25);
+}
+
+.audit-flow-column-name {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.audit-flow-card-body {
+  padding: 16px;
+}
+
+.audit-flow-steps {
+  :deep(.el-step__title) {
+    font-size: 13px;
   }
 }
 </style>
