@@ -365,5 +365,47 @@ func (s *ArticleService) tryCompleteArticleAudit(articleID uint) {
 
 // CompleteArticleAudit 完成文章审核（所有栏目通过后调用）
 func (s *ArticleService) CompleteArticleAudit(articleID uint) error {
-	return utils.DB.Model(&models.Article{}).Where("id = ?", articleID).Update("audit_status", 2).Error
+	return utils.DB.Transaction(func(tx *gorm.DB) error {
+		// 更新文章审核状态为已审核
+		if err := tx.Model(&models.Article{}).Where("id = ?", articleID).Update("audit_status", 2).Error; err != nil {
+			return err
+		}
+		// 获取文章基本信息
+		var article models.Article
+		if err := tx.First(&article, articleID).Error; err != nil {
+			return err
+		}
+		// 清除该文章旧的发布记录
+		if err := tx.Where("article_id = ?", articleID).Delete(&models.ArticleColumnPublish{}).Error; err != nil {
+			return err
+		}
+		// 只查询审核通过的栏目记录
+		var audits []models.ArticleColumnAudit
+		if err := tx.Where("article_id = ? AND status = ?", articleID, 1).Find(&audits).Error; err != nil {
+			return err
+		}
+		// 为每个通过的栏目创建发布记录
+		for _, audit := range audits {
+			var col models.Column
+			if err := tx.First(&col, audit.ColumnID).Error; err != nil {
+				continue // 栏目不存在则跳过
+			}
+			publish := models.ArticleColumnPublish{
+				PageID:       col.PageID,
+				ColumnID:     audit.ColumnID,
+				ArticleID:    article.ID,
+				ArticleTitle: article.Title,
+				Author:       article.Author,
+				Source:       article.Source,
+				IsTop:        article.IsTop,
+				IsBold:       article.IsBold,
+				Color:        article.DefaultColor,
+				IsStatic:     0,
+			}
+			if err := tx.Create(&publish).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
