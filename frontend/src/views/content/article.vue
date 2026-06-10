@@ -332,8 +332,11 @@
                   :title="node.name"
                 >
                   <template #description>
-                    <div v-if="getNodeHistory(item, node.id)" class="audit-step-desc">
-                      <el-icon color="#67c23a" size="12"><CircleCheck /></el-icon>
+                    <div v-if="getNodeHistory(item, node.id)" class="audit-step-desc" :class="getNodeHistory(item, node.id).action === 2 ? 'audit-step-reject' : ''">
+                      <el-icon :color="getNodeHistory(item, node.id).action === 2 ? '#f56c6c' : '#67c23a'" size="12">
+                        <CircleCheck v-if="getNodeHistory(item, node.id).action === 1" />
+                        <CircleClose v-else />
+                      </el-icon>
                       <span>{{ getNodeHistory(item, node.id).operatorName }} {{ formatAuditTime(getNodeHistory(item, node.id).createTime) }}</span>
                     </div>
                   </template>
@@ -343,7 +346,11 @@
             <el-empty v-else description="该流程未配置节点" :image-size="60" />
             <div v-if="item.auditStatus === 1 && item.approveUserName" class="audit-flow-result">
               <el-icon color="#67c23a"><CircleCheck /></el-icon>
-              <span>已通过：{{ item.approveUserName }} {{ item.approveTime ? formatAuditTime(item.approveTime) : '' }}</span>
+              <span>已通过：{{ item.approverRemark }}</span>
+            </div>
+            <div v-if="item.auditStatus === 2 && item.rejectRemark" class="audit-flow-result audit-flow-reject-result">
+              <el-icon color="#f56c6c"><CircleClose /></el-icon>
+              <span>已驳回：{{ item.rejectRemark }}</span>
             </div>
             <div v-if="item.auditStatus === 0 && item.workflow && item.workflow.nodes && item.workflow.nodes.length > 0">
               <div v-if="item.currentApproverId == 0 || currentUserId == item.currentApproverId" class="audit-flow-actions">
@@ -908,6 +915,7 @@ const handleShowAuditFlow = async (row: any) => {
         currentApproverId: 0,
         approveUserName: '',
         approveTime: '',
+        rejectRemark: '',
         histories: []
       }
       const progress = progressList.find((p: any) => p.columnId === col.id)
@@ -916,6 +924,7 @@ const handleShowAuditFlow = async (row: any) => {
         item.auditStatus = progress.status
         item.approveUserName = progress.approveUserName || ''
         item.approveTime = progress.approveTime || ''
+        item.rejectRemark = progress.rejectRemark || ''
       }
       if (col.workflowId) {
         try {
@@ -1336,5 +1345,13 @@ onMounted(() => {
   margin-top: 4px;
   font-size: 12px;
   color: #67c23a;
+}
+
+.audit-step-desc.audit-step-reject {
+  color: #f56c6c;
+}
+
+.audit-flow-reject-result {
+  color: #f56c6c;
 }
 </style>
