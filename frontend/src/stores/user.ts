@@ -16,7 +16,12 @@ function getStoredUserInfo(): UserInfo | null {
   const stored = localStorage.getItem(USER_INFO_KEY)
   if (!stored) return null
   try {
-    return JSON.parse(stored) as UserInfo
+    const data = JSON.parse(stored) as any
+    // 兼容后端旧数据：ID 大写转小写
+    if (data.ID !== undefined && data.id === undefined) {
+      data.id = data.ID
+    }
+    return data as UserInfo
   } catch {
     return null
   }

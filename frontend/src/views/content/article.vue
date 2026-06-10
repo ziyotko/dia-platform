@@ -333,12 +333,23 @@
                   v-for="node in item.workflow.nodes"
                   :key="node.id"
                   :title="node.name"
-                />
+                >
+                  <template #description>
+                    <div v-if="getNodeHistory(item, node.id)" class="audit-step-desc">
+                      <el-icon color="#67c23a" size="12"><CircleCheck /></el-icon>
+                      <span>{{ getNodeHistory(item, node.id).operatorName }} {{ formatAuditTime(getNodeHistory(item, node.id).createTime) }}</span>
+                    </div>
+                  </template>
+                </el-step>
               </el-steps>
             </div>
             <el-empty v-else description="该流程未配置节点" :image-size="60" />
+            <div v-if="item.auditStatus === 1 && item.approveUserName" class="audit-flow-result">
+              <el-icon color="#67c23a"><CircleCheck /></el-icon>
+              <span>已通过：{{ item.approveUserName }} {{ item.approveTime ? formatAuditTime(item.approveTime) : '' }}</span>
+            </div>
             <div v-if="item.auditStatus === 0 && item.workflow && item.workflow.nodes && item.workflow.nodes.length > 0">
-              <div v-if="currentUserId === item.currentApproverId" class="audit-flow-actions">
+              <div v-if="item.currentApproverId == 0 || currentUserId == item.currentApproverId" class="audit-flow-actions">
                 <el-button type="primary" size="small" @click="handleAdvanceAuditNode(item.columnId)">
                   <el-icon><CircleCheck /></el-icon>通过当前节点
                 </el-button>
@@ -392,7 +403,8 @@ import {
   setArticleColumns,
   getArticleAuditProgress,
   advanceArticleAudit,
-  rejectArticleAudit
+  rejectArticleAudit,
+  getArticleAuditHistory
 } from '@/api/article'
 import { getWorkflowByID } from '@/api/workflow'
 import { getAllCategories } from '@/api/category'
@@ -848,6 +860,24 @@ const getStepActive = (item: any) => {
   return 0
 }
 
+const getNodeHistory = (item: any, nodeId: number) => {
+  if (!item.histories || item.histories.length === 0) return null
+  return item.histories.find((h: any) => h.nodeId === nodeId) || null
+}
+
+const formatAuditTime = (timeStr: string) => {
+  if (!timeStr) return ''
+  const date = new Date(timeStr)
+  if (isNaN(date.getTime())) return timeStr
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  const h = String(date.getHours()).padStart(2, '0')
+  const min = String(date.getMinutes()).padStart(2, '0')
+  const s = String(date.getSeconds()).padStart(2, '0')
+  return `${y}-${m}-${d} ${h}:${min}:${s}`
+}
+
 const handleShowAuditFlow = async (row: any) => {
   auditFlowDialogVisible.value = true
   auditFlowLoading.value = true
@@ -878,12 +908,17 @@ const handleShowAuditFlow = async (row: any) => {
         workflow: null,
         currentNodeId: 0,
         auditStatus: -1,
-        currentApproverId: 0
+        currentApproverId: 0,
+        approveUserName: '',
+        approveTime: '',
+        histories: []
       }
       const progress = progressList.find((p: any) => p.columnId === col.id)
       if (progress) {
         item.currentNodeId = progress.currentNodeId
         item.auditStatus = progress.status
+        item.approveUserName = progress.approveUserName || ''
+        item.approveTime = progress.approveTime || ''
       }
       if (col.workflowId) {
         try {
@@ -898,6 +933,13 @@ const handleShowAuditFlow = async (row: any) => {
         } catch {
           item.workflow = null
         }
+      }
+      // 获取审核历史
+      try {
+        const historyRes: any = await getArticleAuditHistory(row.id, col.id)
+        item.histories = historyRes.data || []
+      } catch {
+        item.histories = []
       }
       list.push(item)
     }
@@ -1287,5 +1329,27 @@ onMounted(() => {
   border-top: 1px dashed #e6f2ff;
   color: #909399;
   font-size: 13px;
+}
+
+.audit-flow-result {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed #e6f2ff;
+  color: #67c23a;
+  font-size: 13px;
+}
+
+.audit-step-desc {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #67c23a;
 }
 </style>

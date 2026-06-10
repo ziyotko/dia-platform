@@ -128,6 +128,7 @@ func SetupRoutes(router *gin.Engine) {
 		protected.GET("/articles/:id/audit-progress", articleController.GetArticleAuditProgress)
 		protected.POST("/articles/:id/audit-advance", articleController.AdvanceArticleAudit)
 		protected.POST("/articles/:id/audit-reject", articleController.RejectArticleAudit)
+		protected.GET("/articles/:id/audit-history", articleController.GetArticleAuditHistory)
 		protected.PUT("/articles/:id/columns", articleController.SetArticleColumns)
 
 		protected.GET("/ads", adController.GetAds)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"server/models"
 	"server/utils"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -212,6 +213,17 @@ func (s *ArticleService) GetArticleAuditProgress(articleID uint) ([]models.Artic
 	return audits, err
 }
 
+func (s *ArticleService) getUserName(userID uint) string {
+	var user models.User
+	if err := utils.DB.First(&user, userID).Error; err != nil {
+		return ""
+	}
+	if user.Nickname != "" {
+		return user.Nickname
+	}
+	return user.Username
+}
+
 // AdvanceArticleAudit 推进指定文章栏目的审核到下一节点
 func (s *ArticleService) AdvanceArticleAudit(articleID uint, columnID uint, userID uint, remark string) error {
 	var audit models.ArticleColumnAudit
@@ -229,15 +241,35 @@ func (s *ArticleService) AdvanceArticleAudit(articleID uint, columnID uint, user
 	if currentNode.ApproverID != 0 && currentNode.ApproverID != userID {
 		return fmt.Errorf("当前节点审批人不是您，无权操作")
 	}
+	userName := s.getUserName(userID)
+	// 记录当前节点的通过历史
+	history := models.ArticleColumnAuditHistory{
+		ArticleID:    articleID,
+		ColumnID:     columnID,
+		WorkflowID:   audit.WorkflowID,
+		NodeID:       currentNode.ID,
+		NodeName:     currentNode.Name,
+		Action:       1,
+		OperatorID:   userID,
+		OperatorName: userName,
+		Remark:       remark,
+	}
+	if err := utils.DB.Create(&history).Error; err != nil {
+		return err
+	}
 	// 查找下一个节点
 	var nextNode models.WorkflowNode
 	err := utils.DB.Where("workflow_id = ? AND sort_order > ?", audit.WorkflowID, currentNode.SortOrder).Order("sort_order ASC").First(&nextNode).Error
 	if err != nil {
-		// 没有下一个节点，标记为已通过
+		// 没有下一个节点，标记为已通过，记录通过人信息
+		now := time.Now()
 		return utils.DB.Model(&audit).Updates(map[string]interface{}{
-			"status":          1,
-			"current_node_id": 0,
-			"approve_remark":  remark,
+			"status":            1,
+			"current_node_id":   0,
+			"approve_remark":    remark,
+			"approve_user_id":   userID,
+			"approve_user_name": userName,
+			"approve_time":      now,
 		}).Error
 	}
 	// 推进到下一个节点
@@ -264,10 +296,33 @@ func (s *ArticleService) RejectArticleAudit(articleID uint, columnID uint, userI
 	if currentNode.ApproverID != 0 && currentNode.ApproverID != userID {
 		return fmt.Errorf("当前节点审批人不是您，无权操作")
 	}
+	userName := s.getUserName(userID)
+	// 记录驳回历史
+	history := models.ArticleColumnAuditHistory{
+		ArticleID:    articleID,
+		ColumnID:     columnID,
+		WorkflowID:   audit.WorkflowID,
+		NodeID:       currentNode.ID,
+		NodeName:     currentNode.Name,
+		Action:       2,
+		OperatorID:   userID,
+		OperatorName: userName,
+		Remark:       remark,
+	}
+	if err := utils.DB.Create(&history).Error; err != nil {
+		return err
+	}
 	return utils.DB.Model(&audit).Updates(map[string]interface{}{
 		"status":        2,
 		"reject_remark": remark,
 	}).Error
+}
+
+// GetArticleAuditHistory 获取文章指定栏目的审核历史
+func (s *ArticleService) GetArticleAuditHistory(articleID uint, columnID uint) ([]models.ArticleColumnAuditHistory, error) {
+	var histories []models.ArticleColumnAuditHistory
+	err := utils.DB.Where("article_id = ? AND column_id = ?", articleID, columnID).Order("created_at ASC").Find(&histories).Error
+	return histories, err
 }
 
 // CompleteArticleAudit 完成文章审核（所有栏目通过后调用）

@@ -52,6 +52,10 @@ export function rejectArticleAudit(id: number, columnId: number, remark: string)
   return request.post(`/articles/${id}/audit-reject`, { columnId, remark })
 }
 
+export function getArticleAuditHistory(id: number, columnId: number) {
+  return request.get(`/articles/${id}/audit-history`, { params: { columnId } })
+}
+
 export function setArticleColumns(id: number, columnIds: number[]) {
   return request.put(`/articles/${id}/columns`, { columnIds })
 }

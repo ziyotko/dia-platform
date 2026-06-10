@@ -326,6 +326,27 @@ func (c *ArticleController) RejectArticleAudit(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("驳回审核成功", nil))
 }
 
+func (c *ArticleController) GetArticleAuditHistory(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "文章ID无效"))
+		return
+	}
+	columnIDStr := ctx.Query("columnId")
+	columnID, err := strconv.ParseUint(columnIDStr, 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "栏目ID无效"))
+		return
+	}
+	histories, err := c.articleService.GetArticleAuditHistory(uint(id), uint(columnID))
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取审核历史失败"))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("获取审核历史成功", histories))
+}
+
 func (c *ArticleController) SetArticleColumns(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
