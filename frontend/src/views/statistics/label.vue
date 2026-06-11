@@ -106,9 +106,6 @@ const defaultColors = [
 const updateChart = () => {
   if (!chartInstance || chartData.value.length === 0) return
 
-  const maxCount = Math.max(...chartData.value.map(d => d.count || 0), 1)
-  const minCount = Math.min(...chartData.value.map(d => d.count || 0), maxCount)
-
   const data = chartData.value.map((item, index) => {
     const color = item.color || defaultColors[index % defaultColors.length]
     return {
