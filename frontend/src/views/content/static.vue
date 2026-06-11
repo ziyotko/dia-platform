@@ -80,13 +80,13 @@
           <el-icon><Menu /></el-icon>
           生成栏目页
         </el-button>
-        <el-button type="info" size="large" :loading="generating" @click="handleGenerateDetail">
-          <el-icon><Document /></el-icon>
-          生成详情页
-        </el-button>
         <el-button type="info" size="large" :loading="generating" @click="handleGenerateTopic">
           <el-icon><Collection /></el-icon>
           生成专题页
+        </el-button>
+        <el-button type="info" size="large" :loading="generating" @click="handleGenerateDetail">
+          <el-icon><Document /></el-icon>
+          生成详情页
         </el-button>
         <el-button type="danger" size="large" :disabled="generating" @click="handleClearCache">
           <el-icon><Delete /></el-icon>
