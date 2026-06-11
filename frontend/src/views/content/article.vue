@@ -52,7 +52,7 @@
 
       <el-table :data="tableData" v-loading="loading" border stripe>
         <el-table-column type="index" width="60" align="center" />
-        <el-table-column prop="title" label="文章标题" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="title" label="文章标题" min-width="180" show-overflow-tooltip />
         <el-table-column prop="categoryName" label="所属分类" width="120" />
         <el-table-column label="标签" width="120">
           <template #default="{ row }">
@@ -107,7 +107,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="170" />
-        <el-table-column label="操作" width="380" align="center" fixed="right">
+        <el-table-column label="操作" width="420" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handlePreview(row)">
               <el-icon><View /></el-icon>预览

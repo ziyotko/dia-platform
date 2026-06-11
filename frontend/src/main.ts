@@ -9,6 +9,23 @@ import App from './App.vue'
 import router from './router'
 import { useAppStore } from './stores/app'
 
+// 消除 Element Plus 内部组件的非 passive 事件监听器警告
+const originalAddEventListener = EventTarget.prototype.addEventListener
+EventTarget.prototype.addEventListener = function (
+  type: string,
+  listener: EventListenerOrEventListenerObject | null,
+  options?: boolean | AddEventListenerOptions
+) {
+  if ((type === 'wheel' || type === 'touchstart') && typeof options === 'boolean') {
+    options = { capture: options, passive: true }
+  } else if ((type === 'wheel' || type === 'touchstart') && options === undefined) {
+    options = { passive: true }
+  } else if (typeof options === 'object' && options !== null && options.passive === undefined) {
+    options = { ...options, passive: true }
+  }
+  return originalAddEventListener.call(this, type, listener, options)
+}
+
 const app = createApp(App)
 
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {

@@ -106,8 +106,10 @@
           </div>
           <el-table :data="pageList" v-loading="loading" border stripe>
             <el-table-column type="index" width="60" align="center" />
-            <el-table-column prop="name" label="页面名称" min-width="180" />
+            <el-table-column prop="name" label="新闻名称" min-width="180" />
             <el-table-column prop="path" label="访问路径" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="pageName" label="页面名称" min-width="140" />
+            <el-table-column prop="columnName" label="栏目名称" min-width="140" />
             <el-table-column prop="type" label="页面类型" width="120">
               <template #default="{ row }">
                 <el-tag :type="row.type === '首页' ? 'primary' : row.type === '文章' ? 'success' : 'info'">
@@ -115,14 +117,6 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="status" label="静态化状态" width="120" align="center">
-              <template #default="{ row }">
-                <el-tag :type="row.status === '已生成' ? 'success' : 'warning'">
-                  {{ row.status }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="generateTime" label="生成时间" width="170" />
             <el-table-column prop="fileSize" label="文件大小" width="120" align="center" />
             <el-table-column label="操作" width="180" align="center" fixed="right">
               <template #default="{ row }">
@@ -174,7 +168,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, shallowRef } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   DocumentChecked,
@@ -193,6 +187,7 @@ import {
   CircleClose,
   Warning
 } from '@element-plus/icons-vue'
+import { getArticleColumnPublishes } from '@/api/article'
 
 const loading = ref(false)
 const generating = ref(false)
@@ -212,19 +207,19 @@ const queryForm = reactive({
 })
 
 const pageList = ref<any[]>([
-  { id: 1, name: '网站首页', path: '/', type: '首页', status: '已生成', generateTime: '2026-06-05 10:00', fileSize: '32 KB', generating: false },
-  { id: 2, name: '关于我们', path: '/about', type: '单页', status: '已生成', generateTime: '2026-06-05 10:01', fileSize: '18 KB', generating: false },
-  { id: 3, name: '新闻中心', path: '/news', type: '列表', status: '已生成', generateTime: '2026-06-05 10:02', fileSize: '45 KB', generating: false },
-  { id: 4, name: '产品分类-电子产品', path: '/category/electronics', type: '分类', status: '已生成', generateTime: '2026-06-05 10:03', fileSize: '28 KB', generating: false },
-  { id: 5, name: '产品分类-家居用品', path: '/category/home', type: '分类', status: '待生成', generateTime: '-', fileSize: '-', generating: false },
-  { id: 6, name: '文章-2026年行业趋势分析', path: '/article/1001', type: '文章', status: '已生成', generateTime: '2026-06-05 10:05', fileSize: '52 KB', generating: false },
-  { id: 7, name: '文章-新技术应用案例', path: '/article/1002', type: '文章', status: '已生成', generateTime: '2026-06-05 10:06', fileSize: '38 KB', generating: false },
-  { id: 8, name: '标签-Vue', path: '/tag/vue', type: '标签', status: '待生成', generateTime: '-', fileSize: '-', generating: false },
-  { id: 9, name: '标签-Go', path: '/tag/go', type: '标签', status: '已生成', generateTime: '2026-06-05 10:08', fileSize: '22 KB', generating: false },
-  { id: 10, name: '联系我们', path: '/contact', type: '单页', status: '已生成', generateTime: '2026-06-05 10:09', fileSize: '15 KB', generating: false }
+  { id: 1, name: '网站首页', path: '/', type: '首页', fileSize: '32 KB', generating: false },
+  { id: 2, name: '关于我们', path: '/about', type: '单页', fileSize: '18 KB', generating: false },
+  { id: 3, name: '新闻中心', path: '/news', type: '列表', fileSize: '45 KB', generating: false },
+  { id: 4, name: '产品分类-电子产品', path: '/category/electronics', type: '分类', fileSize: '28 KB', generating: false },
+  { id: 5, name: '产品分类-家居用品', path: '/category/home', type: '分类', fileSize: '-', generating: false },
+  { id: 6, name: '文章-2026年行业趋势分析', path: '/article/1001', type: '文章', fileSize: '52 KB', generating: false },
+  { id: 7, name: '文章-新技术应用案例', path: '/article/1002', type: '文章', fileSize: '38 KB', generating: false },
+  { id: 8, name: '标签-Vue', path: '/tag/vue', type: '标签', fileSize: '-', generating: false },
+  { id: 9, name: '标签-Go', path: '/tag/go', type: '标签', fileSize: '22 KB', generating: false },
+  { id: 10, name: '联系我们', path: '/contact', type: '单页', fileSize: '15 KB', generating: false }
 ])
 
-const logList = ref<any[]>([
+const logList = shallowRef<any[]>([
   { type: 'success', icon: Check, time: '2026-06-05 10:30:15', title: '全站静态化完成', detail: '共生成 128 个页面，耗时 12.5 秒' },
   { type: 'primary', icon: Refresh, time: '2026-06-05 10:15:02', title: '首页重新生成', detail: '文件大小 32 KB，生成耗时 0.8 秒' },
   { type: 'warning', icon: Warning, time: '2026-06-05 09:45:30', title: '栏目页生成警告', detail: '部分栏目下无内容，已跳过空栏目页面' },
@@ -235,9 +230,16 @@ const logList = ref<any[]>([
 const fetchPageList = async () => {
   loading.value = true
   try {
-    // TODO: 调用后端接口获取页面列表
-    await new Promise(resolve => setTimeout(resolve, 500))
-    total.value = pageList.value.length
+    const res: any = await getArticleColumnPublishes({
+      page: queryForm.page,
+      pageSize: queryForm.pageSize
+    })
+    if (res.data) {
+      pageList.value = res.data.list || []
+      total.value = res.data.total || 0
+    }
+  } catch (error) {
+    console.error(error)
   } finally {
     loading.value = false
   }
@@ -299,8 +301,6 @@ const handleGenerateSingle = async (row: any) => {
   try {
     // TODO: 调用单页生成接口
     await new Promise(resolve => setTimeout(resolve, 1000))
-    row.status = '已生成'
-    row.generateTime = new Date().toLocaleString()
     ElMessage.success(`「${row.name}」生成成功`)
   } catch (error) {
     ElMessage.error(`「${row.name}」生成失败`)
@@ -314,13 +314,10 @@ const handlePreview = (row: any) => {
 }
 
 const addLog = (type: string, icon: any, title: string, detail: string) => {
-  logList.value.unshift({
-    type,
-    icon,
-    time: new Date().toLocaleString(),
-    title,
-    detail
-  })
+  logList.value = [
+    { type, icon, time: new Date().toLocaleString(), title, detail },
+    ...logList.value
+  ]
 }
 
 const clearLogs = () => {

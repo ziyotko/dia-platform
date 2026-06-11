@@ -71,3 +71,7 @@ export function setArticleColumns(id: number, columnIds: number[]) {
 export function deleteArticle(id: number) {
   return request.delete(`/articles/${id}`)
 }
+
+export function getArticleColumnPublishes(params: { articleTitle?: string; columnId?: number; page?: number; pageSize?: number }) {
+  return request.get('/articles/column-publishes', { params })
+}

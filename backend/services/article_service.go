@@ -405,6 +405,26 @@ func (s *ArticleService) tryCompleteArticleAudit(articleID uint) {
 	}
 }
 
+// GetArticleColumnPublishes 获取文章栏目发布（静态化）列表
+func (s *ArticleService) GetArticleColumnPublishes(articleTitle string, columnID uint, page int, pageSize int) ([]models.ArticleColumnPublish, int64, error) {
+	var list []models.ArticleColumnPublish
+	var total int64
+	query := utils.DB.Model(&models.ArticleColumnPublish{})
+	if articleTitle != "" {
+		query = query.Where("article_title LIKE ?", "%"+articleTitle+"%")
+	}
+	if columnID > 0 {
+		query = query.Where("column_id = ?", columnID)
+	}
+	err := query.Count(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+	offset := (page - 1) * pageSize
+	err = query.Preload("Page").Preload("Column").Order("id DESC").Limit(pageSize).Offset(offset).Find(&list).Error
+	return list, total, err
+}
+
 // CompleteArticleAudit 完成文章审核（所有栏目通过后调用）
 func (s *ArticleService) CompleteArticleAudit(articleID uint) error {
 	return utils.DB.Transaction(func(tx *gorm.DB) error {
@@ -442,7 +462,6 @@ func (s *ArticleService) CompleteArticleAudit(articleID uint) error {
 				IsTop:        article.IsTop,
 				IsBold:       article.IsBold,
 				Color:        article.DefaultColor,
-				IsStatic:     0,
 			}
 			if err := tx.Create(&publish).Error; err != nil {
 				return err
