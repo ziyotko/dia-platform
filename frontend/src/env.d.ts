@@ -11,3 +11,5 @@ declare module '@wangeditor/editor-for-vue' {
   export const Editor: DefineComponent<{}, {}, any>
   export const Toolbar: DefineComponent<{}, {}, any>
 }
+
+declare module 'echarts-wordcloud' {}

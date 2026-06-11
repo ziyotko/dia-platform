@@ -15,6 +15,10 @@ export function getAllTags() {
   return request.get('/tags/all')
 }
 
+export function getTagArticleStats() {
+  return request.get('/tags/stats')
+}
+
 export function createTag(data: TagForm) {
   return request.post('/tags', data)
 }

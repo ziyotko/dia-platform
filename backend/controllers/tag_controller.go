@@ -134,3 +134,12 @@ func (c *TagController) DeleteTag(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, utils.Success("删除标签成功", nil))
 }
+
+func (c *TagController) GetTagArticleStats(ctx *gin.Context) {
+	stats, err := c.tagService.GetTagArticleStats()
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取标签文章统计失败"))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("获取成功", stats))
+}

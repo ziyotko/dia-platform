@@ -60,3 +60,21 @@ func (s *TagService) DeleteTag(id uint) error {
 	}
 	return utils.DB.Unscoped().Delete(&tag).Error
 }
+
+type TagArticleStat struct {
+	TagID uint   `json:"tagId"`
+	Name  string `json:"name"`
+	Color string `json:"color"`
+	Count int64  `json:"count"`
+}
+
+func (s *TagService) GetTagArticleStats() ([]TagArticleStat, error) {
+	var results []TagArticleStat
+	err := utils.DB.Model(&models.Tag{}).
+		Select("tag.id as tag_id, tag.name, tag.color, COUNT(article_tags.article_id) as count").
+		Joins("LEFT JOIN article_tags ON article_tags.tag_id = tag.id").
+		Group("tag.id").
+		Order("count DESC").
+		Scan(&results).Error
+	return results, err
+}

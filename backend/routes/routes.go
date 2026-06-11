@@ -115,6 +115,7 @@ func SetupRoutes(router *gin.Engine) {
 
 		protected.GET("/tags", tagController.GetTags)
 		protected.GET("/tags/all", tagController.GetAllTags)
+		protected.GET("/tags/stats", tagController.GetTagArticleStats)
 		protected.POST("/tags", tagController.CreateTag)
 		protected.PUT("/tags/:id", tagController.UpdateTag)
 		protected.DELETE("/tags/:id", tagController.DeleteTag)
