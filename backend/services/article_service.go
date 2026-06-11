@@ -425,6 +425,20 @@ func (s *ArticleService) GetArticleColumnPublishes(articleTitle string, columnID
 	return list, total, err
 }
 
+// GetMyAuditArticles 获取当前用户需要审核的文章列表
+func (s *ArticleService) GetMyAuditArticles(userID uint) ([]models.Article, error) {
+	var articles []models.Article
+	err := utils.DB.
+		Joins("JOIN article_column_audit aca ON aca.article_id = article.id").
+		Joins("JOIN workflow_node wn ON wn.id = aca.current_node_id").
+		Where("aca.status = ? AND (wn.approver_id = ? OR wn.approver_id = 0)", 0, userID).
+		Group("article.id").
+		Order("article.created_at DESC").
+		Limit(8).
+		Find(&articles).Error
+	return articles, err
+}
+
 // CompleteArticleAudit 完成文章审核（所有栏目通过后调用）
 func (s *ArticleService) CompleteArticleAudit(articleID uint) error {
 	return utils.DB.Transaction(func(tx *gorm.DB) error {

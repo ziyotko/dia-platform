@@ -384,6 +384,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, shallowRef, onBeforeUnmount, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Search,
@@ -477,6 +478,9 @@ const formRules = {
   categoryId: [{ required: true, message: '请选择所属分类', trigger: 'change' }],
   content: [{ required: true, message: '请输入文章内容', trigger: 'change' }]
 }
+
+const route = useRoute()
+const router = useRouter()
 
 const tableData = ref<any[]>([])
 const categoryList = ref<any[]>([])
@@ -1181,8 +1185,19 @@ const handleCurrentChange = (val: number) => {
   fetchData()
 }
 
+const checkAutoAudit = () => {
+  const auditArticleId = route.query.auditArticleId
+  if (auditArticleId) {
+    const row = tableData.value.find((item: any) => String(item.id) === String(auditArticleId))
+    if (row) {
+      handleShowAuditFlow(row)
+    }
+    router.replace({ path: '/content/article', query: {} })
+  }
+}
+
 onMounted(() => {
-  fetchData()
+  fetchData().then(() => checkAutoAudit())
   fetchCategories()
   fetchTags()
 })

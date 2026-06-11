@@ -11,3 +11,7 @@ export function getLoginLogs() {
 export function getVisitTrend(period: string) {
   return request.get('/dashboard/visit-trend', { params: { period } })
 }
+
+export function getMyAuditArticles() {
+  return request.get('/articles/my-audits')
+}

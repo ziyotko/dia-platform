@@ -473,6 +473,27 @@ func (c *ArticleController) DeleteArticle(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("删除文章成功", nil))
 }
 
+func (c *ArticleController) GetMyAuditArticles(ctx *gin.Context) {
+	userID := ctx.GetUint("userID")
+	articles, err := c.articleService.GetMyAuditArticles(userID)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取待审核文章失败"))
+		return
+	}
+
+	var list []gin.H
+	for _, a := range articles {
+		list = append(list, gin.H{
+			"id":         a.ID,
+			"title":      a.Title,
+			"author":     a.Author,
+			"createTime": a.CreatedAt.Format("2006-01-02 15:04:05"),
+		})
+	}
+
+	ctx.JSON(http.StatusOK, utils.Success("获取待审核文章成功", list))
+}
+
 func (c *ArticleController) GetArticleColumnPublishes(ctx *gin.Context) {
 	articleTitle := ctx.Query("articleTitle")
 	columnIDStr := ctx.Query("columnId")

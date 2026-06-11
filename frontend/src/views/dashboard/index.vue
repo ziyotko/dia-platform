@@ -106,10 +106,16 @@
             </div>
           </template>
           <div class="notice-list">
-            <div v-for="(item, index) in notices" :key="index" class="notice-item">
-              <el-tag :type="item.type" size="small">{{ item.tag }}</el-tag>
-              <span class="notice-title">{{ item.title }}</span>
-              <span class="notice-time">{{ item.time }}</span>
+            <div v-if="pendingAudits.length === 0" class="notice-empty">暂无待处理事项</div>
+            <div
+              v-for="item in pendingAudits"
+              :key="item.id"
+              class="notice-item"
+              @click="handleAuditClick(item)"
+            >
+              <el-tag type="warning" size="small">审核</el-tag>
+              <span class="notice-title">文章《{{ item.title }}》待审核</span>
+              <span class="notice-time">{{ item.createTime }}</span>
             </div>
           </div>
         </el-card>
@@ -139,6 +145,7 @@
           <template #header>
             <div class="card-header">
               <span>登录日志</span>
+                      <el-link type="primary" underline="never">更多</el-link>
             </div>
           </template>
           <el-table :data="loginLogs" size="small" :show-header="false">
@@ -164,6 +171,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, reactive, watch, onUnmounted, nextTick } from 'vue'
+import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import type { ECharts } from 'echarts'
 import {
@@ -174,7 +182,9 @@ import {
   Clock,
   EditPen
 } from '@element-plus/icons-vue'
-import { getDashboardStats, getLoginLogs, getVisitTrend } from '@/api/dashboard'
+import { getDashboardStats, getLoginLogs, getVisitTrend, getMyAuditArticles } from '@/api/dashboard'
+
+const router = useRouter()
 
 const stats = reactive({
   adCount: 0,
@@ -214,10 +224,31 @@ const fetchLoginLogs = async () => {
   }
 }
 
+const pendingAudits = ref<any[]>([])
+
+const fetchPendingAudits = async () => {
+  try {
+    const res: any = await getMyAuditArticles()
+    if (res && Array.isArray(res.data)) {
+      pendingAudits.value = res.data
+    }
+  } catch (error) {
+    // 静默失败
+  }
+}
+
+const handleAuditClick = (item: any) => {
+  router.push({
+    path: '/content/article',
+    query: { auditArticleId: String(item.id) }
+  })
+}
+
 onMounted(() => {
   fetchStats()
   fetchLoginLogs()
   fetchVisitTrend()
+  fetchPendingAudits()
   initChart()
 })
 
@@ -298,14 +329,7 @@ onUnmounted(() => {
   chartInstance = null
 })
 
-const notices = [
-  { tag: '审核', title: '文章《夏季养生指南》待审核', time: '10分钟前', type: 'warning' as const },
-  { tag: '审核', title: '广告位「首页Banner」待审核', time: '30分钟前', type: 'warning' as const },
-  { tag: '反馈', title: '用户反馈问题待处理', time: '1小时前', type: 'danger' as const },
-  { tag: '审核', title: '文章《健康食谱推荐》待审核', time: '2小时前', type: 'warning' as const },
-  { tag: '通知', title: '静态化任务执行失败', time: '3小时前', type: 'danger' as const },
-  { tag: '审核', title: '评论「用户体验很好」待审核', time: '5小时前', type: 'warning' as const }
-]
+
 
 const quickLinks = [
   { name: '用户管理', icon: 'User', path: '/system/users', bg: 'rgba(64, 158, 255, 0.1)', color: '#409eff' },
@@ -381,16 +405,29 @@ const quickLinks = [
 
   .chart-container {
     width: 100%;
-    height: 300px;
+    height: 358px;
   }
 
   .notice-list {
+    .notice-empty {
+      text-align: center;
+      padding: 24px 0;
+      color: #c0c4cc;
+      font-size: 14px;
+    }
+
     .notice-item {
       display: flex;
       align-items: center;
       gap: 12px;
       padding: 12px 0;
       border-bottom: 1px solid #f0f7ff;
+      cursor: pointer;
+      transition: background 0.2s;
+
+      &:hover {
+        background: #f5f9ff;
+      }
 
       &:last-child {
         border-bottom: none;
@@ -421,6 +458,7 @@ const quickLinks = [
 
   .quick-links {
     display: grid;
+    height: 160px;
     grid-template-columns: repeat(5, 1fr);
     gap: 16px;
 
