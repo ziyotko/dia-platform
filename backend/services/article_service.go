@@ -229,7 +229,7 @@ func (s *ArticleService) StartArticleAudit(articleID uint) error {
 	if err := utils.DB.Preload("Columns").First(&article, articleID).Error; err != nil {
 		return err
 	}
-	return utils.DB.Transaction(func(tx *gorm.DB) error {
+	err := utils.DB.Transaction(func(tx *gorm.DB) error {
 		// 更新文章状态为审核中
 		if err := tx.Model(&article).Update("audit_status", 1).Error; err != nil {
 			return err
@@ -242,15 +242,37 @@ func (s *ArticleService) StartArticleAudit(articleID uint) error {
 		if err := tx.Where("article_id = ?", articleID).Unscoped().Delete(&models.ArticleColumnAuditHistory{}).Error; err != nil {
 			return err
 		}
-		// 为每个绑定了工作流的栏目创建审核记录
+		// 为每个栏目创建审核记录：有流程的走审核，无流程的直接通过
 		for _, col := range article.Columns {
 			if col.WorkflowID == nil || *col.WorkflowID == 0 {
+				// 未配置流程的栏目直接通过
+				audit := models.ArticleColumnAudit{
+					ArticleID:     articleID,
+					ColumnID:      col.ID,
+					WorkflowID:    0,
+					CurrentNodeID: 0,
+					Status:        1,
+				}
+				if err := tx.Create(&audit).Error; err != nil {
+					return err
+				}
 				continue
 			}
 			var firstNode models.WorkflowNode
 			err := tx.Where("workflow_id = ?", *col.WorkflowID).Order("sort_order ASC").First(&firstNode).Error
 			if err != nil {
-				continue // 流程没有节点，跳过
+				// 流程没有节点，视为直接通过
+				audit := models.ArticleColumnAudit{
+					ArticleID:     articleID,
+					ColumnID:      col.ID,
+					WorkflowID:    *col.WorkflowID,
+					CurrentNodeID: 0,
+					Status:        1,
+				}
+				if err := tx.Create(&audit).Error; err != nil {
+					return err
+				}
+				continue
 			}
 			audit := models.ArticleColumnAudit{
 				ArticleID:     articleID,
@@ -265,6 +287,11 @@ func (s *ArticleService) StartArticleAudit(articleID uint) error {
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	s.tryCompleteArticleAudit(articleID)
+	return nil
 }
 
 // GetArticleAuditProgress 获取文章在各栏目的审核进度

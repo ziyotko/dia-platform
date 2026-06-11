@@ -1023,8 +1023,18 @@ const handleRejectAuditNode = async (columnId: number) => {
   }
 }
 
-const handleAudit = (row: any) => {
-  ElMessageBox.confirm(`确定要提交文章 "${row.title}" 进行审核吗？`, '提交审核', {
+const handleAudit = async (row: any) => {
+  if (columnList.value.length === 0) {
+    await fetchColumns()
+  }
+  const columns = columnList.value.filter((col: any) => (row.columnIds || []).includes(col.id))
+  const noWorkflowColumns = columns.filter((col: any) => !col.workflowId)
+  let message = `确定要提交文章 "${row.title}" 进行审核吗？`
+  if (noWorkflowColumns.length > 0) {
+    const names = noWorkflowColumns.map((col: any) => col.name).join('、')
+    message += `\n\n以下栏目未配置审核流程，将直接通过：${names}`
+  }
+  ElMessageBox.confirm(message, '提交审核', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
@@ -1035,9 +1045,19 @@ const handleAudit = (row: any) => {
   })
 }
 
-const handleReAudit = (row: any) => {
+const handleReAudit = async (row: any) => {
+  if (columnList.value.length === 0) {
+    await fetchColumns()
+  }
+  const columns = columnList.value.filter((col: any) => (row.columnIds || []).includes(col.id))
+  const noWorkflowColumns = columns.filter((col: any) => !col.workflowId)
+  let message = `确定要重新提交文章 "${row.title}" 进行审核吗？此操作将清空之前的栏目审核记录。`
+  if (noWorkflowColumns.length > 0) {
+    const names = noWorkflowColumns.map((col: any) => col.name).join('、')
+    message += `\n\n以下栏目未配置审核流程，将直接通过：${names}`
+  }
   ElMessageBox.confirm(
-    `确定要重新提交文章 "${row.title}" 进行审核吗？此操作将清空之前的栏目审核记录。`,
+    message,
     '重新提交审核',
     {
       confirmButtonText: '确定',
