@@ -60,8 +60,8 @@ func (s *LogService) GetUserOperationCount(userID uint) (int64, error) {
 }
 
 type LoginLogListResult struct {
-	Total int64               `json:"total"`
-	List  []models.LoginLog   `json:"list"`
+	Total int64             `json:"total"`
+	List  []models.LoginLog `json:"list"`
 }
 
 func (s *LogService) GetLoginLogList(page, pageSize int, username, status, startDate, endDate string) (*LoginLogListResult, error) {
