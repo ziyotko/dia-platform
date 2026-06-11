@@ -17,6 +17,10 @@ export function getAllCategories() {
   return request.get('/categories/all')
 }
 
+export function getCategoryArticleStats() {
+  return request.get('/categories/stats')
+}
+
 export function createCategory(data: CategoryForm) {
   return request.post('/categories', data)
 }

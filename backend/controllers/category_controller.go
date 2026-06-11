@@ -134,3 +134,15 @@ func (c *CategoryController) DeleteCategory(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, utils.Success("删除分类成功", nil))
 }
+
+func (c *CategoryController) GetCategoryArticleStats(ctx *gin.Context) {
+	stats, total, err := c.categoryService.GetCategoryArticleStats()
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取分类文章统计失败"))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("获取成功", gin.H{
+		"list":  stats,
+		"total": total,
+	}))
+}

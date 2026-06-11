@@ -107,6 +107,7 @@ func SetupRoutes(router *gin.Engine) {
 
 		protected.GET("/categories", categoryController.GetCategories)
 		protected.GET("/categories/all", categoryController.GetAllCategories)
+		protected.GET("/categories/stats", categoryController.GetCategoryArticleStats)
 		protected.POST("/categories", categoryController.CreateCategory)
 		protected.PUT("/categories/:id", categoryController.UpdateCategory)
 		protected.DELETE("/categories/:id", categoryController.DeleteCategory)

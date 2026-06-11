@@ -22,7 +22,7 @@
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ stats.articleCount.toLocaleString() }}</div>
-              <div class="stat-label">内容文章总数</div>
+              <div class="stat-label">文章总数</div>
             </div>
           </div>
         </el-card>

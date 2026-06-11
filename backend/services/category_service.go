@@ -62,3 +62,29 @@ func (s *CategoryService) DeleteCategory(id uint) error {
 	}
 	return utils.DB.Unscoped().Delete(&category).Error
 }
+
+type CategoryArticleStat struct {
+	CategoryID   uint   `json:"categoryId"`
+	CategoryName string `json:"categoryName"`
+	Count        int64  `json:"count"`
+}
+
+func (s *CategoryService) GetCategoryArticleStats() ([]CategoryArticleStat, int64, error) {
+	var results []CategoryArticleStat
+	var total int64
+
+	err := utils.DB.Model(&models.Article{}).
+		Select("category_id as category_id, category.name as category_name, COUNT(*) as count").
+		Joins("LEFT JOIN category ON article.category_id = category.id").
+		Group("category_id").
+		Scan(&results).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	for _, r := range results {
+		total += r.Count
+	}
+
+	return results, total, nil
+}
