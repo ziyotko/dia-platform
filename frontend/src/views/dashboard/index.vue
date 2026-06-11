@@ -102,7 +102,7 @@
           <template #header>
             <div class="card-header">
               <span>待处理</span>
-              <el-link type="primary" underline="never">更多</el-link>
+              <el-link type="primary" underline="never" @click="$router.push('/pending-audits')">更多</el-link>
             </div>
           </template>
           <div class="notice-list">
@@ -228,9 +228,9 @@ const pendingAudits = ref<any[]>([])
 
 const fetchPendingAudits = async () => {
   try {
-    const res: any = await getMyAuditArticles()
-    if (res && Array.isArray(res.data)) {
-      pendingAudits.value = res.data
+    const res: any = await getMyAuditArticles({ pageSize: 8 })
+    if (res && res.data) {
+      pendingAudits.value = res.data.list || []
     }
   } catch (error) {
     // 静默失败

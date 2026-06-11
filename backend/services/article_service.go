@@ -426,17 +426,27 @@ func (s *ArticleService) GetArticleColumnPublishes(articleTitle string, columnID
 }
 
 // GetMyAuditArticles 获取当前用户需要审核的文章列表
-func (s *ArticleService) GetMyAuditArticles(userID uint) ([]models.Article, error) {
+func (s *ArticleService) GetMyAuditArticles(userID uint, page, pageSize int) ([]models.Article, int64, error) {
 	var articles []models.Article
-	err := utils.DB.
+	var total int64
+
+	query := utils.DB.
 		Joins("JOIN article_column_audit aca ON aca.article_id = article.id").
 		Joins("JOIN workflow_node wn ON wn.id = aca.current_node_id").
 		Where("aca.status = ? AND (wn.approver_id = ? OR wn.approver_id = 0)", 0, userID).
-		Group("article.id").
-		Order("article.created_at DESC").
-		Limit(8).
-		Find(&articles).Error
-	return articles, err
+		Group("article.id")
+
+	err := query.Count(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if pageSize <= 0 {
+		pageSize = 8
+	}
+	offset := (page - 1) * pageSize
+	err = query.Order("article.created_at DESC").Offset(offset).Limit(pageSize).Find(&articles).Error
+	return articles, total, err
 }
 
 // CompleteArticleAudit 完成文章审核（所有栏目通过后调用）

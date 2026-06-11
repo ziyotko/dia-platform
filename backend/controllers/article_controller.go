@@ -475,7 +475,17 @@ func (c *ArticleController) DeleteArticle(ctx *gin.Context) {
 
 func (c *ArticleController) GetMyAuditArticles(ctx *gin.Context) {
 	userID := ctx.GetUint("userID")
-	articles, err := c.articleService.GetMyAuditArticles(userID)
+	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("pageSize", "10"))
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+
+	articles, total, err := c.articleService.GetMyAuditArticles(userID, page, pageSize)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取待审核文章失败"))
 		return
@@ -491,7 +501,10 @@ func (c *ArticleController) GetMyAuditArticles(ctx *gin.Context) {
 		})
 	}
 
-	ctx.JSON(http.StatusOK, utils.Success("获取待审核文章成功", list))
+	ctx.JSON(http.StatusOK, utils.Success("获取待审核文章成功", gin.H{
+		"list":  list,
+		"total": total,
+	}))
 }
 
 func (c *ArticleController) GetArticleColumnPublishes(ctx *gin.Context) {

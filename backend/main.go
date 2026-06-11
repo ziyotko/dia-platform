@@ -104,6 +104,7 @@ func initMenus() {
 		{ParentID: contentID, Name: "广告管理", Path: "/content/ad", Component: "views/content/ad.vue", Icon: "Promotion", Type: "menu", Sort: 5, Status: 1},
 		{ParentID: contentID, Name: "友链管理", Path: "/content/link", Component: "views/content/link.vue", Icon: "Link", Type: "menu", Sort: 6, Status: 1},
 		{ParentID: contentID, Name: "静态化管理", Path: "/content/static", Component: "views/content/static.vue", Icon: "DocumentChecked", Type: "menu", Sort: 7, Status: 1},
+		{ParentID: personalID, Name: "待处理", Path: "/pending-audits", Component: "views/system/pending-audits.vue", Icon: "Bell", Type: "menu", Sort: 0, Status: 1},
 		{ParentID: personalID, Name: "个人信息", Path: "/profile", Component: "views/profile/index.vue", Icon: "Document", Type: "menu", Sort: 1, Status: 1},
 		{ParentID: personalID, Name: "系统设置", Path: "/settings", Component: "views/settings/index.vue", Icon: "Setting", Type: "menu", Sort: 2, Status: 1},
 	}
@@ -202,21 +203,21 @@ func initRoles() {
 			Code:        "operator",
 			Description: "负责发布、编辑、删除内容（文章、页面、媒体等），通常无权管理用户或系统设置",
 			Status:      1,
-			Permissions: joinIDs("欢迎首页", "内容管理", "文章管理", "分类管理", "标签管理", "评论管理", "广告管理", "友链管理", "个人中心", "个人信息", "系统设置", "登录日志"),
+			Permissions: joinIDs("欢迎首页", "内容管理", "文章管理", "分类管理", "标签管理", "评论管理", "广告管理", "友链管理", "个人中心", "待处理", "个人信息", "系统设置", "登录日志"),
 		},
 		{
 			Name:        "审批人",
 			Code:        "approver",
 			Description: "专门审核待发布内容或敏感操作（如删除、置顶），确保合规性，权限通常仅限审批流相关功能",
 			Status:      1,
-			Permissions: joinIDs("欢迎首页", "文章管理", "评论管理", "个人中心", "个人信息"),
+			Permissions: joinIDs("欢迎首页", "文章管理", "评论管理", "个人中心", "待处理", "个人信息"),
 		},
 		{
 			Name:        "投稿人",
 			Code:        "contributor",
 			Description: "可撰写或上传内容，但需经审核才能发布，不能直接发布或修改他人内容",
 			Status:      1,
-			Permissions: joinIDs("欢迎首页", "文章管理", "个人中心", "个人信息"),
+			Permissions: joinIDs("欢迎首页", "文章管理", "个人中心", "待处理", "个人信息"),
 		},
 		{
 			Name:        "访客",
