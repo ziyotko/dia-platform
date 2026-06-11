@@ -430,13 +430,13 @@ func (s *ArticleService) GetMyAuditArticles(userID uint, page, pageSize int) ([]
 	var articles []models.Article
 	var total int64
 
-	query := utils.DB.
+	// count 查询
+	err := utils.DB.Model(&models.Article{}).
 		Joins("JOIN article_column_audit aca ON aca.article_id = article.id").
 		Joins("JOIN workflow_node wn ON wn.id = aca.current_node_id").
 		Where("aca.status = ? AND (wn.approver_id = ? OR wn.approver_id = 0)", 0, userID).
-		Group("article.id")
-
-	err := query.Count(&total).Error
+		Distinct("article.id").
+		Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
@@ -445,7 +445,18 @@ func (s *ArticleService) GetMyAuditArticles(userID uint, page, pageSize int) ([]
 		pageSize = 8
 	}
 	offset := (page - 1) * pageSize
-	err = query.Order("article.created_at DESC").Offset(offset).Limit(pageSize).Find(&articles).Error
+
+	// 数据查询
+	err = utils.DB.Select("article.*").
+		Table("article").
+		Joins("JOIN article_column_audit aca ON aca.article_id = article.id").
+		Joins("JOIN workflow_node wn ON wn.id = aca.current_node_id").
+		Where("aca.status = ? AND (wn.approver_id = ? OR wn.approver_id = 0)", 0, userID).
+		Group("article.id").
+		Order("article.created_at DESC").
+		Offset(offset).
+		Limit(pageSize).
+		Find(&articles).Error
 	return articles, total, err
 }
 
