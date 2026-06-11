@@ -96,6 +96,7 @@ func initMenus() {
 		{ParentID: systemID, Name: "菜单管理", Path: "/menus", Component: "views/system/menus.vue", Icon: "Menu", Type: "menu", Sort: 3, Status: 1},
 		{ParentID: systemID, Name: "部门管理", Path: "/departments", Component: "views/system/departments.vue", Icon: "OfficeBuilding", Type: "menu", Sort: 4, Status: 1},
 		{ParentID: systemID, Name: "操作日志", Path: "/logs", Component: "views/system/logs.vue", Icon: "List", Type: "menu", Sort: 5, Status: 1},
+		{ParentID: systemID, Name: "登录日志", Path: "/login-logs", Component: "views/system/login-logs.vue", Icon: "DocumentChecked", Type: "menu", Sort: 6, Status: 1},
 		{ParentID: contentID, Name: "文章管理", Path: "/content/article", Component: "views/content/article.vue", Icon: "Document", Type: "menu", Sort: 1, Status: 1},
 		{ParentID: contentID, Name: "分类管理", Path: "/content/category", Component: "views/content/category.vue", Icon: "Folder", Type: "menu", Sort: 2, Status: 1},
 		{ParentID: contentID, Name: "标签管理", Path: "/content/tag", Component: "views/content/tag.vue", Icon: "PriceTag", Type: "menu", Sort: 3, Status: 1},
@@ -201,7 +202,7 @@ func initRoles() {
 			Code:        "operator",
 			Description: "负责发布、编辑、删除内容（文章、页面、媒体等），通常无权管理用户或系统设置",
 			Status:      1,
-			Permissions: joinIDs("欢迎首页", "内容管理", "文章管理", "分类管理", "标签管理", "评论管理", "广告管理", "友链管理", "个人中心", "个人信息", "系统设置"),
+			Permissions: joinIDs("欢迎首页", "内容管理", "文章管理", "分类管理", "标签管理", "评论管理", "广告管理", "友链管理", "个人中心", "个人信息", "系统设置", "登录日志"),
 		},
 		{
 			Name:        "审批人",

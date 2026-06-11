@@ -59,6 +59,44 @@ func (s *LogService) GetUserOperationCount(userID uint) (int64, error) {
 	return count, err
 }
 
+type LoginLogListResult struct {
+	Total int64               `json:"total"`
+	List  []models.LoginLog   `json:"list"`
+}
+
+func (s *LogService) GetLoginLogList(page, pageSize int, username, status, startDate, endDate string) (*LoginLogListResult, error) {
+	var logs []models.LoginLog
+	var total int64
+
+	query := utils.DB.Model(&models.LoginLog{})
+
+	if username != "" {
+		query = query.Where("username LIKE ?", "%"+username+"%")
+	}
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	if startDate != "" && endDate != "" {
+		query = query.Where("DATE(created_at) BETWEEN ? AND ?", startDate, endDate)
+	}
+
+	err := query.Count(&total).Error
+	if err != nil {
+		return nil, err
+	}
+
+	offset := (page - 1) * pageSize
+	err = query.Order("id DESC").Offset(offset).Limit(pageSize).Find(&logs).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &LoginLogListResult{
+		Total: total,
+		List:  logs,
+	}, nil
+}
+
 func (s *LogService) GetRecentLoginLogs(limit int) ([]models.LoginLog, error) {
 	var logs []models.LoginLog
 	err := utils.DB.Model(&models.LoginLog{}).Order("id DESC").Limit(limit).Find(&logs).Error

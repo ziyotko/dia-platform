@@ -84,6 +84,64 @@ func (c *LogController) GetLogs(ctx *gin.Context) {
 	}))
 }
 
+type LoginLogListItem struct {
+	ID         uint   `json:"id"`
+	Username   string `json:"username"`
+	IP         string `json:"ip"`
+	Browser    string `json:"browser"`
+	OS         string `json:"os"`
+	Device     string `json:"device"`
+	Status     int    `json:"status"`
+	StatusText string `json:"statusText"`
+	CreateTime string `json:"createTime"`
+}
+
+func (c *LogController) GetLoginLogs(ctx *gin.Context) {
+	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
+	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("pageSize", "10"))
+	username := ctx.Query("username")
+	status := ctx.Query("status")
+	startDate := ctx.Query("startDate")
+	endDate := ctx.Query("endDate")
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+
+	result, err := c.logService.GetLoginLogList(page, pageSize, username, status, startDate, endDate)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取登录日志列表失败"))
+		return
+	}
+
+	list := make([]LoginLogListItem, 0, len(result.List))
+	for _, log := range result.List {
+		statusText := "成功"
+		if log.Status == 0 {
+			statusText = "失败"
+		}
+		list = append(list, LoginLogListItem{
+			ID:         log.ID,
+			Username:   log.Username,
+			IP:         log.IP,
+			Browser:    log.Browser,
+			OS:         log.OS,
+			Device:     log.Device,
+			Status:     log.Status,
+			StatusText: statusText,
+			CreateTime: log.CreatedAt.Format("2006-01-02 15:04:05"),
+		})
+	}
+
+	ctx.JSON(http.StatusOK, utils.Success("获取登录日志列表成功", gin.H{
+		"list":  list,
+		"total": result.Total,
+	}))
+}
+
 func (c *LogController) ClearLogs(ctx *gin.Context) {
 	err := c.logService.ClearLogs()
 	if err != nil {

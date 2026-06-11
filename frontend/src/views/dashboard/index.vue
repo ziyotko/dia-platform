@@ -145,7 +145,7 @@
           <template #header>
             <div class="card-header">
               <span>登录日志</span>
-                      <el-link type="primary" underline="never">更多</el-link>
+              <el-link type="primary" underline="never" @click="$router.push('/login-logs')">更多</el-link>
             </div>
           </template>
           <el-table :data="loginLogs" size="small" :show-header="false">
