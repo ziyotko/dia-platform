@@ -58,5 +58,5 @@ func (s *TagService) DeleteTag(id uint) error {
 	if err := utils.DB.First(&tag, id).Error; err != nil {
 		return err
 	}
-	return utils.DB.Delete(&tag).Error
+	return utils.DB.Unscoped().Delete(&tag).Error
 }

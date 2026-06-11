@@ -60,5 +60,5 @@ func (s *CategoryService) DeleteCategory(id uint) error {
 	if err := utils.DB.First(&category, id).Error; err != nil {
 		return err
 	}
-	return utils.DB.Delete(&category).Error
+	return utils.DB.Unscoped().Delete(&category).Error
 }

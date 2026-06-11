@@ -84,7 +84,7 @@ func (s *DepartmentService) DeleteDepartment(id uint) error {
 	if count > 0 {
 		return errors.New("存在子部门，无法删除")
 	}
-	return utils.DB.Delete(&models.Department{}, id).Error
+	return utils.DB.Unscoped().Delete(&models.Department{}, id).Error
 }
 
 func (s *DepartmentService) GetDepartmentUsers(id uint) ([]int, error) {

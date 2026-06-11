@@ -8,8 +8,8 @@ import (
 type TemplateService struct{}
 
 type TemplateListResult struct {
-	Total int64              `json:"total"`
-	List  []models.Template  `json:"list"`
+	Total int64             `json:"total"`
+	List  []models.Template `json:"list"`
 }
 
 func (s *TemplateService) GetTemplateList(page, pageSize int, name, ttype string) (*TemplateListResult, error) {
@@ -59,5 +59,5 @@ func (s *TemplateService) UpdateTemplate(id uint, updates map[string]interface{}
 }
 
 func (s *TemplateService) DeleteTemplate(id uint) error {
-	return utils.DB.Delete(&models.Template{}, id).Error
+	return utils.DB.Unscoped().Delete(&models.Template{}, id).Error
 }

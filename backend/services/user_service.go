@@ -195,7 +195,7 @@ func (s *UserService) UpdateUser(id uint, username, nickname, account, email, pa
 }
 
 func (s *UserService) DeleteUser(id uint) error {
-	return utils.DB.Delete(&models.User{}, id).Error
+	return utils.DB.Unscoped().Delete(&models.User{}, id).Error
 }
 
 func (s *UserService) UpdateUserStatus(id uint, status int) error {

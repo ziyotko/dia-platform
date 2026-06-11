@@ -110,7 +110,7 @@ func (s *ArticleService) UpdateArticleStatus(id uint, status int) error {
 			return err
 		}
 		if status == 2 {
-			if err := tx.Where("article_id = ?", id).Delete(&models.ArticleColumnPublish{}).Error; err != nil {
+			if err := tx.Where("article_id = ?", id).Unscoped().Delete(&models.ArticleColumnPublish{}).Error; err != nil {
 				return err
 			}
 		}
@@ -160,16 +160,16 @@ func (s *ArticleService) DeleteArticle(id uint) error {
 		if err := tx.Model(&article).Association("Columns").Clear(); err != nil {
 			return err
 		}
-		if err := tx.Where("article_id = ?", id).Delete(&models.ArticleColumnAudit{}).Error; err != nil {
+		if err := tx.Where("article_id = ?", id).Unscoped().Delete(&models.ArticleColumnAudit{}).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("article_id = ?", id).Delete(&models.ArticleColumnAuditHistory{}).Error; err != nil {
+		if err := tx.Where("article_id = ?", id).Unscoped().Delete(&models.ArticleColumnAuditHistory{}).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("article_id = ?", id).Delete(&models.ArticleColumnPublish{}).Error; err != nil {
+		if err := tx.Where("article_id = ?", id).Unscoped().Delete(&models.ArticleColumnPublish{}).Error; err != nil {
 			return err
 		}
-		return tx.Delete(&article).Error
+		return tx.Unscoped().Delete(&article).Error
 	})
 }
 
@@ -213,10 +213,10 @@ func (s *ArticleService) WithdrawArticleAudit(articleID uint) error {
 		if err := tx.Model(&article).Update("audit_status", 0).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("article_id = ?", articleID).Delete(&models.ArticleColumnAudit{}).Error; err != nil {
+		if err := tx.Where("article_id = ?", articleID).Unscoped().Delete(&models.ArticleColumnAudit{}).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("article_id = ?", articleID).Delete(&models.ArticleColumnAuditHistory{}).Error; err != nil {
+		if err := tx.Where("article_id = ?", articleID).Unscoped().Delete(&models.ArticleColumnAuditHistory{}).Error; err != nil {
 			return err
 		}
 		return nil
@@ -235,11 +235,11 @@ func (s *ArticleService) StartArticleAudit(articleID uint) error {
 			return err
 		}
 		// 清除旧的审核记录
-		if err := tx.Where("article_id = ?", articleID).Delete(&models.ArticleColumnAudit{}).Error; err != nil {
+		if err := tx.Where("article_id = ?", articleID).Unscoped().Delete(&models.ArticleColumnAudit{}).Error; err != nil {
 			return err
 		}
 		// 清除旧的审核历史记录
-		if err := tx.Where("article_id = ?", articleID).Delete(&models.ArticleColumnAuditHistory{}).Error; err != nil {
+		if err := tx.Where("article_id = ?", articleID).Unscoped().Delete(&models.ArticleColumnAuditHistory{}).Error; err != nil {
 			return err
 		}
 		// 为每个绑定了工作流的栏目创建审核记录
@@ -434,9 +434,17 @@ func (s *ArticleService) GetMyAuditArticles(userID uint, page, pageSize int) ([]
 		Where("aca.status = ? AND (wn.approver_id = ? OR wn.approver_id = 0)", 0, userID).
 		Group("article.id").
 		Order("article.created_at DESC").
-		Limit(8).
+		Offset((page - 1) * pageSize).Limit(pageSize).
 		Find(&articles).Error
-	return articles, 0, err
+	var total int64
+	err = utils.DB.
+		Table("article").
+		Joins("JOIN article_column_audit aca ON aca.article_id = article.id").
+		Joins("JOIN workflow_node wn ON wn.id = aca.current_node_id").
+		Where("aca.status = ? AND (wn.approver_id = ? OR wn.approver_id = 0)", 0, userID).
+		Select("COUNT(DISTINCT article.id)").
+		Scan(&total).Error
+	return articles, total, err
 }
 
 // CompleteArticleAudit 完成文章审核（所有栏目通过后调用）
@@ -452,7 +460,7 @@ func (s *ArticleService) CompleteArticleAudit(articleID uint) error {
 			return err
 		}
 		// 清除该文章旧的发布记录
-		if err := tx.Where("article_id = ?", articleID).Delete(&models.ArticleColumnPublish{}).Error; err != nil {
+		if err := tx.Where("article_id = ?", articleID).Unscoped().Delete(&models.ArticleColumnPublish{}).Error; err != nil {
 			return err
 		}
 		// 只查询审核通过的栏目记录

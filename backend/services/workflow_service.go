@@ -57,12 +57,12 @@ func (s *WorkflowService) UpdateWorkflow(id uint, workflow *models.Workflow) err
 }
 
 func (s *WorkflowService) DeleteWorkflow(id uint) error {
-	return utils.DB.Delete(&models.Workflow{}, id).Error
+	return utils.DB.Unscoped().Delete(&models.Workflow{}, id).Error
 }
 
 func (s *WorkflowService) SaveWorkflowNodes(workflowID uint, nodes []models.WorkflowNode) error {
 	return utils.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("workflow_id = ?", workflowID).Delete(&models.WorkflowNode{}).Error; err != nil {
+		if err := tx.Where("workflow_id = ?", workflowID).Unscoped().Delete(&models.WorkflowNode{}).Error; err != nil {
 			return err
 		}
 		if len(nodes) > 0 {

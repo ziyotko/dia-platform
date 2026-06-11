@@ -71,7 +71,7 @@ func (s *RoleService) UpdateRole(id uint, role *models.Role) error {
 }
 
 func (s *RoleService) DeleteRole(id uint) error {
-	return utils.DB.Delete(&models.Role{}, id).Error
+	return utils.DB.Unscoped().Delete(&models.Role{}, id).Error
 }
 
 func (s *RoleService) UpdateRolePermissions(id uint, permissions []uint) error {

@@ -46,7 +46,7 @@ func (s *LogService) GetLogList(page, pageSize int, username, logType string, st
 }
 
 func (s *LogService) ClearLogs() error {
-	return utils.DB.Where("1 = 1").Delete(&models.OperationLog{}).Error
+	return utils.DB.Where("1 = 1").Unscoped().Delete(&models.OperationLog{}).Error
 }
 
 func (s *LogService) CreateLog(log *models.OperationLog) error {

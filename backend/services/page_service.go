@@ -71,10 +71,10 @@ func (s *PageService) DeletePage(id uint) error {
 		if err := tx.First(&page, id).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("page_id = ?", page.ID).Delete(&models.Column{}).Error; err != nil {
+		if err := tx.Where("page_id = ?", page.ID).Unscoped().Delete(&models.Column{}).Error; err != nil {
 			return err
 		}
-		if err := tx.Delete(&page).Error; err != nil {
+		if err := tx.Unscoped().Delete(&page).Error; err != nil {
 			return err
 		}
 		if page.TemplateID > 0 {

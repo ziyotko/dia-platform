@@ -49,9 +49,9 @@ func (s *ColumnService) DeleteColumn(id uint) error {
 	if err := utils.DB.First(&column, id).Error; err != nil {
 		return err
 	}
-	return utils.DB.Delete(&column).Error
+	return utils.DB.Unscoped().Delete(&column).Error
 }
 
 func (s *ColumnService) DeleteColumnsByPageID(pageID uint) error {
-	return utils.DB.Where("page_id = ?", pageID).Delete(&models.Column{}).Error
+	return utils.DB.Where("page_id = ?", pageID).Unscoped().Delete(&models.Column{}).Error
 }

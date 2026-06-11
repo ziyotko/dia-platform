@@ -73,7 +73,7 @@ func (s *AdService) DeleteAd(id uint) error {
 	if err := utils.DB.First(&ad, id).Error; err != nil {
 		return err
 	}
-	return utils.DB.Delete(&ad).Error
+	return utils.DB.Unscoped().Delete(&ad).Error
 }
 
 func (s *AdService) GetAdCount() int64 {
