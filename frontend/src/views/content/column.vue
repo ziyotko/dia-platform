@@ -644,8 +644,22 @@ const handleDeletePage = (row: PageItem) => {
   })
 }
 
-const handlePageStatusChange = async (_row: PageItem, val: number) => {
-  ElMessage.success(`页面状态已${val === 1 ? '启用' : '禁用'}`)
+const handlePageStatusChange = async (row: PageItem, val: number) => {
+  try {
+    await updatePage(row.id, {
+      name: row.name,
+      code: row.code,
+      pageType: row.pageType,
+      routePath: row.routePath,
+      templateId: row.templateId,
+      template: row.template,
+      description: row.description,
+      status: val
+    })
+    ElMessage.success(`页面状态已${val === 1 ? '启用' : '禁用'}`)
+  } catch (error) {
+    row.status = val === 1 ? 0 : 1
+  }
 }
 
 const handlePageSubmit = async () => {
