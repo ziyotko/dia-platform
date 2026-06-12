@@ -225,10 +225,10 @@
               <el-icon><Delete /></el-icon>清空日志
             </el-button>
           </div>
-          <div class="log-scroll-container" @scroll="handleLogScroll">
+          <div class="log-scroll-container">
             <el-timeline v-loading="logLoading">
               <el-timeline-item
-                v-for="(log, index) in logDisplayList"
+                v-for="log in logList"
                 :key="log.id"
                 :type="log.status"
                 :icon="log.icon"
@@ -260,13 +260,17 @@
                 </div>
               </el-timeline-item>
             </el-timeline>
-            <div v-if="logLoading" class="log-loading-more">
-              <el-icon class="is-loading"><Loading /></el-icon>
-              <span>加载中...</span>
-            </div>
-            <div v-else-if="logDisplayList.length >= logList.length" class="log-no-more">
-              没有更多了
-            </div>
+          </div>
+          <div class="pagination">
+            <el-pagination
+              v-model:current-page="logQueryForm.page"
+              v-model:page-size="logQueryForm.pageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              :total="logTotal"
+              layout="total, sizes, prev, pager, next, jumper"
+              @size-change="handleLogSizeChange"
+              @current-change="handleLogCurrentChange"
+            />
           </div>
         </el-tab-pane>
       </el-tabs>
@@ -275,7 +279,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, shallowRef, computed, watch } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   DocumentChecked,
@@ -296,6 +300,7 @@ import {
 } from '@element-plus/icons-vue'
 import { getArticleColumnPublishes } from '@/api/article'
 import { getPages } from '@/api/page'
+import { getStaticLogList, clearStaticLogs } from '@/api/static_log'
 
 const loading = ref(false)
 const generating = ref(false)
@@ -359,71 +364,66 @@ const pageList = ref<any[]>([
   { id: 12, name: '品牌故事专题', path: '/topic/brand', type: '专题', fileSize: '35 KB', generating: false }
 ])
 
-const typeMap: Record<string, string[]> = {
-  home: ['首页'],
-  column: ['单页', '列表', '分类', '标签'],
-  detail: ['文章'],
-  topic: ['专题']
-}
-
-const filteredList = computed(() => {
-  const types = typeMap[activeTab.value]
-  if (!types) return pageList.value
-  return pageList.value.filter(item => types.includes(item.type))
-})
-
-const displayTotal = computed(() => filteredList.value.length)
-
-const pagedList = computed(() => {
-  const start = (queryForm.page - 1) * queryForm.pageSize
-  const end = start + queryForm.pageSize
-  return filteredList.value.slice(start, end)
-})
-
 watch(activeTab, (val) => {
   if (val !== 'logs') {
     queryForm.page = 1
   }
 })
 
-const logList = shallowRef<any[]>([
-  { id: 1, operation: '全站静态化', status: 'success', statusText: '成功', icon: Check, time: '2026-06-12 10:30:15', pageName: '-', path: '/', duration: '12.5s', fileSize: '-', operator: 'admin', message: '共生成 128 个页面，耗时 12.5 秒' },
-  { id: 2, operation: '首页生成', status: 'success', statusText: '成功', icon: Check, time: '2026-06-12 10:15:02', pageName: '网站首页', path: '/', duration: '0.8s', fileSize: '32 KB', operator: 'admin', message: '首页静态化成功，文件大小 32 KB' },
-  { id: 3, operation: '栏目页生成', status: 'warning', statusText: '警告', icon: Warning, time: '2026-06-12 09:45:30', pageName: '新闻中心', path: '/news', duration: '2.3s', fileSize: '45 KB', operator: 'admin', message: '部分栏目下无内容，已跳过空栏目页面' },
-  { id: 4, operation: '详情页批量生成', status: 'success', statusText: '成功', icon: Check, time: '2026-06-12 09:30:00', pageName: '-', path: '/article/*', duration: '8.2s', fileSize: '-', operator: 'admin', message: '共生成 56 个详情页面，耗时 8.2 秒' },
-  { id: 5, operation: '单页生成', status: 'danger', statusText: '失败', icon: CircleClose, time: '2026-06-12 09:15:20', pageName: '关于我们', path: '/about', duration: '-', fileSize: '-', operator: 'admin', message: '模板渲染异常：变量 "companyIntro" 未定义' },
-  { id: 6, operation: '专题页生成', status: 'success', statusText: '成功', icon: Check, time: '2026-06-12 08:50:10', pageName: '年中大促专题', path: '/topic/2026-mid', duration: '1.5s', fileSize: '48 KB', operator: 'admin', message: '专题页静态化成功，包含 12 个资源文件' },
-  { id: 7, operation: '详情页生成', status: 'success', statusText: '成功', icon: Check, time: '2026-06-12 08:30:00', pageName: '2026年行业趋势分析', path: '/article/1001', duration: '0.6s', fileSize: '52 KB', operator: 'admin', message: '文章详情页生成成功' },
-  { id: 8, operation: '栏目页生成', status: 'success', statusText: '成功', icon: Check, time: '2026-06-12 08:00:00', pageName: '产品分类-电子产品', path: '/category/electronics', duration: '1.2s', fileSize: '28 KB', operator: 'admin', message: '分类列表页生成成功' },
-  { id: 9, operation: '标签页生成', status: 'success', statusText: '成功', icon: Check, time: '2026-06-11 18:20:00', pageName: '标签-Vue', path: '/tag/vue', duration: '0.4s', fileSize: '22 KB', operator: 'admin', message: '标签页生成成功' },
-  { id: 10, operation: '首页生成', status: 'success', statusText: '成功', icon: Check, time: '2026-06-11 17:00:00', pageName: '网站首页', path: '/', duration: '0.9s', fileSize: '31 KB', operator: 'admin', message: '首页静态化成功' },
-  { id: 11, operation: '详情页生成', status: 'success', statusText: '成功', icon: Check, time: '2026-06-11 16:45:00', pageName: '新技术应用案例', path: '/article/1002', duration: '0.5s', fileSize: '38 KB', operator: 'admin', message: '文章详情页生成成功' },
-  { id: 12, operation: '栏目页生成', status: 'warning', statusText: '警告', icon: Warning, time: '2026-06-11 16:30:00', pageName: '产品分类-家居用品', path: '/category/home', duration: '1.0s', fileSize: '-', operator: 'admin', message: '该分类下暂无产品，跳过生成' },
-  { id: 13, operation: '单页生成', status: 'success', statusText: '成功', icon: Check, time: '2026-06-11 15:10:00', pageName: '联系我们', path: '/contact', duration: '0.3s', fileSize: '15 KB', operator: 'admin', message: '单页生成成功' },
-  { id: 14, operation: '专题页生成', status: 'success', statusText: '成功', icon: Check, time: '2026-06-11 14:00:00', pageName: '品牌故事专题', path: '/topic/brand', duration: '1.1s', fileSize: '35 KB', operator: 'admin', message: '专题页静态化成功' },
-  { id: 15, operation: '全站静态化', status: 'success', statusText: '成功', icon: Check, time: '2026-06-11 12:00:00', pageName: '-', path: '/', duration: '15.2s', fileSize: '-', operator: 'admin', message: '共生成 130 个页面，耗时 15.2 秒' },
-  { id: 16, operation: '详情页批量生成', status: 'danger', statusText: '失败', icon: CircleClose, time: '2026-06-11 10:30:00', pageName: '-', path: '/article/*', duration: '-', fileSize: '-', operator: 'admin', message: '数据库连接超时，批量生成中断' },
-  { id: 17, operation: '栏目页生成', status: 'success', statusText: '成功', icon: Check, time: '2026-06-11 09:00:00', pageName: '新闻中心', path: '/news', duration: '2.1s', fileSize: '44 KB', operator: 'admin', message: '栏目页重新生成成功' },
-  { id: 18, operation: '首页生成', status: 'success', statusText: '成功', icon: Check, time: '2026-06-11 08:30:00', pageName: '网站首页', path: '/', duration: '0.7s', fileSize: '30 KB', operator: 'admin', message: '首页定时静态化成功' },
-  { id: 19, operation: '标签页生成', status: 'success', statusText: '成功', icon: Check, time: '2026-06-11 08:00:00', pageName: '标签-Go', path: '/tag/go', duration: '0.4s', fileSize: '20 KB', operator: 'admin', message: '标签页生成成功' },
-  { id: 20, operation: '单页生成', status: 'success', statusText: '成功', icon: Check, time: '2026-06-11 07:30:00', pageName: '关于我们', path: '/about', duration: '0.3s', fileSize: '18 KB', operator: 'admin', message: '单页更新生成成功' }
-])
-
-const logDisplayCount = ref(6)
+const logList = ref<any[]>([])
+const logTotal = ref(0)
 const logLoading = ref(false)
-const logDisplayList = computed(() => logList.value.slice(0, logDisplayCount.value))
+const logQueryForm = reactive({
+  page: 1,
+  pageSize: 10
+})
 
-const handleLogScroll = (e: Event) => {
-  const el = e.target as HTMLElement
-  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 10) {
-    if (logDisplayList.value.length < logList.value.length && !logLoading.value) {
-      logLoading.value = true
-      setTimeout(() => {
-        logDisplayCount.value += 4
-        logLoading.value = false
-      }, 800)
+const statusIconMap: Record<string, any> = {
+  success: Check,
+  warning: Warning,
+  danger: CircleClose,
+  primary: DocumentChecked
+}
+
+const statusTextMap: Record<string, string> = {
+  success: '成功',
+  warning: '警告',
+  danger: '失败',
+  primary: '信息'
+}
+
+const fetchLogList = async () => {
+  logLoading.value = true
+  try {
+    const res: any = await getStaticLogList({
+      page: logQueryForm.page,
+      pageSize: logQueryForm.pageSize
+    })
+    if (res.code === 0 || res.code === 200) {
+      logList.value = (res.data.list || []).map((item: any) => ({
+        ...item,
+        statusText: statusTextMap[item.status] || item.status,
+        icon: statusIconMap[item.status] || DocumentChecked,
+        time: item.createTime
+      }))
+      logTotal.value = res.data.total || 0
     }
+  } catch (error) {
+    console.error(error)
+  } finally {
+    logLoading.value = false
   }
+}
+
+const handleLogSizeChange = (val: number) => {
+  logQueryForm.pageSize = val
+  logQueryForm.page = 1
+  fetchLogList()
+}
+
+const handleLogCurrentChange = (val: number) => {
+  logQueryForm.page = val
+  fetchLogList()
 }
 
 const fetchPageList = async () => {
@@ -462,7 +462,10 @@ const fetchPageList = async () => {
 }
 
 const handleTabChange = () => {
-  if (activeTab.value !== 'logs') {
+  if (activeTab.value === 'logs') {
+    logQueryForm.page = 1
+    fetchLogList()
+  } else {
     queryForm.page = 1
     fetchPageList()
   }
@@ -545,9 +548,19 @@ const clearLogs = () => {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    logList.value = []
-    ElMessage.success('日志已清空')
+  }).then(async () => {
+    try {
+      const res: any = await clearStaticLogs()
+      if (res.code === 0 || res.code === 200) {
+        logList.value = []
+        logTotal.value = 0
+        ElMessage.success('日志已清空')
+      } else {
+        ElMessage.error(res.msg || '清空失败')
+      }
+    } catch (error) {
+      ElMessage.error('清空日志失败')
+    }
   }).catch(() => {})
 }
 

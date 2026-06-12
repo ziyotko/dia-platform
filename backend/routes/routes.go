@@ -28,6 +28,7 @@ func SetupRoutes(router *gin.Engine) {
 	deptController := controllers.NewDepartmentController()
 	dashboardController := controllers.NewDashboardController()
 	visitController := controllers.NewVisitController()
+	staticLogController := controllers.NewStaticLogController()
 	apiPrefix := config.AppConfig.Server.ApiPrefix
 
 	public := router.Group(apiPrefix)
@@ -82,6 +83,9 @@ func SetupRoutes(router *gin.Engine) {
 		protected.GET("/logs", logController.GetLogs)
 		protected.DELETE("/logs", logController.ClearLogs)
 		protected.GET("/login-logs", logController.GetLoginLogs)
+
+		protected.GET("/static-logs", staticLogController.GetLogs)
+		protected.DELETE("/static-logs", staticLogController.ClearLogs)
 
 		protected.GET("/settings", settingsController.GetSettings)
 		protected.PUT("/settings", settingsController.UpdateSettings)
