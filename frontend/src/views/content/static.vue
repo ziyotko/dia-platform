@@ -2,7 +2,7 @@
   <div class="page-container">
     <!-- 统计卡片 -->
     <el-row :gutter="20" class="stat-row">
-      <el-col :xs="24" :sm="12" :md="6">
+      <el-col :xs="24" :sm="12" :md="8">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
             <div class="stat-icon" style="background: rgba(64, 158, 255, 0.1); color: #409eff;">
@@ -15,7 +15,7 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :xs="24" :sm="12" :md="6">
+      <el-col :xs="24" :sm="12" :md="8">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
             <div class="stat-icon" style="background: rgba(230, 162, 60, 0.1); color: #e6a23c;">
@@ -28,7 +28,7 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :xs="24" :sm="12" :md="6">
+      <el-col :xs="24" :sm="12" :md="8">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
             <div class="stat-icon" style="background: rgba(103, 194, 58, 0.1); color: #67c23a;">
@@ -37,19 +37,6 @@
             <div class="stat-info">
               <div class="stat-value">{{ statData.lastTime }}</div>
               <div class="stat-label">上次生成时间</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :xs="24" :sm="12" :md="6">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-content">
-            <div class="stat-icon" style="background: rgba(245, 108, 108, 0.1); color: #f56c6c;">
-              <el-icon size="28"><FolderOpened /></el-icon>
-            </div>
-            <div class="stat-info">
-              <div class="stat-value">{{ statData.cacheSize }}</div>
-              <div class="stat-label">缓存大小</div>
             </div>
           </div>
         </el-card>
@@ -88,23 +75,19 @@
           <el-icon><Document /></el-icon>
           生成详情页
         </el-button>
-        <el-button type="danger" size="large" :disabled="generating" @click="handleClearCache">
-          <el-icon><Delete /></el-icon>
-          清理缓存
-        </el-button>
       </div>
     </el-card>
 
     <!-- Tab 切换区域 -->
     <el-card shadow="hover" class="tab-card">
-      <el-tabs v-model="activeTab">
-        <el-tab-pane label="页面静态化状态" name="status">
+      <el-tabs v-model="activeTab" @tab-change="handleTabChange">
+        <el-tab-pane v-for="tab in pageTabs" :key="tab.name" :label="tab.label" :name="tab.name">
           <div class="tab-header-actions">
             <el-button type="primary" link @click="fetchPageList">
               <el-icon><Refresh /></el-icon>刷新
             </el-button>
           </div>
-          <el-table :data="pageList" v-loading="loading" border stripe>
+          <el-table :data="pagedList" v-loading="loading" border stripe>
             <el-table-column type="index" width="60" align="center" />
             <el-table-column prop="name" label="新闻名称" min-width="180" />
             <el-table-column prop="path" label="访问路径" min-width="200" show-overflow-tooltip />
@@ -134,7 +117,7 @@
               v-model:current-page="queryForm.page"
               v-model:page-size="queryForm.pageSize"
               :page-sizes="[10, 20, 50, 100]"
-              :total="total"
+              :total="displayTotal"
               layout="total, sizes, prev, pager, next, jumper"
               @size-change="handleSizeChange"
               @current-change="handleCurrentChange"
@@ -168,13 +151,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, shallowRef } from 'vue'
+import { ref, reactive, onMounted, shallowRef, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   DocumentChecked,
   Timer,
   Clock,
-  FolderOpened,
   Refresh,
   HomeFilled,
   Document,
@@ -191,14 +173,12 @@ import { getArticleColumnPublishes } from '@/api/article'
 
 const loading = ref(false)
 const generating = ref(false)
-const total = ref(0)
-const activeTab = ref('status')
+const activeTab = ref('home')
 
 const statData = reactive({
   generated: 128,
   pending: 12,
-  lastTime: '2026-06-05 10:30',
-  cacheSize: '256 MB'
+  lastTime: '2026-06-05 10:30'
 })
 
 const queryForm = reactive({
@@ -206,25 +186,64 @@ const queryForm = reactive({
   pageSize: 10
 })
 
+const pageTabs = [
+  { label: '首页', name: 'home' },
+  { label: '栏目页', name: 'column' },
+  { label: '详情页', name: 'detail' },
+  { label: '专题页', name: 'topic' }
+]
+
 const pageList = ref<any[]>([
+  // 首页
   { id: 1, name: '网站首页', path: '/', type: '首页', fileSize: '32 KB', generating: false },
+  // 栏目页
   { id: 2, name: '关于我们', path: '/about', type: '单页', fileSize: '18 KB', generating: false },
   { id: 3, name: '新闻中心', path: '/news', type: '列表', fileSize: '45 KB', generating: false },
   { id: 4, name: '产品分类-电子产品', path: '/category/electronics', type: '分类', fileSize: '28 KB', generating: false },
   { id: 5, name: '产品分类-家居用品', path: '/category/home', type: '分类', fileSize: '-', generating: false },
-  { id: 6, name: '文章-2026年行业趋势分析', path: '/article/1001', type: '文章', fileSize: '52 KB', generating: false },
-  { id: 7, name: '文章-新技术应用案例', path: '/article/1002', type: '文章', fileSize: '38 KB', generating: false },
   { id: 8, name: '标签-Vue', path: '/tag/vue', type: '标签', fileSize: '-', generating: false },
   { id: 9, name: '标签-Go', path: '/tag/go', type: '标签', fileSize: '22 KB', generating: false },
-  { id: 10, name: '联系我们', path: '/contact', type: '单页', fileSize: '15 KB', generating: false }
+  { id: 10, name: '联系我们', path: '/contact', type: '单页', fileSize: '15 KB', generating: false },
+  // 详情页
+  { id: 6, name: '文章-2026年行业趋势分析', path: '/article/1001', type: '文章', fileSize: '52 KB', generating: false },
+  { id: 7, name: '文章-新技术应用案例', path: '/article/1002', type: '文章', fileSize: '38 KB', generating: false },
+  // 专题页
+  { id: 11, name: '年中大促专题', path: '/topic/2026-mid', type: '专题', fileSize: '48 KB', generating: false },
+  { id: 12, name: '品牌故事专题', path: '/topic/brand', type: '专题', fileSize: '35 KB', generating: false }
 ])
+
+const typeMap: Record<string, string[]> = {
+  home: ['首页'],
+  column: ['单页', '列表', '分类', '标签'],
+  detail: ['文章'],
+  topic: ['专题']
+}
+
+const filteredList = computed(() => {
+  const types = typeMap[activeTab.value]
+  if (!types) return pageList.value
+  return pageList.value.filter(item => types.includes(item.type))
+})
+
+const displayTotal = computed(() => filteredList.value.length)
+
+const pagedList = computed(() => {
+  const start = (queryForm.page - 1) * queryForm.pageSize
+  const end = start + queryForm.pageSize
+  return filteredList.value.slice(start, end)
+})
+
+watch(activeTab, (val) => {
+  if (val !== 'logs') {
+    queryForm.page = 1
+  }
+})
 
 const logList = shallowRef<any[]>([
   { type: 'success', icon: Check, time: '2026-06-05 10:30:15', title: '全站静态化完成', detail: '共生成 128 个页面，耗时 12.5 秒' },
   { type: 'primary', icon: Refresh, time: '2026-06-05 10:15:02', title: '首页重新生成', detail: '文件大小 32 KB，生成耗时 0.8 秒' },
   { type: 'warning', icon: Warning, time: '2026-06-05 09:45:30', title: '栏目页生成警告', detail: '部分栏目下无内容，已跳过空栏目页面' },
-  { type: 'success', icon: Check, time: '2026-06-05 09:30:00', title: '详情页批量生成完成', detail: '共生成 56 个详情页面，耗时 8.2 秒' },
-  { type: 'danger', icon: CircleClose, time: '2026-06-05 09:00:10', title: '缓存清理完成', detail: '已清理过期静态文件，释放 128 MB 空间' }
+  { type: 'success', icon: Check, time: '2026-06-05 09:30:00', title: '详情页批量生成完成', detail: '共生成 56 个详情页面，耗时 8.2 秒' }
 ])
 
 const fetchPageList = async () => {
@@ -236,7 +255,6 @@ const fetchPageList = async () => {
     })
     if (res.data) {
       pageList.value = res.data.list || []
-      total.value = res.data.total || 0
     }
   } catch (error) {
     console.error(error)
@@ -245,14 +263,19 @@ const fetchPageList = async () => {
   }
 }
 
+const handleTabChange = () => {
+  if (activeTab.value !== 'logs') {
+    queryForm.page = 1
+  }
+}
+
 const handleSizeChange = (val: number) => {
   queryForm.pageSize = val
-  fetchPageList()
+  queryForm.page = 1
 }
 
 const handleCurrentChange = (val: number) => {
   queryForm.page = val
-  fetchPageList()
 }
 
 const simulateGenerate = async (title: string) => {
@@ -285,16 +308,6 @@ const handleGenerateHome = () => simulateGenerate('首页生成')
 const handleGenerateColumn = () => simulateGenerate('栏目页生成')
 const handleGenerateDetail = () => simulateGenerate('详情页生成')
 const handleGenerateTopic = () => simulateGenerate('专题页生成')
-
-const handleClearCache = () => {
-  ElMessageBox.confirm('确定要清理所有静态缓存吗？清理后需要重新生成页面。', '确认清理', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'error'
-  }).then(() => {
-    simulateGenerate('缓存清理')
-  }).catch(() => {})
-}
 
 const handleGenerateSingle = async (row: any) => {
   row.generating = true
