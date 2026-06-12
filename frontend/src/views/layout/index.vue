@@ -55,7 +55,10 @@
             </div>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item  command="logout">
+                <el-dropdown-item command="profile">
+                  <el-icon><User /></el-icon>个人中心
+                </el-dropdown-item>
+                <el-dropdown-item divided command="logout">
                   <el-icon><SwitchButton /></el-icon>退出登录
                 </el-dropdown-item>
               </el-dropdown-menu>
@@ -89,6 +92,7 @@ import {
   FullScreen,
   ArrowDown,
   SwitchButton,
+  User,
 } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
@@ -170,6 +174,9 @@ const toggleFullScreen = () => {
 
 const handleCommand = (command: string) => {
   switch (command) {
+    case 'profile':
+      router.push('/profile')
+      break
     case 'logout':
       ElMessageBox.confirm('确定要退出登录吗？', '提示', {
         confirmButtonText: '确定',

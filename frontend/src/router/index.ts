@@ -119,6 +119,15 @@ export function addDynamicRoutes(menus: MenuItem[]) {
   }
 
   const children = generateRoutes(menus)
+
+  // 固定路由：个人中心
+  children.push({
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('@/views/profile/index.vue'),
+    meta: { title: '个人中心', icon: 'User' }
+  })
+
   const redirectPath = findFirstValidRoute(children)
 
   const layoutRoute: any = {
