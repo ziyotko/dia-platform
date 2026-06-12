@@ -2,41 +2,80 @@
   <div class="page-container">
     <!-- 统计卡片 -->
     <el-row :gutter="20" class="stat-row">
-      <el-col :xs="24" :sm="12" :md="8">
+      <el-col :xs="24" :sm="12" :md="8" :lg="4">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
             <div class="stat-icon" style="background: rgba(64, 158, 255, 0.1); color: #409eff;">
               <el-icon size="28"><DocumentChecked /></el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-value">{{ statData.generated }}</div>
-              <div class="stat-label">已静态化页面</div>
+              <div class="stat-value">{{ statData.todayCount }}</div>
+              <div class="stat-label">今日静态化页面</div>
             </div>
           </div>
         </el-card>
       </el-col>
-      <el-col :xs="24" :sm="12" :md="8">
+      <el-col :xs="24" :sm="12" :md="8" :lg="4">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
             <div class="stat-icon" style="background: rgba(230, 162, 60, 0.1); color: #e6a23c;">
-              <el-icon size="28"><Timer /></el-icon>
-            </div>
-            <div class="stat-info">
-              <div class="stat-value">{{ statData.pending }}</div>
-              <div class="stat-label">待生成页面</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :xs="24" :sm="12" :md="8">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-content">
-            <div class="stat-icon" style="background: rgba(103, 194, 58, 0.1); color: #67c23a;">
               <el-icon size="28"><Clock /></el-icon>
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ statData.lastTime }}</div>
-              <div class="stat-label">上次生成时间</div>
+              <div class="stat-label">上次静态化时间</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="8" :lg="4">
+        <el-card shadow="hover" class="stat-card">
+          <div class="stat-content">
+            <div class="stat-icon" style="background: rgba(103, 194, 58, 0.1); color: #67c23a;">
+              <el-icon size="28"><HomeFilled /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ statData.homeLastTime }}</div>
+              <div class="stat-label">首页最后静态化时间</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="8" :lg="4">
+        <el-card shadow="hover" class="stat-card">
+          <div class="stat-content">
+            <div class="stat-icon" style="background: rgba(245, 108, 108, 0.1); color: #f56c6c;">
+              <el-icon size="28"><Menu /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ statData.columnLastTime }}</div>
+              <div class="stat-label">栏目页最后静态化时间</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="8" :lg="4">
+        <el-card shadow="hover" class="stat-card">
+          <div class="stat-content">
+            <div class="stat-icon" style="background: rgba(144, 147, 153, 0.1); color: #909399;">
+              <el-icon size="28"><Collection /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ statData.topicLastTime }}</div>
+              <div class="stat-label">专题页最后静态化时间</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :sm="12" :md="8" :lg="4">
+        <el-card shadow="hover" class="stat-card">
+          <div class="stat-content">
+            <div class="stat-icon" style="background: rgba(155, 89, 182, 0.1); color: #9b59b6;">
+              <el-icon size="28"><Document /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ statData.detailLastTime }}</div>
+              <div class="stat-label">详情页最后静态化时间</div>
             </div>
           </div>
         </el-card>
@@ -307,9 +346,12 @@ const generating = ref(false)
 const activeTab = ref('home')
 
 const statData = reactive({
-  generated: 128,
-  pending: 12,
-  lastTime: '2026-06-05 10:30'
+  todayCount: 0,
+  lastTime: '-',
+  homeLastTime: '-',
+  columnLastTime: '-',
+  topicLastTime: '-',
+  detailLastTime: '-'
 })
 
 const queryForm = reactive({
