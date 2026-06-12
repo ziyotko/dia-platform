@@ -81,26 +81,17 @@
     <!-- Tab 切换区域 -->
     <el-card shadow="hover" class="tab-card">
       <el-tabs v-model="activeTab" @tab-change="handleTabChange">
-        <el-tab-pane v-for="tab in pageTabs" :key="tab.name" :label="tab.label" :name="tab.name">
-          <div class="tab-header-actions">
-            <el-button type="primary" link @click="fetchPageList">
-              <el-icon><Refresh /></el-icon>刷新
-            </el-button>
-          </div>
-          <el-table :data="pagedList" v-loading="loading" border stripe>
+        <!-- 首页 -->
+        <el-tab-pane label="首页" name="home">
+          <el-table :data="homePagedList" v-loading="loading" border stripe>
             <el-table-column type="index" width="60" align="center" />
-            <el-table-column prop="name" label="新闻名称" min-width="180" />
-            <el-table-column prop="path" label="访问路径" min-width="200" show-overflow-tooltip />
-            <el-table-column prop="pageName" label="页面名称" min-width="140" />
-            <el-table-column prop="columnName" label="栏目名称" min-width="140" />
-            <el-table-column prop="type" label="页面类型" width="120">
-              <template #default="{ row }">
-                <el-tag :type="row.type === '首页' ? 'primary' : row.type === '文章' ? 'success' : 'info'">
-                  {{ row.type }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="fileSize" label="文件大小" width="120" align="center" />
+            <el-table-column prop="id" label="ID" width="80" align="center" />
+            <el-table-column prop="name" label="名称" min-width="160" />
+            <el-table-column prop="code" label="编码" min-width="120" />
+            <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
+            <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="createTime" label="创建时间" width="170" />
+            <el-table-column prop="updatedAt" label="更新时间" width="170" />
             <el-table-column label="操作" width="180" align="center" fixed="right">
               <template #default="{ row }">
                 <el-button link type="primary" :loading="row.generating" @click="handleGenerateSingle(row)">
@@ -117,7 +108,112 @@
               v-model:current-page="queryForm.page"
               v-model:page-size="queryForm.pageSize"
               :page-sizes="[10, 20, 50, 100]"
-              :total="displayTotal"
+              :total="homeTotal"
+              layout="total, sizes, prev, pager, next, jumper"
+              @size-change="handleSizeChange"
+              @current-change="handleCurrentChange"
+            />
+          </div>
+        </el-tab-pane>
+
+        <!-- 栏目页 -->
+        <el-tab-pane label="栏目页" name="column">
+          <el-table :data="columnPagedList" v-loading="loading" border stripe>
+            <el-table-column type="index" width="60" align="center" />
+            <el-table-column prop="id" label="ID" width="80" align="center" />
+            <el-table-column prop="name" label="名称" min-width="160" />
+            <el-table-column prop="code" label="编码" min-width="120" />
+            <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
+            <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="createTime" label="创建时间" width="170" />
+            <el-table-column prop="updatedAt" label="更新时间" width="170" />
+            <el-table-column label="操作" width="180" align="center" fixed="right">
+              <template #default="{ row }">
+                <el-button link type="primary" :loading="row.generating" @click="handleGenerateSingle(row)">
+                  <el-icon><Refresh /></el-icon>重新生成
+                </el-button>
+                <el-button link type="success" @click="handlePreview(row)">
+                  <el-icon><View /></el-icon>预览
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <div class="pagination">
+            <el-pagination
+              v-model:current-page="queryForm.page"
+              v-model:page-size="queryForm.pageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              :total="columnTotal"
+              layout="total, sizes, prev, pager, next, jumper"
+              @size-change="handleSizeChange"
+              @current-change="handleCurrentChange"
+            />
+          </div>
+        </el-tab-pane>
+
+        <!-- 专题页 -->
+        <el-tab-pane label="专题页" name="topic">
+          <el-table :data="topicPagedList" v-loading="loading" border stripe>
+            <el-table-column type="index" width="60" align="center" />
+            <el-table-column prop="id" label="ID" width="80" align="center" />
+            <el-table-column prop="name" label="名称" min-width="160" />
+            <el-table-column prop="code" label="编码" min-width="120" />
+            <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
+            <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="createTime" label="创建时间" width="170" />
+            <el-table-column prop="updatedAt" label="更新时间" width="170" />
+            <el-table-column label="操作" width="180" align="center" fixed="right">
+              <template #default="{ row }">
+                <el-button link type="primary" :loading="row.generating" @click="handleGenerateSingle(row)">
+                  <el-icon><Refresh /></el-icon>重新生成
+                </el-button>
+                <el-button link type="success" @click="handlePreview(row)">
+                  <el-icon><View /></el-icon>预览
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <div class="pagination">
+            <el-pagination
+              v-model:current-page="queryForm.page"
+              v-model:page-size="queryForm.pageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              :total="topicTotal"
+              layout="total, sizes, prev, pager, next, jumper"
+              @size-change="handleSizeChange"
+              @current-change="handleCurrentChange"
+            />
+          </div>
+        </el-tab-pane>
+
+        <!-- 详情页 -->
+        <el-tab-pane label="详情页" name="detail">
+          <el-table :data="detailPagedList" v-loading="loading" border stripe>
+            <el-table-column type="index" width="60" align="center" />
+            <el-table-column prop="id" label="ID" width="80" align="center" />
+            <el-table-column prop="name" label="名称" min-width="160" />
+            <el-table-column prop="code" label="编码" min-width="120" />
+            <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
+            <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="createTime" label="创建时间" width="170" />
+            <el-table-column prop="updatedAt" label="更新时间" width="170" />
+            <el-table-column label="操作" width="180" align="center" fixed="right">
+              <template #default="{ row }">
+                <el-button link type="primary" :loading="row.generating" @click="handleGenerateSingle(row)">
+                  <el-icon><Refresh /></el-icon>重新生成
+                </el-button>
+                <el-button link type="success" @click="handlePreview(row)">
+                  <el-icon><View /></el-icon>预览
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <div class="pagination">
+            <el-pagination
+              v-model:current-page="queryForm.page"
+              v-model:page-size="queryForm.pageSize"
+              :page-sizes="[10, 20, 50, 100]"
+              :total="detailTotal"
               layout="total, sizes, prev, pager, next, jumper"
               @size-change="handleSizeChange"
               @current-change="handleCurrentChange"
@@ -200,6 +296,7 @@ import {
   User
 } from '@element-plus/icons-vue'
 import { getArticleColumnPublishes } from '@/api/article'
+import { getPages } from '@/api/page'
 
 const loading = ref(false)
 const generating = ref(false)
@@ -216,12 +313,37 @@ const queryForm = reactive({
   pageSize: 10
 })
 
-const pageTabs = [
-  { label: '首页', name: 'home' },
-  { label: '栏目页', name: 'column' },
-  { label: '详情页', name: 'detail' },
-  { label: '专题页', name: 'topic' }
-]
+const homeList = ref<any[]>([])
+const homeTotal = computed(() => homeList.value.length)
+const homePagedList = computed(() => {
+  const start = (queryForm.page - 1) * queryForm.pageSize
+  const end = start + queryForm.pageSize
+  return homeList.value.slice(start, end)
+})
+
+const columnList = ref<any[]>([])
+const columnTotal = computed(() => columnList.value.length)
+const columnPagedList = computed(() => {
+  const start = (queryForm.page - 1) * queryForm.pageSize
+  const end = start + queryForm.pageSize
+  return columnList.value.slice(start, end)
+})
+
+const detailList = ref<any[]>([])
+const detailTotal = computed(() => detailList.value.length)
+const detailPagedList = computed(() => {
+  const start = (queryForm.page - 1) * queryForm.pageSize
+  const end = start + queryForm.pageSize
+  return detailList.value.slice(start, end)
+})
+
+const topicList = ref<any[]>([])
+const topicTotal = computed(() => topicList.value.length)
+const topicPagedList = computed(() => {
+  const start = (queryForm.page - 1) * queryForm.pageSize
+  const end = start + queryForm.pageSize
+  return topicList.value.slice(start, end)
+})
 
 const pageList = ref<any[]>([
   // 首页
@@ -312,12 +434,26 @@ const handleLogScroll = (e: Event) => {
 const fetchPageList = async () => {
   loading.value = true
   try {
-    const res: any = await getArticleColumnPublishes({
-      page: queryForm.page,
-      pageSize: queryForm.pageSize
-    })
-    if (res.data) {
-      pageList.value = res.data.list || []
+    if (activeTab.value === 'home') {
+      const res: any = await getPages({ pageType: 'home' })
+      homeList.value = res.data || []
+    } else if (activeTab.value === 'column') {
+      const res: any = await getPages({ pageType: 'column' })
+      columnList.value = res.data || []
+    } else if (activeTab.value === 'detail') {
+      const res: any = await getPages({ pageType: 'detail' })
+      detailList.value = res.data || []
+    } else if (activeTab.value === 'topic') {
+      const res: any = await getPages({ pageType: 'special' })
+      topicList.value = res.data || []
+    } else {
+      const res: any = await getArticleColumnPublishes({
+        page: queryForm.page,
+        pageSize: queryForm.pageSize
+      })
+      if (res.data) {
+        pageList.value = res.data.list || []
+      }
     }
   } catch (error) {
     console.error(error)
@@ -329,6 +465,7 @@ const fetchPageList = async () => {
 const handleTabChange = () => {
   if (activeTab.value !== 'logs') {
     queryForm.page = 1
+    fetchPageList()
   }
 }
 
