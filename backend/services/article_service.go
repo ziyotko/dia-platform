@@ -433,23 +433,24 @@ func (s *ArticleService) tryCompleteArticleAudit(articleID uint) {
 }
 
 // GetArticleColumnPublishes 获取文章栏目发布（静态化）列表
-func (s *ArticleService) GetArticleColumnPublishes(articleTitle string, columnID uint, page int, pageSize int) ([]models.ArticleColumnPublish, int64, error) {
-	var list []models.ArticleColumnPublish
+func (s *ArticleService) GetArticleColumnPublishes(articleTitle string, columnID uint, page int, pageSize int) ([]models.Article, int64, error) {
+	var articles []models.Article
 	var total int64
-	query := utils.DB.Model(&models.ArticleColumnPublish{})
+	query := utils.DB.Model(&models.Article{}).
+		Select("id, created_at, updated_at, title, author, source").
+		Where("id IN (SELECT DISTINCT article_id FROM article_column_publish)").
+		Where("status = ?", 1).
+		Order("updated_at DESC")
 	if articleTitle != "" {
-		query = query.Where("article_title LIKE ?", "%"+articleTitle+"%")
-	}
-	if columnID > 0 {
-		query = query.Where("column_id = ?", columnID)
+		query = query.Where("title LIKE ?", "%"+articleTitle+"%")
 	}
 	err := query.Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
 	offset := (page - 1) * pageSize
-	err = query.Preload("Page").Preload("Column").Order("id DESC").Limit(pageSize).Offset(offset).Find(&list).Error
-	return list, total, err
+	err = query.Limit(pageSize).Offset(offset).Find(&articles).Error
+	return articles, total, err
 }
 
 // GetMyAuditArticles 获取当前用户需要审核的文章列表

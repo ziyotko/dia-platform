@@ -509,16 +509,9 @@ func (c *ArticleController) GetMyAuditArticles(ctx *gin.Context) {
 
 func (c *ArticleController) GetArticleColumnPublishes(ctx *gin.Context) {
 	articleTitle := ctx.Query("articleTitle")
-	columnIDStr := ctx.Query("columnId")
 	pageStr := ctx.DefaultQuery("page", "1")
 	pageSizeStr := ctx.DefaultQuery("pageSize", "10")
 
-	var columnID uint
-	if columnIDStr != "" {
-		if id, err := strconv.ParseUint(columnIDStr, 10, 32); err == nil {
-			columnID = uint(id)
-		}
-	}
 	page, _ := strconv.Atoi(pageStr)
 	if page < 1 {
 		page = 1
@@ -528,34 +521,22 @@ func (c *ArticleController) GetArticleColumnPublishes(ctx *gin.Context) {
 		pageSize = 10
 	}
 
-	list, total, err := c.articleService.GetArticleColumnPublishes(articleTitle, columnID, page, pageSize)
+	articles, total, err := c.articleService.GetArticleColumnPublishes(articleTitle, 0, page, pageSize)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取静态化状态列表失败"))
 		return
 	}
 
 	var result []gin.H
-	for _, item := range list {
-		pageName := ""
-		if item.Page.ID > 0 {
-			pageName = item.Page.Name
-		}
-		columnName := ""
-		if item.Column.ID > 0 {
-			columnName = item.Column.Name
-		}
+	for _, a := range articles {
 		result = append(result, gin.H{
-			"id":         item.ID,
-			"name":       item.ArticleTitle,
-			"path":       "/article/" + strconv.FormatUint(uint64(item.ArticleID), 10),
-			"pageName":   pageName,
-			"columnName": columnName,
-			"type":       "文章",
-			"fileSize":   "-",
-			"generating": false,
-			"articleId":  item.ArticleID,
-			"columnId":   item.ColumnID,
-			"pageId":     item.PageID,
+			"id":         a.ID,
+			"title":      a.Title,
+			"author":     a.Author,
+			"source":     a.Source,
+			"path":       "/article/" + strconv.FormatUint(uint64(a.ID), 10),
+			"createTime": a.CreatedAt.Format("2006-01-02 15:04:05"),
+			"updatedAt":  a.UpdatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
 

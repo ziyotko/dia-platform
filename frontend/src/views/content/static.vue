@@ -191,10 +191,9 @@
           <el-table :data="detailPagedList" v-loading="loading" border stripe>
             <el-table-column type="index" width="60" align="center" />
             <el-table-column prop="id" label="ID" width="80" align="center" />
-            <el-table-column prop="name" label="名称" min-width="160" />
-            <el-table-column prop="code" label="编码" min-width="120" />
-            <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
-            <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="author" label="作者" min-width="60" />
+            <el-table-column prop="source" label="来源" min-width="100" />
             <el-table-column prop="createTime" label="创建时间" width="170" />
             <el-table-column prop="updatedAt" label="更新时间" width="170" />
             <el-table-column label="操作" width="180" align="center" fixed="right">
@@ -330,12 +329,8 @@ const columnPagedList = computed(() => {
 })
 
 const detailList = ref<any[]>([])
-const detailTotal = computed(() => detailList.value.length)
-const detailPagedList = computed(() => {
-  const start = (queryForm.page - 1) * queryForm.pageSize
-  const end = start + queryForm.pageSize
-  return detailList.value.slice(start, end)
-})
+const detailTotal = ref(0)
+const detailPagedList = computed(() => detailList.value)
 
 const topicList = ref<any[]>([])
 const topicTotal = computed(() => topicList.value.length)
@@ -441,8 +436,12 @@ const fetchPageList = async () => {
       const res: any = await getPages({ pageType: 'column' })
       columnList.value = res.data || []
     } else if (activeTab.value === 'detail') {
-      const res: any = await getPages({ pageType: 'detail' })
-      detailList.value = res.data || []
+      const res: any = await getArticleColumnPublishes({
+        page: queryForm.page,
+        pageSize: queryForm.pageSize
+      })
+      detailList.value = res.data?.list || []
+      detailTotal.value = res.data?.total || 0
     } else if (activeTab.value === 'topic') {
       const res: any = await getPages({ pageType: 'special' })
       topicList.value = res.data || []
@@ -472,10 +471,16 @@ const handleTabChange = () => {
 const handleSizeChange = (val: number) => {
   queryForm.pageSize = val
   queryForm.page = 1
+  if (activeTab.value === 'detail') {
+    fetchPageList()
+  }
 }
 
 const handleCurrentChange = (val: number) => {
   queryForm.page = val
+  if (activeTab.value === 'detail') {
+    fetchPageList()
+  }
 }
 
 const simulateGenerate = async (title: string) => {
@@ -511,12 +516,13 @@ const handleGenerateTopic = () => simulateGenerate('专题页生成')
 
 const handleGenerateSingle = async (row: any) => {
   row.generating = true
+  const name = row.title || row.name
   try {
     // TODO: 调用单页生成接口
     await new Promise(resolve => setTimeout(resolve, 1000))
-    ElMessage.success(`「${row.name}」生成成功`)
+    ElMessage.success(`「${name}」生成成功`)
   } catch (error) {
-    ElMessage.error(`「${row.name}」生成失败`)
+    ElMessage.error(`「${name}」生成失败`)
   } finally {
     row.generating = false
   }
