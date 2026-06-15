@@ -60,12 +60,21 @@ func (s *ArticleService) CreateArticle(article *models.Article, tagIDs []uint) e
 			}
 		}
 		if len(article.Attachments) > 0 {
-			for i := range article.Attachments {
-				article.Attachments[i].ArticleID = article.ID
-				article.Attachments[i].ID = 0
+			seen := make(map[string]bool)
+			unique := make([]models.ArticleAttachment, 0, len(article.Attachments))
+			for _, att := range article.Attachments {
+				if att.URL == "" || seen[att.URL] {
+					continue
+				}
+				seen[att.URL] = true
+				att.ArticleID = article.ID
+				att.ID = 0
+				unique = append(unique, att)
 			}
-			if err := tx.Create(&article.Attachments).Error; err != nil {
-				return err
+			if len(unique) > 0 {
+				if err := tx.Create(&unique).Error; err != nil {
+					return err
+				}
 			}
 		}
 		return nil
@@ -109,17 +118,26 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 				return err
 			}
 		}
-		// 更新附件：删除旧附件，创建新附件
+		// 更新附件：删除旧附件，创建新附件（去重）
 		if err := tx.Where("article_id = ?", id).Delete(&models.ArticleAttachment{}).Error; err != nil {
 			return err
 		}
 		if len(article.Attachments) > 0 {
-			for i := range article.Attachments {
-				article.Attachments[i].ArticleID = id
-				article.Attachments[i].ID = 0
+			seen := make(map[string]bool)
+			unique := make([]models.ArticleAttachment, 0, len(article.Attachments))
+			for _, att := range article.Attachments {
+				if att.URL == "" || seen[att.URL] {
+					continue
+				}
+				seen[att.URL] = true
+				att.ArticleID = id
+				att.ID = 0
+				unique = append(unique, att)
 			}
-			if err := tx.Create(&article.Attachments).Error; err != nil {
-				return err
+			if len(unique) > 0 {
+				if err := tx.Create(&unique).Error; err != nil {
+					return err
+				}
 			}
 		}
 		return nil

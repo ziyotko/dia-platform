@@ -176,140 +176,173 @@
         label-width="80px"
         class="article-form"
       >
-        <el-form-item label="文章标题" prop="title">
-          <el-input v-model="form.title" placeholder="请输入文章标题" />
-        </el-form-item>
-        <el-row :gutter="16">
-          <el-col :span="8">
-            <el-form-item label="所属分类" prop="categoryId">
-              <el-select v-model="form.categoryId" placeholder="请选择分类" style="width: 100%">
-                <el-option
-                  v-for="item in categoryList"
-                  :key="item.id"
-                  :label="item.name"
-                  :value="item.id"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="文章标签" prop="tagIds">
-              <el-select v-model="form.tagIds" multiple placeholder="请选择标签" style="width: 100%">
-                <el-option
-                  v-for="item in tagList"
-                  :key="item.id"
-                  :label="item.name"
-                  :value="item.id"
-                />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="发布状态">
-              <el-tag :type="form.status === 1 ? 'success' : form.status === 0 ? 'info' : 'danger'">
-                {{ form.status === 1 ? '已发布' : form.status === 0 ? '草稿' : '已下线' }}
-              </el-tag>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="封面图" prop="cover">
-              <div class="article-cover-uploader">
-                <el-upload
-                  v-if="!form.cover"
-                  class="cover-uploader"
-                  action=""
-                  :http-request="handleCoverUpload"
-                  :show-file-list="false"
-                  accept="image/*"
-                >
-                  <el-icon class="uploader-icon"><Plus /></el-icon>
-                  <div class="uploader-text">点击上传</div>
-                </el-upload>
-                <div v-else class="cover-preview">
-                  <el-image
-                    :src="form.cover"
-                    fit="cover"
-                    style="width: 200px; height: 120px; border-radius: 8px"
-                    :preview-src-list="[form.cover]"
+        <div class="form-section">
+          <div class="section-title">基本信息</div>
+          <el-form-item label="文章标题" prop="title">
+            <el-input v-model="form.title" placeholder="请输入文章标题" clearable />
+          </el-form-item>
+          <el-row :gutter="20">
+            <el-col :xs="24" :sm="12" :md="8">
+              <el-form-item label="所属分类" prop="categoryId">
+                <el-select v-model="form.categoryId" placeholder="请选择分类" style="width: 100%">
+                  <el-option
+                    v-for="item in categoryList"
+                    :key="item.id"
+                    :label="item.name"
+                    :value="item.id"
                   />
-                  <div class="cover-actions">
-                    <el-button type="danger" size="small" @click="handleRemoveCover">
-                      <el-icon><Delete /></el-icon>删除
-                    </el-button>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12" :md="8">
+              <el-form-item label="文章标签" prop="tagIds">
+                <el-select v-model="form.tagIds" multiple placeholder="请选择标签" style="width: 100%">
+                  <el-option
+                    v-for="item in tagList"
+                    :key="item.id"
+                    :label="item.name"
+                    :value="item.id"
+                  />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12" :md="8">
+              <el-form-item label="发布状态">
+                <el-tag :type="form.status === 1 ? 'success' : form.status === 0 ? 'info' : 'danger'">
+                  {{ form.status === 1 ? '已发布' : form.status === 0 ? '草稿' : '已下线' }}
+                </el-tag>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
+            <el-col :xs="24" :sm="12">
+              <el-form-item label="封面图" prop="cover">
+                <div class="article-cover-uploader">
+                  <el-upload
+                    v-if="!form.cover"
+                    class="cover-uploader"
+                    action=""
+                    :http-request="handleCoverUpload"
+                    :show-file-list="false"
+                    accept="image/*"
+                  >
+                    <el-icon class="uploader-icon"><Plus /></el-icon>
+                    <div class="uploader-text">点击上传封面</div>
+                    <div class="uploader-hint">建议尺寸 800×480</div>
+                  </el-upload>
+                  <div v-else class="cover-preview">
+                    <div class="cover-image-wrapper">
+                      <el-image
+                        :src="form.cover"
+                        fit="cover"
+                        style="width: 100%; height: 100%"
+                        :preview-src-list="[form.cover]"
+                      />
+                      <div class="cover-overlay" @click="handleRemoveCover">
+                        <el-icon><Delete /></el-icon>
+                        <span>删除封面</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="来源" prop="source">
-              <el-input v-model="form.source" placeholder="请输入文章来源" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="16">
-          <el-col :span="8">
-            <el-form-item label="是否置顶" prop="isTop">
-              <el-radio-group v-model="form.isTop">
-                <el-radio :value="1">置顶</el-radio>
-                <el-radio :value="0">不置顶</el-radio>
-              </el-radio-group>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="是否加粗" prop="isBold">
-              <el-radio-group v-model="form.isBold">
-                <el-radio :value="1">加粗</el-radio>
-                <el-radio :value="0">不加粗</el-radio>
-              </el-radio-group>
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
-            <el-form-item label="默认颜色" prop="defaultColor">
-              <el-color-picker v-model="form.defaultColor" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-form-item label="文章摘要" prop="summary">
-          <el-input v-model="form.summary" type="textarea" :rows="2" placeholder="请输入文章摘要" />
-        </el-form-item>
-        <el-form-item label="文章内容" prop="content" class="editor-form-item">
-          <div class="editor-wrapper">
-            <Toolbar
-              style="border-bottom: 1px solid #ccc"
-              :editor="editorRef"
-              :defaultConfig="toolbarConfig"
-              mode="default"
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12">
+              <el-form-item label="文章来源" prop="source">
+                <el-input v-model="form.source" placeholder="请输入文章来源" clearable />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
+
+        <el-divider />
+
+        <div class="form-section">
+          <div class="section-title">样式设置</div>
+          <el-row :gutter="20">
+            <el-col :xs="24" :sm="12" :md="8">
+              <el-form-item label="是否置顶" prop="isTop">
+                <el-radio-group v-model="form.isTop">
+                  <el-radio :value="1">置顶</el-radio>
+                  <el-radio :value="0">不置顶</el-radio>
+                </el-radio-group>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12" :md="8">
+              <el-form-item label="是否加粗" prop="isBold">
+                <el-radio-group v-model="form.isBold">
+                  <el-radio :value="1">加粗</el-radio>
+                  <el-radio :value="0">不加粗</el-radio>
+                </el-radio-group>
+              </el-form-item>
+            </el-col>
+            <el-col :xs="24" :sm="12" :md="8">
+              <el-form-item label="标题颜色" prop="defaultColor">
+                <el-color-picker v-model="form.defaultColor" show-alpha />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
+
+        <el-divider />
+
+        <div class="form-section">
+          <div class="section-title">内容编辑</div>
+          <el-form-item label="文章摘要" prop="summary">
+            <el-input
+              v-model="form.summary"
+              type="textarea"
+              :rows="3"
+              placeholder="请输入文章摘要，简要描述文章核心内容"
+              maxlength="500"
+              show-word-limit
             />
-            <Editor
-              v-model="form.content"
-              :defaultConfig="editorConfig"
-              mode="default"
-              @onCreated="handleCreated"
-              @onChange="handleEditorChange"
-              @customPaste="handleCustomPaste"
-            />
-          </div>
-        </el-form-item>
-        <el-form-item label="附件" prop="attachments">
-          <el-upload
-            v-model:file-list="form.attachments"
-            action=""
-            :http-request="handleAttachmentUpload"
-            :on-remove="handleAttachmentRemove"
-            multiple
-            :limit="10"
-          >
-            <el-button type="primary">
-              <el-icon><Plus /></el-icon>上传附件
-            </el-button>
-            <template #tip>
-              <div class="el-upload__tip">支持 pdf/doc/docx/xls/xlsx/ppt/pptx/txt/zip/rar/7z/mp4/mp3 等格式，最多10个</div>
-            </template>
-          </el-upload>
-        </el-form-item>
+          </el-form-item>
+          <el-form-item label="文章内容" prop="content" class="editor-form-item">
+            <div class="editor-wrapper">
+              <Toolbar
+                style="border-bottom: 1px solid #e4e7ed"
+                :editor="editorRef"
+                :defaultConfig="toolbarConfig"
+                mode="default"
+              />
+              <Editor
+                v-model="form.content"
+                :defaultConfig="editorConfig"
+                mode="default"
+                @onCreated="handleCreated"
+                @onChange="handleEditorChange"
+                @customPaste="handleCustomPaste"
+              />
+            </div>
+          </el-form-item>
+        </div>
+
+        <el-divider />
+
+        <div class="form-section">
+          <div class="section-title">附件管理</div>
+          <el-form-item label="文章附件" prop="attachments">
+            <el-upload
+              v-model:file-list="form.attachments"
+              action=""
+              :http-request="handleAttachmentUpload"
+              :on-remove="handleAttachmentRemove"
+              multiple
+              :limit="10"
+              class="attachment-uploader"
+            >
+              <el-button type="primary" plain>
+                <el-icon><Plus /></el-icon>上传附件
+              </el-button>
+              <template #tip>
+                <div class="attachment-tip">
+                  支持 PDF、Word、Excel、PPT、TXT、ZIP、RAR、7Z、MP4、MP3 等常见格式，单个文件不超过 50MB，最多上传 10 个附件
+                </div>
+              </template>
+            </el-upload>
+          </el-form-item>
+        </div>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -927,7 +960,11 @@ const handleEdit = async (row: any) => {
     defaultColor: row.defaultColor || '',
     cover: row.cover || '',
     source: row.source || '',
-    attachments: row.attachments || []
+    attachments: (row.attachments || []).map((att: any) => ({
+      ...att,
+      uid: att.uid || Date.now() + Math.random().toString(36).slice(2),
+      status: 'success'
+    }))
   })
   dialogVisible.value = true
 }
@@ -1238,11 +1275,7 @@ const handleSubmit = async () => {
       defaultColor: form.defaultColor,
       cover: form.cover,
       source: form.source,
-      attachments: form.attachments.map((att: any) => ({
-        name: att.name,
-        url: att.url,
-        size: att.size || 0
-      }))
+      attachments: buildAttachmentPayload(form.attachments)
     }
     if (form.id) {
       await updateArticle(form.id, data)
@@ -1283,7 +1316,13 @@ const handleAttachmentUpload = async (options: any) => {
     })
     const url = res.data?.url || ''
     if (url) {
-      options.onSuccess({ url, name: file.name, size: file.size })
+      options.onSuccess({ url, name: file.name, size: file.size, uid: file.uid })
+      // 手动同步 url 到 form.attachments，确保提交时能正确读取
+      const idx = form.attachments.findIndex((a: any) => a.uid === file.uid)
+      if (idx >= 0) {
+        form.attachments[idx].url = url
+        form.attachments[idx].status = 'success'
+      }
     } else {
       options.onError(new Error('上传失败'))
       ElMessage.error('附件上传失败')
@@ -1296,6 +1335,21 @@ const handleAttachmentUpload = async (options: any) => {
 
 const handleAttachmentRemove = (file: any, fileList: any[]) => {
   form.attachments = fileList
+}
+
+const buildAttachmentPayload = (attachments: any[]) => {
+  const seen = new Set<string>()
+  return attachments
+    .map((att: any) => ({
+      name: att.name,
+      url: att.url || att.response?.url || '',
+      size: att.size || 0
+    }))
+    .filter((att: any) => {
+      if (!att.url || seen.has(att.url)) return false
+      seen.add(att.url)
+      return true
+    })
 }
 
 const resetForm = () => {
@@ -1375,29 +1429,68 @@ onMounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  padding: 8px 16px;
+
+  .form-section {
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #2c3e50;
+      margin-bottom: 16px;
+      padding-left: 10px;
+      border-left: 4px solid #409eff;
+    }
+  }
+
+  .el-divider {
+    margin: 20px 0;
+  }
 
   .editor-form-item {
     flex: 1;
     margin-bottom: 0;
 
     :deep(.el-form-item__content) {
-      height: calc(100vh - 400px);
+      height: calc(100vh - 520px);
       display: block;
     }
   }
 }
 
 .editor-wrapper {
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
   overflow: hidden;
   height: 100%;
   display: flex;
   flex-direction: column;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
 
   :deep(.w-e-text-container) {
     flex: 1;
     overflow-y: auto;
+  }
+}
+
+.attachment-uploader {
+  .attachment-tip {
+    font-size: 13px;
+    color: #909399;
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+
+  :deep(.el-upload-list) {
+    margin-top: 12px;
+
+    .el-upload-list__item {
+      border-radius: 6px;
+      transition: all 0.2s;
+
+      &:hover {
+        background-color: #f5f7fa;
+      }
+    }
   }
 }
 
@@ -1599,29 +1692,38 @@ onMounted(() => {
 
 .article-cover-uploader {
   .cover-uploader {
-    width: 200px;
-    height: 120px;
+    width: 240px;
+    height: 140px;
     border: 2px dashed var(--el-border-color);
-    border-radius: 8px;
+    border-radius: 10px;
     cursor: pointer;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
     color: #8c939d;
-    transition: border-color 0.3s;
+    transition: all 0.3s;
+    background: #fafbfc;
 
     &:hover {
       border-color: var(--el-color-primary);
+      background: #f5faff;
+      color: var(--el-color-primary);
     }
 
     .uploader-icon {
-      font-size: 28px;
+      font-size: 32px;
     }
 
     .uploader-text {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .uploader-hint {
       font-size: 12px;
+      color: #c0c4cc;
     }
   }
 
@@ -1631,9 +1733,33 @@ onMounted(() => {
     align-items: flex-start;
     gap: 8px;
 
-    .cover-actions {
-      display: flex;
-      gap: 8px;
+    .cover-image-wrapper {
+      position: relative;
+      width: 240px;
+      height: 140px;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+      .cover-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        color: #fff;
+        font-size: 13px;
+        opacity: 0;
+        transition: opacity 0.3s;
+        cursor: pointer;
+
+        &:hover {
+          opacity: 1;
+        }
+      }
     }
   }
 }
