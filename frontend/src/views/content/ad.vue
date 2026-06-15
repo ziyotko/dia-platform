@@ -598,4 +598,22 @@ onMounted(() => {
     }
   }
 }
+
+:global(.el-image-viewer__wrapper) {
+  z-index: 9999 !important;
+  .el-image-viewer__canvas {
+    width: 600px !important;
+    height: 500px !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+  }
+  .el-image-viewer__img {
+    max-width: 600px !important;
+    max-height: 500px !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain !important;
+  }
+}
 </style>

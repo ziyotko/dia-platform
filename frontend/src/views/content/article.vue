@@ -53,6 +53,18 @@
       <el-table :data="tableData" v-loading="loading" border stripe>
         <el-table-column type="index" width="60" align="center" />
         <el-table-column prop="title" label="文章标题" min-width="180" show-overflow-tooltip />
+        <el-table-column label="封面图" width="80" align="center">
+          <template #default="{ row }">
+            <el-image
+              v-if="row.cover"
+              :src="row.cover"
+              :preview-src-list="[row.cover]"
+              fit="cover"
+              style="width: 60px; height: 60px; border-radius: 8px"
+            />
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="categoryName" label="所属分类" width="120" />
         <el-table-column label="标签" width="120">
           <template #default="{ row }">
@@ -203,7 +215,32 @@
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="封面图" prop="cover">
-              <el-input v-model="form.cover" placeholder="请输入封面图URL" />
+              <div class="article-cover-uploader">
+                <el-upload
+                  v-if="!form.cover"
+                  class="cover-uploader"
+                  action=""
+                  :http-request="handleCoverUpload"
+                  :show-file-list="false"
+                  accept="image/*"
+                >
+                  <el-icon class="uploader-icon"><Plus /></el-icon>
+                  <div class="uploader-text">点击上传</div>
+                </el-upload>
+                <div v-else class="cover-preview">
+                  <el-image
+                    :src="form.cover"
+                    fit="cover"
+                    style="width: 200px; height: 120px; border-radius: 8px"
+                    :preview-src-list="[form.cover]"
+                  />
+                  <div class="cover-actions">
+                    <el-button type="danger" size="small" @click="handleRemoveCover">
+                      <el-icon><Delete /></el-icon>删除
+                    </el-button>
+                  </div>
+                </div>
+              </div>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -424,6 +461,7 @@ import { getAllCategories } from '@/api/category'
 import { getAllTags } from '@/api/tag'
 import { getPages } from '@/api/page'
 import { getColumns } from '@/api/column'
+import { uploadFile } from '@/api/upload'
 
 const userStore = useUserStore()
 const currentUserId = computed(() => userStore.userInfo?.id || 0)
@@ -1179,6 +1217,20 @@ const handleSubmit = async () => {
   }
 }
 
+const handleCoverUpload = async (options: any) => {
+  try {
+    const res: any = await uploadFile(options.file, 'article')
+    form.cover = res.data?.url || res.url || ''
+    ElMessage.success('封面图上传成功')
+  } catch (error: any) {
+    ElMessage.error(error?.message || '封面图上传失败')
+  }
+}
+
+const handleRemoveCover = () => {
+  form.cover = ''
+}
+
 const resetForm = () => {
   form.id = undefined
   form.title = ''
@@ -1440,5 +1492,64 @@ onMounted(() => {
 
 .audit-flow-reject-result {
   color: #f56c6c;
+}
+
+.article-cover-uploader {
+  .cover-uploader {
+    width: 200px;
+    height: 120px;
+    border: 2px dashed var(--el-border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #8c939d;
+    transition: border-color 0.3s;
+
+    &:hover {
+      border-color: var(--el-color-primary);
+    }
+
+    .uploader-icon {
+      font-size: 28px;
+    }
+
+    .uploader-text {
+      font-size: 12px;
+    }
+  }
+
+  .cover-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+
+    .cover-actions {
+      display: flex;
+      gap: 8px;
+    }
+  }
+}
+
+:global(.el-image-viewer__wrapper) {
+  z-index: 9999 !important;
+  .el-image-viewer__canvas {
+    width: 600px !important;
+    height: 500px !important;
+    left: 50% !important;
+    top: 50% !important;
+    transform: translate(-50%, -50%) !important;
+  }
+  .el-image-viewer__img {
+    max-width: 600px !important;
+    max-height: 500px !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain !important;
+  }
 }
 </style>
