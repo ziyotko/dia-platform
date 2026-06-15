@@ -84,7 +84,11 @@ func (s *UserService) Login(email, account, mobile, password, captchaID, captcha
 		}
 	}
 
-	token, err := utils.GenerateToken(user.ID, user.Email)
+	expiresHour := 0
+	if settings != nil && settings.TokenExpire > 0 {
+		expiresHour = settings.TokenExpire
+	}
+	token, err := utils.GenerateToken(user.ID, user.Email, expiresHour)
 	if err != nil {
 		return nil, "", err
 	}

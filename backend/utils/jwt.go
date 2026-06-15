@@ -15,13 +15,9 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func GenerateToken(userID uint, email string) (string, error) {
-	expiresHour := config.AppConfig.JWT.ExpiresHour
-	var settings struct {
-		TokenExpire int `gorm:"column:token_expire"`
-	}
-	if err := DB.Table("settings").Select("token_expire").Limit(1).Scan(&settings).Error; err == nil && settings.TokenExpire > 0 {
-		expiresHour = settings.TokenExpire
+func GenerateToken(userID uint, email string, expiresHour int) (string, error) {
+	if expiresHour <= 0 {
+		expiresHour = config.AppConfig.JWT.ExpiresHour
 	}
 	expireTime := time.Now().Add(time.Hour * time.Duration(expiresHour))
 	claims := Claims{

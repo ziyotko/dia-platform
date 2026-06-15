@@ -59,10 +59,14 @@ func (s *PageService) UpdatePage(id uint, page *models.Page) error {
 		}
 		if old.TemplateID != page.TemplateID {
 			if old.TemplateID > 0 {
-				tx.Model(&models.Template{}).Where("id = ?", old.TemplateID).Update("page_count", gorm.Expr("page_count - 1"))
+				if err := tx.Model(&models.Template{}).Where("id = ?", old.TemplateID).Update("page_count", gorm.Expr("page_count - 1")).Error; err != nil {
+					return err
+				}
 			}
 			if page.TemplateID > 0 {
-				tx.Model(&models.Template{}).Where("id = ?", page.TemplateID).Update("page_count", gorm.Expr("page_count + 1"))
+				if err := tx.Model(&models.Template{}).Where("id = ?", page.TemplateID).Update("page_count", gorm.Expr("page_count + 1")).Error; err != nil {
+					return err
+				}
 			}
 		}
 		return nil

@@ -27,7 +27,7 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 		return
 	}
 
-	ext := filepath.Ext(file.Filename)
+	ext := strings.ToLower(filepath.Ext(file.Filename))
 	if ext == "" {
 		ext = ".png"
 	}
@@ -41,7 +41,11 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 	}
 
 	settingsService := services.SettingsService{}
-	settings, _ := settingsService.GetSettings()
+	settings, err := settingsService.GetSettings()
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取系统设置失败"))
+		return
+	}
 	orgCode := ""
 	if settings != nil {
 		orgCode = strings.ToLower(settings.OrgCode)
@@ -56,7 +60,13 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 		uploadDir = filepath.Join(uploadDir, dir)
 	}
 	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
-		os.MkdirAll(uploadDir, os.ModePerm)
+		if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+			ctx.JSON(http.StatusOK, utils.Error(1, "创建上传目录失败"))
+			return
+		}
+	} else if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "检查上传目录失败"))
+		return
 	}
 
 	filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)

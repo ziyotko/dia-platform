@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 
 	"server/utils"
 )
@@ -35,6 +36,11 @@ func AuthMiddleware() gin.HandlerFunc {
 		_, err = utils.Redis.Get(utils.Ctx, "blacklist:"+claims.ID).Result()
 		if err == nil {
 			c.JSON(200, utils.Error(1, "token已被拉黑"))
+			c.Abort()
+			return
+		}
+		if err != redis.Nil {
+			c.JSON(200, utils.Error(1, "服务异常，请稍后重试"))
 			c.Abort()
 			return
 		}

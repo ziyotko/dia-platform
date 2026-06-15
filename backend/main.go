@@ -21,7 +21,9 @@ func main() {
 	utils.InitRedisCaptcha()
 	utils.InitRedisAnti()
 
-	utils.DB.AutoMigrate(&models.User{}, &models.Menu{}, &models.Role{}, &models.OperationLog{}, &models.LoginLog{}, &models.SiteAnalytics{}, &models.Settings{}, &models.Template{}, &models.Page{}, &models.Column{}, &models.Category{}, &models.Tag{}, &models.Article{}, &models.Ad{}, &models.Link{}, &models.Department{}, &models.Workflow{}, &models.WorkflowNode{}, &models.ArticleColumnAudit{}, &models.ArticleColumnAuditHistory{}, &models.ArticleColumnPublish{}, &models.StaticLog{})
+	for _, m := range models.AllModels() {
+		utils.DB.AutoMigrate(m)
+	}
 
 	initSuperAdmin()
 	initMenus()
