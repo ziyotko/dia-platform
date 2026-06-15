@@ -83,8 +83,14 @@
         </el-table-column>
         <el-table-column prop="logo" label="Logo" width="80" align="center">
           <template #default="{ row }">
-            <el-avatar v-if="row.logo" :size="36" :src="row.logo" />
-            <el-avatar v-else :size="36">{{ row.name?.charAt(0) }}</el-avatar>
+            <el-image
+              v-if="row.logo"
+              :src="row.logo"
+              :preview-src-list="[row.logo]"
+              fit="cover"
+              style="width: 60px; height: 60px; border-radius: 8px"
+            />
+            <span v-else>-</span>
           </template>
         </el-table-column>
         <el-table-column prop="description" label="网站描述" min-width="200" show-overflow-tooltip />

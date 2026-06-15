@@ -75,14 +75,14 @@
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="image" label="广告图片" width="120" align="center">
+        <el-table-column prop="image" label="广告图片" width="80" align="center">
           <template #default="{ row }">
             <el-image
               v-if="row.image"
               :src="row.image"
               :preview-src-list="[row.image]"
               fit="cover"
-              style="width: 80px; height: 50px; border-radius: 4px"
+              style="width: 60px; height: 60px; border-radius: 8px"
             />
             <span v-else>-</span>
           </template>
