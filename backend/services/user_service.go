@@ -202,12 +202,13 @@ func (s *UserService) UpdateUserStatus(id uint, status int) error {
 	return utils.DB.Model(&models.User{}).Where("id = ?", id).Update("status", status).Error
 }
 
-func (s *UserService) UpdateProfile(id uint, nickname, email, phone, bio string) error {
+func (s *UserService) UpdateProfile(id uint, nickname, email, phone, bio, avatar string) error {
 	return utils.DB.Model(&models.User{}).Where("id = ?", id).Updates(map[string]interface{}{
 		"nickname": nickname,
 		"email":    email,
 		"mobile":   phone,
 		"bio":      bio,
+		"avatar":   avatar,
 	}).Error
 }
 

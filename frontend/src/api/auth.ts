@@ -39,6 +39,7 @@ export interface ProfileForm {
   email: string
   phone: string
   bio: string
+  avatar: string
 }
 
 export interface ChangePasswordForm {

@@ -23,6 +23,7 @@ type User struct {
 	Status         int            `gorm:"default:1" json:"status"`
 	RoleIds        string         `gorm:"size:255" json:"roleIds"`
 	Bio            string         `gorm:"size:500" json:"bio"`
+	Avatar         string         `gorm:"size:500" json:"avatar"`
 	LoginFailCount int            `gorm:"default:0" json:"loginFailCount"`
 	LockedUntil    *time.Time     `json:"lockedUntil"`
 }

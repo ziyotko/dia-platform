@@ -142,7 +142,7 @@ func (c *AuthController) GetProfile(ctx *gin.Context) {
 			"phone":          user.Mobile,
 			"account":        user.Account,
 			"roleName":       roleName,
-			"avatar":         "",
+			"avatar":         user.Avatar,
 			"createdAt":      user.CreatedAt.Format("2006-01-02"),
 			"onlineDays":     onlineDays,
 			"articleCount":   articleCount,
@@ -159,6 +159,7 @@ func (c *AuthController) UpdateProfile(ctx *gin.Context) {
 		Email    string `json:"email" binding:"required,email"`
 		Phone    string `json:"phone"`
 		Bio      string `json:"bio"`
+		Avatar   string `json:"avatar"`
 	}
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -166,7 +167,7 @@ func (c *AuthController) UpdateProfile(ctx *gin.Context) {
 		return
 	}
 
-	err := c.userService.UpdateProfile(userID, req.Nickname, req.Email, req.Phone, req.Bio)
+	err := c.userService.UpdateProfile(userID, req.Nickname, req.Email, req.Phone, req.Bio, req.Avatar)
 	if err != nil {
 		ctx.JSON(200, utils.Error(1, "更新失败: "+err.Error()))
 		return

@@ -4,7 +4,40 @@
       <el-col :xs="24" :md="8">
         <el-card shadow="hover" class="profile-card" v-loading="profileLoading">
           <div class="profile-header">
-            <el-avatar :size="100" :src="profile.avatar || defaultAvatar" />
+            <div class="avatar-wrapper">
+              <el-upload
+                v-if="!profile.avatar"
+                class="avatar-uploader"
+                action=""
+                :http-request="handleAvatarUpload"
+                :show-file-list="false"
+                accept="image/*"
+              >
+                <el-avatar :size="100" :src="defaultAvatar" />
+                <div class="avatar-upload-mask">
+                  <el-icon><Plus /></el-icon>
+                  <span>上传头像</span>
+                </div>
+              </el-upload>
+              <div v-else class="avatar-preview-wrapper">
+                <el-upload
+                  class="avatar-uploader"
+                  action=""
+                  :http-request="handleAvatarUpload"
+                  :show-file-list="false"
+                  accept="image/*"
+                >
+                  <el-avatar :size="100" :src="profile.avatar" />
+                  <div class="avatar-upload-mask">
+                    <el-icon><Plus /></el-icon>
+                    <span>更换头像</span>
+                  </div>
+                </el-upload>
+                <el-button class="avatar-delete-btn" type="danger" size="small" circle @click="handleRemoveAvatar">
+                  <el-icon><Delete /></el-icon>
+                </el-button>
+              </div>
+            </div>
             <h3>{{ profile.nickname || profile.username }}</h3>
             <p>{{ profile.username }}</p>
             <el-tag type="primary">{{ profile.roleName || '用户' }}</el-tag>
@@ -109,11 +142,12 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { User, Message, Phone, Location, Clock } from '@element-plus/icons-vue'
+import { User, Message, Phone, Location, Clock, Plus, Delete } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
 import { getUserInfo, updateProfile, changePassword } from '@/api/auth'
 import type { ProfileUser } from '@/api/auth'
+import { uploadFile } from '@/api/upload'
 
 const userStore = useUserStore()
 const appStore = useAppStore()
@@ -145,7 +179,8 @@ const form = reactive({
   nickname: '',
   email: '',
   phone: '',
-  bio: ''
+  bio: '',
+  avatar: ''
 })
 
 const rules = {
@@ -184,6 +219,54 @@ const pwdRules = computed(() => ({
   ]
 }))
 
+const handleAvatarUpload = async (options: any) => {
+  try {
+    const res: any = await uploadFile(options.file, 'user')
+    const url = res.data?.url || res.url || ''
+    profile.avatar = url
+    form.avatar = url
+    await updateProfile({
+      nickname: form.nickname,
+      email: form.email,
+      phone: form.phone,
+      bio: form.bio,
+      avatar: url
+    })
+    if (userStore.userInfo) {
+      userStore.setUserInfo({
+        ...userStore.userInfo,
+        avatar: url
+      })
+    }
+    ElMessage.success('头像上传成功')
+  } catch (error: any) {
+    ElMessage.error(error?.message || '头像上传失败')
+  }
+}
+
+const handleRemoveAvatar = async () => {
+  profile.avatar = ''
+  form.avatar = ''
+  try {
+    await updateProfile({
+      nickname: form.nickname,
+      email: form.email,
+      phone: form.phone,
+      bio: form.bio,
+      avatar: ''
+    })
+    if (userStore.userInfo) {
+      userStore.setUserInfo({
+        ...userStore.userInfo,
+        avatar: ''
+      })
+    }
+    ElMessage.success('头像删除成功')
+  } catch (error: any) {
+    ElMessage.error(error?.message || '头像删除失败')
+  }
+}
+
 const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
@@ -193,7 +276,8 @@ const handleSubmit = async () => {
       nickname: form.nickname,
       email: form.email,
       phone: form.phone,
-      bio: form.bio
+      bio: form.bio,
+      avatar: form.avatar || profile.avatar || ''
     })
     ElMessage.success('保存成功')
     await loadProfile()
@@ -234,10 +318,12 @@ const loadProfile = async () => {
     form.email = data.email || ''
     form.phone = data.phone || ''
     form.bio = data.bio || ''
+    form.avatar = data.avatar || ''
     if (userStore.userInfo) {
       userStore.setUserInfo({
         ...userStore.userInfo,
-        nickname: data.nickname || data.username
+        nickname: data.nickname || data.username,
+        avatar: data.avatar || ''
       })
     }
   } catch {
@@ -333,6 +419,62 @@ onMounted(() => {
 
   .profile-form {
     max-width: 500px;
+  }
+
+  .avatar-wrapper {
+    position: relative;
+    display: inline-block;
+
+    .avatar-uploader {
+      position: relative;
+      display: inline-block;
+      cursor: pointer;
+
+      :deep(.el-upload) {
+        position: relative;
+        display: inline-block;
+      }
+    }
+
+    .avatar-upload-mask {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.5);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+
+      span {
+        font-size: 12px;
+        margin-top: 4px;
+      }
+    }
+
+    .avatar-uploader:hover .avatar-upload-mask,
+    .avatar-preview-wrapper:hover .avatar-upload-mask {
+      opacity: 1;
+    }
+
+    .avatar-preview-wrapper {
+      position: relative;
+      display: inline-block;
+
+      .avatar-delete-btn {
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        z-index: 10;
+      }
+    }
   }
 }
 </style>
