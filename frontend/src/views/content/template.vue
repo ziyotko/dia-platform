@@ -159,11 +159,12 @@
     <el-dialog
       v-model="designDialogVisible"
       :title="`模板设计 - ${designForm.name}`"
-      width="900px"
-      top="5vh"
+      width="96vw"
+      top="2vh"
+      class="design-dialog"
       destroy-on-close
     >
-      <el-tabs v-model="activeDesignTab" type="border-card">
+      <el-tabs v-model="activeDesignTab" type="border-card" @tab-change="handleDesignTabChange">
         <el-tab-pane label="可视化布局" name="visual">
           <div class="design-workspace">
             <div class="component-sidebar">
@@ -195,18 +196,23 @@
                   :key="item.id"
                   class="canvas-item"
                   :class="{ active: activeCanvasIndex === index }"
+                  :style="{
+                    left: (item.x || 0) + 'px',
+                    top: (item.y || 0) + 'px',
+                    width: item.fullWidth ? 'calc(100% - 32px)' : '260px',
+                    backgroundColor: item.bgColor || '#ffffff'
+                  }"
                   @click="activeCanvasIndex = index"
+                  @mousedown.stop="handleItemMouseDown($event, index)"
                 >
                   <div class="item-header">
                     <span class="item-label">{{ item.label }}</span>
                     <div class="item-actions">
-                      <el-icon class="action-icon" @click.stop="moveUp(index)" v-if="index > 0"><ArrowUp /></el-icon>
-                      <el-icon class="action-icon" @click.stop="moveDown(index)" v-if="index < canvasItems.length - 1"><ArrowDown /></el-icon>
-                      <el-icon class="action-icon delete" @click.stop="removeItem(index)"><Delete /></el-icon>
+                      <el-icon class="action-icon delete" @mousedown.stop @click.stop="removeItem(index)"><Delete /></el-icon>
                     </div>
                   </div>
                   <div class="item-preview">
-                    <component :is="item.icon" :size="32" />
+                    <component :is="item.icon" :size="28" />
                     <span>{{ item.label }} 组件</span>
                   </div>
                 </div>
@@ -225,11 +231,11 @@
                 <el-form-item label="背景颜色">
                   <el-color-picker v-model="activeCanvasItem.bgColor" show-alpha />
                 </el-form-item>
-                <el-form-item label="上边距">
-                  <el-slider v-model="activeCanvasItem.marginTop" :max="64" show-input />
+                <el-form-item label="X 坐标">
+                  <el-input-number v-model="activeCanvasItem.x" :min="0" :step="1" style="width: 100%" />
                 </el-form-item>
-                <el-form-item label="下边距">
-                  <el-slider v-model="activeCanvasItem.marginBottom" :max="64" show-input />
+                <el-form-item label="Y 坐标">
+                  <el-input-number v-model="activeCanvasItem.y" :min="0" :step="1" style="width: 100%" />
                 </el-form-item>
                 <el-form-item label="是否全宽">
                   <el-switch v-model="activeCanvasItem.fullWidth" />
@@ -247,7 +253,6 @@
             <el-input
               v-model="designForm.sourceCode"
               type="textarea"
-              :rows="22"
               placeholder="请输入模板 HTML / Vue 源码..."
               class="code-textarea"
             />
@@ -322,8 +327,6 @@ import {
   RefreshRight,
   View,
   Brush,
-  ArrowUp,
-  ArrowDown,
   DocumentAdd,
   Monitor,
   HomeFilled,
@@ -334,7 +337,21 @@ import {
   VideoPlay,
   ChatDotSquare,
   Link,
-  Calendar
+  Calendar,
+  User,
+  Location,
+  Phone,
+  Message,
+  Star,
+  Ticket,
+  Timer,
+  ShoppingCart,
+  PriceTag,
+  DataLine,
+  Bell,
+  Upload,
+  Wallet,
+  Shop
 } from '@element-plus/icons-vue'
 import {
   getTemplateList,
@@ -368,6 +385,8 @@ interface ComponentItem {
   marginTop?: number
   marginBottom?: number
   fullWidth?: boolean
+  x?: number
+  y?: number
 }
 
 const loading = ref(false)
@@ -428,7 +447,22 @@ const componentLibrary: ComponentItem[] = [
   { type: 'notice', label: '公告栏', icon: ChatDotSquare },
   { type: 'link', label: '友情链接', icon: Link },
   { type: 'calendar', label: '日历活动', icon: Calendar },
-  { type: 'footer', label: '页脚信息', icon: Document }
+  { type: 'footer', label: '页脚信息', icon: Document },
+  { type: 'search', label: '搜索栏', icon: Search },
+  { type: 'user', label: '用户信息', icon: User },
+  { type: 'location', label: '地图定位', icon: Location },
+  { type: 'phone', label: '电话客服', icon: Phone },
+  { type: 'message', label: '留言评论', icon: Message },
+  { type: 'star', label: '收藏评分', icon: Star },
+  { type: 'ticket', label: '优惠券', icon: Ticket },
+  { type: 'timer', label: '倒计时', icon: Timer },
+  { type: 'shopping', label: '购物车', icon: ShoppingCart },
+  { type: 'price', label: '价格标签', icon: PriceTag },
+  { type: 'chart', label: '数据图表', icon: DataLine },
+  { type: 'notification', label: '消息通知', icon: Bell },
+  { type: 'upload', label: '文件上传', icon: Upload },
+  { type: 'wallet', label: '钱包支付', icon: Wallet },
+  { type: 'shop', label: '店铺门店', icon: Shop }
 ]
 
 const tableData = ref<TemplateItem[]>([])
@@ -614,9 +648,14 @@ const handleDesign = (row: TemplateItem) => {
   if (row.layout) {
     try {
       const parsed = JSON.parse(row.layout) as Omit<ComponentItem, 'icon'>[]
-      canvasItems.value = parsed.map(item => {
+      canvasItems.value = parsed.map((item, idx) => {
         const lib = componentLibrary.find(c => c.type === item.type)
-        return { ...item, icon: lib?.icon || Document } as ComponentItem
+        return {
+          ...item,
+          icon: lib?.icon || Document,
+          x: item.x ?? 20,
+          y: item.y ?? (idx * 140 + 20)
+        } as ComponentItem
       })
     } catch {
       canvasItems.value = []
@@ -630,8 +669,13 @@ const handleDragStart = (comp: ComponentItem) => {
   draggedComp.value = comp
 }
 
-const handleDrop = () => {
+const handleDrop = (event: DragEvent) => {
   isDragging.value = false
+  const canvasEl = event.currentTarget as HTMLElement
+  const rect = canvasEl.getBoundingClientRect()
+  const x = event.clientX - rect.left
+  const y = event.clientY - rect.top
+
   if (!draggedComp.value) return
   canvasItems.value.push({
     ...draggedComp.value,
@@ -639,27 +683,48 @@ const handleDrop = () => {
     bgColor: '#ffffff',
     marginTop: 0,
     marginBottom: 0,
-    fullWidth: false
+    fullWidth: false,
+    x: Math.round(x),
+    y: Math.round(y)
   })
   draggedComp.value = null
 }
 
-const moveUp = (index: number) => {
-  if (index <= 0) return
-  const temp = canvasItems.value[index]
-  canvasItems.value[index] = canvasItems.value[index - 1]
-  canvasItems.value[index - 1] = temp
-  if (activeCanvasIndex.value === index) activeCanvasIndex.value = index - 1
-  else if (activeCanvasIndex.value === index - 1) activeCanvasIndex.value = index
+const dragState = {
+  index: null as number | null,
+  offsetX: 0,
+  offsetY: 0,
+  canvasRect: null as DOMRect | null
 }
 
-const moveDown = (index: number) => {
-  if (index >= canvasItems.value.length - 1) return
-  const temp = canvasItems.value[index]
-  canvasItems.value[index] = canvasItems.value[index + 1]
-  canvasItems.value[index + 1] = temp
-  if (activeCanvasIndex.value === index) activeCanvasIndex.value = index + 1
-  else if (activeCanvasIndex.value === index + 1) activeCanvasIndex.value = index
+const handleItemMouseDown = (event: MouseEvent, index: number) => {
+  event.stopPropagation()
+  event.preventDefault()
+  const canvasEl = document.querySelector('.canvas-area') as HTMLElement
+  if (!canvasEl) return
+  const rect = canvasEl.getBoundingClientRect()
+  const item = canvasItems.value[index]
+  dragState.index = index
+  dragState.canvasRect = rect
+  dragState.offsetX = event.clientX - rect.left - (item.x || 0)
+  dragState.offsetY = event.clientY - rect.top - (item.y || 0)
+  document.addEventListener('mousemove', handleMouseMove)
+  document.addEventListener('mouseup', handleMouseUp)
+}
+
+const handleMouseMove = (event: MouseEvent) => {
+  if (dragState.index === null) return
+  const item = canvasItems.value[dragState.index]
+  if (!item || !dragState.canvasRect) return
+  item.x = Math.round(event.clientX - dragState.canvasRect.left - dragState.offsetX)
+  item.y = Math.round(event.clientY - dragState.canvasRect.top - dragState.offsetY)
+}
+
+const handleMouseUp = () => {
+  dragState.index = null
+  dragState.canvasRect = null
+  document.removeEventListener('mousemove', handleMouseMove)
+  document.removeEventListener('mouseup', handleMouseUp)
 }
 
 const removeItem = (index: number) => {
@@ -667,6 +732,23 @@ const removeItem = (index: number) => {
   if (activeCanvasIndex.value === index) activeCanvasIndex.value = null
   else if (activeCanvasIndex.value !== null && activeCanvasIndex.value > index) {
     activeCanvasIndex.value--
+  }
+}
+
+const generateSourceCode = () => {
+  const items = canvasItems.value
+  if (!items.length) {
+    return `<template>\n  <div class="template-page">\n    <!-- 请从左侧拖拽组件到画布 -->\n  </div>\n</template>\n`
+  }
+  const componentsHtml = items.map(item => {
+    return `    <!-- ${item.label} -->\n    <div class="comp-${item.type}" style="position:absolute;left:${item.x || 0}px;top:${item.y || 0}px;width:${item.fullWidth ? '100%' : '260px'};background:${item.bgColor || '#fff'};">\n      ${item.label}\n    </div>`
+  }).join('\n\n')
+  return `<template>\n  <div class="template-page" style="position:relative;width:100%;min-height:100vh;">\n${componentsHtml}\n  </div>\n</template>\n`
+}
+
+const handleDesignTabChange = (tab: string) => {
+  if (tab === 'source') {
+    designForm.sourceCode = generateSourceCode()
   }
 }
 
@@ -680,7 +762,9 @@ const handleDesignSave = async () => {
       bgColor: item.bgColor,
       marginTop: item.marginTop,
       marginBottom: item.marginBottom,
-      fullWidth: item.fullWidth
+      fullWidth: item.fullWidth,
+      x: item.x,
+      y: item.y
     })))
     await saveTemplateDesign(designForm.id!, {
       sourceCode: designForm.sourceCode,
@@ -720,94 +804,129 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .page-container {
+  padding: 8px;
+
   .search-card {
     margin-bottom: 20px;
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
+    border-radius: 20px;
+    border: none;
+    background: #ffffff;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    :deep(.el-card__body) {
+      padding: 20px 24px;
+    }
   }
 
   .table-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
+    border-radius: 20px;
+    border: none;
+    background: #ffffff;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    :deep(.el-card__header) {
+      padding: 18px 24px;
+      border-bottom: 1px solid #f0f2f5;
+    }
+    :deep(.el-card__body) {
+      padding: 20px 24px 24px;
+    }
 
     .card-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-weight: 600;
-      color: #2c3e50;
+      font-weight: 700;
+      font-size: 16px;
+      color: #1f2937;
+      letter-spacing: 0.2px;
     }
   }
 
   .pagination {
-    margin-top: 20px;
+    margin-top: 24px;
     display: flex;
     justify-content: flex-end;
   }
 
   .design-workspace {
     display: flex;
-    gap: 16px;
-    height: 520px;
+    gap: 20px;
+    height: calc(96vh - 210px);
 
     .component-sidebar {
-      width: 160px;
+      width: 170px;
       flex-shrink: 0;
-      background: #f5f7fa;
-      border-radius: 8px;
-      padding: 12px;
+      background: #f8fafc;
+      border-radius: 16px;
+      padding: 16px;
       overflow-y: auto;
+      border: 1px solid #f1f5f9;
 
       .sidebar-title {
         font-size: 14px;
-        font-weight: 600;
-        color: #2c3e50;
-        margin-bottom: 12px;
-        padding-bottom: 8px;
-        border-bottom: 1px solid #e4e7ed;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 14px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #e2e8f0;
       }
 
       .component-list {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 10px;
       }
 
       .component-item {
         display: flex;
         align-items: center;
-        gap: 8px;
-        padding: 10px 12px;
-        background: #fff;
-        border-radius: 8px;
-        border: 1px solid #e4e7ed;
+        gap: 10px;
+        padding: 12px 14px;
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
         cursor: grab;
-        transition: all 0.2s ease;
+        transition: all 0.25s ease;
 
         &:hover {
-          border-color: #409eff;
-          color: #409eff;
-          box-shadow: 0 2px 8px rgba(64, 158, 255, 0.12);
+          border-color: #6366f1;
+          color: #6366f1;
+          box-shadow: 0 6px 14px rgba(99, 102, 241, 0.12);
+          transform: translateY(-1px);
         }
 
         .component-name {
           font-size: 13px;
+          font-weight: 500;
         }
       }
     }
 
     .canvas-area {
       flex: 1;
-      background: #f5f7fa;
-      border-radius: 8px;
-      border: 2px dashed #dcdfe6;
-      padding: 16px;
-      overflow-y: auto;
+      background: #f8fafc;
+      border-radius: 24px;
+      border: 2px dashed #cbd5e1;
+      padding: 20px;
+      overflow: auto;
       transition: all 0.3s ease;
+      position: relative;
+
+      /* H5 phone frame hint */
+      &::before {
+        content: '';
+        position: absolute;
+        top: 8px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 48px;
+        height: 4px;
+        background: #e2e8f0;
+        border-radius: 4px;
+      }
 
       &.dragging {
-        border-color: #409eff;
-        background: #f0f7ff;
+        border-color: #6366f1;
+        background: #eef2ff;
       }
 
       .canvas-placeholder {
@@ -816,63 +935,67 @@ onMounted(() => {
         align-items: center;
         justify-content: center;
         height: 100%;
-        color: #c0c4cc;
-        gap: 12px;
+        color: #94a3b8;
+        gap: 14px;
+        padding-top: 20px;
 
         p {
           font-size: 14px;
+          font-weight: 500;
         }
       }
 
       .canvas-item {
-        background: #fff;
-        border-radius: 8px;
-        border: 1px solid #e4e7ed;
-        margin-bottom: 12px;
+        position: absolute;
+        background: #ffffff;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
         overflow: hidden;
-        transition: all 0.3s ease;
+        transition: box-shadow 0.3s ease, border-color 0.3s ease;
         cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
 
         &:hover {
-          border-color: #409eff;
-          box-shadow: 0 4px 12px rgba(64, 158, 255, 0.1);
+          border-color: #6366f1;
+          box-shadow: 0 8px 20px rgba(99, 102, 241, 0.1);
+          transform: translateY(-2px);
         }
 
         &.active {
-          border-color: #409eff;
-          box-shadow: 0 4px 16px rgba(64, 158, 255, 0.15);
+          border-color: #6366f1;
+          box-shadow: 0 8px 24px rgba(99, 102, 241, 0.18);
         }
 
         .item-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 10px 14px;
-          background: #fafafa;
-          border-bottom: 1px solid #f0f0f0;
+          padding: 12px 16px;
+          background: #f8fafc;
+          border-bottom: 1px solid #f1f5f9;
 
           .item-label {
             font-size: 13px;
-            font-weight: 600;
-            color: #2c3e50;
+            font-weight: 700;
+            color: #1f2937;
           }
 
           .item-actions {
             display: flex;
-            gap: 8px;
+            gap: 10px;
 
             .action-icon {
               font-size: 14px;
-              color: #909399;
+              color: #64748b;
               cursor: pointer;
               transition: color 0.2s;
 
               &:hover {
-                color: #409eff;
+                color: #6366f1;
               }
 
               &.delete:hover {
-                color: #f56c6c;
+                color: #ef4444;
               }
             }
           }
@@ -883,63 +1006,114 @@ onMounted(() => {
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          padding: 24px;
-          gap: 8px;
-          color: #909399;
+          padding: 28px;
+          gap: 10px;
+          color: #94a3b8;
           font-size: 13px;
+          font-weight: 500;
         }
       }
     }
 
     .property-panel {
-      width: 220px;
+      width: 230px;
       flex-shrink: 0;
-      background: #f5f7fa;
-      border-radius: 8px;
-      padding: 12px;
+      background: #f8fafc;
+      border-radius: 16px;
+      padding: 16px;
       overflow-y: auto;
+      border: 1px solid #f1f5f9;
 
       .sidebar-title {
         font-size: 14px;
-        font-weight: 600;
-        color: #2c3e50;
-        margin-bottom: 12px;
-        padding-bottom: 8px;
-        border-bottom: 1px solid #e4e7ed;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 14px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #e2e8f0;
       }
     }
   }
 
   .source-editor {
+    height: calc(96vh - 260px);
     .code-textarea {
+      height: 100%;
       :deep(.el-textarea__inner) {
+        height: 100% !important;
+        min-height: 100% !important;
         font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
         font-size: 13px;
-        line-height: 1.6;
+        line-height: 1.7;
+        border-radius: 12px;
+        padding: 16px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
       }
     }
   }
 
   .preview-frame {
+    border-radius: 20px;
+    overflow: hidden;
+    background: #ffffff;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    border: 1px solid #f1f5f9;
+
     .preview-header {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 12px 16px;
-      background: #f5f7fa;
-      border-radius: 8px 8px 0 0;
-      border: 1px solid #e4e7ed;
-      border-bottom: none;
-      font-weight: 600;
-      color: #2c3e50;
+      gap: 10px;
+      padding: 14px 18px;
+      background: #f8fafc;
+      border-bottom: 1px solid #f1f5f9;
+      font-weight: 700;
+      font-size: 15px;
+      color: #1f2937;
     }
 
     .preview-body {
-      border: 1px solid #e4e7ed;
-      border-radius: 0 0 8px 8px;
       overflow: hidden;
       background: #fff;
     }
   }
+}
+
+/* Dialog global overrides scoped via :deep */
+:deep(.el-dialog) {
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+}
+:deep(.design-dialog) {
+  max-width: 96vw;
+  margin-top: 0 !important;
+}
+:deep(.el-dialog__header) {
+  padding: 18px 24px;
+  margin-right: 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+:deep(.el-dialog__body) {
+  padding: 20px 24px;
+}
+:deep(.el-dialog__footer) {
+  padding: 14px 24px 18px;
+  border-top: 1px solid #f1f5f9;
+}
+:deep(.el-tabs--border-card) {
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #f1f5f9;
+  box-shadow: none;
+}
+:deep(.el-tabs--border-card > .el-tabs__header) {
+  background: #f8fafc;
+  border-bottom: 1px solid #f1f5f9;
+}
+:deep(.el-tabs--border-card > .el-tabs__header .el-tabs__item.is-active) {
+  background: #ffffff;
+  color: #6366f1;
+  font-weight: 700;
 }
 </style>
