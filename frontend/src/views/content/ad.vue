@@ -187,7 +187,31 @@
           <el-input v-model="form.link" placeholder="请输入跳转链接" />
         </el-form-item>
         <el-form-item label="广告图片" prop="image">
-          <el-input v-model="form.image" placeholder="请输入广告图片URL" />
+          <div class="ad-image-uploader">
+            <el-upload
+              v-if="!form.image"
+              class="image-uploader"
+              :http-request="handleImageUpload"
+              :show-file-list="false"
+              accept="image/*"
+            >
+              <el-icon class="uploader-icon"><Plus /></el-icon>
+              <div class="uploader-text">点击上传</div>
+            </el-upload>
+            <div v-else class="image-preview">
+              <el-image
+                :src="form.image"
+                fit="cover"
+                style="width: 200px; height: 120px; border-radius: 8px"
+                :preview-src-list="[form.image]"
+              />
+              <div class="image-actions">
+                <el-button type="danger" size="small" @click="handleRemoveImage">
+                  <el-icon><Delete /></el-icon>删除
+                </el-button>
+              </div>
+            </div>
+          </div>
         </el-form-item>
         <el-row :gutter="16">
           <el-col :span="12">
@@ -258,6 +282,7 @@ import {
 } from '@/api/ad'
 import { getPages } from '@/api/page'
 import { getColumns } from '@/api/column'
+import { uploadFile } from '@/api/upload'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -467,6 +492,24 @@ const resetForm = () => {
   formRef.value?.resetFields()
 }
 
+const handleImageUpload = async (options: any) => {
+  try {
+    const res: any = await uploadFile(options.file, 'ad')
+    if (res.code === 0) {
+      form.image = res.data.url
+      ElMessage.success('上传成功')
+    } else {
+      ElMessage.error(res.message || '上传失败')
+    }
+  } catch {
+    ElMessage.error('上传失败')
+  }
+}
+
+const handleRemoveImage = () => {
+  form.image = ''
+}
+
 const handleSizeChange = (val: number) => {
   queryForm.pageSize = val
   fetchData()
@@ -514,6 +557,45 @@ onMounted(() => {
     margin: 0 4px;
     color: #909399;
     vertical-align: middle;
+  }
+
+  .ad-image-uploader {
+    .image-uploader {
+      :deep(.el-upload) {
+        width: 200px;
+        height: 120px;
+        border: 2px dashed #d9d9d9;
+        border-radius: 8px;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+        transition: border-color 0.3s;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #8c939d;
+        &:hover {
+          border-color: #409eff;
+        }
+        .uploader-icon {
+          font-size: 28px;
+          margin-bottom: 8px;
+        }
+        .uploader-text {
+          font-size: 13px;
+        }
+      }
+    }
+    .image-preview {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      .image-actions {
+        display: flex;
+        gap: 8px;
+      }
+    }
   }
 }
 </style>

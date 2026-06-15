@@ -181,7 +181,31 @@
           <el-input v-model="form.url" placeholder="请输入网站链接" />
         </el-form-item>
         <el-form-item label="Logo" prop="logo">
-          <el-input v-model="form.logo" placeholder="请输入Logo URL" />
+          <div class="link-logo-uploader">
+            <el-upload
+              v-if="!form.logo"
+              class="logo-uploader"
+              :http-request="handleLogoUpload"
+              :show-file-list="false"
+              accept="image/*"
+            >
+              <el-icon class="uploader-icon"><Plus /></el-icon>
+              <div class="uploader-text">点击上传</div>
+            </el-upload>
+            <div v-else class="logo-preview">
+              <el-image
+                :src="form.logo"
+                fit="cover"
+                style="width: 120px; height: 120px; border-radius: 8px"
+                :preview-src-list="[form.logo]"
+              />
+              <div class="logo-actions">
+                <el-button type="danger" size="small" @click="handleRemoveLogo">
+                  <el-icon><Delete /></el-icon>删除
+                </el-button>
+              </div>
+            </div>
+          </div>
         </el-form-item>
         <el-form-item label="网站描述" prop="description">
           <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入网站描述" />
@@ -231,6 +255,7 @@ import {
 } from '@/api/link'
 import { getPages } from '@/api/page'
 import { getColumns } from '@/api/column'
+import { uploadFile } from '@/api/upload'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -439,6 +464,24 @@ const resetForm = () => {
   formRef.value?.resetFields()
 }
 
+const handleLogoUpload = async (options: any) => {
+  try {
+    const res: any = await uploadFile(options.file, 'link')
+    if (res.code === 0) {
+      form.logo = res.data.url
+      ElMessage.success('上传成功')
+    } else {
+      ElMessage.error(res.message || '上传失败')
+    }
+  } catch {
+    ElMessage.error('上传失败')
+  }
+}
+
+const handleRemoveLogo = () => {
+  form.logo = ''
+}
+
 const handleSizeChange = (val: number) => {
   queryForm.pageSize = val
   fetchData()
@@ -486,6 +529,45 @@ onMounted(() => {
     margin: 0 4px;
     color: #909399;
     vertical-align: middle;
+  }
+
+  .link-logo-uploader {
+    .logo-uploader {
+      :deep(.el-upload) {
+        width: 120px;
+        height: 120px;
+        border: 2px dashed #d9d9d9;
+        border-radius: 8px;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+        transition: border-color 0.3s;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #8c939d;
+        &:hover {
+          border-color: #409eff;
+        }
+        .uploader-icon {
+          font-size: 28px;
+          margin-bottom: 8px;
+        }
+        .uploader-text {
+          font-size: 13px;
+        }
+      }
+    }
+    .logo-preview {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      .logo-actions {
+        display: flex;
+        gap: 8px;
+      }
+    }
   }
 }
 </style>

@@ -38,7 +38,11 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 		return
 	}
 
+	dir := ctx.DefaultPostForm("dir", "")
 	uploadDir := "./uploads"
+	if dir != "" {
+		uploadDir = filepath.Join(uploadDir, dir)
+	}
 	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
 		os.MkdirAll(uploadDir, os.ModePerm)
 	}
@@ -52,6 +56,9 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 	}
 
 	fileURL := "/uploads/" + filename
+	if dir != "" {
+		fileURL = "/uploads/" + dir + "/" + filename
+	}
 	ctx.JSON(http.StatusOK, utils.Success("上传成功", gin.H{
 		"url": fileURL,
 	}))
