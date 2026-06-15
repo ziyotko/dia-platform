@@ -127,15 +127,20 @@ func OperationLog() gin.HandlerFunc {
 
 		var params string
 		if method == "POST" || method == "PUT" || method == "PATCH" {
-			bodyBytes, _ := c.GetRawData()
-			if len(bodyBytes) > 0 {
-				var prettyJSON bytes.Buffer
-				if err := json.Indent(&prettyJSON, bodyBytes, "", "  "); err == nil {
-					params = prettyJSON.String()
-				} else {
-					params = string(bodyBytes)
+			contentType := c.Request.Header.Get("Content-Type")
+			if strings.Contains(contentType, "multipart/form-data") {
+				params = "[文件上传]"
+			} else {
+				bodyBytes, _ := c.GetRawData()
+				if len(bodyBytes) > 0 {
+					var prettyJSON bytes.Buffer
+					if err := json.Indent(&prettyJSON, bodyBytes, "", "  "); err == nil {
+						params = prettyJSON.String()
+					} else {
+						params = string(bodyBytes)
+					}
+					c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 				}
-				c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 			}
 		} else {
 			query := c.Request.URL.RawQuery

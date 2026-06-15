@@ -47,6 +47,10 @@ func (s *ArticleService) GetArticleByID(id uint) (*models.Article, error) {
 
 func (s *ArticleService) CreateArticle(article *models.Article, tagIDs []uint) error {
 	return utils.DB.Transaction(func(tx *gorm.DB) error {
+		// 先暂存附件，避免 GORM Create 自动关联插入导致重复
+		attachments := article.Attachments
+		article.Attachments = nil
+
 		if err := tx.Create(article).Error; err != nil {
 			return err
 		}
@@ -59,10 +63,10 @@ func (s *ArticleService) CreateArticle(article *models.Article, tagIDs []uint) e
 				return err
 			}
 		}
-		if len(article.Attachments) > 0 {
+		if len(attachments) > 0 {
 			seen := make(map[string]bool)
-			unique := make([]models.ArticleAttachment, 0, len(article.Attachments))
-			for _, att := range article.Attachments {
+			unique := make([]models.ArticleAttachment, 0, len(attachments))
+			for _, att := range attachments {
 				if att.URL == "" || seen[att.URL] {
 					continue
 				}
