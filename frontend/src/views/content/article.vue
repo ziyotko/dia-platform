@@ -325,8 +325,9 @@
           <el-form-item label="文章附件" prop="attachments">
             <el-upload
               v-model:file-list="form.attachments"
-              action=""
+              action="#"
               :http-request="handleAttachmentUpload"
+              :before-upload="handleAttachmentBeforeUpload"
               :on-remove="handleAttachmentRemove"
               multiple
               :limit="10"
@@ -1303,6 +1304,17 @@ const handleCoverUpload = async (options: any) => {
 
 const handleRemoveCover = () => {
   form.cover = ''
+}
+
+const handleAttachmentBeforeUpload = (file: File) => {
+  const isDuplicate = form.attachments.some(
+    (att: any) => att.name === file.name && att.size === file.size
+  )
+  if (isDuplicate) {
+    ElMessage.warning(`文件 "${file.name}" 已存在，请勿重复上传`)
+    return false
+  }
+  return true
 }
 
 const handleAttachmentUpload = async (options: any) => {
