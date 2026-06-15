@@ -25,5 +25,6 @@ func AllModels() []interface{} {
 		&ArticleColumnAuditHistory{},
 		&ArticleColumnPublish{},
 		&StaticLog{},
+		&ArticleAttachment{},
 	}
 }

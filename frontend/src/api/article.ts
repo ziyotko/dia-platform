@@ -1,5 +1,13 @@
 import request from '@/utils/request'
 
+export interface ArticleAttachment {
+  id?: number
+  name: string
+  url: string
+  size: number
+  createTime?: string
+}
+
 export interface ArticleForm {
   id?: number
   title: string
@@ -14,6 +22,7 @@ export interface ArticleForm {
   defaultColor: string
   cover: string
   source: string
+  attachments?: ArticleAttachment[]
 }
 
 export function getArticles(params: { title?: string; categoryId?: number; status?: number; auditStatus?: number; page?: number; pageSize?: number }) {

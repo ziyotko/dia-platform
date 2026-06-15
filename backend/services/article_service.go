@@ -32,13 +32,13 @@ func (s *ArticleService) GetArticles(title string, categoryID int, status int, a
 		return nil, 0, err
 	}
 	offset := (page - 1) * pageSize
-	err = query.Preload("Category").Preload("Tags").Preload("Columns").Order("is_top DESC, created_at DESC").Limit(pageSize).Offset(offset).Find(&articles).Error
+	err = query.Preload("Category").Preload("Tags").Preload("Columns").Preload("Attachments").Order("is_top DESC, created_at DESC").Limit(pageSize).Offset(offset).Find(&articles).Error
 	return articles, total, err
 }
 
 func (s *ArticleService) GetArticleByID(id uint) (*models.Article, error) {
 	var article models.Article
-	err := utils.DB.Preload("Category").Preload("Tags").Preload("Columns").First(&article, id).Error
+	err := utils.DB.Preload("Category").Preload("Tags").Preload("Columns").Preload("Attachments").First(&article, id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -56,6 +56,15 @@ func (s *ArticleService) CreateArticle(article *models.Article, tagIDs []uint) e
 				tags = append(tags, models.Tag{ID: id})
 			}
 			if err := tx.Model(article).Association("Tags").Append(&tags); err != nil {
+				return err
+			}
+		}
+		if len(article.Attachments) > 0 {
+			for i := range article.Attachments {
+				article.Attachments[i].ArticleID = article.ID
+				article.Attachments[i].ID = 0
+			}
+			if err := tx.Create(&article.Attachments).Error; err != nil {
 				return err
 			}
 		}
@@ -97,6 +106,19 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 			}
 		} else {
 			if err := tx.Model(&old).Association("Tags").Clear(); err != nil {
+				return err
+			}
+		}
+		// 更新附件：删除旧附件，创建新附件
+		if err := tx.Where("article_id = ?", id).Delete(&models.ArticleAttachment{}).Error; err != nil {
+			return err
+		}
+		if len(article.Attachments) > 0 {
+			for i := range article.Attachments {
+				article.Attachments[i].ArticleID = id
+				article.Attachments[i].ID = 0
+			}
+			if err := tx.Create(&article.Attachments).Error; err != nil {
 				return err
 			}
 		}
@@ -167,6 +189,9 @@ func (s *ArticleService) DeleteArticle(id uint) error {
 			return err
 		}
 		if err := tx.Where("article_id = ?", id).Unscoped().Delete(&models.ArticleColumnPublish{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("article_id = ?", id).Unscoped().Delete(&models.ArticleAttachment{}).Error; err != nil {
 			return err
 		}
 		return tx.Unscoped().Delete(&article).Error

@@ -293,6 +293,23 @@
             />
           </div>
         </el-form-item>
+        <el-form-item label="附件" prop="attachments">
+          <el-upload
+            v-model:file-list="form.attachments"
+            action=""
+            :http-request="handleAttachmentUpload"
+            :on-remove="handleAttachmentRemove"
+            multiple
+            :limit="10"
+          >
+            <el-button type="primary">
+              <el-icon><Plus /></el-icon>上传附件
+            </el-button>
+            <template #tip>
+              <div class="el-upload__tip">支持 pdf/doc/docx/xls/xlsx/ppt/pptx/txt/zip/rar/7z/mp4/mp3 等格式，最多10个</div>
+            </template>
+          </el-upload>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -313,6 +330,21 @@
           <strong>摘要：</strong>{{ previewData.summary }}
         </div>
         <div class="preview-body" v-html="previewData.content" />
+        <div class="preview-attachments" v-if="previewData.attachments && previewData.attachments.length > 0">
+          <strong>附件：</strong>
+          <div class="attachment-list">
+            <a
+              v-for="att in previewData.attachments"
+              :key="att.id || att.url"
+              :href="att.url"
+              target="_blank"
+              class="attachment-item"
+            >
+              <el-icon><Document /></el-icon>
+              <span class="attachment-name">{{ att.name }}</span>
+            </a>
+          </div>
+        </div>
       </div>
     </el-dialog>
 
@@ -433,7 +465,8 @@ import {
   CircleCheck,
   CircleClose,
   FolderOpened,
-  Warning
+  Warning,
+  Document
 } from '@element-plus/icons-vue'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
@@ -508,13 +541,13 @@ const form = reactive({
   isBold: 0,
   defaultColor: '',
   cover: '',
-  source: ''
+  source: '',
+  attachments: [] as any[]
 })
 
 const formRules = {
   title: [{ required: true, message: '请输入文章标题', trigger: 'blur' }],
-  categoryId: [{ required: true, message: '请选择所属分类', trigger: 'change' }],
-  content: [{ required: true, message: '请输入文章内容', trigger: 'change' }]
+  categoryId: [{ required: true, message: '请选择所属分类', trigger: 'change' }]
 }
 
 const route = useRoute()
@@ -893,7 +926,8 @@ const handleEdit = async (row: any) => {
     isBold: row.isBold ?? 0,
     defaultColor: row.defaultColor || '',
     cover: row.cover || '',
-    source: row.source || ''
+    source: row.source || '',
+    attachments: row.attachments || []
   })
   dialogVisible.value = true
 }
@@ -1168,7 +1202,8 @@ const previewData = reactive({
   categoryName: '',
   createTime: '',
   summary: '',
-  content: ''
+  content: '',
+  attachments: [] as any[]
 })
 
 const handlePreview = (row: any) => {
@@ -1179,7 +1214,8 @@ const handlePreview = (row: any) => {
     categoryName: row.categoryName,
     createTime: row.createTime,
     summary: row.summary || '',
-    content: row.content || ''
+    content: row.content || '',
+    attachments: row.attachments || []
   })
   previewVisible.value = true
 }
@@ -1201,7 +1237,12 @@ const handleSubmit = async () => {
       isBold: form.isBold,
       defaultColor: form.defaultColor,
       cover: form.cover,
-      source: form.source
+      source: form.source,
+      attachments: form.attachments.map((att: any) => ({
+        name: att.name,
+        url: att.url,
+        size: att.size || 0
+      }))
     }
     if (form.id) {
       await updateArticle(form.id, data)
@@ -1231,6 +1272,32 @@ const handleRemoveCover = () => {
   form.cover = ''
 }
 
+const handleAttachmentUpload = async (options: any) => {
+  const file = options.file
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('dir', 'attachment')
+  try {
+    const res: any = await request.post('/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    const url = res.data?.url || ''
+    if (url) {
+      options.onSuccess({ url, name: file.name, size: file.size })
+    } else {
+      options.onError(new Error('上传失败'))
+      ElMessage.error('附件上传失败')
+    }
+  } catch (error: any) {
+    options.onError(error)
+    ElMessage.error(error?.message || '附件上传失败')
+  }
+}
+
+const handleAttachmentRemove = (file: any, fileList: any[]) => {
+  form.attachments = fileList
+}
+
 const resetForm = () => {
   form.id = undefined
   form.title = ''
@@ -1245,6 +1312,7 @@ const resetForm = () => {
   form.defaultColor = ''
   form.cover = ''
   form.source = ''
+  form.attachments = []
 }
 
 const handleSizeChange = (val: number) => {
@@ -1360,6 +1428,41 @@ onMounted(() => {
   .preview-body {
     line-height: 1.8;
     color: #333;
+  }
+
+  .preview-attachments {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px dashed #e6f2ff;
+
+    strong {
+      display: block;
+      margin-bottom: 8px;
+      color: #2c3e50;
+    }
+
+    .attachment-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .attachment-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #409eff;
+      text-decoration: none;
+      font-size: 14px;
+
+      &:hover {
+        text-decoration: underline;
+      }
+
+      .attachment-name {
+        word-break: break-all;
+      }
+    }
   }
 }
 

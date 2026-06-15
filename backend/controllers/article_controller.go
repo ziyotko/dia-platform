@@ -78,6 +78,16 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 		for _, c := range a.Columns {
 			columnIds = append(columnIds, c.ID)
 		}
+		attachments := make([]gin.H, 0, len(a.Attachments))
+		for _, att := range a.Attachments {
+			attachments = append(attachments, gin.H{
+				"id":         att.ID,
+				"name":       att.Name,
+				"url":        att.URL,
+				"size":       att.Size,
+				"createTime": att.CreatedAt.Format("2006-01-02 15:04:05"),
+			})
+		}
 		list = append(list, gin.H{
 			"id":           a.ID,
 			"title":        a.Title,
@@ -97,6 +107,7 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 			"columnCount":  len(a.Columns),
 			"tagIds":       tagIds,
 			"columnIds":    columnIds,
+			"attachments":  attachments,
 			"createTime":   a.CreatedAt.Format("2006-01-02 15:04:05"),
 			"updatedAt":    a.UpdatedAt.Format("2006-01-02 15:04:05"),
 		})
@@ -132,6 +143,16 @@ func (c *ArticleController) GetArticleByID(ctx *gin.Context) {
 		columnIds = append(columnIds, c.ID)
 	}
 
+	attachments := make([]gin.H, 0, len(article.Attachments))
+	for _, att := range article.Attachments {
+		attachments = append(attachments, gin.H{
+			"id":         att.ID,
+			"name":       att.Name,
+			"url":        att.URL,
+			"size":       att.Size,
+			"createTime": att.CreatedAt.Format("2006-01-02 15:04:05"),
+		})
+	}
 	ctx.JSON(http.StatusOK, utils.Success("获取文章成功", gin.H{
 		"id":           article.ID,
 		"title":        article.Title,
@@ -150,6 +171,7 @@ func (c *ArticleController) GetArticleByID(ctx *gin.Context) {
 		"columnCount":  len(article.Columns),
 		"tagIds":       tagIds,
 		"columnIds":    columnIds,
+		"attachments":  attachments,
 		"createTime":   article.CreatedAt.Format("2006-01-02 15:04:05"),
 		"updatedAt":    article.UpdatedAt.Format("2006-01-02 15:04:05"),
 	}))

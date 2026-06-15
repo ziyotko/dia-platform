@@ -32,12 +32,26 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 		ext = ".png"
 	}
 
-	allowedExts := map[string]bool{
+	dir := ctx.DefaultPostForm("dir", "")
+	allowedImageExts := map[string]bool{
 		".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".webp": true,
 	}
-	if !allowedExts[ext] {
-		ctx.JSON(http.StatusOK, utils.Error(1, "不支持的文件格式，仅允许 jpg/png/gif/webp"))
-		return
+	allowedAttachmentExts := map[string]bool{
+		".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".webp": true,
+		".pdf": true, ".doc": true, ".docx": true, ".xls": true, ".xlsx": true,
+		".ppt": true, ".pptx": true, ".txt": true, ".zip": true, ".rar": true,
+		".7z": true, ".mp4": true, ".mp3": true,
+	}
+	if dir == "article" || dir == "attachment" {
+		if !allowedAttachmentExts[ext] {
+			ctx.JSON(http.StatusOK, utils.Error(1, "不支持的文件格式"))
+			return
+		}
+	} else {
+		if !allowedImageExts[ext] {
+			ctx.JSON(http.StatusOK, utils.Error(1, "不支持的文件格式，仅允许 jpg/png/gif/webp"))
+			return
+		}
 	}
 
 	settingsService := services.SettingsService{}
@@ -51,7 +65,6 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 		orgCode = strings.ToLower(settings.OrgCode)
 	}
 
-	dir := ctx.DefaultPostForm("dir", "")
 	uploadDir := "./uploads"
 	if orgCode != "" {
 		uploadDir = filepath.Join(uploadDir, orgCode)

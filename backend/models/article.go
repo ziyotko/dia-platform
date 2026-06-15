@@ -27,8 +27,9 @@ type Article struct {
 	AuthorCode   string         `gorm:"size:100" json:"authorCode"`
 	Source       string         `gorm:"size:200" json:"source"`
 	ColumnCount  int            `gorm:"column:column_count;default:0" json:"columnCount"`
-	Tags         []Tag          `gorm:"many2many:article_tags;" json:"tags,omitempty"`
-	Columns      []Column       `gorm:"many2many:article_columns;" json:"columns,omitempty"`
+	Tags         []Tag               `gorm:"many2many:article_tags;" json:"tags,omitempty"`
+	Columns      []Column            `gorm:"many2many:article_columns;" json:"columns,omitempty"`
+	Attachments  []ArticleAttachment `gorm:"foreignKey:ArticleID;constraint:OnDelete:CASCADE;" json:"attachments,omitempty"`
 }
 
 func (a Article) MarshalJSON() ([]byte, error) {
