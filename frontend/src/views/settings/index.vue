@@ -31,6 +31,12 @@
             <el-form-item label="版权信息">
               <el-input v-model="basicForm.copyright" placeholder="请输入版权信息" />
             </el-form-item>
+            <el-form-item label="机构名称">
+              <el-input v-model="basicForm.orgName" placeholder="请输入机构名称" />
+            </el-form-item>
+            <el-form-item label="机构编码">
+              <el-input v-model="basicForm.orgCode" placeholder="请输入机构编码" />
+            </el-form-item>
             <el-form-item>
               <el-button type="primary" :loading="loading" @click="handleSaveBasic">保存设置</el-button>
             </el-form-item>
@@ -167,7 +173,9 @@ const basicForm = reactive({
   siteName: '',
   logo: '',
   icp: '',
-  copyright: ''
+  copyright: '',
+  orgName: '',
+  orgCode: ''
 })
 
 const securityForm = reactive({
@@ -201,6 +209,8 @@ const loadSettings = async () => {
     basicForm.logo = data.logo || ''
     basicForm.icp = data.icp || ''
     basicForm.copyright = data.copyright || ''
+    basicForm.orgName = data.orgName || ''
+    basicForm.orgCode = data.orgCode || ''
     securityForm.captchaEnabled = data.captchaEnabled ?? true
     securityForm.lockEnabled = data.lockEnabled ?? true
     securityForm.maxFailCount = data.maxFailCount ?? 5
@@ -278,7 +288,9 @@ const handleSaveBasic = () => {
     siteName: basicForm.siteName,
     logo: basicForm.logo,
     icp: basicForm.icp,
-    copyright: basicForm.copyright
+    copyright: basicForm.copyright,
+    orgName: basicForm.orgName,
+    orgCode: basicForm.orgCode
   })
 }
 

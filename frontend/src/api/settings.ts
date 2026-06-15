@@ -5,6 +5,8 @@ export interface Settings {
   logo: string
   icp: string
   copyright: string
+  orgName: string
+  orgCode: string
   captchaEnabled: boolean
   lockEnabled: boolean
   maxFailCount: number

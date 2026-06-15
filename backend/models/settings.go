@@ -8,6 +8,8 @@ type Settings struct {
 	Logo              string `gorm:"size:500" json:"logo"`
 	Icp               string `gorm:"size:200" json:"icp"`
 	Copyright         string `gorm:"size:500" json:"copyright"`
+	OrgName           string `gorm:"size:200" json:"orgName"`
+	OrgCode           string `gorm:"size:100" json:"orgCode"`
 	CaptchaEnabled    bool   `gorm:"default:true" json:"captchaEnabled"`
 	LockEnabled       bool   `gorm:"default:true" json:"lockEnabled"`
 	MaxFailCount      int    `gorm:"default:5" json:"maxFailCount"`
