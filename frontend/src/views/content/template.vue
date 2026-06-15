@@ -269,7 +269,9 @@
     <el-dialog
       v-model="previewDialogVisible"
       title="模板预览"
-      width="800px"
+      width="96vw"
+      top="3vh"
+      class="preview-dialog"
       destroy-on-close
     >
       <div class="preview-frame">
@@ -283,7 +285,7 @@
             :srcdoc="previewHtml"
             frameborder="0"
             width="100%"
-            height="400"
+            style="height: 100%"
           />
         </div>
       </div>
@@ -475,6 +477,80 @@ const activeCanvasItem = computed<ComponentItem | null>(() => {
 
 const previewHtml = computed(() => {
   if (!previewRow.value) return ''
+
+  // 优先使用 sourceCode（提取 <template> 和 <style>）
+  if (previewRow.value.sourceCode) {
+    const code = previewRow.value.sourceCode
+    const templateMatch = code.match(/<template>([\s\S]*?)<\/template>/i)
+    const bodyHtml = templateMatch ? templateMatch[1].trim() : code
+    const styleMatch = code.match(/<style[^>]*>([\s\S]*?)<\/style>/i)
+    const styleCss = styleMatch ? styleMatch[1].trim() : ''
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8fafc; }
+    .h5-container { position: relative; width: 100%; min-height: 100vh; overflow-x: hidden; }
+    ${styleCss}
+  </style>
+</head>
+<body>
+  <div class="h5-container">
+    ${bodyHtml}
+  </div>
+</body>
+</html>
+    `.trim()
+  }
+
+  // 其次使用 layout 生成预览
+  if (previewRow.value.layout) {
+    try {
+      const items = JSON.parse(previewRow.value.layout) as Array<{
+        type: string; label: string; x?: number; y?: number;
+        bgColor?: string; fullWidth?: boolean;
+      }>
+      const componentsHtml = items.map((item, idx) => {
+        const width = item.fullWidth ? 'calc(100% - 32px)' : '260px'
+        const bg = item.bgColor || '#ffffff'
+        const left = item.x ?? 20
+        const top = item.y ?? (idx * 140 + 20)
+        return `    <div class="comp-block" style="position:absolute;left:${left}px;top:${top}px;width:${width};background:${bg};border-radius:12px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);border:1px solid #e2e8f0;">
+      <div style="font-weight:700;font-size:13px;color:#1f2937;margin-bottom:4px;">${item.label}</div>
+      <div style="font-size:12px;color:#94a3b8;">${item.type} 组件</div>
+    </div>`
+      }).join('\n')
+
+      return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8fafc; }
+    .pc-page { position: relative; width: 100%; min-height: 100vh; overflow-x: hidden; }
+  </style>
+</head>
+<body>
+  <div class="pc-page">
+${componentsHtml}
+  </div>
+</body>
+</html>
+      `.trim()
+    } catch {
+      // 解析失败回退到空提示
+    }
+  }
+
+  // 无内容提示
   return `
 <!DOCTYPE html>
 <html>
@@ -482,23 +558,11 @@ const previewHtml = computed(() => {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; padding: 20px; background: #f5f7fa; }
-    .preview-block { background: #fff; border-radius: 8px; padding: 24px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-    .preview-title { font-size: 18px; font-weight: 600; color: #2c3e50; margin-bottom: 12px; }
-    .preview-text { color: #606266; line-height: 1.6; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 0; display: flex; align-items: center; justify-content: center; height: 100vh; background: #f8fafc; color: #94a3b8; font-size: 14px; }
   </style>
 </head>
 <body>
-  <div class="preview-block">
-    <div class="preview-title">${previewRow.value.name}</div>
-    <div class="preview-text">编码：${previewRow.value.code}</div>
-    <div class="preview-text">类型：${typeLabel(previewRow.value.type)}</div>
-    <div class="preview-text">${previewRow.value.description || '暂无描述'}</div>
-  </div>
-  <div class="preview-block">
-    <div class="preview-title">模板预览区域</div>
-    <div class="preview-text">此处展示模板实际渲染效果...</div>
-  </div>
+  <div>暂无预览内容，请先进行模板设计</div>
 </body>
 </html>
   `.trim()
@@ -911,18 +975,7 @@ onMounted(() => {
       transition: all 0.3s ease;
       position: relative;
 
-      /* H5 phone frame hint */
-      &::before {
-        content: '';
-        position: absolute;
-        top: 8px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 48px;
-        height: 4px;
-        background: #e2e8f0;
-        border-radius: 4px;
-      }
+      /* PC browser canvas */
 
       &.dragging {
         border-color: #6366f1;
@@ -1075,6 +1128,13 @@ onMounted(() => {
     .preview-body {
       overflow: hidden;
       background: #fff;
+      height: calc(94vh - 150px);
+      iframe {
+        display: block;
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
     }
   }
 }
