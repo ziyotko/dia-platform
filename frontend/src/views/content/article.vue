@@ -575,7 +575,7 @@ const base64ToBlob = (base64: string): Blob => {
 }
 
 const editorConfig: Partial<IEditorConfig> = {
-  placeholder: '请输入文章内容...',
+  placeholder: '',
   MENU_CONF: {
     uploadImage: {
       async customUpload(file: File, insertFn: (url: string, alt: string, href: string) => void) {
