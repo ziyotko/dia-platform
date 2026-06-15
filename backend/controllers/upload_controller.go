@@ -5,8 +5,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"server/services"
 	"server/utils"
 
 	"github.com/gin-gonic/gin"
@@ -38,8 +40,18 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 		return
 	}
 
+	settingsService := services.SettingsService{}
+	settings, _ := settingsService.GetSettings()
+	orgCode := ""
+	if settings != nil {
+		orgCode = strings.ToLower(settings.OrgCode)
+	}
+
 	dir := ctx.DefaultPostForm("dir", "")
 	uploadDir := "./uploads"
+	if orgCode != "" {
+		uploadDir = filepath.Join(uploadDir, orgCode)
+	}
 	if dir != "" {
 		uploadDir = filepath.Join(uploadDir, dir)
 	}
@@ -56,8 +68,15 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 	}
 
 	fileURL := "/uploads/" + filename
+	if orgCode != "" {
+		fileURL = "/uploads/" + orgCode + "/" + filename
+	}
 	if dir != "" {
-		fileURL = "/uploads/" + dir + "/" + filename
+		if orgCode != "" {
+			fileURL = "/uploads/" + orgCode + "/" + dir + "/" + filename
+		} else {
+			fileURL = "/uploads/" + dir + "/" + filename
+		}
 	}
 	ctx.JSON(http.StatusOK, utils.Success("上传成功", gin.H{
 		"url": fileURL,
