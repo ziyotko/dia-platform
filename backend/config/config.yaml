@@ -4,8 +4,8 @@ server:
   api_prefix: /miicapi
 
 database:
-  host: '127.0.0.1'
-  port: 3306
+  host: '10.3.1.95'
+  port: 3305
   username: 'root'
   password: '1qaz@WSX'
   dbname: 'caam_portal'
