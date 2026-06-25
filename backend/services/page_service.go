@@ -11,10 +11,6 @@ type PageService struct{}
 
 func (s *PageService) GetPages(pageType string, templateID uint) ([]models.Page, error) {
 	var pages []models.Page
-	if pageType == "column" {
-		err := utils.DB.Raw("SELECT id,name,code,route_path,description,created_at,updated_at FROM `column` WHERE status = ? ORDER BY created_at DESC", 1).Scan(&pages).Error
-		return pages, err
-	}
 	query := utils.DB.Model(&models.Page{})
 	if pageType != "" {
 		query = query.Where("page_type = ?", pageType)
