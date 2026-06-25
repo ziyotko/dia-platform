@@ -479,25 +479,55 @@ func (s *ArticleService) tryCompleteArticleAudit(articleID uint) {
 	}
 }
 
+// ArticleColumnPublishItem 文章栏目发布列表项
+type ArticleColumnPublishItem struct {
+	ID        uint      `json:"id"`
+	CreatedAt time.Time `json:"-"`
+	UpdatedAt time.Time `json:"-"`
+	Title     string    `json:"title"`
+	Author    string    `json:"author"`
+	Source    string    `json:"source"`
+	RoutePath string    `json:"routePath"`
+}
+
+// GetDetailPageRoutePath 获取详情页统一访问路径
+func (s *ArticleService) GetDetailPageRoutePath() (string, string, error) {
+	type Page struct {
+		RoutePath string `gorm:"column:route_path"`
+		Name      string `gorm:"column:name"`
+	}
+	var page Page
+	err := utils.DB.Model(&models.Page{}).
+		Select("route_path,name").
+		Where("page_type = ? AND status = ?", "detail", 1).
+		Order("id ASC").
+		Limit(1).
+		Scan(&page).Error
+	return page.RoutePath, page.Name, err
+}
+
 // GetArticleColumnPublishes 获取文章栏目发布（静态化）列表
-func (s *ArticleService) GetArticleColumnPublishes(articleTitle string, columnID uint, page int, pageSize int) ([]models.Article, int64, error) {
-	var articles []models.Article
+func (s *ArticleService) GetArticleColumnPublishes(articleTitle string, columnID uint, page int, pageSize int) ([]ArticleColumnPublishItem, int64, error) {
+	var items []ArticleColumnPublishItem
 	var total int64
 	query := utils.DB.Model(&models.Article{}).
-		Select("id, created_at, updated_at, title, author, source").
-		Where("id IN (SELECT DISTINCT article_id FROM article_column_publish)").
-		Where("status = ?", 1).
-		Order("updated_at DESC")
+		Select("article.id, article.created_at, article.updated_at, article.title, article.author, article.source").
+		Where("article.id IN (SELECT DISTINCT article_id FROM article_column_publish)").
+		Where("article.status = ?", 1).
+		Order("article.updated_at DESC")
 	if articleTitle != "" {
-		query = query.Where("title LIKE ?", "%"+articleTitle+"%")
+		query = query.Where("article.title LIKE ?", "%"+articleTitle+"%")
+	}
+	if columnID > 0 {
+		query = query.Where("article.id IN (SELECT article_id FROM article_column_publish WHERE column_id = ?)", columnID)
 	}
 	err := query.Count(&total).Error
 	if err != nil {
 		return nil, 0, err
 	}
 	offset := (page - 1) * pageSize
-	err = query.Limit(pageSize).Offset(offset).Find(&articles).Error
-	return articles, total, err
+	err = query.Limit(pageSize).Offset(offset).Find(&items).Error
+	return items, total, err
 }
 
 // GetMyAuditArticles 获取当前用户需要审核的文章列表

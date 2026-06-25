@@ -231,6 +231,8 @@
             <el-table-column type="index" width="60" align="center" />
             <el-table-column prop="id" label="ID" width="80" align="center" />
             <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
+            <el-table-column prop="name" label="模板名称" min-width="60" show-overflow-tooltip />
+            <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
             <el-table-column prop="author" label="作者" min-width="60" />
             <el-table-column prop="source" label="来源" min-width="100" />
             <el-table-column prop="createTime" label="创建时间" width="170" />

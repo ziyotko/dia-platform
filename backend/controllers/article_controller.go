@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -549,14 +550,17 @@ func (c *ArticleController) GetArticleColumnPublishes(ctx *gin.Context) {
 		return
 	}
 
+	routePath, name, _ := c.articleService.GetDetailPageRoutePath()
+
 	var result []gin.H
 	for _, a := range articles {
 		result = append(result, gin.H{
 			"id":         a.ID,
 			"title":      a.Title,
+			"routePath":  fmt.Sprintf("%s/%d.html", routePath, a.ID),
+			"name":       name,
 			"author":     a.Author,
 			"source":     a.Source,
-			"path":       "/article/" + strconv.FormatUint(uint64(a.ID), 10),
 			"createTime": a.CreatedAt.Format("2006-01-02 15:04:05"),
 			"updatedAt":  a.UpdatedAt.Format("2006-01-02 15:04:05"),
 		})
