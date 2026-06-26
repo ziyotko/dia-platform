@@ -287,6 +287,22 @@
         <el-divider />
 
         <div class="form-section">
+          <div class="section-title">跳转链接</div>
+          <el-form-item label="URL地址" prop="url">
+            <el-input
+              v-model="form.url"
+              placeholder="请输入跳转链接，如 https://example.com"
+              clearable
+              @blur="formRef?.validateField(['url', 'content']).catch(() => {})"
+              @input="formRef?.validateField(['url', 'content']).catch(() => {})"
+            />
+            <div class="url-tip">填写 URL 后，文章内容和附件无需填写，保存后将直接跳转至该链接</div>
+          </el-form-item>
+        </div>
+
+        <el-divider />
+
+        <div class="form-section">
           <div class="section-title">内容编辑</div>
           <el-form-item label="文章摘要" prop="summary">
             <el-input
@@ -329,6 +345,7 @@
               :http-request="handleAttachmentUpload"
               :before-upload="handleAttachmentBeforeUpload"
               :on-remove="handleAttachmentRemove"
+              :on-change="handleAttachmentChange"
               multiple
               :limit="10"
               class="attachment-uploader"
@@ -362,6 +379,9 @@
         </div>
         <div class="preview-summary" v-if="previewData.summary">
           <strong>摘要：</strong>{{ previewData.summary }}
+        </div>
+        <div class="preview-url" v-if="previewData.url">
+          <strong>跳转链接：</strong><a :href="previewData.url" target="_blank">{{ previewData.url }}</a>
         </div>
         <div class="preview-body" v-html="previewData.content" />
         <div class="preview-attachments" v-if="previewData.attachments && previewData.attachments.length > 0">
@@ -576,12 +596,52 @@ const form = reactive({
   defaultColor: '',
   cover: '',
   source: '',
+  url: '',
   attachments: [] as any[]
 })
 
+const isValidUrl = (url: string) => /^https?:\/\/.+/i.test(url)
+const hasRealContent = (html: string) => {
+  if (!html) return false
+  const text = html.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, '').trim()
+  return text.length > 0
+}
+
 const formRules = {
   title: [{ required: true, message: '请输入文章标题', trigger: 'blur' }],
-  categoryId: [{ required: true, message: '请选择所属分类', trigger: 'change' }]
+  categoryId: [{ required: true, message: '请选择所属分类', trigger: 'change' }],
+  url: [
+    {
+      validator: (_rule: any, value: any, callback: any) => {
+        const hasContent = hasRealContent(form.content)
+        const hasAttachments = form.attachments && form.attachments.length > 0
+        const hasUrl = value && value.trim().length > 0
+        if (!hasUrl && !hasContent && !hasAttachments) {
+          callback(new Error('URL、文章内容、文章附件至少填写一项'))
+        } else if (hasUrl && !isValidUrl(value.trim())) {
+          callback(new Error('请输入以 http:// 或 https:// 开头的URL地址'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ],
+  content: [
+    {
+      validator: (_rule: any, _value: any, callback: any) => {
+        const hasUrl = form.url && form.url.trim().length > 0
+        const hasAttachments = form.attachments && form.attachments.length > 0
+        const hasContent = hasRealContent(form.content)
+        if (!hasUrl && !hasContent && !hasAttachments) {
+          callback(new Error('URL、文章内容、文章附件至少填写一项'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'change'
+    }
+  ]
 }
 
 const route = useRoute()
@@ -961,6 +1021,7 @@ const handleEdit = async (row: any) => {
     defaultColor: row.defaultColor || '',
     cover: row.cover || '',
     source: row.source || '',
+    url: row.url || '',
     attachments: (row.attachments || []).map((att: any) => ({
       ...att,
       uid: att.uid || Date.now() + Math.random().toString(36).slice(2),
@@ -1241,6 +1302,7 @@ const previewData = reactive({
   createTime: '',
   summary: '',
   content: '',
+  url: '',
   attachments: [] as any[]
 })
 
@@ -1253,6 +1315,7 @@ const handlePreview = (row: any) => {
     createTime: row.createTime,
     summary: row.summary || '',
     content: row.content || '',
+    url: row.url || '',
     attachments: row.attachments || []
   })
   previewVisible.value = true
@@ -1276,6 +1339,7 @@ const handleSubmit = async () => {
       defaultColor: form.defaultColor,
       cover: form.cover,
       source: form.source,
+      url: form.url,
       attachments: buildAttachmentPayload(form.attachments)
     }
     if (form.id) {
@@ -1345,8 +1409,12 @@ const handleAttachmentUpload = async (options: any) => {
   }
 }
 
-const handleAttachmentRemove = (file: any, fileList: any[]) => {
+const handleAttachmentRemove = (_file: any, fileList: any[]) => {
   form.attachments = fileList
+}
+
+const handleAttachmentChange = () => {
+  formRef.value?.validateField(['url', 'content']).catch(() => {})
 }
 
 const buildAttachmentPayload = (attachments: any[]) => {
@@ -1378,6 +1446,7 @@ const resetForm = () => {
   form.defaultColor = ''
   form.cover = ''
   form.source = ''
+  form.url = ''
   form.attachments = []
 }
 
@@ -1484,6 +1553,13 @@ onMounted(() => {
   }
 }
 
+.url-tip {
+  font-size: 13px;
+  color: #909399;
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
 .attachment-uploader {
   .attachment-tip {
     font-size: 13px;
@@ -1528,6 +1604,24 @@ onMounted(() => {
     border-radius: 8px;
     margin-bottom: 16px;
     color: #666;
+  }
+
+  .preview-url {
+    background: #f0f9ff;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    color: #666;
+
+    a {
+      color: #409eff;
+      text-decoration: none;
+      word-break: break-all;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
   }
 
   .preview-body {
