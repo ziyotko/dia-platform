@@ -37,7 +37,6 @@
       <el-table :data="tableData" v-loading="loading" border stripe>
         <el-table-column type="index" width="60" align="center" />
         <el-table-column prop="name" label="模板名称" min-width="160" show-overflow-tooltip />
-        <el-table-column prop="code" label="模板编码" min-width="140" />
         <el-table-column prop="type" label="模板类型" width="120" align="center">
           <template #default="{ row }">
             <el-tag :type="typeTagType(row.type)" size="small">
@@ -117,11 +116,6 @@
           <el-col :span="12">
             <el-form-item label="模板名称" prop="name">
               <el-input v-model="form.name" placeholder="请输入模板名称" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="模板编码" prop="code">
-              <el-input v-model="form.code" placeholder="请输入模板编码" />
             </el-form-item>
           </el-col>
         </el-row>
