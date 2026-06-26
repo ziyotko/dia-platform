@@ -29,6 +29,7 @@ func SetupRoutes(router *gin.Engine) {
 	dashboardController := controllers.NewDashboardController()
 	visitController := controllers.NewVisitController()
 	staticLogController := controllers.NewStaticLogController()
+	staticPageController := controllers.NewStaticPageController()
 	apiPrefix := config.AppConfig.Server.ApiPrefix
 
 	public := router.Group(apiPrefix)
@@ -103,6 +104,8 @@ func SetupRoutes(router *gin.Engine) {
 		protected.POST("/pages", pageController.CreatePage)
 		protected.PUT("/pages/:id", pageController.UpdatePage)
 		protected.DELETE("/pages/:id", pageController.DeletePage)
+
+		protected.GET("/static-pages", staticPageController.GetStaticPages)
 
 		protected.GET("/columns", columnController.GetColumns)
 		protected.POST("/columns", columnController.CreateColumn)

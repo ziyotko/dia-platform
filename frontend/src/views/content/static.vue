@@ -340,7 +340,7 @@ import {
   User
 } from '@element-plus/icons-vue'
 import { getArticleColumnPublishes } from '@/api/article'
-import { getPages } from '@/api/page'
+import { getStaticPages } from '@/api/static_page'
 import { getStaticLogList, clearStaticLogs } from '@/api/static_log'
 
 const loading = ref(false)
@@ -474,10 +474,10 @@ const fetchPageList = async () => {
   loading.value = true
   try {
     if (activeTab.value === 'home') {
-      const res: any = await getPages({ pageType: 'home' })
+      const res: any = await getStaticPages({ pageType: 'home' })
       homeList.value = res.data || []
     } else if (activeTab.value === 'column') {
-      const res: any = await getPages({ pageType: 'column' })
+      const res: any = await getStaticPages({ pageType: 'column' })
       columnList.value = res.data || []
     } else if (activeTab.value === 'detail') {
       const res: any = await getArticleColumnPublishes({
@@ -487,7 +487,7 @@ const fetchPageList = async () => {
       detailList.value = res.data?.list || []
       detailTotal.value = res.data?.total || 0
     } else if (activeTab.value === 'topic') {
-      const res: any = await getPages({ pageType: 'special' })
+      const res: any = await getStaticPages({ pageType: 'special' })
       topicList.value = res.data || []
     } else {
       const res: any = await getArticleColumnPublishes({
