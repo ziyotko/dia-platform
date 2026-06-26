@@ -125,11 +125,15 @@ import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { useAppStore } from '@/stores/app'
+import { useUserStore } from '@/stores/user'
+import { useRouter } from 'vue-router'
 import { getSettings, updateSettings } from '@/api/settings'
 import type { Settings } from '@/api/settings'
 import { uploadFile } from '@/api/upload'
 
 const appStore = useAppStore()
+const userStore = useUserStore()
+const router = useRouter()
 const activeTab = ref('basic')
 const loading = ref(false)
 
@@ -278,7 +282,9 @@ const doSave = async (data: Partial<Settings>) => {
     })
 
     await updateSettings(payload)
-    ElMessage.success('保存成功')
+    ElMessage.success('保存成功，请重新登录')
+    userStore.logout()
+    router.push('/login')
   } catch {
   } finally {
     loading.value = false
