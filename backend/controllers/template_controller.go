@@ -58,7 +58,6 @@ func (c *TemplateController) GetTemplates(ctx *gin.Context) {
 		list = append(list, TemplateListItem{
 			ID:          t.ID,
 			Name:        t.Name,
-			Code:        t.Code,
 			Type:        t.Type,
 			Description: t.Description,
 			Status:      t.Status,
@@ -107,7 +106,6 @@ func (c *TemplateController) UpdateTemplate(ctx *gin.Context) {
 
 	updates := map[string]interface{}{
 		"name":        req.Name,
-		"code":        req.Code,
 		"type":        req.Type,
 		"description": req.Description,
 		"status":      req.Status,

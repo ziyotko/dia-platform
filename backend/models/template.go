@@ -12,7 +12,6 @@ type Template struct {
 	UpdatedAt   time.Time      `json:"updatedAt"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deletedAt"`
 	Name        string         `gorm:"size:100;not null" json:"name"`
-	Code        string         `gorm:"size:100;not null;unique" json:"code"`
 	Type        string         `gorm:"size:20;not null" json:"type"`
 	Description string         `gorm:"size:500" json:"description"`
 	Status      int            `gorm:"default:1" json:"status"`

@@ -694,7 +694,7 @@ const handlePageSubmit = async () => {
       pageType: pageForm.pageType || activePageType.value,
       routePath: pageForm.routePath || '',
       templateId: pageForm.templateId,
-      template: selectedTemplate?.code || selectedTemplate?.name || '',
+      template: selectedTemplate?.name || '',
       description: pageForm.description,
       status: pageForm.status ?? 1
     }
