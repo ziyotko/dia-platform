@@ -79,6 +79,20 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="跳转地址" min-width="180" show-overflow-tooltip>
+          <template #default="{ row }">
+            <el-link
+              v-if="row.url"
+              type="primary"
+              :href="row.url"
+              target="_blank"
+              :underline="false"
+            >
+              {{ row.url }}
+            </el-link>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="author" label="作者" width="100" />
         <el-table-column prop="source" label="来源" width="140" show-overflow-tooltip />
         <el-table-column prop="columnCount" label="发布栏目数量" width="120" align="center" />
