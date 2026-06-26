@@ -14,11 +14,10 @@
             <el-form-item label="系统Logo">
               <el-upload
                 class="logo-uploader"
-                action="/miicapi/upload"
-                :headers="uploadHeaders"
+                action="#"
                 accept="image/*"
                 :show-file-list="false"
-                :on-success="handleLogoSuccess"
+                :http-request="handleLogoUpload"
                 :before-upload="beforeLogoUpload"
               >
                 <img v-if="basicForm.logo" :src="resolveLogoUrl(basicForm.logo)" class="logo-preview" />
@@ -125,19 +124,14 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
 import { getSettings, updateSettings } from '@/api/settings'
 import type { Settings } from '@/api/settings'
+import { uploadFile } from '@/api/upload'
 
-const userStore = useUserStore()
 const appStore = useAppStore()
 const activeTab = ref('basic')
 const loading = ref(false)
-
-const uploadHeaders = ref({
-  Authorization: `Bearer ${userStore.token}`
-})
 
 const resolveLogoUrl = (url: string) => {
   if (!url) return ''
@@ -145,12 +139,20 @@ const resolveLogoUrl = (url: string) => {
   return `${window.location.origin}${url}`
 }
 
-const handleLogoSuccess = (res: any) => {
-  if (res.code === 0 || res.code === 200) {
-    basicForm.logo = res.data.url
-    ElMessage.success('上传成功')
-  } else {
-    ElMessage.error(res.message || '上传失败')
+const handleLogoUpload = async (options: any) => {
+  try {
+    const res: any = await uploadFile(options.file, 'setting')
+    if (res.code === 0 || res.code === 200) {
+      basicForm.logo = res.data?.url || res.url || ''
+      ElMessage.success('上传成功')
+      options.onSuccess(res)
+    } else {
+      ElMessage.error(res.message || '上传失败')
+      options.onError(new Error(res.message || '上传失败'))
+    }
+  } catch (error: any) {
+    ElMessage.error(error?.message || '上传失败')
+    options.onError(error)
   }
 }
 
