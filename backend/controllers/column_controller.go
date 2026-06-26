@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -87,6 +88,10 @@ func (c *ColumnController) DeleteColumn(ctx *gin.Context) {
 	}
 	err = c.columnService.DeleteColumn(uint(id))
 	if err != nil {
+		if strings.Contains(err.Error(), "Cannot delete or update a parent row") {
+			ctx.JSON(http.StatusOK, utils.Error(1, "该栏目存在关联数据（子栏目或已发布文章），无法直接删除，请先解除关联"))
+			return
+		}
 		ctx.JSON(http.StatusOK, utils.Error(1, "删除栏目失败: "+err.Error()))
 		return
 	}

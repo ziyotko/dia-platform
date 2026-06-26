@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -81,6 +82,10 @@ func (c *PageController) DeletePage(ctx *gin.Context) {
 	}
 	err = c.pageService.DeletePage(uint(id))
 	if err != nil {
+		if strings.Contains(err.Error(), "Cannot delete or update a parent row") {
+			ctx.JSON(http.StatusOK, utils.Error(1, "该页面下存在已发布文章的栏目，无法直接删除，请先解除关联"))
+			return
+		}
 		ctx.JSON(http.StatusOK, utils.Error(1, "删除页面失败: "+err.Error()))
 		return
 	}
