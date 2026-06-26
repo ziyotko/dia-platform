@@ -16,6 +16,7 @@ func (s *StaticPageService) GetStaticPages(pageType string, templateID uint) ([]
 	if templateID > 0 {
 		query = query.Where("template_id = ?", templateID)
 	}
+	query = query.Where("status=?", 1)
 	err := query.Order("id DESC").Find(&pages).Error
 	return pages, err
 }
