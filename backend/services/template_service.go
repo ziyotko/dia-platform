@@ -31,7 +31,7 @@ func (s *TemplateService) GetTemplateList(page, pageSize int, name, ttype string
 	}
 
 	offset := (page - 1) * pageSize
-	err = query.Order("id DESC").Offset(offset).Limit(pageSize).Find(&list).Error
+	err = query.Order("type,id DESC").Offset(offset).Limit(pageSize).Find(&list).Error
 	if err != nil {
 		return nil, err
 	}
