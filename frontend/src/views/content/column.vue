@@ -664,6 +664,7 @@ const handlePageStatusChange = async (row: PageItem, val: number) => {
         })
         p.status = 0
       }
+      ElMessage.success(`页面状态已${val === 1 ? '启用' : '禁用'}`)
     }
 
     await updatePage(row.id, {
@@ -676,7 +677,7 @@ const handlePageStatusChange = async (row: PageItem, val: number) => {
       description: row.description,
       status: val
     })
-    ElMessage.success(`页面状态已${val === 1 ? '启用' : '禁用'}`)
+    ElMessage.success(`栏目页和详情页页面状态同时只能有一个启用`)
   } catch (error) {
     row.status = val === 1 ? 0 : 1
   }
