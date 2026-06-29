@@ -127,6 +127,7 @@
             <el-table-column prop="id" label="ID" width="80" align="center" />
             <el-table-column prop="name" label="名称" min-width="160" />
             <el-table-column prop="code" label="编码" min-width="120" />
+                             <el-table-column prop="template" label="模板名称" min-width="60" show-overflow-tooltip />
             <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
             <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
             <el-table-column prop="createTime" label="创建时间" width="170" />
@@ -162,6 +163,7 @@
             <el-table-column prop="id" label="ID" width="80" align="center" />
             <el-table-column prop="name" label="名称" min-width="160" />
             <el-table-column prop="code" label="编码" min-width="120" />
+                             <el-table-column prop="template" label="模板名称" min-width="60" show-overflow-tooltip />
             <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
             <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
             <el-table-column prop="createTime" label="创建时间" width="170" />
@@ -197,6 +199,7 @@
             <el-table-column prop="id" label="ID" width="80" align="center" />
             <el-table-column prop="name" label="名称" min-width="160" />
             <el-table-column prop="code" label="编码" min-width="120" />
+                        <el-table-column prop="template" label="模板名称" min-width="60" show-overflow-tooltip />
             <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
             <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
             <el-table-column prop="createTime" label="创建时间" width="170" />
