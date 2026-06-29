@@ -646,10 +646,10 @@ const handleDeletePage = (row: PageItem) => {
 
 const handlePageStatusChange = async (row: PageItem, val: number) => {
   try {
-    // 详情页类型只能有一个启用，启用当前页时自动禁用其他详情页
-    if (activePageType.value === 'detail' && val === 1) {
+    // 栏目页和详情页类型只能有一个启用，启用当前页时自动禁用其他同类型页面
+    if ((activePageType.value === 'column' || activePageType.value === 'detail') && val === 1) {
       const otherOpenPages = allPages.value.filter(
-        p => p.pageType === 'detail' && p.status === 1 && p.id !== row.id
+        p => p.pageType === activePageType.value && p.status === 1 && p.id !== row.id
       )
       for (const p of otherOpenPages) {
         await updatePage(p.id, {
