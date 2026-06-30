@@ -156,7 +156,7 @@
             <el-button v-if="row.status === 1" link type="danger" @click="handleOffShelf(row)">
               <el-icon><CircleClose /></el-icon>下线
             </el-button>
-            <el-button v-if="isAuthor(row)" link type="danger" @click="handleDelete(row)">
+            <el-button v-if="isAuthor(row) || isAdmin" link type="danger" @click="handleDelete(row)">
               <el-icon><Delete /></el-icon>删除
             </el-button>
           </template>
@@ -566,6 +566,7 @@ import { uploadFile } from '@/api/upload'
 
 const userStore = useUserStore()
 const currentUserId = computed(() => userStore.userInfo?.id || 0)
+const isAdmin = computed(() => userStore.userInfo?.roleIds?.includes(1) || false)
 
 const loading = ref(false)
 const dialogVisible = ref(false)

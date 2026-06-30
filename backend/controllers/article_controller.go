@@ -486,7 +486,15 @@ func (c *ArticleController) DeleteArticle(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "文章不存在"))
 		return
 	}
-	if strconv.FormatUint(uint64(userID), 10) != article.AuthorCode {
+	roleIds, _ := c.userService.GetUserRoleIds(userID)
+	isAdmin := false
+	for _, rid := range roleIds {
+		if rid == 1 {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin && strconv.FormatUint(uint64(userID), 10) != article.AuthorCode {
 		ctx.JSON(http.StatusOK, utils.Error(1, "无权操作"))
 		return
 	}
