@@ -1,4 +1,5 @@
 import axios from 'axios'
+import CryptoJS from 'crypto-js'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 
@@ -20,26 +21,12 @@ function createRequestNonce() {
   return Array.from(values, (value) => value.toString(16).padStart(8, '0')).join('')
 }
 
-async function sha256(message: string): Promise<string> {
-  const encoder = new TextEncoder()
-  const data = encoder.encode(message)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+function sha256(message: string): string {
+  return CryptoJS.SHA256(message).toString(CryptoJS.enc.Hex)
 }
 
-async function hmacSha256(message: string, secret: string): Promise<string> {
-  const encoder = new TextEncoder()
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  )
-  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(message))
-  const array = Array.from(new Uint8Array(signature))
-  return array.map((b) => b.toString(16).padStart(2, '0')).join('')
+function hmacSha256(message: string, secret: string): string {
+  return CryptoJS.HmacSHA256(message, secret).toString(CryptoJS.enc.Hex)
 }
 
 function getRequestPath(config: any): string {
@@ -61,24 +48,24 @@ function getBodyString(body: unknown): string {
   return JSON.stringify(body)
 }
 
-async function createRequestSignature(
+function createRequestSignature(
   signKey: string,
   method: string,
   path: string,
   timestamp: string,
   nonce: string,
   body: unknown
-): Promise<string> {
+): string {
   const bodyString = getBodyString(body)
-  const bodyHash = await sha256(bodyString)
+  const bodyHash = sha256(bodyString)
   const payload = `${method.toUpperCase()}|${path}|${timestamp}|${nonce}|${bodyHash}`
-  const signature = await hmacSha256(payload, signKey)
+  const signature = hmacSha256(payload, signKey)
   console.log('[签名调试]', { method: method.toUpperCase(), path, timestamp, nonce, bodyType: typeof body, bodyString, bodyHash, signKey, payload, signature })
   return signature
 }
 
 request.interceptors.request.use(
-  async (config) => {
+  (config) => {
     const userStore = useUserStore()
     if (userStore.token) {
       config.headers.Authorization = `Bearer ${userStore.token}`
@@ -91,7 +78,7 @@ request.interceptors.request.use(
 
     if (userStore.signKey && config.url) {
       const path = getRequestPath(config)
-      const signature = await createRequestSignature(
+      const signature = createRequestSignature(
         userStore.signKey,
         config.method || 'GET',
         path,
