@@ -59,9 +59,7 @@ function createRequestSignature(
   const bodyString = getBodyString(body)
   const bodyHash = sha256(bodyString)
   const payload = `${method.toUpperCase()}|${path}|${timestamp}|${nonce}|${bodyHash}`
-  const signature = hmacSha256(payload, signKey)
-  console.log('[签名调试]', { method: method.toUpperCase(), path, timestamp, nonce, bodyType: typeof body, bodyString, bodyHash, signKey, payload, signature })
-  return signature
+  return hmacSha256(payload, signKey)
 }
 
 request.interceptors.request.use(
