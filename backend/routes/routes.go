@@ -42,7 +42,7 @@ func SetupRoutes(router *gin.Engine) {
 	}
 
 	protected := router.Group(apiPrefix)
-	protected.Use(middleware.ReplayProtectionMiddleware(), middleware.AuthMiddleware(), middleware.OperationLog())
+	protected.Use(middleware.AuthMiddleware(), middleware.ReplayProtectionMiddleware(), middleware.OperationLog())
 	{
 		protected.POST("/logout", authController.Logout)
 

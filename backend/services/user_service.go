@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"server/config"
 	"server/models"
 	"server/utils"
 )
@@ -18,9 +19,9 @@ type UserListResult struct {
 	List  []models.User `json:"list"`
 }
 
-func (s *UserService) Login(email, account, mobile, password, captchaID, captchaCode string) (*models.User, string, error) {
+func (s *UserService) Login(email, account, mobile, password, captchaID, captchaCode string) (*models.User, string, string, error) {
 	if !utils.VerifyCaptcha(captchaID, captchaCode) {
-		return nil, "", errors.New("验证码错误")
+		return nil, "", "", errors.New("验证码错误")
 	}
 
 	var user models.User
@@ -33,27 +34,27 @@ func (s *UserService) Login(email, account, mobile, password, captchaID, captcha
 	} else if mobile != "" {
 		err = utils.DB.Where("mobile = ?", mobile).First(&user).Error
 	} else {
-		return nil, "", errors.New("用户不存在")
+		return nil, "", "", errors.New("用户不存在")
 	}
 
 	if err != nil {
-		return nil, "", errors.New("用户不存在")
+		return nil, "", "", errors.New("用户不存在")
 	}
 
 	if user.Status != 1 {
-		return nil, "", errors.New("用户已禁用")
+		return nil, "", "", errors.New("用户已禁用")
 	}
 
 	settingsService := SettingsService{}
 	settings, err := settingsService.GetSettings()
 	if err != nil {
-		return nil, "", errors.New("获取系统设置失败")
+		return nil, "", "", errors.New("获取系统设置失败")
 	}
 
 	if settings.LockEnabled {
 		if user.LockedUntil != nil && user.LockedUntil.After(time.Now()) {
 			remaining := int(time.Until(*user.LockedUntil).Minutes()) + 1
-			return nil, "", fmt.Errorf("登录失败次数过多，请 %d 分钟后重试", remaining)
+			return nil, "", "", fmt.Errorf("登录失败次数过多，请 %d 分钟后重试", remaining)
 		}
 
 		if !user.ComparePassword(password) {
@@ -66,10 +67,10 @@ func (s *UserService) Login(email, account, mobile, password, captchaID, captcha
 					"login_fail_count": 0,
 					"locked_until":     lockUntil,
 				})
-				return nil, "", fmt.Errorf("登录失败次数过多，账号已锁定 %d 分钟", settings.LockDuration)
+				return nil, "", "", fmt.Errorf("登录失败次数过多，账号已锁定 %d 分钟", settings.LockDuration)
 			}
 			utils.DB.Model(&user).Update("login_fail_count", user.LoginFailCount)
-			return nil, "", errors.New("密码错误")
+			return nil, "", "", errors.New("密码错误")
 		}
 
 		if user.LoginFailCount > 0 || user.LockedUntil != nil {
@@ -80,7 +81,7 @@ func (s *UserService) Login(email, account, mobile, password, captchaID, captcha
 		}
 	} else {
 		if !user.ComparePassword(password) {
-			return nil, "", errors.New("密码错误")
+			return nil, "", "", errors.New("密码错误")
 		}
 	}
 
@@ -90,10 +91,24 @@ func (s *UserService) Login(email, account, mobile, password, captchaID, captcha
 	}
 	token, err := utils.GenerateToken(user.ID, user.Email, expiresHour)
 	if err != nil {
-		return nil, "", err
+		return nil, "", "", err
 	}
 
-	return &user, token, nil
+	signKey, err := utils.GenerateSignKey()
+	if err != nil {
+		return nil, "", "", err
+	}
+
+	ttl := time.Duration(config.AppConfig.JWT.ExpiresHour) * time.Hour
+	if expiresHour > 0 {
+		ttl = time.Duration(expiresHour) * time.Hour
+	}
+	signKeyKey := fmt.Sprintf("signkey:%d", user.ID)
+	if err := utils.Redis.Set(utils.Ctx, signKeyKey, signKey, ttl).Err(); err != nil {
+		return nil, "", "", err
+	}
+
+	return &user, token, signKey, nil
 }
 
 func (s *UserService) Logout(token string) error {

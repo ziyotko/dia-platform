@@ -176,6 +176,7 @@ const handleLogin = async () => {
       captcha_code: form.captchaCode
     })
     userStore.setToken(res.data.token)
+    userStore.setSignKey(res.data.signKey)
     userStore.setUserInfo(res.data.user)
     await userStore.fetchUserMenusAndGenerateRoutes()
     ElMessage.success('登录成功')

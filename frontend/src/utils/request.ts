@@ -20,14 +20,78 @@ function createRequestNonce() {
   return Array.from(values, (value) => value.toString(16).padStart(8, '0')).join('')
 }
 
+async function sha256(message: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const data = encoder.encode(message)
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+async function hmacSha256(message: string, secret: string): Promise<string> {
+  const encoder = new TextEncoder()
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(message))
+  const array = Array.from(new Uint8Array(signature))
+  return array.map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+function getRequestPath(config: any): string {
+  let url = config.url || ''
+  if (url.startsWith('http')) {
+    url = new URL(url).pathname
+  } else {
+    url = (config.baseURL || '') + url
+  }
+  // 去掉 query string，只签 path
+  return url.split('?')[0]
+}
+
+async function createRequestSignature(
+  signKey: string,
+  method: string,
+  path: string,
+  timestamp: string,
+  nonce: string,
+  body: unknown
+): Promise<string> {
+  const bodyString = typeof body === 'string' ? body : JSON.stringify(body || '')
+  const bodyHash = await sha256(bodyString)
+  const payload = `${method.toUpperCase()}|${path}|${timestamp}|${nonce}|${bodyHash}`
+  return hmacSha256(payload, signKey)
+}
+
 request.interceptors.request.use(
-  (config) => {
+  async (config) => {
     const userStore = useUserStore()
     if (userStore.token) {
       config.headers.Authorization = `Bearer ${userStore.token}`
     }
-    config.headers['X-Request-Timestamp'] = Date.now().toString()
-    config.headers['X-Request-Nonce'] = createRequestNonce()
+
+    const timestamp = Date.now().toString()
+    const nonce = createRequestNonce()
+    config.headers['X-Request-Timestamp'] = timestamp
+    config.headers['X-Request-Nonce'] = nonce
+
+    if (userStore.signKey && config.url) {
+      const path = getRequestPath(config)
+      const signature = await createRequestSignature(
+        userStore.signKey,
+        config.method || 'GET',
+        path,
+        timestamp,
+        nonce,
+        config.data
+      )
+      config.headers['X-Request-Signature'] = signature
+    }
+
     return config
   },
   (error) => {

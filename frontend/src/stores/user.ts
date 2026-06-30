@@ -27,8 +27,11 @@ function getStoredUserInfo(): UserInfo | null {
   }
 }
 
+const SIGN_KEY_KEY = 'sign_key'
+
 export const useUserStore = defineStore('user', () => {
   const token = ref<string>(localStorage.getItem('token') || '')
+  const signKey = ref<string>(localStorage.getItem(SIGN_KEY_KEY) || '')
   const userInfo = ref<UserInfo | null>(getStoredUserInfo())
   const menuList = ref<MenuItem[]>([])
   const hasFetchedMenus = ref(false)
@@ -38,6 +41,11 @@ export const useUserStore = defineStore('user', () => {
   function setToken(newToken: string) {
     token.value = newToken
     localStorage.setItem('token', newToken)
+  }
+
+  function setSignKey(newSignKey: string) {
+    signKey.value = newSignKey
+    localStorage.setItem(SIGN_KEY_KEY, newSignKey)
   }
 
   function setUserInfo(info: UserInfo) {
@@ -67,21 +75,25 @@ export const useUserStore = defineStore('user', () => {
 
   function logout() {
     token.value = ''
+    signKey.value = ''
     userInfo.value = null
     menuList.value = []
     hasFetchedMenus.value = false
     localStorage.removeItem('token')
+    localStorage.removeItem(SIGN_KEY_KEY)
     localStorage.removeItem(USER_INFO_KEY)
     localStorage.removeItem('app-theme')
   }
 
   return {
     token,
+    signKey,
     userInfo,
     menuList,
     hasFetchedMenus,
     isLoggedIn,
     setToken,
+    setSignKey,
     setUserInfo,
     fetchUserMenusAndGenerateRoutes,
     resetDynamicRoutes,
