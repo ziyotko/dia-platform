@@ -82,22 +82,7 @@
     </el-row>
 
     <el-row :gutter="20" class="dashboard-main">
-      <el-col :xs="24" :lg="16">
-        <el-card class="chart-card" shadow="hover">
-          <template #header>
-            <div class="card-header">
-              <span>访问趋势</span>
-              <el-radio-group v-model="chartPeriod" size="small">
-                <el-radio-button value="week">本周</el-radio-button>
-                <el-radio-button value="month">本月</el-radio-button>
-                <el-radio-button value="year">全年</el-radio-button>
-              </el-radio-group>
-            </div>
-          </template>
-          <div ref="chartRef" class="chart-container"></div>
-        </el-card>
-      </el-col>
-      <el-col :xs="24" :lg="8">
+            <el-col :xs="24" :lg="8">
         <el-card class="notice-card" shadow="hover">
           <template #header>
             <div class="card-header">
@@ -120,6 +105,22 @@
           </div>
         </el-card>
       </el-col>
+      <el-col :xs="24" :lg="16">
+        <el-card class="chart-card" shadow="hover">
+          <template #header>
+            <div class="card-header">
+              <span>访问趋势</span>
+              <el-radio-group v-model="chartPeriod" size="small">
+                <el-radio-button value="week">本周</el-radio-button>
+                <el-radio-button value="month">本月</el-radio-button>
+                <el-radio-button value="year">全年</el-radio-button>
+              </el-radio-group>
+            </div>
+          </template>
+          <div ref="chartRef" class="chart-container"></div>
+        </el-card>
+      </el-col>
+
     </el-row>
 
     <el-row :gutter="20" class="dashboard-bottom">
