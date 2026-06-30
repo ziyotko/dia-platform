@@ -10,6 +10,16 @@ const request = axios.create({
   }
 })
 
+function createRequestNonce() {
+  if (crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+
+  const values = new Uint32Array(4)
+  crypto.getRandomValues(values)
+  return Array.from(values, (value) => value.toString(16).padStart(8, '0')).join('')
+}
+
 request.interceptors.request.use(
   (config) => {
     const userStore = useUserStore()
@@ -17,7 +27,7 @@ request.interceptors.request.use(
       config.headers.Authorization = `Bearer ${userStore.token}`
     }
     config.headers['X-Request-Timestamp'] = Date.now().toString()
-    config.headers['X-Request-Nonce'] = crypto.randomUUID()
+    config.headers['X-Request-Nonce'] = createRequestNonce()
     return config
   },
   (error) => {
