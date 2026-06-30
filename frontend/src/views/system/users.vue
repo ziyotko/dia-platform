@@ -48,6 +48,7 @@
               v-model="row.status"
               :active-value="1"
               :inactive-value="0"
+              :disabled="row.id === 1"
               @change="(val: number) => handleStatusChange(row, val)"
             />
           </template>
@@ -58,7 +59,7 @@
             <el-button link type="primary" @click="handleEdit(row)">
               <el-icon><Edit /></el-icon>编辑
             </el-button>
-            <el-button link type="danger" @click="handleDelete(row)">
+            <el-button v-if="row.id !== 1" link type="danger" @click="handleDelete(row)">
               <el-icon><Delete /></el-icon>删除
             </el-button>
           </template>
@@ -91,22 +92,22 @@
         label-width="80px"
       >
         <el-form-item label="用户名" prop="username">
-          <el-input v-model="form.username" placeholder="请输入用户名" />
+          <el-input v-model="form.username" placeholder="请输入用户名" :disabled="isReadonly" />
         </el-form-item>
         <el-form-item label="用户账号" prop="account">
-          <el-input v-model="form.account" placeholder="请输入用户账号" />
+          <el-input v-model="form.account" placeholder="请输入用户账号" :disabled="isReadonly" />
         </el-form-item>
         <el-form-item label="昵称" prop="nickname">
-          <el-input v-model="form.nickname" placeholder="请输入昵称" />
+          <el-input v-model="form.nickname" placeholder="请输入昵称" :disabled="isReadonly" />
         </el-form-item>
         <el-form-item label="邮箱" prop="email">
-          <el-input v-model="form.email" placeholder="请输入邮箱" />
+          <el-input v-model="form.email" placeholder="请输入邮箱" :disabled="isReadonly" />
         </el-form-item>
         <el-form-item label="手机号" prop="phone">
-          <el-input v-model="form.phone" placeholder="请输入手机号" />
+          <el-input v-model="form.phone" placeholder="请输入手机号" :disabled="isReadonly" />
         </el-form-item>
         <el-form-item label="角色" prop="roleIds">
-          <el-select v-model="form.roleIds" multiple placeholder="请选择角色" style="width: 100%">
+          <el-select v-model="form.roleIds" multiple placeholder="请选择角色" style="width: 100%" :disabled="isReadonly">
             <el-option
               v-for="role in roleOptions"
               :key="role.id"
@@ -116,15 +117,15 @@
           </el-select>
         </el-form-item>
         <el-form-item label="状态" prop="status">
-          <el-radio-group v-model="form.status">
+          <el-radio-group v-model="form.status" :disabled="isReadonly">
             <el-radio :value="1">启用</el-radio>
             <el-radio :value="0">禁用</el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+        <el-button @click="dialogVisible = false">关闭</el-button>
+        <el-button v-if="!isReadonly" type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -147,6 +148,7 @@ const loading = ref(false)
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const submitLoading = ref(false)
+const isReadonly = ref(false)
 const total = ref(0)
 const formRef = ref()
 
@@ -231,13 +233,15 @@ const fetchData = async () => {
 }
 
 const handleAdd = () => {
+  isReadonly.value = false
   dialogTitle.value = '新增用户'
   resetForm()
   dialogVisible.value = true
 }
 
 const handleEdit = (row: any) => {
-  dialogTitle.value = '编辑用户'
+  isReadonly.value = row.id === 1
+  dialogTitle.value = isReadonly.value ? '查看用户' : '编辑用户'
   Object.assign(form, {
     id: row.id,
     username: row.username,
