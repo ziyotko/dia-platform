@@ -53,6 +53,14 @@ function getRequestPath(config: any): string {
   return url.split('?')[0]
 }
 
+function getBodyString(body: unknown): string {
+  if (body === undefined || body === null) return ''
+  if (typeof body === 'string') return body
+  if (Array.isArray(body) && body.length === 0) return ''
+  if (typeof body === 'object' && Object.keys(body).length === 0) return ''
+  return JSON.stringify(body)
+}
+
 async function createRequestSignature(
   signKey: string,
   method: string,
@@ -61,10 +69,12 @@ async function createRequestSignature(
   nonce: string,
   body: unknown
 ): Promise<string> {
-  const bodyString = typeof body === 'string' ? body : JSON.stringify(body || '')
+  const bodyString = getBodyString(body)
   const bodyHash = await sha256(bodyString)
   const payload = `${method.toUpperCase()}|${path}|${timestamp}|${nonce}|${bodyHash}`
-  return hmacSha256(payload, signKey)
+  const signature = await hmacSha256(payload, signKey)
+  console.log('[签名调试]', { method: method.toUpperCase(), path, timestamp, nonce, bodyType: typeof body, bodyString, bodyHash, signKey, payload, signature })
+  return signature
 }
 
 request.interceptors.request.use(

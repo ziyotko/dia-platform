@@ -67,6 +67,9 @@ func ReplayProtectionMiddleware() gin.HandlerFunc {
 			c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 
 			bodyHash := utils.Sha256(string(bodyBytes))
+			expected := utils.SignRequest(signKey, c.Request.Method, c.Request.URL.Path, timestampStr, nonce, bodyHash)
+			utils.Logger.Infof("[签名调试] method=%s path=%s timestamp=%s nonce=%s bodyHash=%s signKey=%s expected=%s received=%s",
+				c.Request.Method, c.Request.URL.Path, timestampStr, nonce, bodyHash, signKey, expected, signature)
 			if !utils.VerifyRequest(signKey, c.Request.Method, c.Request.URL.Path, timestampStr, nonce, bodyHash, signature) {
 				c.JSON(http.StatusOK, utils.Error(1, "请求签名无效"))
 				c.Abort()
