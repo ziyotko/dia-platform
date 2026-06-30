@@ -11,15 +11,18 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    open: true,
+    open: false,
+    host: '0.0.0.0',
     proxy: {
       '/miicapi': {
-        target: 'http://localhost:8080',
-        changeOrigin: true
+        target: 'http://127.0.0.1:8080',
+        changeOrigin: true,
+        secure: false
       },
       '/uploads': {
-        target: 'http://localhost:8080',
-        changeOrigin: true
+        target: 'http://127.0.0.1:8080',
+        changeOrigin: true, 
+        secure: false
       }
     }
   }

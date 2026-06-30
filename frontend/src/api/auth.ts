@@ -48,25 +48,25 @@ export interface ChangePasswordForm {
 }
 
 export function getCaptcha() {
-  return request.get<{ captcha_id: string; captcha_img: string }>('/captcha')
+  return request.get<{ captcha_id: string; captcha_img: string }>('captcha')
 }
 
 export function login(data: LoginData) {
-  return request.post<LoginResult>('/login', data)
+  return request.post<LoginResult>('login', data)
 }
 
 export function getUserInfo() {
-  return request.get<{ user: ProfileUser }>('/profile')
+  return request.get<{ user: ProfileUser }>('profile')
 }
 
 export function updateProfile(data: ProfileForm) {
-  return request.put('/profile', data)
+  return request.put('profile', data)
 }
 
 export function changePassword(data: ChangePasswordForm) {
-  return request.put('/profile/password', data)
+  return request.put('profile/password', data)
 }
 
 export function logout() {
-  return request.post('/logout')
+  return request.post('logout')
 }

@@ -23,8 +23,8 @@ redis:
   host: localhost
   port: 6379
   password: ""
-  db: 0
-  db1: 1
+  db: 9
+  db1: 10
 
 
 jwt:

@@ -44,10 +44,10 @@
             <el-button link type="primary" @click="handlePermission(row)">
               <el-icon><Key /></el-icon>权限
             </el-button>
-            <el-button link type="primary" @click="handleEdit(row)">
+            <el-button v-if="row.id !== 1" link type="primary" @click="handleEdit(row)">
               <el-icon><Edit /></el-icon>编辑
             </el-button>
-            <el-button link type="danger" @click="handleDelete(row)">
+            <el-button v-if="row.id !== 1" link type="danger" @click="handleDelete(row)">
               <el-icon><Delete /></el-icon>删除
             </el-button>
           </template>
@@ -103,7 +103,7 @@
 
     <el-dialog
       v-model="permissionVisible"
-      title="分配权限"
+      :title="isPermissionReadonly ? '查看权限' : '分配权限'"
       width="500px"
       destroy-on-close
     >
@@ -112,12 +112,12 @@
         :data="permissionData"
         show-checkbox
         node-key="id"
-        :props="{ label: 'name', children: 'children' }"
+        :props="{ label: 'name', children: 'children', disabled: () => isPermissionReadonly }"
         :default-expand-all="true"
       />
       <template #footer>
-        <el-button @click="permissionVisible = false">取消</el-button>
-        <el-button type="primary" :loading="permissionLoading" @click="handlePermissionSubmit">确定</el-button>
+        <el-button @click="permissionVisible = false">关闭</el-button>
+        <el-button v-if="!isPermissionReadonly" type="primary" :loading="permissionLoading" @click="handlePermissionSubmit">确定</el-button>
       </template>
     </el-dialog>
   </div>
@@ -148,6 +148,7 @@ const loading = ref(false)
 const dialogVisible = ref(false)
 const permissionVisible = ref(false)
 const permissionLoading = ref(false)
+const isPermissionReadonly = ref(false)
 const dialogTitle = ref('')
 const submitLoading = ref(false)
 const total = ref(0)
@@ -265,6 +266,7 @@ const handleDelete = (row: any) => {
 
 const handlePermission = async (row: any) => {
   currentRoleId.value = row.id
+  isPermissionReadonly.value = row.id === 1
   permissionVisible.value = true
   try {
     const [menuRes, permRes]: any[] = await Promise.all([
