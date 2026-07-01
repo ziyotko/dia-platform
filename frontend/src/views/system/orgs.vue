@@ -7,10 +7,9 @@
         </el-form-item>
         <el-form-item label="机构类型">
           <el-select v-model="queryForm.orgType" placeholder="全部类型" clearable style="width: 140px">
-            <el-option label="集团" :value="1" />
-            <el-option label="公司" :value="2" />
-            <el-option label="部门" :value="3" />
-            <el-option label="团队" :value="4" />
+            <el-option label="机构" :value="1" />
+            <el-option label="分支机构" :value="2" />
+            <el-option label="内设机构" :value="3" />
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
@@ -126,10 +125,9 @@
           <el-col :span="12">
             <el-form-item label="机构类型" prop="orgType">
               <el-select v-model="form.orgType" placeholder="请选择机构类型" style="width: 100%">
-                <el-option label="集团" :value="1" />
-                <el-option label="公司" :value="2" />
-                <el-option label="部门" :value="3" />
-                <el-option label="团队" :value="4" />
+                <el-option label="机构" :value="1" />
+                <el-option label="分支机构" :value="2" />
+                <el-option label="内设机构" :value="3" />
               </el-select>
             </el-form-item>
           </el-col>
