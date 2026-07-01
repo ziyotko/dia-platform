@@ -71,8 +71,8 @@ type TagArticleStat struct {
 func (s *TagService) GetTagArticleStats() ([]TagArticleStat, error) {
 	var results []TagArticleStat
 	err := utils.DB.Model(&models.Tag{}).
-		Select("tag.id as tag_id, tag.name, tag.color, COUNT(article_tags.article_id) as count").
-		Joins("LEFT JOIN article_tags ON article_tags.tag_id = tag.id").
+		Select("tag.id as tag_id, tag.name, tag.color, COUNT(article_tag.article_id) as count").
+		Joins("LEFT JOIN article_tag ON article_tag.tag_id = tag.id").
 		Group("tag.id").
 		Order("count DESC").
 		Scan(&results).Error

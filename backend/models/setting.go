@@ -2,7 +2,7 @@ package models
 
 import "gorm.io/gorm"
 
-type Settings struct {
+type Setting struct {
 	gorm.Model
 	SiteName          string `gorm:"size:100" json:"siteName"`
 	Logo              string `gorm:"size:500" json:"logo"`

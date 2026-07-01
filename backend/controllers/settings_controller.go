@@ -49,7 +49,7 @@ func (c *SettingsController) GetPublicSiteInfo(ctx *gin.Context) {
 }
 
 func (c *SettingsController) UpdateSettings(ctx *gin.Context) {
-	var req models.Settings
+	var req models.Setting
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
 		return

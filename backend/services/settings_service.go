@@ -11,12 +11,12 @@ import (
 
 type SettingsService struct{}
 
-func (s *SettingsService) GetSettings() (*models.Settings, error) {
-	var settings models.Settings
+func (s *SettingsService) GetSettings() (*models.Setting, error) {
+	var settings models.Setting
 	result := utils.DB.First(&settings)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			settings = models.Settings{
+			settings = models.Setting{
 				SiteName:          "门户网站管理后台",
 				Icp:               "京ICP备12345678号",
 				Copyright:         "门户网站管理系统 版权所有",
@@ -46,8 +46,8 @@ func (s *SettingsService) GetSettings() (*models.Settings, error) {
 	return &settings, nil
 }
 
-func (s *SettingsService) UpdateSettings(settings *models.Settings) error {
-	var existing models.Settings
+func (s *SettingsService) UpdateSettings(settings *models.Setting) error {
+	var existing models.Setting
 	result := utils.DB.First(&existing)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {

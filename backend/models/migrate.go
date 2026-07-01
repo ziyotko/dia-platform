@@ -9,7 +9,7 @@ func AllModels() []interface{} {
 		&OperationLog{},
 		&LoginLog{},
 		&SiteAnalytics{},
-		&Settings{},
+		&Setting{},
 		&Template{},
 		&Page{},
 		&Column{},
