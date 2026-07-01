@@ -4,10 +4,14 @@
       <div class="login-left">
         <div class="login-brand">
           <img v-if="siteInfo.logo" :src="resolveLogoUrl(siteInfo.logo)" alt="logo" class="login-logo" />
-          <el-icon v-else size="48" color="#409eff"><Platform /></el-icon>
+          <el-icon v-else size="72" color="#409eff"><Platform /></el-icon>
           <h1>{{ siteInfo.siteName }}</h1>
         </div>
         <div class="login-features">
+           <div class="feature-item">
+            <el-icon><Check /></el-icon>
+            <span>复杂组织机构管理</span>
+          </div>
           <div class="feature-item">
             <el-icon><Check /></el-icon>
             <span>统一内容管理</span>
@@ -97,7 +101,6 @@ import { ElMessage } from 'element-plus'
 import { User, Lock, Grid, Platform, Check } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { getCaptcha, login } from '@/api/auth'
-import { getPublicSiteInfo } from '@/api/settings'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -114,10 +117,10 @@ const form = reactive({
 })
 
 const siteInfo = reactive({
-  siteName: '门户网站管理后台',
-  logo: '',
+  siteName: '门户一体化统一管理后台',
+  logo: '/computer.svg',
   icp: '',
-  copyright: '门户网站管理系统 版权所有'
+  copyright: '机械工业信息中心数智应用处 版权所有'
 })
 
 const resolveLogoUrl = (url: string) => {
@@ -126,25 +129,6 @@ const resolveLogoUrl = (url: string) => {
   return `${window.location.origin}${url}`
 }
 
-const loadSiteInfo = async () => {
-  try {
-    const res: any = await getPublicSiteInfo()
-    if (res.data) {
-      siteInfo.siteName = res.data.siteName || siteInfo.siteName
-      siteInfo.logo = res.data.logo || ''
-      siteInfo.icp = res.data.icp || ''
-      siteInfo.copyright = res.data.copyright || siteInfo.copyright
-
-      document.title = siteInfo.siteName
-      const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null
-      if (favicon && siteInfo.logo) {
-        favicon.href = resolveLogoUrl(siteInfo.logo)
-      }
-    }
-  } catch {
-    // 使用默认值
-  }
-}
 
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
@@ -190,7 +174,17 @@ const handleLogin = async () => {
 
 onMounted(() => {
   refreshCaptcha()
-  loadSiteInfo()
+  document.title = siteInfo.siteName;
+  const existingLink = document.querySelector("link[rel*='icon']");
+  if (existingLink) {
+    (existingLink as HTMLLinkElement).href = resolveLogoUrl(siteInfo.logo);
+  } else {
+    const link = document.createElement('link');
+    link.type = 'image/x-icon';
+    link.rel = 'shortcut icon';
+    link.href = resolveLogoUrl(siteInfo.logo);
+    document.getElementsByTagName('head')[0].appendChild(link);
+  }
 })
 </script>
 
