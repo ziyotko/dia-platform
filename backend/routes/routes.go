@@ -26,6 +26,7 @@ func SetupRoutes(router *gin.Engine) {
 	adController := controllers.NewAdController()
 	linkController := controllers.NewLinkController()
 	deptController := controllers.NewDepartmentController()
+	orgController := controllers.NewOrganizationController()
 	dashboardController := controllers.NewDashboardController()
 	visitController := controllers.NewVisitController()
 	staticLogController := controllers.NewStaticLogController()
@@ -166,6 +167,14 @@ func SetupRoutes(router *gin.Engine) {
 		protected.POST("/departments", deptController.CreateDepartment)
 		protected.PUT("/departments/:id", deptController.UpdateDepartment)
 		protected.DELETE("/departments/:id", deptController.DeleteDepartment)
+
+		protected.GET("/organizations", orgController.GetOrganizations)
+		protected.GET("/organizations/tree", orgController.GetOrganizationTree)
+		protected.GET("/organizations/:id/users", orgController.GetOrganizationUsers)
+		protected.PUT("/organizations/:id/users", orgController.AssignOrganizationUsers)
+		protected.POST("/organizations", orgController.CreateOrganization)
+		protected.PUT("/organizations/:id", orgController.UpdateOrganization)
+		protected.DELETE("/organizations/:id", orgController.DeleteOrganization)
 
 		protected.GET("/dashboard/stats", dashboardController.GetStats)
 		protected.GET("/dashboard/login-logs", dashboardController.GetLoginLogs)

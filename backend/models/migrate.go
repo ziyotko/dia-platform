@@ -19,6 +19,7 @@ func AllModels() []interface{} {
 		&Ad{},
 		&Link{},
 		&Department{},
+		&Organization{},
 		&Workflow{},
 		&WorkflowNode{},
 		&ArticleColumnAudit{},
