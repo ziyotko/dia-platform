@@ -98,8 +98,9 @@ func (c *OrganizationController) GetOrganizations(ctx *gin.Context) {
 	}
 
 	tree := buildOrgTree(result.List)
+	orgNameMap := buildOrgNameMap(result.List)
 	for i := range tree {
-		if err := c.attachOrgDepartments(tree[i]); err != nil {
+		if err := c.attachOrgDepartments(tree[i], orgNameMap); err != nil {
 			ctx.JSON(http.StatusOK, utils.Error(1, "获取机构部门失败"))
 			return
 		}
@@ -110,7 +111,7 @@ func (c *OrganizationController) GetOrganizations(ctx *gin.Context) {
 	}))
 }
 
-func (c *OrganizationController) attachOrgDepartments(node gin.H) error {
+func (c *OrganizationController) attachOrgDepartments(node gin.H, orgNameMap map[uint]string) error {
 	id, ok := node["id"].(uint)
 	if !ok {
 		return nil
@@ -119,7 +120,7 @@ func (c *OrganizationController) attachOrgDepartments(node gin.H) error {
 	if err != nil {
 		return err
 	}
-	deptTree := buildDeptTree(depts)
+	deptTree := buildDeptTree(depts, orgNameMap)
 	node["departments"] = deptTree
 	if len(deptTree) > 0 {
 		node["hasChildren"] = true
@@ -127,7 +128,7 @@ func (c *OrganizationController) attachOrgDepartments(node gin.H) error {
 	children, ok := node["children"].([]gin.H)
 	if ok {
 		for i := range children {
-			if err := c.attachOrgDepartments(children[i]); err != nil {
+			if err := c.attachOrgDepartments(children[i], orgNameMap); err != nil {
 				return err
 			}
 		}

@@ -48,6 +48,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="code" label="部门编码" min-width="140" />
+        <el-table-column prop="orgName" label="所属机构" min-width="180" />
         <el-table-column prop="leader" label="负责人" min-width="120" />
         <el-table-column prop="leaderCode" label="负责人编码" min-width="140" />
         <el-table-column prop="userCount" label="人员数量" width="100" align="center" />
@@ -92,6 +93,17 @@
         :rules="formRules"
         label-width="90px"
       >
+        <el-form-item label="所属机构" prop="orgId">
+          <el-tree-select
+            v-model="form.orgId"
+            :data="orgTreeData"
+            :props="{ label: 'name', value: 'id', children: 'children' }"
+            placeholder="请选择所属机构"
+            clearable
+            check-strictly
+            style="width: 100%"
+          />
+        </el-form-item>
         <el-form-item label="上级部门">
           <el-tree-select
             v-model="form.parentId"
@@ -211,10 +223,13 @@ import {
   assignDepartmentUsers
 } from '@/api/department'
 import { getUserList } from '@/api/user'
+import { getOrgTree, type OrgItem } from '@/api/org'
 
 interface DeptItem {
   id: number
   parentId: number
+  orgId: number
+  orgName: string
   name: string
   code: string
   leader: string
@@ -260,6 +275,7 @@ const queryForm = reactive({
 const form = reactive({
   id: undefined as number | undefined,
   parentId: undefined as number | undefined,
+  orgId: undefined as number | undefined,
   name: '',
   code: '',
   leader: '',
@@ -272,12 +288,14 @@ const form = reactive({
 const formRules = {
   name: [{ required: true, message: '请输入部门名称', trigger: 'blur' }],
   code: [{ required: true, message: '请输入部门编码', trigger: 'blur' }],
+  orgId: [{ required: true, message: '请选择所属机构', trigger: 'change' }],
   leader: [{ required: true, message: '请输入负责人', trigger: 'blur' }],
   sort: [{ required: true, message: '请输入排序', trigger: 'blur' }]
 }
 
 const userOptions = ref<UserItem[]>([])
 const dialogUserOptions = ref<UserItem[]>([])
+const orgTreeData = ref<OrgItem[]>([])
 
 const filteredUserOptions = computed(() => {
   if (!userSearch.value) return userOptions.value
@@ -350,10 +368,21 @@ const fetchData = async () => {
   }
 }
 
+const fetchOrgTreeData = async () => {
+  try {
+    const res: any = await getOrgTree()
+    if (res && res.code === 0) {
+      orgTreeData.value = res.data || []
+    }
+  } catch (error) {
+    ElMessage.error('获取机构树失败')
+  }
+}
+
 const handleAdd = async () => {
   dialogTitle.value = '新增部门'
   resetForm()
-  await fetchDialogUsers()
+  await Promise.all([fetchOrgTreeData(), fetchDialogUsers()])
   dialogVisible.value = true
 }
 
@@ -361,7 +390,7 @@ const handleAddChild = async (row: DeptItem) => {
   dialogTitle.value = '新增子部门'
   resetForm()
   form.parentId = row.id
-  await fetchDialogUsers()
+  await Promise.all([fetchOrgTreeData(), fetchDialogUsers()])
   dialogVisible.value = true
 }
 
@@ -370,6 +399,7 @@ const handleEdit = async (row: DeptItem) => {
   Object.assign(form, {
     id: row.id,
     parentId: row.parentId === 0 ? undefined : row.parentId,
+    orgId: row.orgId,
     name: row.name,
     code: row.code,
     leader: row.leader,
@@ -378,7 +408,7 @@ const handleEdit = async (row: DeptItem) => {
     status: row.status,
     description: row.description
   })
-  await fetchDialogUsers()
+  await Promise.all([fetchOrgTreeData(), fetchDialogUsers()])
   dialogVisible.value = true
 }
 
@@ -413,6 +443,7 @@ const handleSubmit = async () => {
   try {
     const payload = {
       parentId: form.parentId || 0,
+      orgId: form.orgId,
       name: form.name,
       code: form.code,
       leader: form.leader,
@@ -444,6 +475,7 @@ const handleSubmit = async () => {
 const resetForm = () => {
   form.id = undefined
   form.parentId = undefined
+  form.orgId = undefined
   form.name = ''
   form.code = ''
   form.leader = ''
