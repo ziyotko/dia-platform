@@ -41,16 +41,15 @@
         default-expand-all
         :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
       >
-        <el-table-column prop="name" label="部门名称" min-width="180">
+        <el-table-column prop="name" label="部门名称" min-width="280">
           <template #default="{ row }">
             <el-icon style="margin-right: 6px; color: #409eff;"><OfficeBuilding /></el-icon>
             <span>{{ row.name }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="code" label="部门编码" min-width="140" />
-        <el-table-column prop="orgName" label="所属机构" min-width="180" />
-        <el-table-column prop="leader" label="负责人" min-width="120" />
-        <el-table-column prop="leaderCode" label="负责人编码" min-width="140" />
+        <el-table-column prop="orgName" label="所属机构" min-width="280" />
+        <el-table-column prop="leader" label="负责人" min-width="100" />
         <el-table-column prop="userCount" label="人员数量" width="100" align="center" />
         <el-table-column prop="sort" label="排序" width="80" align="center" />
         <el-table-column prop="status" label="状态" width="100" align="center">
@@ -61,7 +60,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="170" />
-        <el-table-column label="操作" width="260" align="center" fixed="right">
+        <el-table-column label="操作" width="360" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleAddChild(row)">
               <el-icon><CirclePlus /></el-icon>子部门
