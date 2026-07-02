@@ -12,6 +12,7 @@ type Department struct {
 	UpdatedAt   time.Time      `json:"updatedAt"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deletedAt"`
 	ParentID    uint           `gorm:"default:0;index" json:"parentId"`
+	OrgID       uint           `gorm:"default:0;index" json:"orgId"`
 	Name        string         `gorm:"size:50;not null" json:"name"`
 	Code        string         `gorm:"unique;size:50;not null" json:"code"`
 	Leader      string         `gorm:"size:50" json:"leader"`

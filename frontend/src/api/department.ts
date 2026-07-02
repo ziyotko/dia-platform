@@ -12,6 +12,7 @@ export interface DepartmentForm {
   name: string
   code: string
   parentId: number
+  orgId?: number
   leader: string
   leaderCode: string
   description: string

@@ -77,8 +77,8 @@
         <el-table-column prop="createTime" label="创建时间" width="170" />
         <el-table-column label="操作" width="300" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleAddChild(row)">
-              <el-icon><CirclePlus /></el-icon>子机构
+            <el-button link type="primary" @click="handleAddDept(row)">
+              <el-icon><CirclePlus /></el-icon>内设机构
             </el-button>
             <el-button link type="primary" @click="handleAssignUsers(row)">
               <el-icon><User /></el-icon>选人
@@ -224,6 +224,76 @@
       </template>
     </el-dialog>
 
+    <!-- 新增内设机构（部门）弹窗 -->
+    <el-dialog
+      v-model="deptDialogVisible"
+      title="新增内设机构"
+      width="520px"
+      destroy-on-close
+    >
+      <el-form
+        ref="deptFormRef"
+        :model="deptForm"
+        :rules="deptFormRules"
+        label-width="90px"
+      >
+        <el-form-item label="上级部门">
+          <el-tree-select
+            v-model="deptForm.parentId"
+            :data="deptTreeSelectData"
+            :props="{ label: 'name', value: 'id', children: 'children' }"
+            placeholder="请选择上级部门"
+            clearable
+            check-strictly
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="部门名称" prop="name">
+          <el-input v-model="deptForm.name" placeholder="请输入部门名称" />
+        </el-form-item>
+        <el-form-item label="部门编码" prop="code">
+          <el-input v-model="deptForm.code" placeholder="请输入部门编码" />
+        </el-form-item>
+        <el-form-item label="负责人" prop="leader">
+          <el-select
+            v-model="deptForm.leaderCode"
+            placeholder="请选择负责人"
+            clearable
+            filterable
+            style="width: 100%"
+          >
+            <el-option
+              v-for="user in dialogUserOptions"
+              :key="user.id"
+              :label="user.username"
+              :value="user.account"
+            >
+              <span style="display: flex; align-items: center; justify-content: space-between;">
+                <span>{{ user.username }} ({{ user.account }})</span>
+                <el-icon v-if="deptForm.leaderCode === user.account" color="#409eff"><Check /></el-icon>
+              </span>
+            </el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="显示排序" prop="sort">
+          <el-input-number v-model="deptForm.sort" :min="0" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="状态" prop="status">
+          <el-radio-group v-model="deptForm.status">
+            <el-radio :value="1">启用</el-radio>
+            <el-radio :value="0">禁用</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="deptForm.description" type="textarea" :rows="3" placeholder="请输入描述" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="deptDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="deptSubmitLoading" @click="handleDeptSubmit">确定</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 机构选人弹窗 -->
     <el-dialog
       v-model="userDialogVisible"
@@ -287,6 +357,10 @@ import {
   type OrgItem,
   type OrgForm
 } from '@/api/org'
+import {
+  createDepartment,
+  type DepartmentForm
+} from '@/api/department'
 import { getUserList } from '@/api/user'
 
 interface UserItem {
@@ -313,6 +387,29 @@ const userTableRef = ref()
 const currentOrgId = ref<number>(0)
 const currentOrgName = ref('')
 const selectedUserIds = ref<number[]>([])
+
+const deptDialogVisible = ref(false)
+const deptSubmitLoading = ref(false)
+const deptFormRef = ref()
+
+const deptForm = reactive({
+  id: undefined as number | undefined,
+  parentId: undefined as number | undefined,
+  orgId: undefined as number | undefined,
+  name: '',
+  code: '',
+  leader: '',
+  leaderCode: '',
+  sort: 0,
+  status: 1,
+  description: ''
+})
+
+const deptFormRules = {
+  name: [{ required: true, message: '请输入部门名称', trigger: 'blur' }],
+  code: [{ required: true, message: '请输入部门编码', trigger: 'blur' }],
+  sort: [{ required: true, message: '请输入排序', trigger: 'blur' }]
+}
 
 const queryForm = reactive({
   name: '',
@@ -373,6 +470,8 @@ const managerUserOptions = computed(() => {
   if (!isAddMode.value) return dialogUserOptions.value
   return dialogUserOptions.value.filter((user) => user.roleIds?.includes(2))
 })
+
+const deptTreeSelectData = computed(() => [])
 
 const filteredUserOptions = computed(() => {
   if (!userSearch.value) return userOptions.value
@@ -481,16 +580,14 @@ const handleAdd = async () => {
   dialogVisible.value = true
 }
 
-const handleAddChild = async (row: OrgItem) => {
-  dialogTitle.value = '新增子机构'
-  resetForm()
+const handleAddDept = async (row: OrgItem) => {
+  resetDeptForm()
   nextTick(() => {
-    formRef.value?.resetFields()
+    deptFormRef.value?.resetFields()
   })
-  form.parentId = row.id
-  form.orgLevel = (row.orgLevel || 1) + 1
+  deptForm.orgId = row.id
   await fetchDialogUsers()
-  dialogVisible.value = true
+  deptDialogVisible.value = true
 }
 
 const handleEdit = async (row: OrgItem) => {
@@ -587,6 +684,36 @@ const handleSubmit = async () => {
   }
 }
 
+const handleDeptSubmit = async () => {
+  const valid = await deptFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+  deptSubmitLoading.value = true
+  try {
+    const payload: DepartmentForm = {
+      parentId: deptForm.parentId || 0,
+      orgId: deptForm.orgId,
+      name: deptForm.name,
+      code: deptForm.code,
+      leader: deptForm.leader,
+      leaderCode: deptForm.leaderCode,
+      sort: deptForm.sort,
+      status: deptForm.status,
+      description: deptForm.description
+    }
+    const res: any = await createDepartment(payload)
+    if (res && res.code === 0) {
+      ElMessage.success('新增成功')
+      deptDialogVisible.value = false
+    } else {
+      ElMessage.error(res?.message || '新增失败')
+    }
+  } catch (error) {
+    ElMessage.error('提交失败')
+  } finally {
+    deptSubmitLoading.value = false
+  }
+}
+
 const resetForm = () => {
   form.id = undefined
   form.parentId = undefined
@@ -606,6 +733,19 @@ const resetForm = () => {
   form.description = ''
 }
 
+const resetDeptForm = () => {
+  deptForm.id = undefined
+  deptForm.parentId = undefined
+  deptForm.orgId = undefined
+  deptForm.name = ''
+  deptForm.code = ''
+  deptForm.leader = ''
+  deptForm.leaderCode = ''
+  deptForm.sort = 0
+  deptForm.status = 1
+  deptForm.description = ''
+}
+
 const syncManagerFromCode = () => {
   if (!form.managerCode) {
     form.manager = ''
@@ -616,6 +756,19 @@ const syncManagerFromCode = () => {
     form.manager = user.username
   } else {
     form.manager = ''
+  }
+}
+
+const syncDeptLeaderFromCode = () => {
+  if (!deptForm.leaderCode) {
+    deptForm.leader = ''
+    return
+  }
+  const user = dialogUserOptions.value.find((u) => u.account === deptForm.leaderCode)
+  if (user) {
+    deptForm.leader = user.username
+  } else {
+    deptForm.leader = ''
   }
 }
 
@@ -633,6 +786,8 @@ watch(() => form.parentId, (newParentId) => {
 
 watch(() => form.managerCode, syncManagerFromCode)
 watch(() => dialogUserOptions.value, syncManagerFromCode)
+watch(() => deptForm.leaderCode, syncDeptLeaderFromCode)
+watch(() => dialogUserOptions.value, syncDeptLeaderFromCode)
 
 const fetchDialogUsers = async () => {
   try {
