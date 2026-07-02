@@ -14,13 +14,15 @@ export const constantRoutes = [
     name: 'Login',
     component: () => import('@/views/login/index.vue'),
     meta: { public: true }
-  },
-  {
-    path: '/:pathMatch(.*)*',
-    name: 'NotFound',
-    component: () => import('@/views/error/404.vue')
   }
 ]
+
+// 404 路由，等动态路由加载完再注册，避免优先匹配到根路径 /
+const notFoundRoute = {
+  path: '/:pathMatch(.*)*',
+  name: 'NotFound',
+  component: () => import('@/views/error/404.vue')
+}
 
 const router = createRouter({
   history: createWebHistory(),
@@ -142,6 +144,14 @@ export function addDynamicRoutes(menus: MenuItem[]) {
   }
 
   router.addRoute(layoutRoute)
+
+  // 动态路由注册完成后再注册 404，确保 / 能匹配到 Layout 的 redirect
+  const oldNotFound = router.getRoutes().find(r => r.name === 'NotFound')
+  if (oldNotFound) {
+    router.removeRoute('NotFound')
+  }
+  router.addRoute(notFoundRoute)
+
   return children
 }
 
