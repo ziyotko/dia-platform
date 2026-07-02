@@ -455,7 +455,7 @@ const fetchWorkflows = async () => {
     const res: any = await getWorkflows({ pageSize: 1000 })
     workflowList.value = (res.data.list || []).filter((w: any) => w.status === 1)
   } catch (error) {
-    console.error('获取流程列表失败', error)
+    ElMessage.error('获取流程列表失败')
   }
 }
 
@@ -561,7 +561,7 @@ const fetchData = async () => {
     allPages.value = res.data || []
     selectedPage.value = null
   } catch (error) {
-    console.error('获取页面列表失败', error)
+    ElMessage.error('获取页面列表失败')
   } finally {
     pageLoading.value = false
   }
@@ -572,7 +572,7 @@ const fetchTemplates = async () => {
     const res: any = await getTemplateList({ pageSize: 100 })
     templateList.value = res.data.list || []
   } catch (error) {
-    console.error('获取模板列表失败', error)
+    ElMessage.error('获取模板列表失败')
   }
 }
 
@@ -583,7 +583,7 @@ const fetchColumns = async () => {
     const res: any = await getColumns({ pageId: selectedPage.value.id })
     allColumns.value = res.data || []
   } catch (error) {
-    console.error('获取栏目列表失败', error)
+    ElMessage.error('获取栏目列表失败')
   } finally {
     columnLoading.value = false
   }

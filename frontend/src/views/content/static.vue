@@ -456,7 +456,7 @@ const fetchLogList = async () => {
       logTotal.value = res.data.total || 0
     }
   } catch (error) {
-    console.error(error)
+    ElMessage.error('获取静态化日志失败')
   } finally {
     logLoading.value = false
   }
@@ -502,7 +502,7 @@ const fetchPageList = async () => {
       }
     }
   } catch (error) {
-    console.error(error)
+    ElMessage.error('获取静态化页面失败')
   } finally {
     loading.value = false
   }

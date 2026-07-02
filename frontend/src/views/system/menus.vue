@@ -224,7 +224,7 @@ const fetchMenus = async () => {
     tableData.value = res.data || []
     menuTreeData.value = [{ id: 0, parentId: 0, name: '顶级菜单', path: '', component: '', icon: '', type: 'directory', sort: 0, status: 1, children: [] }, ...tableData.value]
   } catch (error) {
-    console.error(error)
+    ElMessage.error('获取菜单列表失败')
   } finally {
     loading.value = false
   }
@@ -270,7 +270,7 @@ const handleDelete = (row: MenuItem) => {
       ElMessage.success('删除成功')
       fetchMenus()
     } catch (error) {
-      console.error(error)
+      ElMessage.error('删除菜单失败')
     }
   })
 }
@@ -292,7 +292,7 @@ const handleSubmit = async () => {
     dialogVisible.value = false
     fetchMenus()
   } catch (error) {
-    console.error(error)
+    ElMessage.error('提交失败')
   } finally {
     submitLoading.value = false
   }

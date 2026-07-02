@@ -183,6 +183,7 @@ import {
   Clock,
   EditPen
 } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { getDashboardStats, getLoginLogs, getVisitTrend, getMyAuditArticles } from '@/api/dashboard'
 
 const router = useRouter()
@@ -312,7 +313,7 @@ const fetchVisitTrend = async () => {
       nextTick(() => updateChart())
     }
   } catch (error) {
-    console.error('fetchVisitTrend error:', error)
+    ElMessage.error('获取访问趋势失败')
   }
 }
 

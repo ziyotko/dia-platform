@@ -255,7 +255,7 @@ const fetchData = async () => {
     tableData.value = res.data?.list || []
     total.value = res.data?.total || 0
   } catch (error) {
-    console.error('获取流程列表失败', error)
+    ElMessage.error('获取流程列表失败')
   } finally {
     loading.value = false
   }
@@ -313,7 +313,7 @@ const handleDelete = (row: any) => {
       ElMessage.success('删除成功')
       fetchData()
     } catch (error) {
-      console.error('删除流程失败', error)
+      ElMessage.error('删除流程失败')
     }
   })
 }
@@ -338,7 +338,7 @@ const handleSubmit = async () => {
     dialogVisible.value = false
     fetchData()
   } catch (error) {
-    console.error('提交流程失败', error)
+    ElMessage.error('提交流程失败')
   } finally {
     submitLoading.value = false
   }
@@ -420,7 +420,7 @@ const handleSaveDesign = async () => {
     designVisible.value = false
     fetchData()
   } catch (error) {
-    console.error('保存流程设计失败', error)
+    ElMessage.error('保存流程设计失败')
   } finally {
     designLoading.value = false
   }

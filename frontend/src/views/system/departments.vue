@@ -344,7 +344,7 @@ const fetchData = async () => {
       ElMessage.error(res?.message || '获取部门列表失败')
     }
   } catch (error) {
-    console.error('获取部门列表失败', error)
+    ElMessage.error('获取部门列表失败')
   } finally {
     loading.value = false
   }
@@ -401,7 +401,7 @@ const handleDelete = (row: DeptItem) => {
         ElMessage.error(res?.message || '删除失败')
       }
     } catch (error) {
-      console.error('删除部门失败', error)
+      ElMessage.error('删除部门失败')
     }
   })
 }
@@ -435,7 +435,7 @@ const handleSubmit = async () => {
       ElMessage.error(res?.message || (form.id ? '修改失败' : '新增失败'))
     }
   } catch (error) {
-    console.error('提交失败', error)
+    ElMessage.error('提交失败')
   } finally {
     submitLoading.value = false
   }
@@ -482,7 +482,7 @@ const fetchDialogUsers = async () => {
       }))
     }
   } catch (error) {
-    console.error('获取用户列表失败', error)
+    ElMessage.error('获取用户列表失败')
   }
 }
 
@@ -499,7 +499,7 @@ const fetchUsers = async () => {
       }))
     }
   } catch (error) {
-    console.error('获取用户列表失败', error)
+    ElMessage.error('获取用户列表失败')
   }
 }
 
@@ -522,7 +522,7 @@ const handleAssignUsers = async (row: DeptItem) => {
       })
     })
   } catch (error) {
-    console.error('获取部门用户失败', error)
+    ElMessage.error('获取部门用户失败')
   } finally {
     userLoading.value = false
   }
@@ -544,7 +544,7 @@ const handleUserSubmit = async () => {
       ElMessage.error(res?.message || '人员分配失败')
     }
   } catch (error) {
-    console.error('人员分配失败', error)
+    ElMessage.error('人员分配失败')
   } finally {
     userSubmitLoading.value = false
   }

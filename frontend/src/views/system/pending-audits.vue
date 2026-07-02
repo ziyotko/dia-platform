@@ -54,6 +54,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { RefreshRight, View } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { getMyAuditArticles } from '@/api/dashboard'
 
 const router = useRouter()
@@ -79,7 +80,7 @@ const fetchData = async () => {
       total.value = res.data.total || 0
     }
   } catch (error) {
-    console.error(error)
+    ElMessage.error('获取待审核文章失败')
   } finally {
     loading.value = false
   }

@@ -196,7 +196,7 @@ const fetchRoles = async () => {
       roleOptions.value = res.data || []
     }
   } catch (error) {
-    console.error('获取角色列表失败', error)
+    ElMessage.error('获取角色列表失败')
   }
 }
 
@@ -226,7 +226,7 @@ const fetchData = async () => {
     tableData.value = res.data.list || []
     total.value = res.data.total || 0
   } catch (error) {
-    console.error('获取用户列表失败', error)
+    ElMessage.error('获取用户列表失败')
   } finally {
     loading.value = false
   }
@@ -266,7 +266,7 @@ const handleDelete = (row: any) => {
       ElMessage.success('删除成功')
       fetchData()
     } catch (error) {
-      console.error('删除用户失败', error)
+      ElMessage.error('删除用户失败')
     }
   })
 }
@@ -277,7 +277,7 @@ const handleStatusChange = async (row: any, val: number) => {
     ElMessage.success(`用户状态已${val === 1 ? '启用' : '禁用'}`)
   } catch (error) {
     row.status = val === 1 ? 0 : 1
-    console.error('更新状态失败', error)
+    ElMessage.error('更新状态失败')
   }
 }
 
@@ -312,7 +312,7 @@ const handleSubmit = async () => {
     dialogVisible.value = false
     fetchData()
   } catch (error) {
-    console.error('提交失败', error)
+    ElMessage.error('提交失败')
   } finally {
     submitLoading.value = false
   }

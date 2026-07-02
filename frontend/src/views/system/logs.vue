@@ -181,7 +181,7 @@ const fetchData = async () => {
       total.value = res.data.total || 0
     }
   } catch (error) {
-    console.error(error)
+    ElMessage.error('获取日志列表失败')
   } finally {
     loading.value = false
   }
@@ -200,7 +200,7 @@ const handleClear = () => {
         fetchData()
       }
     } catch (error) {
-      console.error(error)
+      ElMessage.error('清空日志失败')
     }
   })
 }

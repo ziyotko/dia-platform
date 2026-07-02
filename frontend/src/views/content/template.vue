@@ -584,7 +584,7 @@ const fetchData = async () => {
     tableData.value = res.data.list || []
     total.value = res.data.total || 0
   } catch (error) {
-    console.error('获取模板列表失败', error)
+    ElMessage.error('获取模板列表失败')
   } finally {
     loading.value = false
   }
@@ -638,7 +638,7 @@ const handleDelete = (row: TemplateItem) => {
       ElMessage.success('删除成功')
       fetchData()
     } catch (error) {
-      console.error('删除模板失败', error)
+      ElMessage.error('删除模板失败')
     }
   })
 }
@@ -649,7 +649,7 @@ const handleStatusChange = async (row: TemplateItem, val: number) => {
     ElMessage.success(`模板状态已${val === 1 ? '启用' : '禁用'}`)
   } catch (error) {
     row.status = val === 1 ? 0 : 1
-    console.error('更新状态失败', error)
+    ElMessage.error('更新状态失败')
   }
 }
 
@@ -680,7 +680,7 @@ const handleSubmit = async () => {
     dialogVisible.value = false
     fetchData()
   } catch (error) {
-    console.error('提交失败', error)
+    ElMessage.error('提交失败')
   } finally {
     submitLoading.value = false
   }
@@ -832,7 +832,7 @@ const handleDesignSave = async () => {
     designDialogVisible.value = false
     fetchData()
   } catch (error) {
-    console.error('保存设计失败', error)
+    ElMessage.error('保存设计失败')
   } finally {
     designSubmitLoading.value = false
   }
@@ -851,7 +851,7 @@ const handleViewPages = async (row: TemplateItem) => {
     linkPages.value = res.data || []
     linkDialogVisible.value = true
   } catch (error) {
-    console.error('获取关联页面失败', error)
+    ElMessage.error('获取关联页面失败')
   }
 }
 
