@@ -194,11 +194,11 @@
                   v-for="user in managerUserOptions"
                   :key="user.id"
                   :label="user.username"
-                  :value="user.account"
+                  :value="user.id"
                 >
                   <span style="display: flex; align-items: center; justify-content: space-between;">
                     <span>{{ user.username }} ({{ user.account }})</span>
-                    <el-icon v-if="form.managerCode === user.account" color="#409eff"><Check /></el-icon>
+                    <el-icon v-if="form.managerCode === String(user.id)" color="#409eff"><Check /></el-icon>
                   </span>
                 </el-option>
               </el-select>
@@ -481,14 +481,11 @@ const orgTypeTagType = (value: number) => {
   return orgTypeOptions.find((item) => item.value === value)?.tagType || ''
 }
 
-const isAddMode = computed(() => !form.id)
+const managerLabel = computed(() => ('管理员'))
 
-const managerLabel = computed(() => (isAddMode.value ? '管理员' : '负责人'))
-
-const managerPlaceholder = computed(() => (isAddMode.value ? '请选择管理员' : '请选择负责人'))
+const managerPlaceholder = computed(() => ('请选择管理员'))
 
 const managerUserOptions = computed(() => {
-  if (!isAddMode.value) return dialogUserOptions.value
   return dialogUserOptions.value.filter((user) => user.roleIds?.includes(2))
 })
 
@@ -777,7 +774,7 @@ const syncManagerFromCode = () => {
     form.manager = ''
     return
   }
-  const user = dialogUserOptions.value.find((u) => u.account === form.managerCode)
+  const user = dialogUserOptions.value.find((u) => String(u.id) === form.managerCode)
   if (user) {
     form.manager = user.username
   } else {
