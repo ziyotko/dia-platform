@@ -194,7 +194,7 @@
                   v-for="user in managerUserOptions"
                   :key="user.id"
                   :label="user.username"
-                  :value="user.id"
+                  :value="String(user.id)"
                 >
                   <span style="display: flex; align-items: center; justify-content: space-between;">
                     <span>{{ user.username }} ({{ user.account }})</span>

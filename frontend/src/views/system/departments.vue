@@ -133,11 +133,11 @@
               v-for="user in dialogUserOptions"
               :key="user.id"
               :label="user.username"
-              :value="user.account"
+              :value="String(user.id)"
             >
               <span style="display: flex; align-items: center; justify-content: space-between;">
                 <span>{{ user.username }} ({{ user.account }})</span>
-                <el-icon v-if="form.leaderCode === user.account" color="#409eff"><Check /></el-icon>
+                <el-icon v-if="form.leaderCode === String(user.id)" color="#409eff"><Check /></el-icon>
               </span>
             </el-option>
           </el-select>
@@ -490,7 +490,7 @@ const syncLeaderFromCode = () => {
     form.leader = ''
     return
   }
-  const user = dialogUserOptions.value.find((u) => u.account === form.leaderCode)
+  const user = dialogUserOptions.value.find((u) => String(u.id) === form.leaderCode)
   if (user) {
     form.leader = user.username
   } else {

@@ -35,13 +35,9 @@ type Organization struct {
 func (o Organization) OrgTypeText() string {
 	switch o.OrgType {
 	case 1:
-		return "集团"
+		return "机构"
 	case 2:
-		return "公司"
-	case 3:
-		return "部门"
-	case 4:
-		return "团队"
+		return "分支机构"
 	default:
 		return "其他"
 	}
