@@ -291,7 +291,7 @@ const filteredUserOptions = computed(() => {
 })
 
 const deptTreeSelectData = computed(() => {
-  return [{ id: 0, parentId: 0, name: '顶级部门', children: [], hasChildren: false }, ...tableData.value]
+  return [...tableData.value]
 })
 
 const filteredTableData = computed(() => {

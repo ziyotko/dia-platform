@@ -26,6 +26,23 @@ export interface OrgForm {
   userIds?: number[]
 }
 
+export interface DepartmentItem {
+  id: number
+  parentId: number
+  orgId: number
+  name: string
+  code: string
+  leader: string
+  leaderCode: string
+  sort: number
+  status: number
+  description: string
+  userCount: number
+  createTime: string
+  children?: DepartmentItem[]
+  hasChildren?: boolean
+}
+
 export interface OrgItem {
   id: number
   parentId: number
@@ -48,6 +65,7 @@ export interface OrgItem {
   createTime: string
   children?: OrgItem[]
   hasChildren?: boolean
+  departments?: DepartmentItem[]
 }
 
 export function getOrgList(params?: OrgQuery) {

@@ -14,12 +14,14 @@ import (
 type OrganizationController struct {
 	orgService  *services.OrganizationService
 	userService *services.UserService
+	deptService *services.DepartmentService
 }
 
 func NewOrganizationController() *OrganizationController {
 	return &OrganizationController{
 		orgService:  &services.OrganizationService{},
 		userService: &services.UserService{},
+		deptService: &services.DepartmentService{},
 	}
 }
 
@@ -51,6 +53,7 @@ func buildOrgTree(list []models.Organization) []gin.H {
 			"createTime":  item.CreatedAt.Format("2006-01-02 15:04:05"),
 			"children":    []gin.H{},
 			"hasChildren": false,
+			"departments": []gin.H{},
 		}
 		nodeMap[item.ID] = &node
 	}
@@ -95,10 +98,41 @@ func (c *OrganizationController) GetOrganizations(ctx *gin.Context) {
 	}
 
 	tree := buildOrgTree(result.List)
+	for i := range tree {
+		if err := c.attachOrgDepartments(tree[i]); err != nil {
+			ctx.JSON(http.StatusOK, utils.Error(1, "获取机构部门失败"))
+			return
+		}
+	}
 	ctx.JSON(http.StatusOK, utils.Success("获取机构列表成功", gin.H{
 		"list":  tree,
 		"total": result.Total,
 	}))
+}
+
+func (c *OrganizationController) attachOrgDepartments(node gin.H) error {
+	id, ok := node["id"].(uint)
+	if !ok {
+		return nil
+	}
+	depts, err := c.deptService.GetDepartmentsByOrgID(id)
+	if err != nil {
+		return err
+	}
+	deptTree := buildDeptTree(depts)
+	node["departments"] = deptTree
+	if len(deptTree) > 0 {
+		node["hasChildren"] = true
+	}
+	children, ok := node["children"].([]gin.H)
+	if ok {
+		for i := range children {
+			if err := c.attachOrgDepartments(children[i]); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (c *OrganizationController) GetOrganizationTree(ctx *gin.Context) {

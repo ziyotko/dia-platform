@@ -53,6 +53,15 @@ func (s *DepartmentService) GetDepartmentTree() ([]models.Department, error) {
 	return departments, nil
 }
 
+func (s *DepartmentService) GetDepartmentsByOrgID(orgID uint) ([]models.Department, error) {
+	var departments []models.Department
+	err := utils.DB.Where("org_id = ?", orgID).Order("sort ASC, id ASC").Find(&departments).Error
+	if err != nil {
+		return nil, err
+	}
+	return departments, nil
+}
+
 func (s *DepartmentService) GetDepartmentByID(id uint) (*models.Department, error) {
 	var dept models.Department
 	if err := utils.DB.First(&dept, id).Error; err != nil {

@@ -62,6 +62,27 @@
           </template>
         </el-table-column>
         <el-table-column prop="orgLevel" label="层级" width="80" align="center" />
+        <el-table-column label="部门层级" min-width="220">
+          <template #default="{ row }">
+            <div v-if="row.departments && row.departments.length" class="dept-tree">
+              <el-tree
+                :data="row.departments"
+                :props="{ label: 'name', children: 'children' }"
+                node-key="id"
+                default-expand-all
+                :expand-on-click-node="false"
+              >
+                <template #default="{ data }">
+                  <span class="dept-node">
+                    <el-icon size="12" color="#67c23a"><OfficeBuilding /></el-icon>
+                    <span>{{ data.name }}</span>
+                  </span>
+                </template>
+              </el-tree>
+            </div>
+            <span v-else class="dept-empty">—</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="category" label="机构分类" min-width="120" />
         <el-table-column prop="region" label="所属区域" min-width="140" show-overflow-tooltip />
         <el-table-column prop="manager" label="管理员" min-width="60" />
@@ -471,7 +492,11 @@ const managerUserOptions = computed(() => {
   return dialogUserOptions.value.filter((user) => user.roleIds?.includes(2))
 })
 
-const deptTreeSelectData = computed(() => [])
+const deptTreeSelectData = computed(() => {
+  if (!deptForm.orgId) return []
+  const org = findOrgById(tableData.value, deptForm.orgId)
+  return org?.departments || []
+})
 
 const filteredUserOptions = computed(() => {
   if (!userSearch.value) return userOptions.value
@@ -704,6 +729,7 @@ const handleDeptSubmit = async () => {
     if (res && res.code === 0) {
       ElMessage.success('新增成功')
       deptDialogVisible.value = false
+      fetchData()
     } else {
       ElMessage.error(res?.message || '新增失败')
     }
@@ -910,6 +936,30 @@ onMounted(() => {
     margin-bottom: 16px;
     font-weight: 600;
     color: #2c3e50;
+  }
+
+  .dept-tree {
+    margin-top: 6px;
+    padding: 6px 10px;
+    background-color: #f7fafc;
+    border-radius: 6px;
+
+    .dept-node {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 13px;
+      color: #606266;
+    }
+
+    :deep(.el-tree-node__content) {
+      height: 26px;
+    }
+  }
+
+  .dept-empty {
+    color: #c0c4cc;
+    font-size: 13px;
   }
 }
 </style>
