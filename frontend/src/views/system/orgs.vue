@@ -9,7 +9,6 @@
           <el-select v-model="queryForm.orgType" placeholder="全部类型" clearable style="width: 140px">
             <el-option label="机构" :value="1" />
             <el-option label="分支机构" :value="2" />
-            <el-option label="内设机构" :value="3" />
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
@@ -127,7 +126,6 @@
               <el-select v-model="form.orgType" placeholder="请选择机构类型" style="width: 100%">
                 <el-option label="机构" :value="1" />
                 <el-option label="分支机构" :value="2" />
-                <el-option label="内设机构" :value="3" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -163,16 +161,16 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="负责人">
+            <el-form-item :label="managerLabel">
               <el-select
                 v-model="form.managerCode"
-                placeholder="请选择负责人"
+                :placeholder="managerPlaceholder"
                 clearable
                 filterable
                 style="width: 100%"
               >
                 <el-option
-                  v-for="user in dialogUserOptions"
+                  v-for="user in managerUserOptions"
                   :key="user.id"
                   :label="user.username"
                   :value="user.account"
@@ -297,6 +295,7 @@ interface UserItem {
   account: string
   nickname: string
   phone: string
+  roleIds?: number[]
 }
 
 const loading = ref(false)
@@ -326,7 +325,7 @@ const form = reactive<OrgForm>({
   parentId: undefined,
   name: '',
   code: '',
-  orgType: 3,
+  orgType: undefined,
   orgLevel: 1,
   category: '',
   region: '',
@@ -352,10 +351,8 @@ const userOptions = ref<UserItem[]>([])
 const dialogUserOptions = ref<UserItem[]>([])
 
 const orgTypeOptions = [
-  { value: 1, label: '集团', tagType: 'danger' },
-  { value: 2, label: '公司', tagType: 'warning' },
-  { value: 3, label: '部门', tagType: 'primary' },
-  { value: 4, label: '团队', tagType: 'success' }
+  { value: 1, label: '机构', tagType: 'danger' },
+  { value: 2, label: '分支机构', tagType: 'warning' },
 ]
 
 const orgTypeText = (value: number) => {
@@ -365,6 +362,17 @@ const orgTypeText = (value: number) => {
 const orgTypeTagType = (value: number) => {
   return orgTypeOptions.find((item) => item.value === value)?.tagType || ''
 }
+
+const isAddMode = computed(() => !form.id)
+
+const managerLabel = computed(() => (isAddMode.value ? '管理员' : '负责人'))
+
+const managerPlaceholder = computed(() => (isAddMode.value ? '请选择管理员' : '请选择负责人'))
+
+const managerUserOptions = computed(() => {
+  if (!isAddMode.value) return dialogUserOptions.value
+  return dialogUserOptions.value.filter((user) => user.roleIds?.includes(2))
+})
 
 const filteredUserOptions = computed(() => {
   if (!userSearch.value) return userOptions.value
@@ -377,8 +385,18 @@ const filteredUserOptions = computed(() => {
   )
 })
 
+const hasTopLevelOrg = computed(() => {
+  return tableData.value.some((item) => item.parentId === 0)
+})
+
+const isTopLevelEdit = computed(() => {
+  return !!form.id && form.parentId === undefined
+})
+
 const orgTreeSelectData = computed(() => {
-  return [{ id: 0, parentId: 0, name: '顶级机构', children: [], hasChildren: false }, ...tableData.value]
+  const topOption = { id: 0, parentId: 0, name: '顶级机构', children: [], hasChildren: false }
+  const canSelectTopLevel = !hasTopLevelOrg.value || isTopLevelEdit.value
+  return canSelectTopLevel ? [topOption, ...tableData.value] : tableData.value
 })
 
 const filteredTableData = computed(() => {
@@ -445,6 +463,9 @@ const fetchData = async () => {
 const handleAdd = async () => {
   dialogTitle.value = '新增机构'
   resetForm()
+  nextTick(() => {
+    formRef.value?.resetFields()
+  })
   await fetchDialogUsers()
   dialogVisible.value = true
 }
@@ -452,6 +473,9 @@ const handleAdd = async () => {
 const handleAddChild = async (row: OrgItem) => {
   dialogTitle.value = '新增子机构'
   resetForm()
+  nextTick(() => {
+    formRef.value?.resetFields()
+  })
   form.parentId = row.id
   form.orgLevel = (row.orgLevel || 1) + 1
   await fetchDialogUsers()
@@ -509,6 +533,10 @@ const handleDelete = (row: OrgItem) => {
 const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
+  if (!form.id && hasTopLevelOrg.value && !form.parentId) {
+    ElMessage.error('已有顶级机构，请选择上级机构')
+    return
+  }
   submitLoading.value = true
   try {
     const payload: OrgForm = {
@@ -553,7 +581,7 @@ const resetForm = () => {
   form.parentId = undefined
   form.name = ''
   form.code = ''
-  form.orgType = 3
+  form.orgType = undefined
   form.orgLevel = 1
   form.category = ''
   form.region = ''
@@ -592,7 +620,8 @@ const fetchDialogUsers = async () => {
         username: u.username,
         account: u.account,
         nickname: u.nickname,
-        phone: u.phone || u.mobile || ''
+        phone: u.phone || u.mobile || '',
+        roleIds: u.roleIds || []
       }))
     }
   } catch (error) {

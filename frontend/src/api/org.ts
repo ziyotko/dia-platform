@@ -11,7 +11,7 @@ export interface OrgForm {
   parentId?: number
   name: string
   code: string
-  orgType: number
+  orgType?: number
   orgLevel: number
   category: string
   region: string

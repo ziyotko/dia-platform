@@ -44,10 +44,10 @@
             <el-button link type="primary" @click="handlePermission(row)">
               <el-icon><Key /></el-icon>权限
             </el-button>
-            <el-button v-if="row.id !== 1" link type="primary" @click="handleEdit(row)">
+            <el-button v-if="row.id !== 1 && row.id !== 2" link type="primary" @click="handleEdit(row)">
               <el-icon><Edit /></el-icon>编辑
             </el-button>
-            <el-button v-if="row.id !== 1" link type="danger" @click="handleDelete(row)">
+            <el-button v-if="row.id !== 1 && row.id !== 2" link type="danger" @click="handleDelete(row)">
               <el-icon><Delete /></el-icon>删除
             </el-button>
           </template>
@@ -266,7 +266,7 @@ const handleDelete = (row: any) => {
 
 const handlePermission = async (row: any) => {
   currentRoleId.value = row.id
-  isPermissionReadonly.value = row.id === 1
+  isPermissionReadonly.value = row.id === 1 || row.id === 2
   permissionVisible.value = true
   try {
     const [menuRes, permRes]: any[] = await Promise.all([
