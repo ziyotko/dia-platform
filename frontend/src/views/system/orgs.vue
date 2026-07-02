@@ -64,7 +64,7 @@
         <el-table-column prop="orgLevel" label="层级" width="80" align="center" />
         <el-table-column prop="category" label="机构分类" min-width="120" />
         <el-table-column prop="region" label="所属区域" min-width="140" show-overflow-tooltip />
-        <el-table-column prop="manager" label="负责人" min-width="120" />
+        <el-table-column prop="manager" label="管理员" min-width="60" />
         <el-table-column prop="userCount" label="人员数量" width="100" align="center" />
         <el-table-column prop="sort" label="排序" width="80" align="center" />
         <el-table-column prop="status" label="状态" width="100" align="center">
@@ -429,6 +429,17 @@ function filterTree(nodes: OrgItem[], predicate: (item: OrgItem) => boolean): Or
   return result
 }
 
+function findOrgById(nodes: OrgItem[], id: number): OrgItem | undefined {
+  for (const node of nodes) {
+    if (node.id === id) return node
+    if (node.children && node.children.length > 0) {
+      const found = findOrgById(node.children, id)
+      if (found) return found
+    }
+  }
+  return undefined
+}
+
 const handleSearch = () => {
   fetchData()
 }
@@ -607,6 +618,18 @@ const syncManagerFromCode = () => {
     form.manager = ''
   }
 }
+
+watch(() => form.parentId, (newParentId) => {
+  if (form.id) return
+  if (!newParentId || newParentId === 0) {
+    form.orgLevel = 1
+    return
+  }
+  const parent = findOrgById(tableData.value, newParentId)
+  if (parent) {
+    form.orgLevel = (parent.orgLevel || 1) + 1
+  }
+})
 
 watch(() => form.managerCode, syncManagerFromCode)
 watch(() => dialogUserOptions.value, syncManagerFromCode)
