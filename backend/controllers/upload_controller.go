@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"server/config"
 	"server/services"
 	"server/utils"
 
@@ -102,6 +103,6 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 		}
 	}
 	ctx.JSON(http.StatusOK, utils.Success("上传成功", gin.H{
-		"url": fileURL,
+		"url": config.AppConfig.Server.UploadDirPrefix + fileURL,
 	}))
 }
