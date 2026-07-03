@@ -86,7 +86,7 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 	filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
 	dst := filepath.Join(uploadDir, filename)
 
-	if err := ctx.SaveUploadedFile(file, dst); err != nil {
+	if err := ctx.SaveUploadedFile(file, dst, 0755); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "保存文件失败"))
 		return
 	}
