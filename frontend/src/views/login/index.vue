@@ -101,6 +101,7 @@ import { ElMessage } from 'element-plus'
 import { User, Lock, Grid, Platform, Check } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { getCaptcha, login } from '@/api/auth'
+import { getPublicSiteInfo } from '@/api/settings'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -126,6 +127,27 @@ const siteInfo = reactive({
 const resolveLogoUrl = (url: string) => {
   return url
 }
+
+const loadSiteInfo = async () => {
+  try {
+    const res: any = await getPublicSiteInfo()
+    if (res.data) {
+      siteInfo.siteName = res.data.siteName || siteInfo.siteName
+      siteInfo.logo = res.data.logo || ''
+      siteInfo.icp = res.data.icp || ''
+      siteInfo.copyright = res.data.copyright || siteInfo.copyright
+
+      document.title = siteInfo.siteName
+      const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null
+      if (favicon && siteInfo.logo) {
+        favicon.href = resolveLogoUrl(siteInfo.logo)
+      }
+    }
+  } catch {
+    // 使用默认值
+  }
+}
+
 
 
 const rules = {
@@ -172,17 +194,7 @@ const handleLogin = async () => {
 
 onMounted(() => {
   refreshCaptcha()
-  document.title = siteInfo.siteName;
-  const existingLink = document.querySelector("link[rel*='icon']");
-  if (existingLink) {
-    (existingLink as HTMLLinkElement).href = resolveLogoUrl(siteInfo.logo);
-  } else {
-    const link = document.createElement('link');
-    link.type = 'image/x-icon';
-    link.rel = 'shortcut icon';
-    link.href = resolveLogoUrl(siteInfo.logo);
-    document.getElementsByTagName('head')[0].appendChild(link);
-  }
+  loadSiteInfo()
 })
 </script>
 
@@ -244,8 +256,8 @@ onMounted(() => {
   margin-bottom: 50px;
 
   .login-logo {
-    width: 48px;
-    height: 48px;
+    width: 96px;
+    height: 96px;
     object-fit: contain;
     border-radius: 8px;
   }
