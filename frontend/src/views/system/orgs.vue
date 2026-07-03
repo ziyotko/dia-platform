@@ -96,13 +96,13 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="170" />
-        <el-table-column label="操作" width="300" align="center" fixed="right">
+        <el-table-column label="操作" width="360" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleAddDept(row)">
               <el-icon><CirclePlus /></el-icon>内设机构
             </el-button>
             <el-button link type="primary" @click="handleAssignUsers(row)">
-              <el-icon><User /></el-icon>选人
+              <el-icon><User /></el-icon>人员查看
             </el-button>
             <el-button link type="primary" @click="handleEdit(row)">
               <el-icon><Edit /></el-icon>编辑
@@ -315,10 +315,10 @@
       </template>
     </el-dialog>
 
-    <!-- 机构选人弹窗 -->
+    <!-- 机构人员查看弹窗 -->
     <el-dialog
       v-model="userDialogVisible"
-      title="机构选人"
+      title="机构人员"
       width="700px"
       destroy-on-close
     >
@@ -332,23 +332,35 @@
         />
       </div>
       <el-table
-        :data="filteredUserOptions"
+        :data="paginatedUserOptions"
         v-loading="userLoading"
         border
         stripe
-        height="360"
-        @selection-change="handleUserSelectionChange"
-        ref="userTableRef"
+        height="320"
       >
-        <el-table-column type="selection" width="55" align="center" />
+        <el-table-column label="序号" width="60" align="center">
+          <template #default="{ $index }">
+            {{ (userPage - 1) * userPageSize + $index + 1 }}
+          </template>
+        </el-table-column>
         <el-table-column prop="username" label="用户名" min-width="120" />
         <el-table-column prop="account" label="账号" min-width="120" />
         <el-table-column prop="nickname" label="昵称" min-width="120" />
         <el-table-column prop="phone" label="手机号" min-width="130" />
       </el-table>
+      <div class="user-pagination">
+        <el-pagination
+          v-model:current-page="userPage"
+          v-model:page-size="userPageSize"
+          :page-sizes="[6]"
+          :total="userTotal"
+          layout="total, prev, pager, next"
+          :pager-count="5"
+          small
+        />
+      </div>
       <template #footer>
-        <el-button @click="userDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="userSubmitLoading" @click="handleUserSubmit">确定</el-button>
+        <el-button @click="userDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
   </div>
@@ -374,7 +386,6 @@ import {
   updateOrg,
   deleteOrg,
   getOrgUsers,
-  assignOrgUsers,
   type OrgItem,
   type OrgForm
 } from '@/api/org'
@@ -402,9 +413,9 @@ const tableData = ref<OrgItem[]>([])
 
 const userDialogVisible = ref(false)
 const userLoading = ref(false)
-const userSubmitLoading = ref(false)
 const userSearch = ref('')
-const userTableRef = ref()
+const userPage = ref(1)
+const userPageSize = ref(6)
 const currentOrgId = ref<number>(0)
 const currentOrgName = ref('')
 const selectedUserIds = ref<number[]>([])
@@ -504,6 +515,13 @@ const filteredUserOptions = computed(() => {
       u.account.toLowerCase().includes(keyword) ||
       u.nickname.toLowerCase().includes(keyword)
   )
+})
+
+const userTotal = computed(() => filteredUserOptions.value.length)
+
+const paginatedUserOptions = computed(() => {
+  const start = (userPage.value - 1) * userPageSize.value
+  return filteredUserOptions.value.slice(start, start + userPageSize.value)
 })
 
 const hasTopLevelOrg = computed(() => {
@@ -811,6 +829,9 @@ watch(() => form.managerCode, syncManagerFromCode)
 watch(() => dialogUserOptions.value, syncManagerFromCode)
 watch(() => deptForm.leaderCode, syncDeptLeaderFromCode)
 watch(() => dialogUserOptions.value, syncDeptLeaderFromCode)
+watch(userSearch, () => {
+  userPage.value = 1
+})
 
 const fetchDialogUsers = async () => {
   try {
@@ -830,67 +851,37 @@ const fetchDialogUsers = async () => {
   }
 }
 
-const fetchUsers = async () => {
+const handleAssignUsers = async (row: OrgItem) => {
+  currentOrgId.value = row.id
+  currentOrgName.value = row.name
+  userDialogVisible.value = true
+  userLoading.value = true
+  userSearch.value = ''
+  userPage.value = 1
+  selectedUserIds.value = []
+  userOptions.value = []
   try {
-    const res: any = await getUserList({ page: 1, pageSize: 1000 })
-    if (res && res.code === 0) {
-      userOptions.value = (res.data.list || []).map((u: any) => ({
+    const [usersRes, orgUsersRes]: any[] = await Promise.all([
+      getUserList({ page: 1, pageSize: 1000 }),
+      getOrgUsers(row.id)
+    ])
+    const allUsers = usersRes?.data?.list || []
+    selectedUserIds.value = orgUsersRes?.data || []
+    const userMap = new Map(allUsers.map((u: any) => [u.id, u]))
+    userOptions.value = selectedUserIds.value
+      .map((id) => userMap.get(id))
+      .filter((u): u is UserItem => !!u)
+      .map((u: any) => ({
         id: u.id,
         username: u.username,
         account: u.account,
         nickname: u.nickname,
         phone: u.phone || u.mobile || ''
       }))
-    }
-  } catch (error) {
-    ElMessage.error('获取用户列表失败')
-  }
-}
-
-const handleAssignUsers = async (row: OrgItem) => {
-  currentOrgId.value = row.id
-  currentOrgName.value = row.name
-  userDialogVisible.value = true
-  userLoading.value = true
-  selectedUserIds.value = []
-  try {
-    await fetchUsers()
-    const res: any = await getOrgUsers(row.id)
-    if (res && res.code === 0) {
-      selectedUserIds.value = res.data || []
-    }
-    nextTick(() => {
-      const rows = userOptions.value.filter((u) => selectedUserIds.value.includes(u.id))
-      rows.forEach((r) => {
-        userTableRef.value?.toggleRowSelection(r, true)
-      })
-    })
   } catch (error) {
     ElMessage.error('获取机构用户失败')
   } finally {
     userLoading.value = false
-  }
-}
-
-const handleUserSelectionChange = (selection: UserItem[]) => {
-  selectedUserIds.value = selection.map((item) => item.id)
-}
-
-const handleUserSubmit = async () => {
-  userSubmitLoading.value = true
-  try {
-    const res: any = await assignOrgUsers(currentOrgId.value, selectedUserIds.value)
-    if (res && res.code === 0) {
-      ElMessage.success('人员分配成功')
-      userDialogVisible.value = false
-      fetchData()
-    } else {
-      ElMessage.error(res?.message || '人员分配失败')
-    }
-  } catch (error) {
-    ElMessage.error('人员分配失败')
-  } finally {
-    userSubmitLoading.value = false
   }
 }
 
@@ -957,6 +948,12 @@ onMounted(() => {
   .dept-empty {
     color: #c0c4cc;
     font-size: 13px;
+  }
+
+  .user-pagination {
+    margin-top: 16px;
+    display: flex;
+    justify-content: flex-end;
   }
 }
 </style>
