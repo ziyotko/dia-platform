@@ -43,6 +43,7 @@ function getRequestPath(config: any): string {
 function getBodyString(body: unknown): string {
   if (body === undefined || body === null) return ''
   if (typeof body === 'string') return body
+  if (body instanceof FormData) return ''
   if (Array.isArray(body) && body.length === 0) return ''
   if (typeof body === 'object' && Object.keys(body).length === 0) return ''
   return JSON.stringify(body)

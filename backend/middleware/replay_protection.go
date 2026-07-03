@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -57,16 +58,22 @@ func ReplayProtectionMiddleware() gin.HandlerFunc {
 				return
 			}
 
-			bodyBytes, err := c.GetRawData()
-			if err != nil {
-				c.JSON(http.StatusOK, utils.Error(1, "读取请求体失败"))
-				c.Abort()
-				return
+			bodyHash := ""
+			// multipart/form-data 请求体包含动态 boundary，前后端难以一致哈希，按空字符串计算 SHA256 后参与签名
+			if strings.HasPrefix(c.ContentType(), "multipart/form-data") {
+				bodyHash = utils.Sha256("")
+			} else {
+				bodyBytes, err := c.GetRawData()
+				if err != nil {
+					c.JSON(http.StatusOK, utils.Error(1, "读取请求体失败"))
+					c.Abort()
+					return
+				}
+				// 恢复请求体，供后续中间件和 handler 读取
+				c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+				bodyHash = utils.Sha256(string(bodyBytes))
 			}
-			// 恢复请求体，供后续中间件和 handler 读取
-			c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 
-			bodyHash := utils.Sha256(string(bodyBytes))
 			if !utils.VerifyRequest(signKey, c.Request.Method, c.Request.URL.Path, timestampStr, nonce, bodyHash, signature) {
 				c.JSON(http.StatusOK, utils.Error(1, "请求签名无效"))
 				c.Abort()
