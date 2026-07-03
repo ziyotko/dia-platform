@@ -34,7 +34,9 @@ function getRequestPath(config: any): string {
   if (url.startsWith('http')) {
     url = new URL(url).pathname
   } else {
-    url = (config.baseURL || '') + url
+    const baseURL = (config.baseURL || '').replace(/\/+$/, '')
+    const path = url.startsWith('/') ? url : '/' + url
+    url = baseURL + path
   }
   // 去掉 query string，只签 path
   return url.split('?')[0]

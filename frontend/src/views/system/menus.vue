@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>菜单管理</span>
-          <el-button type="primary" @click="handleAdd">
+          <el-button v-if="isSuperAdmin" type="primary" @click="handleAdd">
             <el-icon><Plus /></el-icon>新增菜单
           </el-button>
         </div>
@@ -27,7 +27,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="path" label="路由路径" min-width="140" />
-        <el-table-column prop="component" label="组件路径" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="component" label="组件路径" min-width="280" show-overflow-tooltip />
         <el-table-column prop="sort" label="排序" width="80" align="center" />
         <el-table-column prop="type" label="类型" width="90" align="center">
           <template #default="{ row }">
@@ -43,15 +43,15 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" align="center" fixed="right">
+        <el-table-column label="操作" width="280" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleAddChild(row)">
+            <el-button v-if="isSuperAdmin" link type="primary" @click="handleAddChild(row)">
               <el-icon><CirclePlus /></el-icon>子菜单
             </el-button>
-            <el-button link type="primary" @click="handleEdit(row)">
+            <el-button v-if="isSuperAdmin" link type="primary" @click="handleEdit(row)">
               <el-icon><Edit /></el-icon>编辑
             </el-button>
-            <el-button link type="danger" @click="handleDelete(row)">
+            <el-button v-if="isSuperAdmin" link type="danger" @click="handleDelete(row)">
               <el-icon><Delete /></el-icon>删除
             </el-button>
           </template>
@@ -124,7 +124,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+        <el-button v-if="isSuperAdmin" type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
 
@@ -169,6 +169,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete, CirclePlus, Search, Close } from '@element-plus/icons-vue'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import { getMenuList, createMenu, updateMenu, deleteMenu, type MenuItem, type MenuForm } from '@/api/menus'
+import { useUserStore } from '@/stores/user'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -178,6 +179,9 @@ const formRef = ref()
 const tableData = ref<MenuItem[]>([])
 const iconPickerVisible = ref(false)
 const iconSearch = ref('')
+
+const userStore = useUserStore()
+const isSuperAdmin = computed(() => userStore.userInfo?.roleIds?.includes(1) || false)
 
 const iconNames = Object.keys(ElementPlusIconsVue)
 
