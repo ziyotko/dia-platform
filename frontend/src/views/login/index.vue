@@ -124,9 +124,7 @@ const siteInfo = reactive({
 })
 
 const resolveLogoUrl = (url: string) => {
-  if (!url) return ''
-  if (url.startsWith('http')) return url
-  return `${window.location.origin}${url}`
+  return url
 }
 
 
