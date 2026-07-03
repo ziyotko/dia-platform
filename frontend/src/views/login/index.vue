@@ -232,7 +232,7 @@ onMounted(() => {
 
 .login-box {
   display: flex;
-  width: 900px;
+  width: 940px;
   min-height: 520px;
   background: #fff;
   border-radius: 16px;
@@ -242,7 +242,7 @@ onMounted(() => {
 }
 
 .login-left {
-  width: 380px;
+  width: 420px;
   background: linear-gradient(160deg, #409eff 0%, #337ecc 100%);
   padding: 60px 40px;
   display: flex;
