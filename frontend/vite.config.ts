@@ -3,6 +3,7 @@ import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'url'
 
 export default defineConfig({
+  base: '/caamm/',
   plugins: [vue()],
   resolve: {
     alias: {
@@ -14,7 +15,7 @@ export default defineConfig({
     port: 3000,
     open: false,
     proxy: {
-      '/miicapi': {
+      '/caamm/api': {
         target: 'http://127.0.0.1:8080',
         changeOrigin: true,
         secure: false

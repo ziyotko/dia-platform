@@ -118,7 +118,7 @@ const form = reactive({
 
 const siteInfo = reactive({
   siteName: '门户一体化统一管理后台',
-  logo: '/computer.svg',
+  logo: 'computer.svg',
   icp: '',
   copyright: '机械工业信息中心数智应用处 版权所有'
 })
