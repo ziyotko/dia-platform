@@ -125,3 +125,76 @@ func (s *OrganizationService) AssignOrganizationUsers(id uint, userIds []int) er
 		"user_count": len(userIds),
 	}).Error
 }
+
+func (s *OrganizationService) GetOrganizationByUserId(userId uint) (*models.Organization, error) {
+	var orgs []models.Organization
+	uidStr := strconv.Itoa(int(userId))
+	err := utils.DB.Where("user_ids LIKE ? OR user_ids LIKE ? OR user_ids LIKE ?", "%"+uidStr+"%", "%"+uidStr+",%", "%,"+uidStr+"%").Find(&orgs).Error
+	if err != nil {
+		return nil, err
+	}
+	uid := int(userId)
+	for _, org := range orgs {
+		userIds, err := s.GetOrganizationUsers(org.ID)
+		if err != nil {
+			continue
+		}
+		for _, id := range userIds {
+			if id == uid {
+				return &org, nil
+			}
+		}
+	}
+	return nil, errors.New("未找到所属机构")
+}
+
+func (s *OrganizationService) AddUserToOrganization(orgId uint, userId uint) error {
+	if orgId == 0 {
+		return nil
+	}
+	userIds, err := s.GetOrganizationUsers(orgId)
+	if err != nil {
+		return err
+	}
+	uid := int(userId)
+	for _, id := range userIds {
+		if id == uid {
+			return nil
+		}
+	}
+	userIds = append(userIds, uid)
+	return s.AssignOrganizationUsers(orgId, userIds)
+}
+
+func (s *OrganizationService) RemoveUserFromOrganization(orgId uint, userId uint) error {
+	if orgId == 0 {
+		return nil
+	}
+	userIds, err := s.GetOrganizationUsers(orgId)
+	if err != nil {
+		return nil
+	}
+	uid := int(userId)
+	newUserIds := make([]int, 0, len(userIds))
+	for _, id := range userIds {
+		if id != uid {
+			newUserIds = append(newUserIds, id)
+		}
+	}
+	return s.AssignOrganizationUsers(orgId, newUserIds)
+}
+
+func (s *OrganizationService) RemoveUserFromAllOrganizations(userId uint) error {
+	var orgs []models.Organization
+	uidStr := strconv.Itoa(int(userId))
+	err := utils.DB.Where("user_ids LIKE ? OR user_ids LIKE ? OR user_ids LIKE ?", "%"+uidStr+"%", "%"+uidStr+",%", "%,"+uidStr+"%").Find(&orgs).Error
+	if err != nil {
+		return err
+	}
+	for _, org := range orgs {
+		if err := s.RemoveUserFromOrganization(org.ID, userId); err != nil {
+			return err
+		}
+	}
+	return nil
+}

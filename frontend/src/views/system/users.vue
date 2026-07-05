@@ -40,6 +40,7 @@
         <el-table-column prop="username" label="用户名" min-width="120" />
         <el-table-column prop="account" label="用户账号" min-width="120" />
         <el-table-column prop="nickname" label="昵称" min-width="120" />
+        <el-table-column prop="orgName" label="所属机构" min-width="160" />
         <el-table-column prop="email" label="邮箱" min-width="180" />
         <el-table-column prop="phone" label="手机号" min-width="130" />
         <el-table-column prop="status" label="状态" width="100" align="center">
@@ -100,6 +101,18 @@
         <el-form-item label="昵称" prop="nickname">
           <el-input v-model="form.nickname" placeholder="请输入昵称" :disabled="isReadonly" />
         </el-form-item>
+        <el-form-item label="所属机构" prop="orgId">
+          <el-tree-select
+            v-model="form.orgId"
+            :data="orgOptions"
+            :props="{ label: 'name', value: 'id', children: 'children' }"
+            placeholder="请选择所属机构"
+            clearable
+            check-strictly
+            style="width: 100%"
+            :disabled="isReadonly"
+          />
+        </el-form-item>
         <el-form-item label="邮箱" prop="email">
           <el-input v-model="form.email" placeholder="请输入邮箱" :disabled="isReadonly" />
         </el-form-item>
@@ -143,6 +156,7 @@ import {
 } from '@element-plus/icons-vue'
 import { getUserList, createUser, updateUser, deleteUser, updateUserStatus } from '@/api/user'
 import { getAllRoles } from '@/api/role'
+import { getOrgList, type OrgItem } from '@/api/org'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -165,6 +179,7 @@ const form = reactive({
   username: '',
   account: '',
   nickname: '',
+  orgId: undefined as number | undefined,
   email: '',
   phone: '',
   status: 1,
@@ -188,6 +203,18 @@ const formRules = {
 
 const tableData = ref<any[]>([])
 const roleOptions = ref<any[]>([])
+const orgOptions = ref<OrgItem[]>([])
+
+const fetchOrgs = async () => {
+  try {
+    const res: any = await getOrgList()
+    if (res && res.code === 0) {
+      orgOptions.value = res.data.list || []
+    }
+  } catch (error) {
+    ElMessage.error('获取机构列表失败')
+  }
+}
 
 const fetchRoles = async () => {
   try {
@@ -247,6 +274,7 @@ const handleEdit = (row: any) => {
     username: row.username,
     account: row.account,
     nickname: row.nickname,
+    orgId: row.orgId || undefined,
     email: row.email,
     phone: row.phone,
     status: row.status,
@@ -294,7 +322,8 @@ const handleSubmit = async () => {
         email: form.email,
         phone: form.phone,
         status: form.status,
-        roleIds: form.roleIds
+        roleIds: form.roleIds,
+        orgId: form.orgId
       })
       ElMessage.success('修改成功')
     } else {
@@ -305,7 +334,8 @@ const handleSubmit = async () => {
         email: form.email,
         phone: form.phone,
         status: form.status,
-        roleIds: form.roleIds
+        roleIds: form.roleIds,
+        orgId: form.orgId
       })
       ElMessage.success('新增成功')
     }
@@ -323,6 +353,7 @@ const resetForm = () => {
   form.username = ''
   form.account = ''
   form.nickname = ''
+  form.orgId = undefined
   form.email = ''
   form.phone = ''
   form.status = 1
@@ -342,6 +373,7 @@ const handleCurrentChange = (val: number) => {
 onMounted(() => {
   fetchData()
   fetchRoles()
+  fetchOrgs()
 })
 </script>
 

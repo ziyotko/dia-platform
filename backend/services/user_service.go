@@ -162,7 +162,7 @@ func (s *UserService) GetUserList(page, pageSize int, username, account string, 
 	}, nil
 }
 
-func (s *UserService) CreateUser(username, nickname, account, email, password, phone string, status int, roleIds []int) error {
+func (s *UserService) CreateUser(username, nickname, account, email, password, phone string, status int, roleIds []int, orgId uint) error {
 	if password == "" {
 		password = "123456"
 	}
@@ -185,10 +185,21 @@ func (s *UserService) CreateUser(username, nickname, account, email, password, p
 		user.RoleIds = strings.Join(roleIdsStr, ",")
 	}
 
-	return utils.DB.Create(user).Error
+	if err := utils.DB.Create(user).Error; err != nil {
+		return err
+	}
+
+	if orgId > 0 {
+		orgService := OrganizationService{}
+		if err := orgService.AddUserToOrganization(orgId, user.ID); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
-func (s *UserService) UpdateUser(id uint, username, nickname, account, email, password, phone string, status int, roleIds []int) error {
+func (s *UserService) UpdateUser(id uint, username, nickname, account, email, password, phone string, status int, roleIds []int, orgId uint) error {
 	updates := map[string]interface{}{
 		"username": username,
 		"nickname": nickname,
@@ -210,10 +221,38 @@ func (s *UserService) UpdateUser(id uint, username, nickname, account, email, pa
 		updates["role_ids"] = strings.Join(roleIdsStr, ",")
 	}
 
-	return utils.DB.Model(&models.User{}).Where("id = ?", id).Updates(updates).Error
+	if err := utils.DB.Model(&models.User{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+		return err
+	}
+
+	orgService := OrganizationService{}
+	oldOrg, _ := orgService.GetOrganizationByUserId(id)
+	oldOrgId := uint(0)
+	if oldOrg != nil {
+		oldOrgId = oldOrg.ID
+	}
+
+	if oldOrgId != orgId {
+		if orgId > 0 {
+			if err := orgService.AddUserToOrganization(orgId, id); err != nil {
+				return err
+			}
+		}
+		if oldOrgId > 0 {
+			if err := orgService.RemoveUserFromOrganization(oldOrgId, id); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (s *UserService) DeleteUser(id uint) error {
+	orgService := OrganizationService{}
+	if err := orgService.RemoveUserFromAllOrganizations(id); err != nil {
+		return err
+	}
 	return utils.DB.Unscoped().Delete(&models.User{}, id).Error
 }
 

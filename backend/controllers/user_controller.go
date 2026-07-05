@@ -14,6 +14,7 @@ import (
 
 type UserController struct {
 	userService *services.UserService
+	orgService  *services.OrganizationService
 }
 
 type UserListItem struct {
@@ -21,6 +22,8 @@ type UserListItem struct {
 	Username   string `json:"username"`
 	Account    string `json:"account"`
 	Nickname   string `json:"nickname"`
+	OrgId      uint   `json:"orgId"`
+	OrgName    string `json:"orgName"`
 	Email      string `json:"email"`
 	Phone      string `json:"phone"`
 	Status     int    `json:"status"`
@@ -31,6 +34,7 @@ type UserListItem struct {
 func NewUserController() *UserController {
 	return &UserController{
 		userService: &services.UserService{},
+		orgService:  &services.OrganizationService{},
 	}
 }
 
@@ -80,6 +84,12 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 			item.RoleIds = []int{}
 		}
 
+		org, err := c.orgService.GetOrganizationByUserId(user.ID)
+		if err == nil && org != nil {
+			item.OrgId = org.ID
+			item.OrgName = org.Name
+		}
+
 		list = append(list, item)
 	}
 
@@ -99,6 +109,7 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		Password string `json:"password"`
 		Status   int    `json:"status"`
 		RoleIds  []int  `json:"roleIds"`
+		OrgId    uint   `json:"orgId"`
 	}
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -106,7 +117,7 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		return
 	}
 
-	err := c.userService.CreateUser(req.Username, req.Nickname, req.Account, req.Email, req.Password, req.Phone, req.Status, req.RoleIds)
+	err := c.userService.CreateUser(req.Username, req.Nickname, req.Account, req.Email, req.Password, req.Phone, req.Status, req.RoleIds, req.OrgId)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "创建用户失败: "+err.Error()))
 		return
@@ -132,6 +143,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 		Password string `json:"password"`
 		Status   int    `json:"status"`
 		RoleIds  []int  `json:"roleIds"`
+		OrgId    uint   `json:"orgId"`
 	}
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -139,7 +151,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 		return
 	}
 
-	err = c.userService.UpdateUser(uint(id), req.Username, req.Nickname, req.Account, req.Email, req.Password, req.Phone, req.Status, req.RoleIds)
+	err = c.userService.UpdateUser(uint(id), req.Username, req.Nickname, req.Account, req.Email, req.Password, req.Phone, req.Status, req.RoleIds, req.OrgId)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "更新用户失败: "+err.Error()))
 		return
@@ -221,6 +233,12 @@ func (c *UserController) GetUserByID(ctx *gin.Context) {
 		item.RoleIds = roleIds
 	} else {
 		item.RoleIds = []int{}
+	}
+
+	org, err := c.orgService.GetOrganizationByUserId(user.ID)
+	if err == nil && org != nil {
+		item.OrgId = org.ID
+		item.OrgName = org.Name
 	}
 
 	ctx.JSON(http.StatusOK, utils.Success("获取用户信息成功", gin.H{"user": item}))
