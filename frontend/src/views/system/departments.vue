@@ -222,7 +222,7 @@ import {
   assignDepartmentUsers
 } from '@/api/department'
 import { getUserList } from '@/api/user'
-import { getOrgTree, type OrgItem } from '@/api/org'
+import { getOrgTree, getOrgUsers, type OrgItem } from '@/api/org'
 
 interface DeptItem {
   id: number
@@ -264,6 +264,7 @@ const userSearch = ref('')
 const userTableRef = ref()
 const currentDeptId = ref<number>(0)
 const currentDeptName = ref('')
+const currentOrgId = ref<number>(0)
 const selectedUserIds = ref<number[]>([])
 
 const queryForm = reactive({
@@ -389,6 +390,7 @@ const handleAddChild = async (row: DeptItem) => {
   dialogTitle.value = '新增子部门'
   resetForm()
   form.parentId = row.id
+  form.orgId = row.orgId
   await Promise.all([fetchOrgTreeData(), fetchDialogUsers()])
   dialogVisible.value = true
 }
@@ -517,35 +519,31 @@ const fetchDialogUsers = async () => {
   }
 }
 
-const fetchUsers = async () => {
+const handleAssignUsers = async (row: DeptItem) => {
+  currentDeptId.value = row.id
+  currentDeptName.value = row.name
+  currentOrgId.value = row.orgId
+  userDialogVisible.value = true
+  userLoading.value = true
+  selectedUserIds.value = []
   try {
-    const res: any = await getUserList({ page: 1, pageSize: 1000 })
-    if (res && res.code === 0) {
-      userOptions.value = (res.data.list || []).map((u: any) => ({
+    const [usersRes, orgUsersRes, deptUsersRes]: any[] = await Promise.all([
+      getUserList({ page: 1, pageSize: 1000 }),
+      getOrgUsers(row.orgId),
+      getDepartmentUsers(row.id)
+    ])
+    const allUsers = usersRes?.data?.list || []
+    const orgUserIds = new Set((orgUsersRes?.data || []).map((id: any) => Number(id)))
+    userOptions.value = allUsers
+      .filter((u: any) => orgUserIds.has(Number(u.id)))
+      .map((u: any) => ({
         id: u.id,
         username: u.username,
         account: u.account,
         nickname: u.nickname,
         phone: u.phone || u.mobile || ''
       }))
-    }
-  } catch (error) {
-    ElMessage.error('获取用户列表失败')
-  }
-}
-
-const handleAssignUsers = async (row: DeptItem) => {
-  currentDeptId.value = row.id
-  currentDeptName.value = row.name
-  userDialogVisible.value = true
-  userLoading.value = true
-  selectedUserIds.value = []
-  try {
-    await fetchUsers()
-    const res: any = await getDepartmentUsers(row.id)
-    if (res && res.code === 0) {
-      selectedUserIds.value = res.data || []
-    }
+    selectedUserIds.value = deptUsersRes?.data || []
     nextTick(() => {
       const rows = userOptions.value.filter((u) => selectedUserIds.value.includes(u.id))
       rows.forEach((r) => {
