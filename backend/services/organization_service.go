@@ -127,6 +127,17 @@ func (s *OrganizationService) AssignOrganizationUsers(id uint, userIds []int) er
 }
 
 func (s *OrganizationService) GetOrganizationByUserId(userId uint) (*models.Organization, error) {
+	orgs, err := s.GetOrganizationsByUserId(userId)
+	if err != nil {
+		return nil, err
+	}
+	if len(orgs) == 0 {
+		return nil, errors.New("未找到所属机构")
+	}
+	return &orgs[0], nil
+}
+
+func (s *OrganizationService) GetOrganizationsByUserId(userId uint) ([]models.Organization, error) {
 	var orgs []models.Organization
 	uidStr := strconv.Itoa(int(userId))
 	err := utils.DB.Where("user_ids LIKE ? OR user_ids LIKE ? OR user_ids LIKE ?", "%"+uidStr+"%", "%"+uidStr+",%", "%,"+uidStr+"%").Find(&orgs).Error
@@ -134,6 +145,7 @@ func (s *OrganizationService) GetOrganizationByUserId(userId uint) (*models.Orga
 		return nil, err
 	}
 	uid := int(userId)
+	result := make([]models.Organization, 0)
 	for _, org := range orgs {
 		userIds, err := s.GetOrganizationUsers(org.ID)
 		if err != nil {
@@ -141,11 +153,12 @@ func (s *OrganizationService) GetOrganizationByUserId(userId uint) (*models.Orga
 		}
 		for _, id := range userIds {
 			if id == uid {
-				return &org, nil
+				result = append(result, org)
+				break
 			}
 		}
 	}
-	return nil, errors.New("未找到所属机构")
+	return result, nil
 }
 
 func (s *OrganizationService) AddUserToOrganization(orgId uint, userId uint) error {

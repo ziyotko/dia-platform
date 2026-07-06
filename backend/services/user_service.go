@@ -162,7 +162,7 @@ func (s *UserService) GetUserList(page, pageSize int, username, account string, 
 	}, nil
 }
 
-func (s *UserService) CreateUser(username, nickname, account, email, password, phone string, status int, roleIds []int, orgId uint) error {
+func (s *UserService) CreateUser(username, nickname, account, email, password, phone string, status int, roleIds []int, orgIds []uint) error {
 	if password == "" {
 		password = "123456"
 	}
@@ -189,17 +189,21 @@ func (s *UserService) CreateUser(username, nickname, account, email, password, p
 		return err
 	}
 
-	if orgId > 0 {
+	if len(orgIds) > 0 {
 		orgService := OrganizationService{}
-		if err := orgService.AddUserToOrganization(orgId, user.ID); err != nil {
-			return err
+		for _, orgId := range orgIds {
+			if orgId > 0 {
+				if err := orgService.AddUserToOrganization(orgId, user.ID); err != nil {
+					return err
+				}
+			}
 		}
 	}
 
 	return nil
 }
 
-func (s *UserService) UpdateUser(id uint, username, nickname, account, email, password, phone string, status int, roleIds []int, orgId uint) error {
+func (s *UserService) UpdateUser(id uint, username, nickname, account, email, password, phone string, status int, roleIds []int, orgIds []uint) error {
 	updates := map[string]interface{}{
 		"username": username,
 		"nickname": nickname,
@@ -226,20 +230,28 @@ func (s *UserService) UpdateUser(id uint, username, nickname, account, email, pa
 	}
 
 	orgService := OrganizationService{}
-	oldOrg, _ := orgService.GetOrganizationByUserId(id)
-	oldOrgId := uint(0)
-	if oldOrg != nil {
-		oldOrgId = oldOrg.ID
+	oldOrgs, _ := orgService.GetOrganizationsByUserId(id)
+	oldOrgIdMap := make(map[uint]bool)
+	for _, org := range oldOrgs {
+		oldOrgIdMap[org.ID] = true
+	}
+	newOrgIdMap := make(map[uint]bool)
+	for _, orgId := range orgIds {
+		if orgId > 0 {
+			newOrgIdMap[orgId] = true
+		}
 	}
 
-	if oldOrgId != orgId {
-		if orgId > 0 {
-			if err := orgService.AddUserToOrganization(orgId, id); err != nil {
+	for _, org := range oldOrgs {
+		if !newOrgIdMap[org.ID] {
+			if err := orgService.RemoveUserFromOrganization(org.ID, id); err != nil {
 				return err
 			}
 		}
-		if oldOrgId > 0 {
-			if err := orgService.RemoveUserFromOrganization(oldOrgId, id); err != nil {
+	}
+	for _, orgId := range orgIds {
+		if orgId > 0 && !oldOrgIdMap[orgId] {
+			if err := orgService.AddUserToOrganization(orgId, id); err != nil {
 				return err
 			}
 		}

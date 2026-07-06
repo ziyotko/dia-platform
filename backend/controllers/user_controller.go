@@ -18,17 +18,17 @@ type UserController struct {
 }
 
 type UserListItem struct {
-	ID         uint   `json:"id"`
-	Username   string `json:"username"`
-	Account    string `json:"account"`
-	Nickname   string `json:"nickname"`
-	OrgId      uint   `json:"orgId"`
-	OrgName    string `json:"orgName"`
-	Email      string `json:"email"`
-	Phone      string `json:"phone"`
-	Status     int    `json:"status"`
-	RoleIds    []int  `json:"roleIds"`
-	CreateTime string `json:"createTime"`
+	ID         uint     `json:"id"`
+	Username   string   `json:"username"`
+	Account    string   `json:"account"`
+	Nickname   string   `json:"nickname"`
+	OrgIds     []uint   `json:"orgIds"`
+	OrgNames   []string `json:"orgNames"`
+	Email      string   `json:"email"`
+	Phone      string   `json:"phone"`
+	Status     int      `json:"status"`
+	RoleIds    []int    `json:"roleIds"`
+	CreateTime string   `json:"createTime"`
 }
 
 func NewUserController() *UserController {
@@ -84,10 +84,14 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 			item.RoleIds = []int{}
 		}
 
-		org, err := c.orgService.GetOrganizationByUserId(user.ID)
-		if err == nil && org != nil {
-			item.OrgId = org.ID
-			item.OrgName = org.Name
+		orgs, err := c.orgService.GetOrganizationsByUserId(user.ID)
+		if err == nil {
+			item.OrgIds = make([]uint, 0, len(orgs))
+			item.OrgNames = make([]string, 0, len(orgs))
+			for _, org := range orgs {
+				item.OrgIds = append(item.OrgIds, org.ID)
+				item.OrgNames = append(item.OrgNames, org.Name)
+			}
 		}
 
 		list = append(list, item)
@@ -109,7 +113,7 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		Password string `json:"password"`
 		Status   int    `json:"status"`
 		RoleIds  []int  `json:"roleIds"`
-		OrgId    uint   `json:"orgId"`
+		OrgIds   []uint `json:"orgIds"`
 	}
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -117,7 +121,7 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		return
 	}
 
-	err := c.userService.CreateUser(req.Username, req.Nickname, req.Account, req.Email, req.Password, req.Phone, req.Status, req.RoleIds, req.OrgId)
+	err := c.userService.CreateUser(req.Username, req.Nickname, req.Account, req.Email, req.Password, req.Phone, req.Status, req.RoleIds, req.OrgIds)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "创建用户失败: "+err.Error()))
 		return
@@ -143,7 +147,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 		Password string `json:"password"`
 		Status   int    `json:"status"`
 		RoleIds  []int  `json:"roleIds"`
-		OrgId    uint   `json:"orgId"`
+		OrgIds   []uint `json:"orgIds"`
 	}
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
@@ -151,7 +155,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 		return
 	}
 
-	err = c.userService.UpdateUser(uint(id), req.Username, req.Nickname, req.Account, req.Email, req.Password, req.Phone, req.Status, req.RoleIds, req.OrgId)
+	err = c.userService.UpdateUser(uint(id), req.Username, req.Nickname, req.Account, req.Email, req.Password, req.Phone, req.Status, req.RoleIds, req.OrgIds)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "更新用户失败: "+err.Error()))
 		return
@@ -235,10 +239,14 @@ func (c *UserController) GetUserByID(ctx *gin.Context) {
 		item.RoleIds = []int{}
 	}
 
-	org, err := c.orgService.GetOrganizationByUserId(user.ID)
-	if err == nil && org != nil {
-		item.OrgId = org.ID
-		item.OrgName = org.Name
+	orgs, err := c.orgService.GetOrganizationsByUserId(user.ID)
+	if err == nil {
+		item.OrgIds = make([]uint, 0, len(orgs))
+		item.OrgNames = make([]string, 0, len(orgs))
+		for _, org := range orgs {
+			item.OrgIds = append(item.OrgIds, org.ID)
+			item.OrgNames = append(item.OrgNames, org.Name)
+		}
 	}
 
 	ctx.JSON(http.StatusOK, utils.Success("获取用户信息成功", gin.H{"user": item}))

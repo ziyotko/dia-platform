@@ -40,7 +40,11 @@
         <el-table-column prop="username" label="用户名" min-width="120" />
         <el-table-column prop="account" label="用户账号" min-width="120" />
         <el-table-column prop="nickname" label="昵称" min-width="120" />
-        <el-table-column prop="orgName" label="所属机构" min-width="160" />
+        <el-table-column label="所属机构" min-width="180">
+          <template #default="{ row }">
+            <span>{{ row.orgNames?.join('、') || '-' }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="email" label="邮箱" min-width="180" />
         <el-table-column prop="phone" label="手机号" min-width="130" />
         <el-table-column prop="status" label="状态" width="100" align="center">
@@ -101,12 +105,13 @@
         <el-form-item label="昵称" prop="nickname">
           <el-input v-model="form.nickname" placeholder="请输入昵称" :disabled="isReadonly" />
         </el-form-item>
-        <el-form-item label="所属机构" prop="orgId">
+        <el-form-item label="所属机构" prop="orgIds">
           <el-tree-select
-            v-model="form.orgId"
+            v-model="form.orgIds"
             :data="orgOptions"
             :props="{ label: 'name', value: 'id', children: 'children' }"
             placeholder="请选择所属机构"
+            multiple
             clearable
             check-strictly
             style="width: 100%"
@@ -179,7 +184,7 @@ const form = reactive({
   username: '',
   account: '',
   nickname: '',
-  orgId: undefined as number | undefined,
+  orgIds: [] as number[],
   email: '',
   phone: '',
   status: 1,
@@ -274,7 +279,7 @@ const handleEdit = (row: any) => {
     username: row.username,
     account: row.account,
     nickname: row.nickname,
-    orgId: row.orgId || undefined,
+    orgIds: row.orgIds || [],
     email: row.email,
     phone: row.phone,
     status: row.status,
@@ -323,7 +328,7 @@ const handleSubmit = async () => {
         phone: form.phone,
         status: form.status,
         roleIds: form.roleIds,
-        orgId: form.orgId
+        orgIds: form.orgIds
       })
       ElMessage.success('修改成功')
     } else {
@@ -335,7 +340,7 @@ const handleSubmit = async () => {
         phone: form.phone,
         status: form.status,
         roleIds: form.roleIds,
-        orgId: form.orgId
+        orgIds: form.orgIds
       })
       ElMessage.success('新增成功')
     }
@@ -353,7 +358,7 @@ const resetForm = () => {
   form.username = ''
   form.account = ''
   form.nickname = ''
-  form.orgId = undefined
+  form.orgIds = []
   form.email = ''
   form.phone = ''
   form.status = 1
