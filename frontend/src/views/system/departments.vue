@@ -60,13 +60,16 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="170" />
-        <el-table-column label="操作" width="360" align="center" fixed="right">
+        <el-table-column label="操作" width="420" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleAddChild(row)">
               <el-icon><CirclePlus /></el-icon>子部门
             </el-button>
             <el-button link type="primary" @click="handleAssignUsers(row)">
               <el-icon><User /></el-icon>选人
+            </el-button>
+            <el-button link type="primary" @click="handleViewUsers(row)">
+              <el-icon><User /></el-icon>人员查看
             </el-button>
             <el-button link type="primary" @click="handleEdit(row)">
               <el-icon><Edit /></el-icon>编辑
@@ -157,6 +160,55 @@
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 部门人员查看弹窗 -->
+    <el-dialog
+      v-model="viewUserDialogVisible"
+      title="部门人员"
+      width="700px"
+      destroy-on-close
+    >
+      <div class="user-select-header">
+        <span>当前部门：{{ viewCurrentDeptName }}</span>
+        <el-input
+          v-model="viewUserSearch"
+          placeholder="搜索用户姓名/账号"
+          clearable
+          style="width: 220px"
+        />
+      </div>
+      <el-table
+        :data="paginatedViewUserOptions"
+        v-loading="viewUserLoading"
+        border
+        stripe
+        height="360"
+      >
+        <el-table-column label="序号" width="60" align="center">
+          <template #default="{ $index }">
+            {{ (viewUserPage - 1) * viewUserPageSize + $index + 1 }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="username" label="用户名" min-width="120" />
+        <el-table-column prop="account" label="账号" min-width="120" />
+        <el-table-column prop="nickname" label="昵称" min-width="120" />
+        <el-table-column prop="phone" label="手机号" min-width="130" />
+      </el-table>
+      <div class="user-pagination">
+        <el-pagination
+          v-model:current-page="viewUserPage"
+          v-model:page-size="viewUserPageSize"
+          :page-sizes="[6]"
+          :total="viewUserTotal"
+          layout="total, prev, pager, next"
+          :pager-count="5"
+          small
+        />
+      </div>
+      <template #footer>
+        <el-button @click="viewUserDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
 
@@ -267,6 +319,15 @@ const currentDeptName = ref('')
 const currentOrgId = ref<number>(0)
 const selectedUserIds = ref<number[]>([])
 
+const viewUserDialogVisible = ref(false)
+const viewUserLoading = ref(false)
+const viewUserSearch = ref('')
+const viewUserPage = ref(1)
+const viewUserPageSize = ref(6)
+const viewCurrentDeptId = ref<number>(0)
+const viewCurrentDeptName = ref('')
+const viewUserOptions = ref<UserItem[]>([])
+
 const queryForm = reactive({
   name: '',
   status: undefined as number | undefined
@@ -306,6 +367,24 @@ const filteredUserOptions = computed(() => {
       u.account.toLowerCase().includes(keyword) ||
       u.nickname.toLowerCase().includes(keyword)
   )
+})
+
+const filteredViewUserOptions = computed(() => {
+  if (!viewUserSearch.value) return viewUserOptions.value
+  const keyword = viewUserSearch.value.toLowerCase()
+  return viewUserOptions.value.filter(
+    (u) =>
+      u.username.toLowerCase().includes(keyword) ||
+      u.account.toLowerCase().includes(keyword) ||
+      u.nickname.toLowerCase().includes(keyword)
+  )
+})
+
+const viewUserTotal = computed(() => filteredViewUserOptions.value.length)
+
+const paginatedViewUserOptions = computed(() => {
+  const start = (viewUserPage.value - 1) * viewUserPageSize.value
+  return filteredViewUserOptions.value.slice(start, start + viewUserPageSize.value)
 })
 
 const deptTreeSelectData = computed(() => {
@@ -501,6 +580,42 @@ const syncLeaderFromCode = () => {
 
 watch(() => form.leaderCode, syncLeaderFromCode)
 watch(() => dialogUserOptions.value, syncLeaderFromCode)
+watch(viewUserSearch, () => {
+  viewUserPage.value = 1
+})
+
+const handleViewUsers = async (row: DeptItem) => {
+  viewCurrentDeptId.value = row.id
+  viewCurrentDeptName.value = row.name
+  viewUserDialogVisible.value = true
+  viewUserLoading.value = true
+  viewUserSearch.value = ''
+  viewUserPage.value = 1
+  viewUserOptions.value = []
+  try {
+    const [usersRes, deptUsersRes]: any[] = await Promise.all([
+      getUserList({ page: 1, pageSize: 1000 }),
+      getDepartmentUsers(row.id)
+    ])
+    const allUsers = usersRes?.data?.list || []
+    const deptUserIds = new Set((deptUsersRes?.data || []).map((id: any) => Number(id)))
+    const userMap = new Map(allUsers.map((u: any) => [Number(u.id), u]))
+    viewUserOptions.value = Array.from(deptUserIds)
+      .map((id) => userMap.get(id))
+      .filter((u): u is any => !!u)
+      .map((u: any) => ({
+        id: u.id,
+        username: u.username,
+        account: u.account,
+        nickname: u.nickname,
+        phone: u.phone || u.mobile || ''
+      }))
+  } catch (error) {
+    ElMessage.error('获取部门人员失败')
+  } finally {
+    viewUserLoading.value = false
+  }
+}
 
 const fetchDialogUsers = async () => {
   try {
@@ -618,6 +733,12 @@ onMounted(() => {
     margin-bottom: 16px;
     font-weight: 600;
     color: #2c3e50;
+  }
+
+  .user-pagination {
+    margin-top: 16px;
+    display: flex;
+    justify-content: flex-end;
   }
 }
 </style>
