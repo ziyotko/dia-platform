@@ -70,7 +70,7 @@ func getModule(path string) string {
 		"columns":       "栏目管理",
 		"login-logs":    "登录日志",
 		"static-logs":   "静态日志",
-		"static-pages":  "静态页面",
+		"static-pages":  "静态查询",
 		"organizations": "机构管理",
 		"uploads":       "文件上传",
 		"site-info":     "站点信息",
