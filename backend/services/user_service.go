@@ -290,7 +290,8 @@ func (s *UserService) ChangePassword(id uint, oldPassword, newPassword string) e
 	if !user.ComparePassword(oldPassword) {
 		return errors.New("原密码错误")
 	}
-	return utils.DB.Model(&models.User{}).Where("id = ?", id).Update("password", newPassword).Error
+	hashedPassword := utils.SM3HashPassword(newPassword)
+	return utils.DB.Model(&models.User{}).Where("id = ?", id).Update("password", hashedPassword).Error
 }
 
 func (s *UserService) GetUserRoleIds(userId uint) ([]int, error) {
