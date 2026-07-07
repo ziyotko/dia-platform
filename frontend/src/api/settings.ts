@@ -23,6 +23,15 @@ export interface Settings {
   sidebarStyle: string
   tagsView: boolean
   breadcrumb: boolean
+  homeGray: boolean
+  homeStaticTimeEnabled: boolean
+  homeStaticTime: string
+  columnStaticTimeEnabled: boolean
+  columnStaticTime: string
+  specialStaticTimeEnabled: boolean
+  specialStaticTime: string
+  detailStaticTimeEnabled: boolean
+  detailStaticTime: string
 }
 
 export interface SiteInfo {

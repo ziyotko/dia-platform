@@ -22,8 +22,17 @@ type Setting struct {
 	FromName          string `gorm:"size:100" json:"fromName"`
 	EmailPassword     string `gorm:"size:255" json:"emailPassword"`
 	Ssl               bool   `gorm:"default:true" json:"ssl"`
-	ThemeColor        string `gorm:"size:20;default:#409eff" json:"themeColor"`
-	SidebarStyle      string `gorm:"size:20;default:light" json:"sidebarStyle"`
-	TagsView          bool   `gorm:"default:true" json:"tagsView"`
-	Breadcrumb        bool   `gorm:"default:true" json:"breadcrumb"`
+	ThemeColor              string `gorm:"size:20;default:#409eff" json:"themeColor"`
+	SidebarStyle            string `gorm:"size:20;default:light" json:"sidebarStyle"`
+	TagsView                bool   `gorm:"default:true" json:"tagsView"`
+	Breadcrumb              bool   `gorm:"default:true" json:"breadcrumb"`
+	HomeGray                bool   `gorm:"default:false" json:"homeGray"`
+	HomeStaticTimeEnabled   bool   `gorm:"default:false" json:"homeStaticTimeEnabled"`
+	HomeStaticTime          string `gorm:"size:10" json:"homeStaticTime"`
+	ColumnStaticTimeEnabled bool   `gorm:"default:false" json:"columnStaticTimeEnabled"`
+	ColumnStaticTime        string `gorm:"size:10" json:"columnStaticTime"`
+	SpecialStaticTimeEnabled bool  `gorm:"default:false" json:"specialStaticTimeEnabled"`
+	SpecialStaticTime       string `gorm:"size:10" json:"specialStaticTime"`
+	DetailStaticTimeEnabled bool   `gorm:"default:false" json:"detailStaticTimeEnabled"`
+	DetailStaticTime        string `gorm:"size:10" json:"detailStaticTime"`
 }
