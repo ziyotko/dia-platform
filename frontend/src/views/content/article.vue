@@ -261,6 +261,8 @@
                 </div>
               </el-form-item>
             </el-col>
+          </el-row>
+          <el-row :gutter="20">
             <el-col :xs="24" :sm="12">
               <el-form-item label="文章来源" prop="source">
                 <el-input v-model="form.source" placeholder="请输入文章来源" clearable />
