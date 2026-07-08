@@ -68,7 +68,7 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 	var list []gin.H
 	for _, a := range articles {
 		categoryName := ""
-		if a.Category.ID > 0 {
+		if a.Category != nil && a.Category.ID > 0 {
 			categoryName = a.Category.Name
 		}
 		tagIds := make([]uint, 0, len(a.Tags))
@@ -92,6 +92,7 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 		list = append(list, gin.H{
 			"id":           a.ID,
 			"title":        a.Title,
+			"type":         a.Type,
 			"categoryId":   a.CategoryID,
 			"categoryName": categoryName,
 			"summary":      a.Summary,
@@ -159,6 +160,7 @@ func (c *ArticleController) GetArticleByID(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("获取文章成功", gin.H{
 		"id":           article.ID,
 		"title":        article.Title,
+		"type":         article.Type,
 		"categoryId":   article.CategoryID,
 		"summary":      article.Summary,
 		"content":      article.Content,

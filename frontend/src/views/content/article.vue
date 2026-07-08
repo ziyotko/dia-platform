@@ -60,7 +60,20 @@
 
       <el-table :data="tableData" v-loading="loading" border stripe>
         <el-table-column type="index" width="60" align="center" />
-        <el-table-column prop="title" label="文章标题" min-width="180" show-overflow-tooltip />
+        <el-table-column label="类型" width="90" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.type === 2" type="danger" effect="light">
+              <el-icon><VideoCamera /></el-icon>视频
+            </el-tag>
+            <el-tag v-else-if="row.type === 3" type="warning" effect="light">
+              <el-icon><DataLine /></el-icon>数据
+            </el-tag>
+            <el-tag v-else type="primary" effect="light">
+              <el-icon><Document /></el-icon>图文
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="title" label="文章标题" min-width="120" show-overflow-tooltip />
         <el-table-column label="封面图" width="80" align="center">
           <template #default="{ row }">
             <el-image
@@ -113,24 +126,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="isTop" label="置顶" width="80" align="center">
-          <template #default="{ row }">
-            <el-tag v-if="row.isTop" type="warning">置顶</el-tag>
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="isBold" label="加粗" width="80" align="center">
-          <template #default="{ row }">
-            <el-tag v-if="row.isBold" type="danger">加粗</el-tag>
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="defaultColor" label="颜色" width="80" align="center">
-          <template #default="{ row }">
-            <span v-if="row.defaultColor" :style="{ display: 'inline-block', width: '20px', height: '20px', backgroundColor: row.defaultColor, borderRadius: '4px', border: '1px solid #dcdfe6' }" />
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
+      
         <el-table-column prop="createTime" label="创建时间" width="170" />
         <el-table-column label="操作" width="420" align="center" fixed="right">
           <template #default="{ row }">
@@ -397,11 +393,6 @@
 
     <el-dialog v-model="videoDialogVisible" title="新增视频" width="680px" destroy-on-close :close-on-click-modal="false">
       <el-form ref="videoFormRef" :model="videoForm" :rules="videoFormRules" label-width="90px">
-        <el-form-item label="所属栏目" prop="categoryId">
-          <el-select v-model="videoForm.categoryId" placeholder="请选择栏目" style="width: 100%">
-            <el-option v-for="item in categoryList" :key="item.id" :label="item.name" :value="item.id" />
-          </el-select>
-        </el-form-item>
         <el-form-item label="视频标题" prop="title">
           <el-input v-model="videoForm.title" placeholder="请输入视频标题" clearable />
         </el-form-item>
@@ -454,11 +445,6 @@
 
     <el-dialog v-model="dataDialogVisible" title="新增数据" width="680px" destroy-on-close :close-on-click-modal="false">
       <el-form ref="dataFormRef" :model="dataForm" :rules="dataFormRules" label-width="90px">
-        <el-form-item label="所属栏目" prop="categoryId">
-          <el-select v-model="dataForm.categoryId" placeholder="请选择栏目" style="width: 100%">
-            <el-option v-for="item in categoryList" :key="item.id" :label="item.name" :value="item.id" />
-          </el-select>
-        </el-form-item>
         <el-row :gutter="20">
           <el-col :xs="24" :sm="12">
             <el-form-item label="发布时间" prop="publishTime">
@@ -749,6 +735,7 @@ const queryForm = reactive({
 const form = reactive({
   id: undefined as number | undefined,
   title: '',
+  type: 1,
   categoryId: undefined as number | undefined,
   tagIds: [] as number[],
   summary: '',
@@ -774,7 +761,6 @@ const hasRealContent = (html: string) => {
 
 const formRules = {
   title: [{ required: true, message: '请输入文章标题', trigger: 'blur' }],
-  categoryId: [{ required: true, message: '请选择所属分类', trigger: 'change' }],
   url: [
     {
       validator: (_rule: any, value: any, callback: any) => {
@@ -810,13 +796,11 @@ const formRules = {
 }
 
 const videoFormRules = {
-  categoryId: [{ required: true, message: '请选择所属栏目', trigger: 'change' }],
   title: [{ required: true, message: '请输入视频标题', trigger: 'blur' }],
   videoUrl: [{ required: true, message: '请上传视频', trigger: 'change' }]
 }
 
 const dataFormRules = {
-  categoryId: [{ required: true, message: '请选择所属栏目', trigger: 'change' }],
   yearMonth: [{ required: true, message: '请选择年月', trigger: 'change' }],
   content: [{ required: true, message: '请输入数据内容', trigger: 'blur' }]
 }
@@ -1184,6 +1168,7 @@ const handleEdit = async (row: any) => {
   Object.assign(form, {
     id: row.id,
     title: row.title,
+    type: row.type || 1,
     categoryId: row.categoryId,
     tagIds: row.tagIds || [],
     summary: row.summary || '',
@@ -1503,6 +1488,7 @@ const handleSubmit = async () => {
   try {
     const data = {
       title: form.title,
+      type: form.type,
       categoryId: form.categoryId as number,
       tagIds: form.tagIds,
       summary: form.summary,
@@ -1611,6 +1597,7 @@ const buildAttachmentPayload = (attachments: any[]) => {
 const resetForm = () => {
   form.id = undefined
   form.title = ''
+  form.type = 1
   form.categoryId = undefined
   form.tagIds = []
   form.summary = ''
@@ -1693,6 +1680,7 @@ const handleSubmitVideo = async () => {
   try {
     const data = {
       title: videoForm.title,
+      type: 2,
       categoryId: videoForm.categoryId as number,
       tagIds: [] as number[],
       summary: '',
@@ -1732,6 +1720,7 @@ const handleSubmitData = async () => {
     const title = `${year}年${month}月`
     const data = {
       title,
+      type: 3,
       categoryId: dataForm.categoryId as number,
       tagIds: [] as number[],
       summary: '',

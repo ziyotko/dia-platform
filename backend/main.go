@@ -19,6 +19,7 @@ func main() {
 	utils.InitRedisCaptcha()
 	utils.InitRedisAnti()
 
+	models.MigrateArticleCategoryNullable()
 	for _, m := range models.AllModels() {
 		utils.DB.AutoMigrate(m)
 	}

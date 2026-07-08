@@ -11,7 +11,8 @@ export interface ArticleAttachment {
 export interface ArticleForm {
   id?: number
   title: string
-  categoryId: number
+  type?: number
+  categoryId?: number
   tagIds: number[]
   summary: string
   content: string

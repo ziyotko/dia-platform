@@ -73,8 +73,9 @@ type Article struct {
 	UpdatedAt    time.Time           `json:"updatedAt"`
 	DeletedAt    gorm.DeletedAt      `gorm:"index" json:"deletedAt"`
 	Title        string              `gorm:"size:200;not null" json:"title"`
-	CategoryID   uint                `gorm:"not null;index" json:"categoryId"`
-	Category     Category            `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
+	Type         int                 `gorm:"default:1" json:"type"` // 1图文 2视频 3数据
+	CategoryID   *uint               `gorm:"index" json:"categoryId"`
+	Category     *Category           `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
 	Summary      string              `gorm:"size:500" json:"summary"`
 	Content      string              `gorm:"type:longtext" json:"content"`
 	Status       int                 `gorm:"default:0" json:"status"`      // 0草稿 1已发布 2已下线
