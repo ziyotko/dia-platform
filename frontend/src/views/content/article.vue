@@ -44,9 +44,17 @@
       <template #header>
         <div class="card-header">
           <span>文章列表</span>
-          <el-button type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon>新增文章
-          </el-button>
+          <div class="header-actions">
+            <el-button type="primary" @click="handleAdd">
+              <el-icon><Plus /></el-icon>新增文章
+            </el-button>
+            <el-button type="success" @click="handleAddVideo">
+              <el-icon><VideoCamera /></el-icon>新增视频
+            </el-button>
+            <el-button type="warning" @click="handleAddData">
+              <el-icon><DataLine /></el-icon>新增数据
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -387,6 +395,116 @@
       </template>
     </el-dialog>
 
+    <el-dialog v-model="videoDialogVisible" title="新增视频" width="680px" destroy-on-close :close-on-click-modal="false">
+      <el-form ref="videoFormRef" :model="videoForm" :rules="videoFormRules" label-width="90px">
+        <el-form-item label="所属栏目" prop="categoryId">
+          <el-select v-model="videoForm.categoryId" placeholder="请选择栏目" style="width: 100%">
+            <el-option v-for="item in categoryList" :key="item.id" :label="item.name" :value="item.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="视频标题" prop="title">
+          <el-input v-model="videoForm.title" placeholder="请输入视频标题" clearable />
+        </el-form-item>
+        <el-row :gutter="20">
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="发布时间" prop="publishTime">
+              <el-date-picker
+                v-model="videoForm.publishTime"
+                type="datetime"
+                placeholder="请选择发布时间"
+                format="YYYY-MM-DD HH:mm"
+                value-format="YYYY-MM-DD HH:mm:00"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="来源" prop="source">
+              <el-input v-model="videoForm.source" placeholder="请输入来源" clearable />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="上传视频" prop="videoUrl">
+          <el-upload
+            action="#"
+            :http-request="handleVideoUpload"
+            :before-upload="handleVideoBeforeUpload"
+            :on-remove="handleVideoRemove"
+            :limit="1"
+            accept="video/*"
+            class="video-uploader"
+          >
+            <el-button type="primary" plain :disabled="!!videoForm.videoUrl">
+              <el-icon><Plus /></el-icon>上传视频
+            </el-button>
+            <template #tip>
+              <div class="video-tip">支持 MP4、MOV 等常见视频格式，单个文件不超过 800MB</div>
+            </template>
+          </el-upload>
+          <div v-if="videoForm.videoUrl" class="video-preview">
+            <video :src="videoForm.videoUrl" controls style="max-width: 100%; max-height: 240px; border-radius: 8px" />
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="videoDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="videoSubmitLoading" @click="handleSubmitVideo">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="dataDialogVisible" title="新增数据" width="680px" destroy-on-close :close-on-click-modal="false">
+      <el-form ref="dataFormRef" :model="dataForm" :rules="dataFormRules" label-width="90px">
+        <el-form-item label="所属栏目" prop="categoryId">
+          <el-select v-model="dataForm.categoryId" placeholder="请选择栏目" style="width: 100%">
+            <el-option v-for="item in categoryList" :key="item.id" :label="item.name" :value="item.id" />
+          </el-select>
+        </el-form-item>
+        <el-row :gutter="20">
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="发布时间" prop="publishTime">
+              <el-date-picker
+                v-model="dataForm.publishTime"
+                type="datetime"
+                placeholder="请选择发布时间"
+                format="YYYY-MM-DD HH:mm"
+                value-format="YYYY-MM-DD HH:mm:00"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="来源" prop="source">
+              <el-input v-model="dataForm.source" placeholder="请输入来源" clearable />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="选择年月" prop="yearMonth">
+          <el-date-picker
+            v-model="dataForm.yearMonth"
+            type="month"
+            placeholder="请选择年月"
+            format="YYYY年MM月"
+            value-format="YYYY-MM"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="数据内容" prop="content">
+          <el-input
+            v-model="dataForm.content"
+            type="textarea"
+            :rows="8"
+            placeholder="请输入数据内容"
+            maxlength="80000"
+            show-word-limit
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="dataDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="dataSubmitLoading" @click="handleSubmitData">确定</el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="previewVisible" title="文章预览" width="800px" destroy-on-close>
       <div class="preview-content">
         <h2>{{ previewData.title }}</h2>
@@ -539,7 +657,9 @@ import {
   CircleClose,
   FolderOpened,
   Warning,
-  Document
+  Document,
+  VideoCamera,
+  DataLine
 } from '@element-plus/icons-vue'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
@@ -579,6 +699,30 @@ const dialogTitle = ref('')
 const submitLoading = ref(false)
 const total = ref(0)
 const formRef = ref()
+
+const videoDialogVisible = ref(false)
+const videoSubmitLoading = ref(false)
+const videoFormRef = ref()
+const videoForm = reactive({
+  categoryId: undefined as number | undefined,
+  title: '',
+  source: '',
+  publishTime: '',
+  videoUrl: '',
+  videoName: '',
+  videoSize: 0
+})
+
+const dataDialogVisible = ref(false)
+const dataSubmitLoading = ref(false)
+const dataFormRef = ref()
+const dataForm = reactive({
+  categoryId: undefined as number | undefined,
+  source: '',
+  publishTime: '',
+  yearMonth: '',
+  content: ''
+})
 
 const columnDialogVisible = ref(false)
 const columnDialogTitle = ref('')
@@ -665,25 +809,24 @@ const formRules = {
   ]
 }
 
+const videoFormRules = {
+  categoryId: [{ required: true, message: '请选择所属栏目', trigger: 'change' }],
+  title: [{ required: true, message: '请输入视频标题', trigger: 'blur' }],
+  videoUrl: [{ required: true, message: '请上传视频', trigger: 'change' }]
+}
+
+const dataFormRules = {
+  categoryId: [{ required: true, message: '请选择所属栏目', trigger: 'change' }],
+  yearMonth: [{ required: true, message: '请选择年月', trigger: 'change' }],
+  content: [{ required: true, message: '请输入数据内容', trigger: 'blur' }]
+}
+
 const route = useRoute()
 const router = useRouter()
 
 const tableData = ref<any[]>([])
 const categoryList = ref<any[]>([])
 const tagList = ref<any[]>([])
-
-const tagMap = computed(() => {
-  const map: Record<number, any> = {}
-  tagList.value.forEach(tag => {
-    map[tag.id] = tag
-  })
-  return map
-})
-
-const getRowTags = (row: any) => {
-  const ids = row.tagIds || []
-  return ids.map((id: number) => tagMap.value[id]).filter(Boolean)
-}
 
 const getColumnsByPage = (pageId: number) => {
   return columnList.value.filter((col: any) => col.pageId === pageId)
@@ -1015,6 +1158,16 @@ const handleAdd = () => {
   dialogTitle.value = '新增文章'
   resetForm()
   dialogVisible.value = true
+}
+
+const handleAddVideo = () => {
+  resetVideoForm()
+  videoDialogVisible.value = true
+}
+
+const handleAddData = () => {
+  resetDataForm()
+  dataDialogVisible.value = true
 }
 
 const isAuthor = (row: any) => {
@@ -1474,6 +1627,135 @@ const resetForm = () => {
   form.attachments = []
 }
 
+const resetVideoForm = () => {
+  videoForm.categoryId = undefined
+  videoForm.title = ''
+  videoForm.source = ''
+  videoForm.publishTime = ''
+  videoForm.videoUrl = ''
+  videoForm.videoName = ''
+  videoForm.videoSize = 0
+}
+
+const resetDataForm = () => {
+  dataForm.categoryId = undefined
+  dataForm.source = ''
+  dataForm.publishTime = ''
+  dataForm.yearMonth = ''
+  dataForm.content = ''
+}
+
+const handleVideoBeforeUpload = (file: File) => {
+  const maxSize = 800 * 1024 * 1024
+  if (file.size > maxSize) {
+    ElMessage.warning('视频文件大小不能超过 800MB')
+    return false
+  }
+  return true
+}
+
+const handleVideoUpload = async (options: any) => {
+  const file = options.file
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('dir', 'video')
+  try {
+    const res: any = await request.post('/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    const url = res.data?.url || ''
+    if (url) {
+      videoForm.videoUrl = url
+      videoForm.videoName = file.name
+      videoForm.videoSize = file.size
+      options.onSuccess({ url, name: file.name, size: file.size })
+      ElMessage.success('视频上传成功')
+    } else {
+      options.onError(new Error('上传失败'))
+      ElMessage.error('视频上传失败')
+    }
+  } catch (error: any) {
+    options.onError(error)
+    ElMessage.error(error?.message || '视频上传失败')
+  }
+}
+
+const handleVideoRemove = () => {
+  videoForm.videoUrl = ''
+  videoForm.videoName = ''
+  videoForm.videoSize = 0
+}
+
+const handleSubmitVideo = async () => {
+  const valid = await videoFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+  videoSubmitLoading.value = true
+  try {
+    const data = {
+      title: videoForm.title,
+      categoryId: videoForm.categoryId as number,
+      tagIds: [] as number[],
+      summary: '',
+      content: '',
+      status: 0,
+      auditStatus: 0,
+      isTop: 0,
+      isBold: 0,
+      defaultColor: '',
+      cover: '',
+      source: videoForm.source,
+      publishTime: videoForm.publishTime,
+      url: '',
+      attachments: [
+        {
+          name: videoForm.videoName || 'video',
+          url: videoForm.videoUrl,
+          size: videoForm.videoSize || 0
+        }
+      ]
+    }
+    await createArticle(data)
+    ElMessage.success('新增视频成功')
+    videoDialogVisible.value = false
+    fetchData()
+  } finally {
+    videoSubmitLoading.value = false
+  }
+}
+
+const handleSubmitData = async () => {
+  const valid = await dataFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+  dataSubmitLoading.value = true
+  try {
+    const [year, month] = dataForm.yearMonth.split('-')
+    const title = `${year}年${month}月`
+    const data = {
+      title,
+      categoryId: dataForm.categoryId as number,
+      tagIds: [] as number[],
+      summary: '',
+      content: dataForm.content,
+      status: 0,
+      auditStatus: 0,
+      isTop: 0,
+      isBold: 0,
+      defaultColor: '',
+      cover: '',
+      source: dataForm.source,
+      publishTime: dataForm.publishTime,
+      url: '',
+      attachments: [] as any[]
+    }
+    await createArticle(data)
+    ElMessage.success('新增数据成功')
+    dataDialogVisible.value = false
+    fetchData()
+  } finally {
+    dataSubmitLoading.value = false
+  }
+}
+
 const handleSizeChange = (val: number) => {
   queryForm.pageSize = val
   fetchData()
@@ -1520,6 +1802,11 @@ onMounted(() => {
       align-items: center;
       font-weight: 600;
       color: #2c3e50;
+
+      .header-actions {
+        display: flex;
+        gap: 12px;
+      }
     }
   }
 
@@ -1892,6 +2179,23 @@ onMounted(() => {
       }
     }
   }
+}
+
+.video-uploader {
+  .video-tip {
+    font-size: 13px;
+    color: #909399;
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+}
+
+.video-preview {
+  margin-top: 16px;
+  padding: 12px;
+  background: #fafbfc;
+  border-radius: 8px;
+  border: 1px solid #e6f2ff;
 }
 
 :global(.el-image-viewer__wrapper) {
