@@ -74,32 +74,6 @@
           </template>
         </el-table-column>
         <el-table-column prop="title" label="文章标题" min-width="120" show-overflow-tooltip />
-        <el-table-column label="封面图" width="80" align="center">
-          <template #default="{ row }">
-            <el-image
-              v-if="row.cover"
-              :src="row.cover"
-              :preview-src-list="[row.cover]"
-              fit="cover"
-              style="width: 60px; height: 60px; border-radius: 8px"
-            />
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="跳转地址" min-width="180" show-overflow-tooltip>
-          <template #default="{ row }">
-            <el-link
-              v-if="row.url"
-              type="primary"
-              :href="row.url"
-              target="_blank"
-              :underline="false"
-            >
-              {{ row.url }}
-            </el-link>
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
         <el-table-column prop="author" label="作者" width="100" />
         <el-table-column prop="source" label="来源" width="140" show-overflow-tooltip />
         <el-table-column prop="publishTime" label="发布时间" width="120" align="center">
