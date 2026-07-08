@@ -36,6 +36,9 @@
       <template #header>
         <div class="card-header">
           <span>登录日志</span>
+          <el-button type="danger" plain @click="handleClear">
+            <el-icon><Delete /></el-icon>清空日志
+          </el-button>
         </div>
       </template>
 
@@ -71,9 +74,9 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { Search, RefreshRight } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
-import { getLoginLogList } from '@/api/log'
+import { Search, RefreshRight, Delete } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getLoginLogList, clearLoginLogs } from '@/api/log'
 
 const loading = ref(false)
 const total = ref(0)
@@ -134,6 +137,24 @@ const handleSizeChange = (val: number) => {
 const handleCurrentChange = (val: number) => {
   queryForm.page = val
   fetchData()
+}
+
+const handleClear = () => {
+  ElMessageBox.confirm('确定要清空所有登录日志吗？此操作不可恢复！', '警告', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      const res: any = await clearLoginLogs()
+      if (res.code === 0 || res.code === 200) {
+        ElMessage.success('日志已清空')
+        fetchData()
+      }
+    } catch (error) {
+      ElMessage.error('清空日志失败')
+    }
+  })
 }
 
 onMounted(() => {

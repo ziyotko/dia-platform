@@ -102,3 +102,7 @@ func (s *LogService) GetRecentLoginLogs(limit int) ([]models.LoginLog, error) {
 	err := utils.DB.Model(&models.LoginLog{}).Order("id DESC").Limit(limit).Find(&logs).Error
 	return logs, err
 }
+
+func (s *LogService) ClearLoginLogs() error {
+	return utils.DB.Where("1 = 1").Unscoped().Delete(&models.LoginLog{}).Error
+}

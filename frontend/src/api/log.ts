@@ -29,3 +29,7 @@ export function clearLogs() {
 export function getLoginLogList(params: LoginLogQuery) {
   return request.get('/login-logs', { params })
 }
+
+export function clearLoginLogs() {
+  return request.delete('/login-logs')
+}

@@ -85,6 +85,7 @@ func SetupRoutes(router *gin.Engine) {
 		protected.GET("/logs", logController.GetLogs)
 		protected.DELETE("/logs", logController.ClearLogs)
 		protected.GET("/login-logs", logController.GetLoginLogs)
+		protected.DELETE("/login-logs", logController.ClearLoginLogs)
 
 		protected.GET("/static-logs", staticLogController.GetLogs)
 		protected.DELETE("/static-logs", staticLogController.ClearLogs)

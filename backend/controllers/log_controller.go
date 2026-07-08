@@ -151,3 +151,13 @@ func (c *LogController) ClearLogs(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, utils.Success("清空日志成功", nil))
 }
+
+func (c *LogController) ClearLoginLogs(ctx *gin.Context) {
+	err := c.logService.ClearLoginLogs()
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "清空登录日志失败"))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.Success("清空登录日志成功", nil))
+}
