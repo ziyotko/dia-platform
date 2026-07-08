@@ -266,6 +266,18 @@
                 <el-input v-model="form.source" placeholder="请输入文章来源" clearable />
               </el-form-item>
             </el-col>
+            <el-col :xs="24" :sm="12">
+              <el-form-item label="发布时间" prop="publishTime">
+                <el-date-picker
+                  v-model="form.publishTime"
+                  type="datetime"
+                  placeholder="请选择发布时间"
+                  format="YYYY-MM-DD HH:mm"
+                  value-format="YYYY-MM-DD HH:mm:00"
+                  style="width: 100%"
+                />
+              </el-form-item>
+            </el-col>
           </el-row>
         </div>
 
@@ -611,6 +623,7 @@ const form = reactive({
   defaultColor: '',
   cover: '',
   source: '',
+  publishTime: '',
   url: '',
   attachments: [] as any[]
 })
@@ -1036,6 +1049,7 @@ const handleEdit = async (row: any) => {
     defaultColor: row.defaultColor || '',
     cover: row.cover || '',
     source: row.source || '',
+    publishTime: row.publishTime || '',
     url: row.url || '',
     attachments: (row.attachments || []).map((att: any) => ({
       ...att,
@@ -1354,6 +1368,7 @@ const handleSubmit = async () => {
       defaultColor: form.defaultColor,
       cover: form.cover,
       source: form.source,
+      publishTime: form.publishTime,
       url: form.url,
       attachments: buildAttachmentPayload(form.attachments)
     }
@@ -1461,6 +1476,7 @@ const resetForm = () => {
   form.defaultColor = ''
   form.cover = ''
   form.source = ''
+  form.publishTime = ''
   form.url = ''
   form.attachments = []
 }

@@ -1,11 +1,71 @@
 package models
 
 import (
+	"database/sql/driver"
 	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
 )
+
+type LocalTime struct {
+	time.Time
+}
+
+func (t *LocalTime) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), `"`)
+	if s == "" {
+		t.Time = time.Time{}
+		return nil
+	}
+	parsed, err := time.Parse("2006-01-02 15:04:05", s)
+	if err != nil {
+		return err
+	}
+	t.Time = parsed
+	return nil
+}
+
+func (t LocalTime) MarshalJSON() ([]byte, error) {
+	if t.IsZero() {
+		return []byte("null"), nil
+	}
+	return []byte(`"` + t.Format("2006-01-02 15:04:05") + `"`), nil
+}
+
+func (t LocalTime) Value() (driver.Value, error) {
+	if t.IsZero() {
+		return nil, nil
+	}
+	return t.Time, nil
+}
+
+func (t *LocalTime) Scan(value interface{}) error {
+	if value == nil {
+		t.Time = time.Time{}
+		return nil
+	}
+	switch v := value.(type) {
+	case time.Time:
+		t.Time = v
+		return nil
+	case string:
+		parsed, err := time.Parse("2006-01-02 15:04:05", v)
+		if err != nil {
+			return err
+		}
+		t.Time = parsed
+		return nil
+	default:
+		return fmt.Errorf("cannot scan %T into LocalTime", value)
+	}
+}
+
+func (LocalTime) GORMDataType() string {
+	return "datetime"
+}
 
 type Article struct {
 	ID           uint                `gorm:"primarykey" json:"id"`
@@ -26,6 +86,7 @@ type Article struct {
 	Author       string              `gorm:"size:100" json:"author"`
 	AuthorCode   string              `gorm:"size:100" json:"authorCode"`
 	Source       string              `gorm:"size:200" json:"source"`
+	PublishTime  *LocalTime          `json:"publishTime"`
 	URL          string              `gorm:"size:500" json:"url"`
 	ColumnCount  int                 `gorm:"column:column_count;default:0" json:"columnCount"`
 	Tags         []Tag               `gorm:"many2many:article_tag;" json:"tags,omitempty"`

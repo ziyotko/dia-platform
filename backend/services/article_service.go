@@ -105,6 +105,7 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 			"author":        article.Author,
 			"author_code":   article.AuthorCode,
 			"source":        article.Source,
+			"publish_time":  article.PublishTime,
 			"url":           article.URL,
 		}
 		if err := tx.Model(&old).Updates(updates).Error; err != nil {

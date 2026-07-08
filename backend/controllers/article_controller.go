@@ -105,6 +105,7 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 			"author":       a.Author,
 			"authorCode":   a.AuthorCode,
 			"source":       a.Source,
+			"publishTime":  formatLocalTime(a.PublishTime),
 			"url":          a.URL,
 			"columnCount":  len(a.Columns),
 			"tagIds":       tagIds,
@@ -170,6 +171,7 @@ func (c *ArticleController) GetArticleByID(ctx *gin.Context) {
 		"author":       article.Author,
 		"authorCode":   article.AuthorCode,
 		"source":       article.Source,
+		"publishTime":  formatLocalTime(article.PublishTime),
 		"url":          article.URL,
 		"columnCount":  len(article.Columns),
 		"tagIds":       tagIds,
@@ -582,4 +584,11 @@ func (c *ArticleController) GetArticleColumnPublishes(ctx *gin.Context) {
 		"page":     page,
 		"pageSize": pageSize,
 	}))
+}
+
+func formatLocalTime(t *models.LocalTime) string {
+	if t == nil || t.IsZero() {
+		return ""
+	}
+	return t.Format("2006-01-02 15:04:05")
 }

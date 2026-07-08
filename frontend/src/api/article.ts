@@ -22,6 +22,7 @@ export interface ArticleForm {
   defaultColor: string
   cover: string
   source: string
+  publishTime?: string
   url?: string
   attachments?: ArticleAttachment[]
 }
