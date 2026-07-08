@@ -65,20 +65,6 @@
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="categoryName" label="所属分类" width="120" />
-        <el-table-column label="标签" width="120">
-          <template #default="{ row }">
-            <el-tag
-              v-for="tag in getRowTags(row)"
-              :key="tag.id"
-              size="small"
-              :color="tag.color"
-              style="margin-right: 4px; color: #fff; border: none;"
-            >
-              {{ tag.name }}
-            </el-tag>
-          </template>
-        </el-table-column>
         <el-table-column label="跳转地址" min-width="180" show-overflow-tooltip>
           <template #default="{ row }">
             <el-link
@@ -95,6 +81,11 @@
         </el-table-column>
         <el-table-column prop="author" label="作者" width="100" />
         <el-table-column prop="source" label="来源" width="140" show-overflow-tooltip />
+        <el-table-column prop="publishTime" label="发布时间" width="120" align="center">
+          <template #default="{ row }">
+            {{ row.publishTime ? row.publishTime.slice(0, 10) : '-' }}
+          </template>
+        </el-table-column>
         <el-table-column prop="columnCount" label="发布栏目数量" width="120" align="center" />
         <el-table-column prop="status" label="发布状态" width="100" align="center">
           <template #default="{ row }">
