@@ -73,7 +73,19 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="title" label="文章标题" min-width="120" show-overflow-tooltip />
+        <el-table-column prop="title" label="文章标题" min-width="120" show-overflow-tooltip>
+          <template #default="{ row }">
+            <el-link
+              v-if="row.status === 1"
+              type="primary"
+              :underline="false"
+              @click="handlePreview(row)"
+            >
+              {{ row.title }}
+            </el-link>
+            <span v-else>{{ row.title }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="author" label="作者" width="100" />
         <el-table-column prop="source" label="来源" width="140" show-overflow-tooltip />
         <el-table-column prop="publishTime" label="发布时间" width="120" align="center">
@@ -102,11 +114,8 @@
         </el-table-column>
       
         <el-table-column prop="createTime" label="创建时间" width="170" />
-        <el-table-column label="操作" width="420" align="center" fixed="right">
+        <el-table-column label="操作" width="300" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handlePreview(row)">
-              <el-icon><View /></el-icon>预览
-            </el-button>
             <el-button v-if="isAuthor(row) && row.auditStatus !== 1 && row.auditStatus !== 2" link type="primary" @click="handleEdit(row)">
               <el-icon><Edit /></el-icon>编辑
             </el-button>
@@ -612,7 +621,6 @@ import {
   Plus,
   Edit,
   Delete,
-  View,
   CircleCheck,
   CircleClose,
   FolderOpened,
