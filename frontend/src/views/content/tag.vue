@@ -147,7 +147,7 @@ const queryForm = reactive({
 const form = reactive({
   id: undefined as number | undefined,
   name: '',
-  color: '#409eff',
+  color: 'rgb(64, 158, 255)',
   status: 1
 })
 
@@ -249,7 +249,7 @@ const handleSubmit = async () => {
 const resetForm = () => {
   form.id = undefined
   form.name = ''
-  form.color = '#409eff'
+  form.color = 'rgb(64, 158, 255)'
   form.status = 1
 }
 

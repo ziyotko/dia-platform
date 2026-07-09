@@ -13,7 +13,7 @@ type Tag struct {
 	UpdatedAt time.Time      `json:"updatedAt"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt"`
 	Name      string         `gorm:"size:100;not null" json:"name"`
-	Color     string         `gorm:"size:20;default:'#409eff'" json:"color"`
+	Color     string         `gorm:"size:20;default:'rgb(64,158,255)'" json:"color"`
 	Status    int            `gorm:"default:1" json:"status"`
 }
 

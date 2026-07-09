@@ -381,6 +381,32 @@
         </el-form-item>
         <el-row :gutter="20">
           <el-col :xs="24" :sm="12">
+            <el-form-item label="所属分类" prop="categoryId">
+              <el-select v-model="videoForm.categoryId" placeholder="请选择分类" style="width: 100%">
+                <el-option
+                  v-for="item in categoryList"
+                  :key="item.id"
+                  :label="item.name"
+                  :value="item.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="文章标签" prop="tagIds">
+              <el-select v-model="videoForm.tagIds" multiple placeholder="请选择标签" style="width: 100%">
+                <el-option
+                  v-for="item in tagList"
+                  :key="item.id"
+                  :label="item.name"
+                  :value="item.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :xs="24" :sm="12">
             <el-form-item label="发布时间" prop="publishTime">
               <el-date-picker
                 v-model="videoForm.publishTime"
@@ -428,6 +454,32 @@
 
     <el-dialog v-model="dataDialogVisible" title="新增数据" width="680px" destroy-on-close :close-on-click-modal="false">
       <el-form ref="dataFormRef" :model="dataForm" :rules="dataFormRules" label-width="90px">
+        <el-row :gutter="20">
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="所属分类" prop="categoryId">
+              <el-select v-model="dataForm.categoryId" placeholder="请选择分类" style="width: 100%">
+                <el-option
+                  v-for="item in categoryList"
+                  :key="item.id"
+                  :label="item.name"
+                  :value="item.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="文章标签" prop="tagIds">
+              <el-select v-model="dataForm.tagIds" multiple placeholder="请选择标签" style="width: 100%">
+                <el-option
+                  v-for="item in tagList"
+                  :key="item.id"
+                  :label="item.name"
+                  :value="item.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
         <el-row :gutter="20">
           <el-col :xs="24" :sm="12">
             <el-form-item label="发布时间" prop="publishTime">
@@ -673,6 +725,7 @@ const videoSubmitLoading = ref(false)
 const videoFormRef = ref()
 const videoForm = reactive({
   categoryId: undefined as number | undefined,
+  tagIds: [] as number[],
   title: '',
   source: '',
   publishTime: '',
@@ -686,6 +739,7 @@ const dataSubmitLoading = ref(false)
 const dataFormRef = ref()
 const dataForm = reactive({
   categoryId: undefined as number | undefined,
+  tagIds: [] as number[],
   source: '',
   publishTime: '',
   yearMonth: '',
@@ -1598,6 +1652,7 @@ const resetForm = () => {
 
 const resetVideoForm = () => {
   videoForm.categoryId = undefined
+  videoForm.tagIds = []
   videoForm.title = ''
   videoForm.source = ''
   videoForm.publishTime = ''
@@ -1608,6 +1663,7 @@ const resetVideoForm = () => {
 
 const resetDataForm = () => {
   dataForm.categoryId = undefined
+  dataForm.tagIds = []
   dataForm.source = ''
   dataForm.publishTime = ''
   dataForm.yearMonth = ''
@@ -1664,7 +1720,7 @@ const handleSubmitVideo = async () => {
       title: videoForm.title,
       type: 2,
       categoryId: videoForm.categoryId as number,
-      tagIds: [] as number[],
+      tagIds: videoForm.tagIds,
       summary: '',
       content: '',
       status: 0,
@@ -1704,7 +1760,7 @@ const handleSubmitData = async () => {
       title,
       type: 3,
       categoryId: dataForm.categoryId as number,
-      tagIds: [] as number[],
+      tagIds: dataForm.tagIds,
       summary: '',
       content: dataForm.content,
       status: 0,
