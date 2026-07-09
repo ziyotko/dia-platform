@@ -89,6 +89,8 @@ export const useAppStore = defineStore('app', () => {
     )
   }
 
+  applyTheme()
+
   return {
     sidebarCollapsed,
     themeColor,

@@ -83,6 +83,7 @@ export const useUserStore = defineStore('user', () => {
     localStorage.removeItem(SIGN_KEY_KEY)
     localStorage.removeItem(USER_INFO_KEY)
     localStorage.removeItem('app-theme')
+    localStorage.removeItem('app-security')
   }
 
   return {

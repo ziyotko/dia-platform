@@ -97,7 +97,8 @@ import {
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
 import type { MenuItem } from '@/api/menus'
-import { getPublicSiteInfo } from '@/api/settings'
+import { getPublicSiteInfo, getSettings } from '@/api/settings'
+import type { Settings } from '@/api/settings'
 import Breadcrumb from '@/components/Breadcrumb.vue'
 import TagsView from '@/components/TagsView.vue'
 
@@ -148,14 +149,35 @@ const loadSiteInfo = async () => {
       if (favicon && res.data.logo) {
         favicon.href = resolveLogoUrl(res.data.logo)
       }
-    }
+    } 
   } catch {
     // 使用默认值
   }
 }
 
+const loadSettings = async () => {
+  try {
+    const res: any = await getSettings()
+    const data = res.data as Settings
+    if (data) {
+      appStore.setThemeSettings({
+        themeColor: data.themeColor || '#409eff',
+        sidebarStyle: (data.sidebarStyle || 'light') as 'light' | 'dark',
+        tagsView: data.tagsView ?? true,
+        breadcrumb: data.breadcrumb ?? true
+      })
+      appStore.setSecuritySettings({
+        minPasswordLength: data.minPasswordLength ?? 8
+      })
+    }
+  } catch {
+    // 使用本地缓存或默认值
+  }
+}
+
 onMounted(() => {
   loadSiteInfo()
+  loadSettings()
 })
 
 const handleMenuSelect = (index: string) => {
