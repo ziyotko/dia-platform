@@ -35,7 +35,7 @@
       <el-table :data="tableData" v-loading="loading" border stripe>
         <el-table-column type="index" width="60" align="center" />
         <el-table-column prop="name" label="标签名称" min-width="150" />
-        <el-table-column prop="color" label="标签颜色" width="120" align="center">
+        <el-table-column prop="color" label="标签颜色" width="200" align="center">
           <template #default="{ row }">
             <div class="color-preview">
               <span class="color-dot" :style="{ backgroundColor: row.color }"></span>
