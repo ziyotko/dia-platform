@@ -13,6 +13,17 @@ func MigrateArticleCategoryNullable() {
 	_ = utils.DB.Exec("ALTER TABLE article MODIFY category_id bigint unsigned NULL")
 }
 
+// MigrateArticleCategory 将 article.category_id 的旧数据迁移到 article_category 关联表
+func MigrateArticleCategory() {
+	if utils.DB == nil {
+		return
+	}
+	_ = utils.DB.Exec(`
+		INSERT IGNORE INTO article_category (article_id, category_id)
+		SELECT id, category_id FROM article WHERE category_id IS NOT NULL
+	`)
+}
+
 // AllModels 返回所有需要自动迁移的数据库模型
 func AllModels() []interface{} {
 	return []interface{}{
@@ -29,6 +40,7 @@ func AllModels() []interface{} {
 		&Category{},
 		&Tag{},
 		&Article{},
+		&ArticleCategory{},
 		&Ad{},
 		&Link{},
 		&Department{},

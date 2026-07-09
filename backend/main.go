@@ -23,6 +23,7 @@ func main() {
 	for _, m := range models.AllModels() {
 		utils.DB.AutoMigrate(m)
 	}
+	models.MigrateArticleCategory()
 
 	router := gin.New()
 	router.Use(middleware.GinLogger(), gin.Recovery())

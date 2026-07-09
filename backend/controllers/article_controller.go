@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -67,14 +68,6 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 
 	var list []gin.H
 	for _, a := range articles {
-		categoryName := ""
-		if a.Category != nil && a.Category.ID > 0 {
-			categoryName = a.Category.Name
-		}
-		tagIds := make([]uint, 0, len(a.Tags))
-		for _, t := range a.Tags {
-			tagIds = append(tagIds, t.ID)
-		}
 		columnIds := make([]uint, 0, len(a.Columns))
 		for _, c := range a.Columns {
 			columnIds = append(columnIds, c.ID)
@@ -93,8 +86,6 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 			"id":           a.ID,
 			"title":        a.Title,
 			"type":         a.Type,
-			"categoryId":   a.CategoryID,
-			"categoryName": categoryName,
 			"summary":      a.Summary,
 			"content":      a.Content,
 			"status":       a.Status,
@@ -109,7 +100,6 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 			"publishTime":  formatLocalTime(a.PublishTime),
 			"url":          a.URL,
 			"columnCount":  len(a.Columns),
-			"tagIds":       tagIds,
 			"columnIds":    columnIds,
 			"attachments":  attachments,
 			"createTime":   a.CreatedAt.Format("2006-01-02 15:04:05"),
@@ -138,6 +128,12 @@ func (c *ArticleController) GetArticleByID(ctx *gin.Context) {
 		return
 	}
 
+	categoryIds := make([]uint, 0, len(article.Categories))
+	categoryNames := make([]string, 0, len(article.Categories))
+	for _, c := range article.Categories {
+		categoryIds = append(categoryIds, c.ID)
+		categoryNames = append(categoryNames, c.Name)
+	}
 	tagIds := make([]uint, 0, len(article.Tags))
 	for _, t := range article.Tags {
 		tagIds = append(tagIds, t.ID)
@@ -161,7 +157,8 @@ func (c *ArticleController) GetArticleByID(ctx *gin.Context) {
 		"id":           article.ID,
 		"title":        article.Title,
 		"type":         article.Type,
-		"categoryId":   article.CategoryID,
+		"categoryIds":  categoryIds,
+		"categoryName": strings.Join(categoryNames, "、"),
 		"summary":      article.Summary,
 		"content":      article.Content,
 		"status":       article.Status,
@@ -187,7 +184,8 @@ func (c *ArticleController) GetArticleByID(ctx *gin.Context) {
 func (c *ArticleController) CreateArticle(ctx *gin.Context) {
 	var req struct {
 		models.Article
-		TagIds []uint `json:"tagIds"`
+		TagIds      []uint `json:"tagIds"`
+		CategoryIds []uint `json:"categoryIds"`
 	}
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
@@ -201,7 +199,7 @@ func (c *ArticleController) CreateArticle(ctx *gin.Context) {
 		req.Article.AuthorCode = strconv.FormatUint(uint64(user.ID), 10)
 	}
 
-	err = c.articleService.CreateArticle(&req.Article, req.TagIds)
+	err = c.articleService.CreateArticle(&req.Article, req.TagIds, req.CategoryIds)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "创建文章失败: "+err.Error()))
 		return
@@ -218,7 +216,8 @@ func (c *ArticleController) UpdateArticle(ctx *gin.Context) {
 	}
 	var req struct {
 		models.Article
-		TagIds []uint `json:"tagIds"`
+		TagIds      []uint `json:"tagIds"`
+		CategoryIds []uint `json:"categoryIds"`
 	}
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
@@ -241,7 +240,7 @@ func (c *ArticleController) UpdateArticle(ctx *gin.Context) {
 		req.Article.AuthorCode = strconv.FormatUint(uint64(user.ID), 10)
 	}
 
-	err = c.articleService.UpdateArticle(uint(id), &req.Article, req.TagIds)
+	err = c.articleService.UpdateArticle(uint(id), &req.Article, req.TagIds, req.CategoryIds)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "更新文章失败: "+err.Error()))
 		return

@@ -12,7 +12,7 @@ export interface ArticleForm {
   id?: number
   title: string
   type?: number
-  categoryId?: number
+  categoryIds: number[]
   tagIds: number[]
   summary: string
   content: string

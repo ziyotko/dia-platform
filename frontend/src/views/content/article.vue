@@ -78,7 +78,7 @@
             <el-link
               v-if="row.status === 1"
               type="primary"
-              :underline="false"
+              :underline="'never'"
               @click="handlePreview(row)"
             >
               {{ row.title }}
@@ -175,8 +175,8 @@
           </el-form-item>
           <el-row :gutter="20">
             <el-col :xs="24" :sm="12" :md="8">
-              <el-form-item label="所属分类" prop="categoryId">
-                <el-select v-model="form.categoryId" placeholder="请选择分类" style="width: 100%">
+              <el-form-item label="所属分类" prop="categoryIds">
+                <el-select v-model="form.categoryIds" multiple placeholder="请选择分类" style="width: 100%">
                   <el-option
                     v-for="item in categoryList"
                     :key="item.id"
@@ -381,8 +381,8 @@
         </el-form-item>
         <el-row :gutter="20">
           <el-col :xs="24" :sm="12">
-            <el-form-item label="所属分类" prop="categoryId">
-              <el-select v-model="videoForm.categoryId" placeholder="请选择分类" style="width: 100%">
+            <el-form-item label="所属分类" prop="categoryIds">
+              <el-select v-model="videoForm.categoryIds" multiple placeholder="请选择分类" style="width: 100%">
                 <el-option
                   v-for="item in categoryList"
                   :key="item.id"
@@ -456,8 +456,8 @@
       <el-form ref="dataFormRef" :model="dataForm" :rules="dataFormRules" label-width="90px">
         <el-row :gutter="20">
           <el-col :xs="24" :sm="12">
-            <el-form-item label="所属分类" prop="categoryId">
-              <el-select v-model="dataForm.categoryId" placeholder="请选择分类" style="width: 100%">
+            <el-form-item label="所属分类" prop="categoryIds">
+              <el-select v-model="dataForm.categoryIds" multiple placeholder="请选择分类" style="width: 100%">
                 <el-option
                   v-for="item in categoryList"
                   :key="item.id"
@@ -532,7 +532,6 @@
         <div class="preview-meta">
           <span>作者：{{ previewData.author }}</span>
           <span>来源：{{ previewData.source }}</span>
-          <span>分类：{{ previewData.categoryName }}</span>
           <span>时间：{{ previewData.createTime }}</span>
         </div>
         <div class="preview-summary" v-if="previewData.summary">
@@ -689,6 +688,7 @@ import { useUserStore } from '@/stores/user'
 import request from '@/utils/request'
 import {
   getArticles,
+  getArticleByID,
   createArticle,
   updateArticle,
   deleteArticle,
@@ -724,7 +724,7 @@ const videoDialogVisible = ref(false)
 const videoSubmitLoading = ref(false)
 const videoFormRef = ref()
 const videoForm = reactive({
-  categoryId: undefined as number | undefined,
+  categoryIds: [] as number[],
   tagIds: [] as number[],
   title: '',
   source: '',
@@ -738,7 +738,7 @@ const dataDialogVisible = ref(false)
 const dataSubmitLoading = ref(false)
 const dataFormRef = ref()
 const dataForm = reactive({
-  categoryId: undefined as number | undefined,
+  categoryIds: [] as number[],
   tagIds: [] as number[],
   source: '',
   publishTime: '',
@@ -772,7 +772,7 @@ const form = reactive({
   id: undefined as number | undefined,
   title: '',
   type: 1,
-  categoryId: undefined as number | undefined,
+  categoryIds: [] as number[],
   tagIds: [] as number[],
   summary: '',
   content: '',
@@ -1201,24 +1201,26 @@ const handleEdit = async (row: any) => {
   }
   dialogTitle.value = '编辑文章'
   resetForm()
+  const res: any = await getArticleByID(row.id)
+  const detail = res.data || row
   Object.assign(form, {
-    id: row.id,
-    title: row.title,
-    type: row.type || 1,
-    categoryId: row.categoryId,
-    tagIds: row.tagIds || [],
-    summary: row.summary || '',
-    content: row.content || '',
-    status: row.status,
-    auditStatus: row.auditStatus ?? 0,
-    isTop: row.isTop,
-    isBold: row.isBold ?? 0,
-    defaultColor: row.defaultColor || '',
-    cover: row.cover || '',
-    source: row.source || '',
-    publishTime: row.publishTime || '',
-    url: row.url || '',
-    attachments: (row.attachments || []).map((att: any) => ({
+    id: detail.id,
+    title: detail.title,
+    type: detail.type || 1,
+    categoryIds: detail.categoryIds || [],
+    tagIds: detail.tagIds || [],
+    summary: detail.summary || '',
+    content: detail.content || '',
+    status: detail.status,
+    auditStatus: detail.auditStatus ?? 0,
+    isTop: detail.isTop,
+    isBold: detail.isBold ?? 0,
+    defaultColor: detail.defaultColor || '',
+    cover: detail.cover || '',
+    source: detail.source || '',
+    publishTime: detail.publishTime || '',
+    url: detail.url || '',
+    attachments: (detail.attachments || []).map((att: any) => ({
       ...att,
       uid: att.uid || Date.now() + Math.random().toString(36).slice(2),
       status: 'success'
@@ -1494,7 +1496,6 @@ const previewData = reactive({
   author: '',
   authorCode: '',
   source: '',
-  categoryName: '',
   createTime: '',
   summary: '',
   content: '',
@@ -1507,7 +1508,6 @@ const handlePreview = (row: any) => {
     title: row.title,
     author: row.author,
     source: row.source || '',
-    categoryName: row.categoryName,
     createTime: row.createTime,
     summary: row.summary || '',
     content: row.content || '',
@@ -1525,7 +1525,7 @@ const handleSubmit = async () => {
     const data = {
       title: form.title,
       type: form.type,
-      categoryId: form.categoryId as number,
+      categoryIds: form.categoryIds,
       tagIds: form.tagIds,
       summary: form.summary,
       content: form.content,
@@ -1634,7 +1634,7 @@ const resetForm = () => {
   form.id = undefined
   form.title = ''
   form.type = 1
-  form.categoryId = undefined
+  form.categoryIds = []
   form.tagIds = []
   form.summary = ''
   form.content = ''
@@ -1651,7 +1651,7 @@ const resetForm = () => {
 }
 
 const resetVideoForm = () => {
-  videoForm.categoryId = undefined
+  videoForm.categoryIds = []
   videoForm.tagIds = []
   videoForm.title = ''
   videoForm.source = ''
@@ -1662,7 +1662,7 @@ const resetVideoForm = () => {
 }
 
 const resetDataForm = () => {
-  dataForm.categoryId = undefined
+  dataForm.categoryIds = []
   dataForm.tagIds = []
   dataForm.source = ''
   dataForm.publishTime = ''
@@ -1719,7 +1719,7 @@ const handleSubmitVideo = async () => {
     const data = {
       title: videoForm.title,
       type: 2,
-      categoryId: videoForm.categoryId as number,
+      categoryIds: videoForm.categoryIds,
       tagIds: videoForm.tagIds,
       summary: '',
       content: '',
@@ -1759,7 +1759,7 @@ const handleSubmitData = async () => {
     const data = {
       title,
       type: 3,
-      categoryId: dataForm.categoryId as number,
+      categoryIds: dataForm.categoryIds,
       tagIds: dataForm.tagIds,
       summary: '',
       content: dataForm.content,

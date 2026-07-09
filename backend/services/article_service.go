@@ -19,7 +19,7 @@ func (s *ArticleService) GetArticles(title string, categoryID int, status int, a
 		query = query.Where("title LIKE ?", "%"+title+"%")
 	}
 	if categoryID > 0 {
-		query = query.Where("category_id = ?", categoryID)
+		query = query.Where("article.id IN (SELECT article_id FROM article_category WHERE category_id = ?)", categoryID)
 	}
 	if status >= 0 {
 		query = query.Where("status = ?", status)
@@ -32,20 +32,20 @@ func (s *ArticleService) GetArticles(title string, categoryID int, status int, a
 		return nil, 0, err
 	}
 	offset := (page - 1) * pageSize
-	err = query.Preload("Category").Preload("Tags").Preload("Columns").Preload("Attachments").Order("is_top DESC, created_at DESC").Limit(pageSize).Offset(offset).Find(&articles).Error
+	err = query.Preload("Categories").Preload("Tags").Preload("Columns").Preload("Attachments").Order("is_top DESC, created_at DESC").Limit(pageSize).Offset(offset).Find(&articles).Error
 	return articles, total, err
 }
 
 func (s *ArticleService) GetArticleByID(id uint) (*models.Article, error) {
 	var article models.Article
-	err := utils.DB.Preload("Category").Preload("Tags").Preload("Columns").Preload("Attachments").First(&article, id).Error
+	err := utils.DB.Preload("Categories").Preload("Tags").Preload("Columns").Preload("Attachments").First(&article, id).Error
 	if err != nil {
 		return nil, err
 	}
 	return &article, nil
 }
 
-func (s *ArticleService) CreateArticle(article *models.Article, tagIDs []uint) error {
+func (s *ArticleService) CreateArticle(article *models.Article, tagIDs []uint, categoryIDs []uint) error {
 	return utils.DB.Transaction(func(tx *gorm.DB) error {
 		// 先暂存附件，避免 GORM Create 自动关联插入导致重复
 		attachments := article.Attachments
@@ -53,6 +53,15 @@ func (s *ArticleService) CreateArticle(article *models.Article, tagIDs []uint) e
 
 		if err := tx.Create(article).Error; err != nil {
 			return err
+		}
+		if len(categoryIDs) > 0 {
+			var categories []models.Category
+			for _, id := range categoryIDs {
+				categories = append(categories, models.Category{ID: id})
+			}
+			if err := tx.Model(article).Association("Categories").Append(&categories); err != nil {
+				return err
+			}
 		}
 		if len(tagIDs) > 0 {
 			var tags []models.Tag
@@ -85,7 +94,7 @@ func (s *ArticleService) CreateArticle(article *models.Article, tagIDs []uint) e
 	})
 }
 
-func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs []uint) error {
+func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs []uint, categoryIDs []uint) error {
 	return utils.DB.Transaction(func(tx *gorm.DB) error {
 		var old models.Article
 		if err := tx.First(&old, id).Error; err != nil {
@@ -93,7 +102,6 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 		}
 		updates := map[string]interface{}{
 			"title":         article.Title,
-			"category_id":   article.CategoryID,
 			"summary":       article.Summary,
 			"content":       article.Content,
 			"status":        article.Status,
@@ -110,6 +118,19 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 		}
 		if err := tx.Model(&old).Updates(updates).Error; err != nil {
 			return err
+		}
+		if len(categoryIDs) > 0 {
+			var categories []models.Category
+			for _, cid := range categoryIDs {
+				categories = append(categories, models.Category{ID: cid})
+			}
+			if err := tx.Model(&old).Association("Categories").Replace(&categories); err != nil {
+				return err
+			}
+		} else {
+			if err := tx.Model(&old).Association("Categories").Clear(); err != nil {
+				return err
+			}
 		}
 		if len(tagIDs) > 0 {
 			var tags []models.Tag
@@ -198,6 +219,9 @@ func (s *ArticleService) DeleteArticle(id uint) error {
 	return utils.DB.Transaction(func(tx *gorm.DB) error {
 		var article models.Article
 		if err := tx.First(&article, id).Error; err != nil {
+			return err
+		}
+		if err := tx.Model(&article).Association("Categories").Clear(); err != nil {
 			return err
 		}
 		if err := tx.Model(&article).Association("Tags").Clear(); err != nil {
