@@ -15,10 +15,11 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Port            string `mapstructure:"port"`
-	Host            string `mapstructure:"host"`
-	ApiPrefix       string `mapstructure:"api_prefix"`
-	UploadDirPrefix string `mapstructure:"upload_dir_prefix"`
+	Port             string `mapstructure:"port"`
+	Host             string `mapstructure:"host"`
+	ApiPrefix        string `mapstructure:"api_prefix"`
+	UploadDirPrefix  string `mapstructure:"upload_dir_prefix"`
+	MaxConcurrentIPs int    `mapstructure:"max_concurrent_ips"`
 }
 
 type DatabaseConfig struct {

@@ -46,8 +46,10 @@ func SetupRoutes(router *gin.Engine) {
 		public.POST("/share", shareController.RecordShare)
 	}
 
+	ipLimiter := middleware.NewIPLimiter()
+
 	protected := router.Group(apiPrefix)
-	protected.Use(middleware.AuthMiddleware(), middleware.ReplayProtectionMiddleware(), middleware.OperationLog())
+	protected.Use(middleware.AuthMiddleware(), middleware.ReplayProtectionMiddleware(), middleware.OperationLog(), ipLimiter.Limit())
 	{
 		protected.POST("/logout", authController.Logout)
 
