@@ -41,6 +41,8 @@ func SetupRoutes(router *gin.Engine) {
 		public.GET("/captcha", authController.GetCaptcha)
 		public.POST("/login", authController.Login)
 		public.GET("/site-info", settingsController.GetPublicSiteInfo)
+
+		//站点分析接口
 		public.POST("/visit", visitController.RecordVisit)
 		public.POST("/like", likeController.RecordLike)
 		public.POST("/share", shareController.RecordShare)
