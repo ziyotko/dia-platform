@@ -29,6 +29,8 @@ func SetupRoutes(router *gin.Engine) {
 	orgController := controllers.NewOrganizationController()
 	dashboardController := controllers.NewDashboardController()
 	visitController := controllers.NewVisitController()
+	likeController := controllers.NewLikeController()
+	shareController := controllers.NewShareController()
 	staticLogController := controllers.NewStaticLogController()
 	staticPageController := controllers.NewStaticPageController()
 	apiPrefix := config.AppConfig.Server.ApiPrefix
@@ -40,6 +42,8 @@ func SetupRoutes(router *gin.Engine) {
 		public.POST("/login", authController.Login)
 		public.GET("/site-info", settingsController.GetPublicSiteInfo)
 		public.POST("/visit", visitController.RecordVisit)
+		public.POST("/like", likeController.RecordLike)
+		public.POST("/share", shareController.RecordShare)
 	}
 
 	protected := router.Group(apiPrefix)

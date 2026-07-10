@@ -25,14 +25,16 @@ func MigrateArticleCategory() {
 }
 
 // AllModels 返回所有需要自动迁移的数据库模型
-func AllModels() []interface{} {
-	return []interface{}{
+func AllModels() []any {
+	return []any{
 		&User{},
 		&Menu{},
 		&Role{},
 		&OperationLog{},
 		&LoginLog{},
 		&VisitAnalytics{},
+		&LikeAnalytics{},
+		&ShareAnalytics{},
 		&Setting{},
 		&Template{},
 		&Page{},
