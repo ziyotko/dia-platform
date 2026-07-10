@@ -2,7 +2,7 @@ package models
 
 import "time"
 
-type SiteAnalytics struct {
+type VisitAnalytics struct {
 	ID        uint      `gorm:"primarykey" json:"id"`
 	ArticleID uint      `json:"articleId"`
 	VisitedAt time.Time `gorm:"autoCreateTime" json:"visitedAt"`

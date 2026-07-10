@@ -25,7 +25,7 @@ func (c *VisitController) RecordVisit(ctx *gin.Context) {
 		return
 	}
 
-	visit := &models.SiteAnalytics{
+	visit := &models.VisitAnalytics{
 		ArticleID: req.ArticleID,
 		IP:        ctx.ClientIP(),
 	}

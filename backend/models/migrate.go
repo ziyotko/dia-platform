@@ -32,7 +32,7 @@ func AllModels() []interface{} {
 		&Role{},
 		&OperationLog{},
 		&LoginLog{},
-		&SiteAnalytics{},
+		&VisitAnalytics{},
 		&Setting{},
 		&Template{},
 		&Page{},

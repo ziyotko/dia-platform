@@ -37,7 +37,7 @@ func (c *DashboardController) GetStats(ctx *gin.Context) {
 	now := time.Now()
 	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	endOfDay := startOfDay.Add(24 * time.Hour)
-	utils.DB.Model(&models.SiteAnalytics{}).Where("visited_at >= ? AND visited_at < ?", startOfDay, endOfDay).Count(&todayVisit)
+	utils.DB.Model(&models.VisitAnalytics{}).Where("visited_at >= ? AND visited_at < ?", startOfDay, endOfDay).Count(&todayVisit)
 
 	userID := ctx.GetUint("userID")
 	userIDStr := strconv.FormatUint(uint64(userID), 10)
@@ -85,7 +85,7 @@ func (c *DashboardController) GetVisitTrend(ctx *gin.Context) {
 		monday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).AddDate(0, 0, -(weekday - 1))
 		nextMonday := monday.AddDate(0, 0, 7)
 
-		var visits []models.SiteAnalytics
+		var visits []models.VisitAnalytics
 		utils.DB.Where("visited_at >= ? AND visited_at < ?", monday, nextMonday).Find(&visits)
 
 		countMap := make(map[string]int64)
@@ -106,7 +106,7 @@ func (c *DashboardController) GetVisitTrend(ctx *gin.Context) {
 		endOfMonth := startOfMonth.AddDate(0, 1, 0)
 		daysInMonth := endOfMonth.AddDate(0, 0, -1).Day()
 
-		var visits []models.SiteAnalytics
+		var visits []models.VisitAnalytics
 		utils.DB.Where("visited_at >= ? AND visited_at < ?", startOfMonth, endOfMonth).Find(&visits)
 
 		countMap := make(map[string]int64)
@@ -125,7 +125,7 @@ func (c *DashboardController) GetVisitTrend(ctx *gin.Context) {
 		startOfYear := time.Date(now.Year(), 1, 1, 0, 0, 0, 0, now.Location())
 		endOfYear := startOfYear.AddDate(1, 0, 0)
 
-		var visits []models.SiteAnalytics
+		var visits []models.VisitAnalytics
 		utils.DB.Where("visited_at >= ? AND visited_at < ?", startOfYear, endOfYear).Find(&visits)
 
 		countMap := make(map[string]int64)
