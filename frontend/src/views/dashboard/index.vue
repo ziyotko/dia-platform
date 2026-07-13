@@ -4,12 +4,12 @@
       <el-col :xs="24" :sm="12" :md="4">
         <el-card class="stat-card" shadow="hover">
           <div class="stat-content">
-            <div class="stat-icon" style="background: rgba(64, 158, 255, 0.1); color: #409eff;">
-              <el-icon size="28"><Picture /></el-icon>
+            <div class="stat-icon" style="background: rgba(230, 162, 60, 0.1); color: #e6a23c;">
+              <el-icon size="28"><View /></el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-value">{{ stats.adCount.toLocaleString() }}</div>
-              <div class="stat-label">广告总数</div>
+              <div class="stat-value">{{ stats.todayVisit.toLocaleString() }}</div>
+              <div class="stat-label">今日访问量</div>
             </div>
           </div>
         </el-card>
@@ -30,38 +30,12 @@
       <el-col :xs="24" :sm="12" :md="4">
         <el-card class="stat-card" shadow="hover">
           <div class="stat-content">
-            <div class="stat-icon" style="background: rgba(230, 162, 60, 0.1); color: #e6a23c;">
-              <el-icon size="28"><View /></el-icon>
-            </div>
-            <div class="stat-info">
-              <div class="stat-value">{{ stats.todayVisit.toLocaleString() }}</div>
-              <div class="stat-label">今日访问量</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :xs="24" :sm="12" :md="4">
-        <el-card class="stat-card" shadow="hover">
-          <div class="stat-content">
             <div class="stat-icon" style="background: rgba(245, 108, 108, 0.1); color: #f56c6c;">
               <el-icon size="28"><Document /></el-icon>
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ stats.todayStaticCount.toLocaleString() }}</div>
               <div class="stat-label">我的草稿文章</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :xs="24" :sm="12" :md="4">
-        <el-card class="stat-card" shadow="hover">
-          <div class="stat-content">
-            <div class="stat-icon" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">
-              <el-icon size="28"><Clock /></el-icon>
-            </div>
-            <div class="stat-info">
-              <div class="stat-value">{{ stats.todayAuditCount.toLocaleString() }}</div>
-              <div class="stat-label">我的待审核文章</div>
             </div>
           </div>
         </el-card>
@@ -79,9 +53,36 @@
           </div>
         </el-card>
       </el-col>
+      <el-col :xs="24" :lg="8">
+        <el-card shadow="hover">
+          <div class="quick-links">
+            <div v-for="(item, index) in quickLinks" :key="index" class="quick-item" @click="$router.push(item.path)">
+              <div class="quick-icon" :style="{ background: item.bg, color: item.color }">
+                <el-icon size="24"><component :is="item.icon" /></el-icon>
+              </div>
+              <div class="quick-name">{{ item.name }}</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
     </el-row>
 
     <el-row :gutter="20" class="dashboard-main">
+      <el-col :xs="24" :lg="16">
+        <el-card class="chart-card" shadow="hover">
+          <template #header>
+            <div class="card-header">
+              <span>访问趋势</span>
+              <el-radio-group v-model="chartPeriod" size="small">
+                <el-radio-button value="week">本周</el-radio-button>
+                <el-radio-button value="month">本月</el-radio-button>
+                <el-radio-button value="year">全年</el-radio-button>
+              </el-radio-group>
+            </div>
+          </template>
+          <div ref="chartRef" class="chart-container"></div>
+        </el-card>
+      </el-col>
             <el-col :xs="24" :lg="8">
         <el-card class="notice-card" shadow="hover">
           <template #header>
@@ -105,43 +106,25 @@
           </div>
         </el-card>
       </el-col>
+    </el-row>
+
+    <el-row :gutter="20" class="dashboard-bottom">
       <el-col :xs="24" :lg="16">
         <el-card class="chart-card" shadow="hover">
           <template #header>
             <div class="card-header">
-              <span>访问趋势</span>
-              <el-radio-group v-model="chartPeriod" size="small">
+              <span>发布趋势</span>
+              <el-radio-group v-model="articleChartPeriod" size="small">
                 <el-radio-button value="week">本周</el-radio-button>
                 <el-radio-button value="month">本月</el-radio-button>
                 <el-radio-button value="year">全年</el-radio-button>
               </el-radio-group>
             </div>
           </template>
-          <div ref="chartRef" class="chart-container"></div>
+          <div ref="articleChartRef" class="chart-container"></div>
         </el-card>
       </el-col>
-
-    </el-row>
-
-    <el-row :gutter="20" class="dashboard-bottom">
-      <el-col :xs="24" :lg="12">
-        <el-card shadow="hover">
-          <template #header>
-            <div class="card-header">
-              <span>快捷入口</span>
-            </div>
-          </template>
-          <div class="quick-links">
-            <div v-for="(item, index) in quickLinks" :key="index" class="quick-item" @click="$router.push(item.path)">
-              <div class="quick-icon" :style="{ background: item.bg, color: item.color }">
-                <el-icon size="24"><component :is="item.icon" /></el-icon>
-              </div>
-              <div class="quick-name">{{ item.name }}</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :xs="24" :lg="12">
+      <el-col :xs="24" :lg="8">
         <el-card shadow="hover">
           <template #header>
             <div class="card-header">
@@ -149,7 +132,8 @@
               <el-link type="primary" underline="never" @click="$router.push('/login-logs')">更多</el-link>
             </div>
           </template>
-          <el-table :data="loginLogs" size="small" :show-header="false">
+          <div class="table-container">
+          <el-table :data="loginLogs" class="login-log-table" size="small" :show-header="false">
             <el-table-column prop="time" width="150" />
             <el-table-column prop="username" width="90" />
             <el-table-column prop="ip" width="120" />
@@ -164,6 +148,7 @@
               </template>
             </el-table-column>
           </el-table>
+          </div>
         </el-card>
       </el-col>
     </el-row>
@@ -176,15 +161,13 @@ import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import type { ECharts } from 'echarts'
 import {
-  Picture,
   DocumentChecked,
   View,
   Document,
-  Clock,
   EditPen
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { getDashboardStats, getLoginLogs, getVisitTrend, getMyAuditArticles } from '@/api/dashboard'
+import { getDashboardStats, getLoginLogs, getVisitTrend, getArticleTrend, getMyAuditArticles } from '@/api/dashboard'
 
 const router = useRouter()
 
@@ -252,6 +235,8 @@ onMounted(() => {
   fetchVisitTrend()
   fetchPendingAudits()
   initChart()
+  initArticleChart()
+  fetchArticleTrend()
 })
 
 const chartPeriod = ref('week')
@@ -325,10 +310,83 @@ watch(visitData, () => {
   updateChart()
 }, { deep: true })
 
+const articleChartPeriod = ref('week')
+const articleVisitData = ref<{ label: string; value: number }[]>([
+  { label: '周一', value: 0 },
+  { label: '周二', value: 0 },
+  { label: '周三', value: 0 },
+  { label: '周四', value: 0 },
+  { label: '周五', value: 0 },
+  { label: '周六', value: 0 },
+  { label: '周日', value: 0 }
+])
+
+const articleChartRef = ref<HTMLDivElement | null>(null)
+let articleChartInstance: ECharts | null = null
+
+const updateArticleChart = () => {
+  if (!articleChartInstance) return
+  const labels = articleVisitData.value.map(item => item.label)
+  const values = articleVisitData.value.map(item => item.value)
+  articleChartInstance.setOption({
+    tooltip: { trigger: 'axis' },
+    grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
+    xAxis: { type: 'category', boundaryGap: false, data: labels },
+    yAxis: { type: 'value', name: '文章数量', minInterval: 1 },
+    series: [{
+      type: 'line',
+      data: values,
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 8,
+      itemStyle: { color: '#67c23a' },
+      lineStyle: { width: 3, color: '#67c23a' },
+      areaStyle: {
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: 'rgba(103, 194, 58, 0.3)' },
+          { offset: 1, color: 'rgba(103, 194, 58, 0.05)' }
+        ])
+      }
+    }]
+  }, true)
+}
+
+const initArticleChart = () => {
+  if (!articleChartRef.value) return
+  articleChartInstance = echarts.init(articleChartRef.value)
+  updateArticleChart()
+  window.addEventListener('resize', () => articleChartInstance?.resize())
+}
+
+const fetchArticleTrend = async () => {
+  try {
+    const res: any = await getArticleTrend(articleChartPeriod.value)
+    if (res && Array.isArray(res.data) && res.data.length > 0) {
+      articleVisitData.value = res.data.map((item: any) => ({
+        label: item.label,
+        value: Number(item.value) || 0
+      }))
+      nextTick(() => updateArticleChart())
+    }
+  } catch (error) {
+    ElMessage.error('获取文章发布趋势失败')
+  }
+}
+
+watch(articleChartPeriod, () => {
+  fetchArticleTrend()
+})
+
+watch(articleVisitData, () => {
+  updateArticleChart()
+}, { deep: true })
+
 onUnmounted(() => {
   window.removeEventListener('resize', () => chartInstance?.resize())
   chartInstance?.dispose()
   chartInstance = null
+  articleChartInstance?.dispose()
+  articleChartInstance = null
 })
 
 
@@ -387,6 +445,11 @@ const quickLinks = [
     margin-top: 4px;
   }
 
+  .table-container {
+    height: 360px;
+    overflow: auto;
+  }
+
   .dashboard-main {
     margin-bottom: 20px;
   }
@@ -416,6 +479,8 @@ const quickLinks = [
       padding: 24px 0;
       color: #c0c4cc;
       font-size: 14px;
+      height: 360px;
+      line-height: 330px;
     }
 
     .notice-item {
@@ -456,20 +521,23 @@ const quickLinks = [
       border-radius: 12px;
       border: 1px solid #e6f2ff;
     }
+
+    .login-log-table {
+      font-size: 14px;
+    }
   }
 
   .quick-links {
     display: grid;
-    height: 160px;
+    height: 55px;
     grid-template-columns: repeat(5, 1fr);
-    gap: 16px;
 
     .quick-item {
+      margin-top: -5px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 10px;
-      padding: 20px;
+      gap: 5px;
       border-radius: 12px;
       cursor: pointer;
       transition: all 0.3s;
@@ -485,7 +553,7 @@ const quickLinks = [
         border-radius: 12px;
         display: flex;
         align-items: center;
-        justify-content: center;
+        justify-content:center;
       }
 
       .quick-name {

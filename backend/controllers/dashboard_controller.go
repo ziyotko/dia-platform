@@ -148,8 +148,77 @@ func (c *DashboardController) GetVisitTrend(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("获取成功", result))
 }
 
+func (c *DashboardController) GetArticleTrend(ctx *gin.Context) {
+	period := ctx.Query("period")
+	now := time.Now()
+
+	var result []TrendItem
+
+	switch period {
+	case "week":
+		weekday := int(now.Weekday())
+		if weekday == 0 {
+			weekday = 7
+		}
+		monday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).AddDate(0, 0, -(weekday - 1))
+		nextMonday := monday.AddDate(0, 0, 7)
+
+		countMap := getPublishedArticleCountMap(monday, nextMonday, "2006-01-02")
+
+		days := []string{"周一", "周二", "周三", "周四", "周五", "周六", "周日"}
+		for i := 0; i < 7; i++ {
+			day := monday.AddDate(0, 0, i)
+			dateStr := day.Format("2006-01-02")
+			result = append(result, TrendItem{Label: days[i], Value: countMap[dateStr]})
+		}
+
+	case "month":
+		startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+		endOfMonth := startOfMonth.AddDate(0, 1, 0)
+		daysInMonth := endOfMonth.AddDate(0, 0, -1).Day()
+
+		countMap := getPublishedArticleCountMap(startOfMonth, endOfMonth, "2006-01-02")
+
+		for i := 1; i <= daysInMonth; i++ {
+			day := time.Date(now.Year(), now.Month(), i, 0, 0, 0, 0, now.Location())
+			dateStr := day.Format("2006-01-02")
+			result = append(result, TrendItem{Label: day.Format("2日"), Value: countMap[dateStr]})
+		}
+
+	case "year":
+		startOfYear := time.Date(now.Year(), 1, 1, 0, 0, 0, 0, now.Location())
+		endOfYear := startOfYear.AddDate(1, 0, 0)
+
+		countMap := getPublishedArticleCountMap(startOfYear, endOfYear, "2006-01")
+
+		months := []string{"1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"}
+		for i := 1; i <= 12; i++ {
+			monthStr := time.Date(now.Year(), time.Month(i), 1, 0, 0, 0, 0, now.Location()).Format("2006-01")
+			result = append(result, TrendItem{Label: months[i-1], Value: countMap[monthStr]})
+		}
+
+	default:
+		ctx.JSON(http.StatusOK, utils.Error(1, "无效的 period 参数"))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.Success("获取成功", result))
+}
+
+func getPublishedArticleCountMap(start, end time.Time, layout string) map[string]int64 {
+	var articles []models.Article
+	utils.DB.Where("status = ? AND created_at >= ? AND created_at < ?", 1, start, end).Find(&articles)
+
+	countMap := make(map[string]int64)
+	for _, a := range articles {
+		key := a.CreatedAt.Format(layout)
+		countMap[key]++
+	}
+	return countMap
+}
+
 func (c *DashboardController) GetLoginLogs(ctx *gin.Context) {
-	logs, err := c.logService.GetRecentLoginLogs(5)
+	logs, err := c.logService.GetRecentLoginLogs(10)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取登录日志失败"))
 		return

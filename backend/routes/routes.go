@@ -189,5 +189,6 @@ func SetupRoutes(router *gin.Engine) {
 		protected.GET("/dashboard/stats", dashboardController.GetStats)
 		protected.GET("/dashboard/login-logs", dashboardController.GetLoginLogs)
 		protected.GET("/dashboard/visit-trend", dashboardController.GetVisitTrend)
+		protected.GET("/dashboard/article-trend", dashboardController.GetArticleTrend)
 	}
 }
