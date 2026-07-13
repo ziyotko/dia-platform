@@ -587,6 +587,24 @@ func (c *ArticleController) GetArticleColumnPublishes(ctx *gin.Context) {
 	}))
 }
 
+func (c *ArticleController) GetArticleAuthorStats(ctx *gin.Context) {
+	period := ctx.Query("period")
+	if period == "" {
+		period = "week"
+	}
+
+	stats, total, err := c.articleService.GetArticleAuthorStats(period)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取文章作者统计失败"))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.Success("获取成功", gin.H{
+		"list":  stats,
+		"total": total,
+	}))
+}
+
 func formatLocalTime(t *models.LocalTime) string {
 	if t == nil || t.IsZero() {
 		return ""

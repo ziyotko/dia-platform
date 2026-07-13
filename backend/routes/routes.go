@@ -140,6 +140,7 @@ func SetupRoutes(router *gin.Engine) {
 
 		protected.GET("/articles", articleController.GetArticles)
 		protected.GET("/articles/my-audits", articleController.GetMyAuditArticles)
+		protected.GET("/articles/author-stats", articleController.GetArticleAuthorStats)
 		protected.GET("/articles/:id", articleController.GetArticleByID)
 		protected.POST("/articles", articleController.CreateArticle)
 		protected.PUT("/articles/:id", articleController.UpdateArticle)

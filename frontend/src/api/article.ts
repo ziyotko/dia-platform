@@ -87,3 +87,7 @@ export function deleteArticle(id: number) {
 export function getArticleColumnPublishes(params: { articleTitle?: string; columnId?: number; page?: number; pageSize?: number }) {
   return request.get('/articles/column-publishes', { params })
 }
+
+export function getArticleAuthorStats(period: string) {
+  return request.get('/articles/author-stats', { params: { period } })
+}

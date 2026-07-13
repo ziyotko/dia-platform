@@ -258,6 +258,56 @@ func (s *ArticleService) GetArticleCount() int64 {
 	return count
 }
 
+type ArticleAuthorStat struct {
+	Author     string `json:"author"`
+	AuthorCode string `json:"authorCode"`
+	Count      int64  `json:"count"`
+}
+
+func (s *ArticleService) GetArticleAuthorStats(period string) ([]ArticleAuthorStat, int64, error) {
+	var results []ArticleAuthorStat
+	var total int64
+	now := time.Now()
+	loc := now.Location()
+
+	query := utils.DB.Model(&models.Article{}).Where("status = ?", 1)
+
+	switch period {
+	case "week":
+		weekday := int(now.Weekday())
+		if weekday == 0 {
+			weekday = 7
+		}
+		monday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -(weekday - 1))
+		nextMonday := monday.AddDate(0, 0, 7)
+		query = query.Where("created_at >= ? AND created_at < ?", monday, nextMonday)
+	case "month":
+		startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, loc)
+		endOfMonth := startOfMonth.AddDate(0, 1, 0)
+		query = query.Where("created_at >= ? AND created_at < ?", startOfMonth, endOfMonth)
+	case "year":
+		startOfYear := time.Date(now.Year(), 1, 1, 0, 0, 0, 0, loc)
+		endOfYear := startOfYear.AddDate(1, 0, 0)
+		query = query.Where("created_at >= ? AND created_at < ?", startOfYear, endOfYear)
+	default:
+		return nil, 0, fmt.Errorf("无效的 period 参数")
+	}
+
+	err := query.Select("author, author_code, COUNT(*) as count").
+		Group("author, author_code").
+		Order("count DESC, author ASC").
+		Scan(&results).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	for _, r := range results {
+		total += r.Count
+	}
+
+	return results, total, nil
+}
+
 // RestartArticleAudit 重新提交文章审核（清空旧记录后重新走提交流程）
 func (s *ArticleService) RestartArticleAudit(articleID uint) error {
 	var article models.Article
