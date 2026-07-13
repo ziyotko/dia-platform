@@ -28,7 +28,7 @@ export interface ArticleForm {
   attachments?: ArticleAttachment[]
 }
 
-export function getArticles(params: { title?: string; categoryId?: number; status?: number; auditStatus?: number; page?: number; pageSize?: number }) {
+export function getArticles(params: { title?: string; categoryId?: number; status?: number; auditStatus?: number; type?: number; author?: string; source?: string; page?: number; pageSize?: number }) {
   return request.get('/articles', { params })
 }
 

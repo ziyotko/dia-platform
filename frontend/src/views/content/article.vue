@@ -29,6 +29,19 @@
             <el-option label="已审核" :value="2" />
           </el-select>
         </el-form-item>
+        <el-form-item label="文章类型">
+          <el-select v-model="queryForm.type" placeholder="全部类型" clearable style="width: 120px">
+            <el-option label="图文" :value="1" />
+            <el-option label="视频" :value="2" />
+            <el-option label="数据" :value="3" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="作者">
+          <el-input v-model="queryForm.author" placeholder="请输入作者" clearable />
+        </el-form-item>
+        <el-form-item label="来源">
+          <el-input v-model="queryForm.source" placeholder="请输入来源" clearable />
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
             <el-icon><Search /></el-icon>查询
@@ -765,7 +778,10 @@ const queryForm = reactive({
   title: '',
   categoryId: undefined as number | undefined,
   status: undefined as number | undefined,
-  auditStatus: undefined as number | undefined
+  auditStatus: undefined as number | undefined,
+  type: undefined as number | undefined,
+  author: '',
+  source: ''
 })
 
 const form = reactive({
@@ -1132,6 +1148,9 @@ const fetchData = async () => {
     if (queryForm.categoryId !== undefined) params.categoryId = queryForm.categoryId
     if (queryForm.status !== undefined) params.status = queryForm.status
     if (queryForm.auditStatus !== undefined) params.auditStatus = queryForm.auditStatus
+    if (queryForm.type !== undefined) params.type = queryForm.type
+    if (queryForm.author) params.author = queryForm.author
+    if (queryForm.source) params.source = queryForm.source
     const res: any = await getArticles(params)
     tableData.value = res.data?.list || []
     total.value = res.data?.total || 0
@@ -1170,6 +1189,9 @@ const resetQuery = () => {
   queryForm.categoryId = undefined
   queryForm.status = undefined
   queryForm.auditStatus = undefined
+  queryForm.type = undefined
+  queryForm.author = ''
+  queryForm.source = ''
   queryForm.page = 1
   fetchData()
 }

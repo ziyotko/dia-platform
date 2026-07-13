@@ -30,6 +30,9 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 	categoryIDStr := ctx.Query("categoryId")
 	statusStr := ctx.Query("status")
 	auditStatusStr := ctx.Query("auditStatus")
+	typeStr := ctx.Query("type")
+	author := ctx.Query("author")
+	source := ctx.Query("source")
 	pageStr := ctx.DefaultQuery("page", "1")
 	pageSizeStr := ctx.DefaultQuery("pageSize", "10")
 
@@ -51,6 +54,12 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 			auditStatus = s
 		}
 	}
+	articleType := 0
+	if typeStr != "" {
+		if t, err := strconv.Atoi(typeStr); err == nil {
+			articleType = t
+		}
+	}
 	page, _ := strconv.Atoi(pageStr)
 	if page < 1 {
 		page = 1
@@ -60,7 +69,7 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 		pageSize = 10
 	}
 
-	articles, total, err := c.articleService.GetArticles(title, categoryID, status, auditStatus, page, pageSize)
+	articles, total, err := c.articleService.GetArticles(title, categoryID, status, auditStatus, articleType, author, source, page, pageSize)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取文章列表失败"))
 		return
