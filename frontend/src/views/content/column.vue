@@ -106,8 +106,8 @@
         default-expand-all
         :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
       >
-        <el-table-column prop="name" label="栏目名称" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="code" label="栏目编码" min-width="140" />
+        <el-table-column prop="name" label="栏目名称" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="code" label="栏目编码" min-width="160" />
         <el-table-column prop="routePath" label="访问路径" min-width="160" show-overflow-tooltip>
           <template #default="{ row }">
             <el-tag v-if="row.routePath" size="small" type="info">{{ row.routePath }}</el-tag>
@@ -416,7 +416,7 @@ const pageFormRules = {
 
 const displayTypeMap: Record<number, string> = {
   1: '轮播展示',
-  2: '新闻列表展示',
+  2: '列表展示',
   3: '图片展示',
   4: '广告展示',
   5: '友链展示',
@@ -428,7 +428,7 @@ const displayTypeMap: Record<number, string> = {
 
 const displayTypeOptions = [
   { label: '轮播展示', value: 1 },
-  { label: '新闻列表展示', value: 2 },
+  { label: '列表展示', value: 2 },
   { label: '图片展示', value: 3 },
   { label: '广告展示', value: 4 },
   { label: '友链展示', value: 5 },
@@ -841,7 +841,7 @@ const resetColumnForm = () => {
   columnForm.description = ''
   columnForm.sort = 0
   columnForm.status = 1
-  columnForm.displayType = 1
+  columnForm.displayType = 2
   columnForm.workflowId = undefined
 }
 
