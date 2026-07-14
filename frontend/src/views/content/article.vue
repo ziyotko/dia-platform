@@ -1991,6 +1991,22 @@ onMounted(() => {
   .preview-body {
     line-height: 1.8;
     color: #333;
+    word-break: break-word;
+
+    :deep(img) {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    :deep(video) {
+      max-width: 100%;
+      height: auto;
+    }
+
+    :deep(table) {
+      max-width: 100%;
+    }
   }
 
   .preview-attachments {
