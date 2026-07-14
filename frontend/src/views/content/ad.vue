@@ -408,7 +408,7 @@ const handleEdit = async (row: any) => {
     id: row.id,
     name: row.name,
     pageId: row.pageId,
-    columnId: row.columnId,
+    columnId: row.columnId || undefined,
     image: row.image,
     link: row.link,
     sort: row.sort,

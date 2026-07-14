@@ -392,7 +392,7 @@ const handleEdit = async (row: any) => {
     logo: row.logo,
     description: row.description,
     pageId: row.pageId,
-    columnId: row.columnId,
+    columnId: row.columnId || undefined,
     sort: row.sort,
     status: row.status
   })

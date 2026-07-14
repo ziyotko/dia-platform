@@ -749,7 +749,7 @@ const handleEditColumn = (row: ColumnItem) => {
   Object.assign(columnForm, {
     id: row.id,
     pageId: row.pageId,
-    parentId: row.parentId,
+    parentId: row.parentId || undefined,
     name: row.name,
     code: row.code,
     routePath: row.routePath,
