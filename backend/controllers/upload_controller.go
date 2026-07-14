@@ -43,7 +43,7 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 		".ppt": true, ".pptx": true, ".txt": true, ".zip": true, ".rar": true,
 		".7z": true, ".mp4": true, ".mp3": true,
 	}
-	if dir == "article" || dir == "attachment" {
+	if dir == "article" || dir == "attachment" || dir == "video" {
 		if !allowedAttachmentExts[ext] {
 			ctx.JSON(http.StatusOK, utils.Error(1, "不支持的文件格式"))
 			return
