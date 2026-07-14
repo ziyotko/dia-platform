@@ -467,6 +467,9 @@
 
     <el-dialog v-model="dataDialogVisible" title="新增数据" width="680px" destroy-on-close :close-on-click-modal="false">
       <el-form ref="dataFormRef" :model="dataForm" :rules="dataFormRules" label-width="90px">
+        <el-form-item label="数据标题" prop="title">
+          <el-input v-model="dataForm.title" placeholder="请输入数据标题" clearable />
+        </el-form-item>
         <el-row :gutter="20">
           <el-col :xs="24" :sm="12">
             <el-form-item label="所属分类" prop="categoryIds">
@@ -753,6 +756,7 @@ const dataFormRef = ref()
 const dataForm = reactive({
   categoryIds: [] as number[],
   tagIds: [] as number[],
+  title: '',
   source: '',
   publishTime: '',
   yearMonth: '',
@@ -853,6 +857,7 @@ const videoFormRules = {
 }
 
 const dataFormRules = {
+  title: [{ required: true, message: '请输入数据标题', trigger: 'blur' }],
   yearMonth: [{ required: true, message: '请选择年月', trigger: 'change' }],
   content: [{ required: true, message: '请输入数据内容', trigger: 'blur' }]
 }
@@ -1686,6 +1691,7 @@ const resetVideoForm = () => {
 const resetDataForm = () => {
   dataForm.categoryIds = []
   dataForm.tagIds = []
+  dataForm.title = ''
   dataForm.source = ''
   dataForm.publishTime = ''
   dataForm.yearMonth = ''
@@ -1776,14 +1782,12 @@ const handleSubmitData = async () => {
   if (!valid) return
   dataSubmitLoading.value = true
   try {
-    const [year, month] = dataForm.yearMonth.split('-')
-    const title = `${year}年${month}月`
     const data = {
-      title,
+      title: dataForm.title,
       type: 3,
       categoryIds: dataForm.categoryIds,
       tagIds: dataForm.tagIds,
-      summary: '',
+      summary: dataForm.yearMonth,
       content: dataForm.content,
       status: 0,
       auditStatus: 0,
