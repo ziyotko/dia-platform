@@ -25,13 +25,20 @@ func NewPageController() *PageController {
 func (c *PageController) GetPages(ctx *gin.Context) {
 	pageType := ctx.Query("pageType")
 	templateIDStr := ctx.Query("templateId")
+	statusStr := ctx.Query("status")
 	var templateID uint
 	if templateIDStr != "" {
 		if id, err := strconv.ParseUint(templateIDStr, 10, 32); err == nil {
 			templateID = uint(id)
 		}
 	}
-	pages, err := c.pageService.GetPages(pageType, templateID)
+	var status *int
+	if statusStr != "" {
+		if s, err := strconv.Atoi(statusStr); err == nil {
+			status = &s
+		}
+	}
+	pages, err := c.pageService.GetPages(pageType, templateID, status)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取页面列表失败"))
 		return

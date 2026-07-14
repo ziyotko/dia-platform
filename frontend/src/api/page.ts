@@ -12,7 +12,7 @@ export interface PageForm {
   status: number
 }
 
-export function getPages(params?: { pageType?: string; templateId?: number }) {
+export function getPages(params?: { pageType?: string; templateId?: number; status?: number }) {
   return request.get('/pages', { params })
 }
 

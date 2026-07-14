@@ -9,7 +9,7 @@ import (
 
 type PageService struct{}
 
-func (s *PageService) GetPages(pageType string, templateID uint) ([]models.Page, error) {
+func (s *PageService) GetPages(pageType string, templateID uint, status *int) ([]models.Page, error) {
 	var pages []models.Page
 	query := utils.DB.Model(&models.Page{})
 	if pageType != "" {
@@ -17,6 +17,9 @@ func (s *PageService) GetPages(pageType string, templateID uint) ([]models.Page,
 	}
 	if templateID > 0 {
 		query = query.Where("template_id = ?", templateID)
+	}
+	if status != nil {
+		query = query.Where("status = ?", *status)
 	}
 	err := query.Order("id DESC").Find(&pages).Error
 	return pages, err

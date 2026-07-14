@@ -307,7 +307,7 @@ const formColumnList = ref<any[]>([])
 
 const fetchPages = async () => {
   try {
-    const res: any = await getPages()
+    const res: any = await getPages({ status: 1 })
     pageList.value = res.data || []
   } catch {
     // ignore
