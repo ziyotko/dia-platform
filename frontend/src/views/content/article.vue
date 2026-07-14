@@ -387,7 +387,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="videoDialogVisible" title="新增视频" width="680px" destroy-on-close :close-on-click-modal="false">
+    <el-dialog v-model="videoDialogVisible" :title="videoDialogTitle" width="680px" destroy-on-close :close-on-click-modal="false">
       <el-form ref="videoFormRef" :model="videoForm" :rules="videoFormRules" label-width="90px">
         <el-form-item label="视频标题" prop="title">
           <el-input v-model="videoForm.title" placeholder="请输入视频标题" clearable />
@@ -465,7 +465,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="dataDialogVisible" title="新增数据" width="680px" destroy-on-close :close-on-click-modal="false">
+    <el-dialog v-model="dataDialogVisible" :title="dataDialogTitle" width="680px" destroy-on-close :close-on-click-modal="false">
       <el-form ref="dataFormRef" :model="dataForm" :rules="dataFormRules" label-width="90px">
         <el-form-item label="数据标题" prop="title">
           <el-input v-model="dataForm.title" placeholder="请输入数据标题" clearable />
@@ -740,6 +740,7 @@ const videoDialogVisible = ref(false)
 const videoSubmitLoading = ref(false)
 const videoFormRef = ref()
 const videoForm = reactive({
+  id: undefined as number | undefined,
   categoryIds: [] as number[],
   tagIds: [] as number[],
   title: '',
@@ -750,10 +751,13 @@ const videoForm = reactive({
   videoSize: 0
 })
 
+const videoDialogTitle = ref('新增视频')
+
 const dataDialogVisible = ref(false)
 const dataSubmitLoading = ref(false)
 const dataFormRef = ref()
 const dataForm = reactive({
+  id: undefined as number | undefined,
   categoryIds: [] as number[],
   tagIds: [] as number[],
   title: '',
@@ -762,6 +766,8 @@ const dataForm = reactive({
   yearMonth: '',
   content: ''
 })
+
+const dataDialogTitle = ref('新增数据')
 
 const columnDialogVisible = ref(false)
 const columnDialogTitle = ref('')
@@ -1208,11 +1214,13 @@ const handleAdd = () => {
 }
 
 const handleAddVideo = () => {
+  videoDialogTitle.value = '新增视频'
   resetVideoForm()
   videoDialogVisible.value = true
 }
 
 const handleAddData = () => {
+  dataDialogTitle.value = '新增数据'
   resetDataForm()
   dataDialogVisible.value = true
 }
@@ -1226,10 +1234,44 @@ const handleEdit = async (row: any) => {
     ElMessage.warning('审核中的文章不能编辑')
     return
   }
-  dialogTitle.value = '编辑文章'
-  resetForm()
   const res: any = await getArticleByID(row.id)
   const detail = res.data || row
+  if (row.type === 2) {
+    videoDialogTitle.value = '编辑视频'
+    resetVideoForm()
+    const att = detail.attachments?.[0] || {}
+    Object.assign(videoForm, {
+      id: detail.id,
+      title: detail.title,
+      categoryIds: detail.categoryIds || [],
+      tagIds: detail.tagIds || [],
+      source: detail.source || '',
+      publishTime: detail.publishTime || '',
+      videoUrl: att.url || '',
+      videoName: att.name || '',
+      videoSize: att.size || 0
+    })
+    videoDialogVisible.value = true
+    return
+  }
+  if (row.type === 3) {
+    dataDialogTitle.value = '编辑数据'
+    resetDataForm()
+    Object.assign(dataForm, {
+      id: detail.id,
+      title: detail.title,
+      categoryIds: detail.categoryIds || [],
+      tagIds: detail.tagIds || [],
+      source: detail.source || '',
+      publishTime: detail.publishTime || '',
+      yearMonth: detail.summary || '',
+      content: detail.content || ''
+    })
+    dataDialogVisible.value = true
+    return
+  }
+  dialogTitle.value = '编辑文章'
+  resetForm()
   Object.assign(form, {
     id: detail.id,
     title: detail.title,
@@ -1678,6 +1720,7 @@ const resetForm = () => {
 }
 
 const resetVideoForm = () => {
+  videoForm.id = undefined
   videoForm.categoryIds = []
   videoForm.tagIds = []
   videoForm.title = ''
@@ -1689,6 +1732,7 @@ const resetVideoForm = () => {
 }
 
 const resetDataForm = () => {
+  dataForm.id = undefined
   dataForm.categoryIds = []
   dataForm.tagIds = []
   dataForm.title = ''
@@ -1768,8 +1812,13 @@ const handleSubmitVideo = async () => {
         }
       ]
     }
-    await createArticle(data)
-    ElMessage.success('新增视频成功')
+    if (videoForm.id) {
+      await updateArticle(videoForm.id, data)
+      ElMessage.success('编辑视频成功')
+    } else {
+      await createArticle(data)
+      ElMessage.success('新增视频成功')
+    }
     videoDialogVisible.value = false
     fetchData()
   } finally {
@@ -1800,8 +1849,13 @@ const handleSubmitData = async () => {
       url: '',
       attachments: [] as any[]
     }
-    await createArticle(data)
-    ElMessage.success('新增数据成功')
+    if (dataForm.id) {
+      await updateArticle(dataForm.id, data)
+      ElMessage.success('编辑数据成功')
+    } else {
+      await createArticle(data)
+      ElMessage.success('新增数据成功')
+    }
     dataDialogVisible.value = false
     fetchData()
   } finally {
