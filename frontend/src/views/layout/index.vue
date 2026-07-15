@@ -16,6 +16,7 @@
           :default-active="route.path"
           :collapse="appStore.sidebarCollapsed"
           :collapse-transition="false"
+          :unique-opened="true"
           class="sidebar-menu"
           background-color="transparent"
           :text-color="appStore.sidebarStyle === 'dark' ? '#bfcbd9' : '#2c3e50'"
@@ -32,7 +33,7 @@
         <div class="header-left">
           <el-icon
             class="collapse-btn"
-            size="20"
+            size="36"
             @click="appStore.toggleSidebar"
           >
             <Fold v-if="!appStore.sidebarCollapsed" />
@@ -42,7 +43,7 @@
         </div>
         <div class="header-right">
           <el-tooltip content="全屏" placement="bottom">
-            <el-icon class="header-icon" size="18" @click="toggleFullScreen">
+            <el-icon class="header-icon" size="36" @click="toggleFullScreen">
               <FullScreen />
             </el-icon>
           </el-tooltip>
