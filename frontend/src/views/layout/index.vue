@@ -16,7 +16,6 @@
           :default-active="route.path"
           :collapse="appStore.sidebarCollapsed"
           :collapse-transition="false"
-          router
           class="sidebar-menu"
           background-color="transparent"
           :text-color="appStore.sidebarStyle === 'dark' ? '#bfcbd9' : '#2c3e50'"
@@ -115,7 +114,8 @@ const SidebarMenuItem = {
   setup(props: { menu: MenuItem }) {
     return () => {
       const menu = props.menu
-      const indexPath = menu.path.startsWith('/') ? menu.path : '/' + menu.path
+      const isExternal = /^https?:\/\//.test(menu.path)
+      const indexPath = isExternal ? menu.path : (menu.path.startsWith('/') ? menu.path : '/' + menu.path)
       const iconComp = menu.icon ? (Icons as Record<string, any>)[menu.icon] : null
       if (menu.type === 'directory' && menu.children && menu.children.length > 0) {
         return h(ElSubMenu, { index: indexPath }, {
@@ -181,9 +181,15 @@ onMounted(() => {
 })
 
 const handleMenuSelect = (index: string) => {
+  if (/^https?:\/\//.test(index)) {
+    window.open(index, '_blank')
+    return
+  }
   if (index === route.path) {
     appStore.triggerRefresh()
+    return
   }
+  router.push(index)
 }
 
 const toggleFullScreen = () => {

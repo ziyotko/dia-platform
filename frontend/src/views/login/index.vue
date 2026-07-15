@@ -18,6 +18,10 @@
           </div>
           <div class="feature-item">
             <el-icon><Check /></el-icon>
+            <span>站点静态化</span>
+          </div>
+          <div class="feature-item">
+            <el-icon><Check /></el-icon>
             <span>多角色权限控制</span>
           </div>
           <div class="feature-item">
