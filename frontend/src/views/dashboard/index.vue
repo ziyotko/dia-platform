@@ -474,6 +474,7 @@ const quickLinks = [
   }
 
   .notice-list {
+     height: 360px;
     .notice-empty {
       text-align: center;
       padding: 24px 0;
