@@ -94,9 +94,9 @@
               :underline="'never'"
               @click="handlePreview(row)"
             >
-              {{ row.title }}
+              {{ row.type === 3 && row.summary ? `${row.summary}${row.title}` : row.title }}
             </el-link>
-            <span v-else>{{ row.title }}</span>
+            <span v-else>{{ row.type === 3 && row.summary ? `${row.summary}${row.title}` : row.title }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="author" label="作者" width="100" />
