@@ -164,7 +164,7 @@ func (s *UserService) GetUserList(page, pageSize int, username, account string, 
 
 func (s *UserService) CreateUser(username, nickname, account, email, password, phone string, status int, roleIds []int, orgIds []uint) error {
 	if password == "" {
-		password = "123456"
+		password = "Abcd@1234"
 	}
 
 	user := &models.User{
