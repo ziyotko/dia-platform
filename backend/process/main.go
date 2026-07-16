@@ -46,6 +46,13 @@ var newColumn = []string{"首页轮播", "首页行业要闻", "首页协会活�
 func main() {
 	createNewDBConnection()
 	createHistoryDBConnection()
+
+	newDB.Unscoped().Table("article_category").Where("article_id < 10000000").Delete(nil)
+	newDB.Unscoped().Table("article_tag").Where("article_id < 10000000").Delete(nil)
+	newDB.Unscoped().Table("article_column").Where("article_id < 10000000").Delete(nil)
+	newDB.Unscoped().Where("article_id < 10000000").Delete(&models.ArticleColumnAudit{})
+	newDB.Unscoped().Where("article_id < 10000000").Delete(&models.ArticleColumnPublish{})
+	newDB.Unscoped().Where("id < 10000000").Delete(&models.Article{})
 	var totalInserted, totalSkipped int
 	for i := range oldColumn {
 		inserted, skipped := migrateHistoryArchives(i)
@@ -208,13 +215,6 @@ func migrateHistoryArchives(index int) (int, int) {
 		log.Fatalf("获取目标栏目失败: %s", err)
 	}
 	fmt.Printf("目标栏目: id=%d, page_id=%d\n", col.ID, col.PageID)
-
-	newDB.Unscoped().Table("article_category").Where("article_id < 10000000").Delete(nil)
-	newDB.Unscoped().Table("article_tag").Where("article_id < 10000000").Delete(nil)
-	newDB.Unscoped().Table("article_column").Where("article_id < 10000000").Delete(nil)
-	newDB.Unscoped().Where("article_id < 10000000").Delete(&models.ArticleColumnAudit{})
-	newDB.Unscoped().Where("article_id < 10000000").Delete(&models.ArticleColumnPublish{})
-	newDB.Unscoped().Where("id < 10000000").Delete(&models.Article{})
 
 	var inserted, skipped int
 	for _, a := range archives {
