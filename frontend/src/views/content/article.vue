@@ -437,6 +437,36 @@
             </el-form-item>
           </el-col>
         </el-row>
+        <el-form-item label="封面图" prop="cover">
+          <div class="article-cover-uploader">
+            <el-upload
+              v-if="!videoForm.cover"
+              class="cover-uploader"
+              action=""
+              :http-request="handleVideoCoverUpload"
+              :show-file-list="false"
+              accept="image/*"
+            >
+              <el-icon class="uploader-icon"><Plus /></el-icon>
+              <div class="uploader-text">点击上传封面</div>
+              <div class="uploader-hint">建议尺寸 800×480</div>
+            </el-upload>
+            <div v-else class="cover-preview">
+              <div class="cover-image-wrapper">
+                <el-image
+                  :src="videoForm.cover"
+                  fit="cover"
+                  style="width: 100%; height: 100%"
+                  :preview-src-list="[videoForm.cover]"
+                />
+                <div class="cover-overlay" @click="handleRemoveVideoCover">
+                  <el-icon><Delete /></el-icon>
+                  <span>删除封面</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-form-item>
         <el-form-item label="上传视频" prop="videoUrl">
           <el-upload
             action="#"
@@ -746,6 +776,7 @@ const videoForm = reactive({
   title: '',
   source: '',
   publishTime: '',
+  cover: '',
   videoUrl: '',
   videoName: '',
   videoSize: 0
@@ -1278,6 +1309,7 @@ const handleEdit = async (row: any) => {
       tagIds: detail.tagIds || [],
       source: detail.source || '',
       publishTime: detail.publishTime || '',
+      cover: detail.cover || '',
       videoUrl: att.url || '',
       videoName: att.name || '',
       videoSize: att.size || 0
@@ -1668,6 +1700,20 @@ const handleRemoveCover = () => {
   form.cover = ''
 }
 
+const handleVideoCoverUpload = async (options: any) => {
+  try {
+    const res: any = await uploadFile(options.file, 'article')
+    videoForm.cover = res.data?.url || res.url || ''
+    ElMessage.success('封面图上传成功')
+  } catch (error: any) {
+    ElMessage.error(error?.message || '封面图上传失败')
+  }
+}
+
+const handleRemoveVideoCover = () => {
+  videoForm.cover = ''
+}
+
 const handleAttachmentBeforeUpload = (file: File) => {
   const isDuplicate = form.attachments.some(
     (att: any) => att.name === file.name && att.size === file.size
@@ -1757,6 +1803,7 @@ const resetVideoForm = () => {
   videoForm.title = ''
   videoForm.source = ''
   videoForm.publishTime = ''
+  videoForm.cover = ''
   videoForm.videoUrl = ''
   videoForm.videoName = ''
   videoForm.videoSize = 0
@@ -1831,7 +1878,7 @@ const handleSubmitVideo = async () => {
       isTop: 0,
       isBold: 0,
       defaultColor: '',
-      cover: '',
+      cover: videoForm.cover,
       source: videoForm.source,
       publishTime: videoForm.publishTime,
       url: '',
