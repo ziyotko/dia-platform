@@ -912,26 +912,57 @@ const base64ToBlob = (base64: string): Blob => {
   return new Blob([u8arr], { type: mime })
 }
 
+const IMAGE_MAX_SIZE = 10 * 1024 * 1024
+
+const uploadImageFile = async (
+  file: File,
+  insertFn: (url: string, alt: string, href: string) => void
+) => {
+  if (file.size > IMAGE_MAX_SIZE) {
+    ElMessage.error(`图片大小不能超过 10MB`)
+    throw new Error('图片大小超出限制')
+  }
+  const formData = new FormData()
+  formData.append('file', file)
+  try {
+    const res: any = await request.post('/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    const url = res.data?.url || ''
+    if (url) {
+      insertFn(url, '', '')
+    } else {
+      ElMessage.error('图片上传失败')
+    }
+  } catch {
+    ElMessage.error('图片上传失败')
+  }
+}
+
 const editorConfig: Partial<IEditorConfig> = {
   placeholder: '',
   MENU_CONF: {
     uploadImage: {
-      async customUpload(file: File, insertFn: (url: string, alt: string, href: string) => void) {
-        const formData = new FormData()
-        formData.append('file', file)
-        try {
-          const res: any = await request.post('/upload', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
+      maxFileSize: IMAGE_MAX_SIZE,
+      maxNumberOfFiles: 1,
+      customBrowseAndUpload(insertFn: (url: string, alt: string, href: string) => void) {
+        const input = document.createElement('input')
+        input.type = 'file'
+        input.accept = 'image/*'
+        input.style.display = 'none'
+        input.onchange = () => {
+          const file = input.files?.[0]
+          if (!file) return
+          uploadImageFile(file, insertFn).finally(() => {
+            input.value = ''
+            input.remove()
           })
-          const url = res.data?.url || ''
-          if (url) {
-            insertFn(url, '', '')
-          } else {
-            ElMessage.error('图片上传失败')
-          }
-        } catch {
-          ElMessage.error('图片上传失败')
         }
+        document.body.appendChild(input)
+        input.click()
+      },
+      async customUpload(file: File, insertFn: (url: string, alt: string, href: string) => void) {
+        await uploadImageFile(file, insertFn)
       }
     }
   }
