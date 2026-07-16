@@ -222,7 +222,8 @@ func migrateHistoryArchives(index int) (int, int) {
 		article := mapArchiveToArticle(a)
 		err := newDB.Transaction(func(tx *gorm.DB) error {
 			if err := tx.Create(&article).Error; err != nil {
-				return err
+				log.Printf("迁移文章 %d 失败: %s", a.ID, err)
+				//return err
 			}
 			if err := tx.Exec("INSERT INTO article_column (article_id, column_id) VALUES (?, ?)", article.ID, col.ID).Error; err != nil {
 				return err
