@@ -95,7 +95,7 @@ func (c *DashboardController) GetVisitTrend(ctx *gin.Context) {
 		}
 
 		days := []string{"周一", "周二", "周三", "周四", "周五", "周六", "周日"}
-		for i := 0; i < 7; i++ {
+		for i := range 7 {
 			day := monday.AddDate(0, 0, i)
 			dateStr := day.Format("2006-01-02")
 			result = append(result, TrendItem{Label: days[i], Value: countMap[dateStr]})
@@ -166,7 +166,7 @@ func (c *DashboardController) GetArticleTrend(ctx *gin.Context) {
 		countMap := getPublishedArticleCountMap(monday, nextMonday, "2006-01-02")
 
 		days := []string{"周一", "周二", "周三", "周四", "周五", "周六", "周日"}
-		for i := 0; i < 7; i++ {
+		for i := range 7 {
 			day := monday.AddDate(0, 0, i)
 			dateStr := day.Format("2006-01-02")
 			result = append(result, TrendItem{Label: days[i], Value: countMap[dateStr]})

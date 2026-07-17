@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -151,11 +152,8 @@ func (s *OrganizationService) GetOrganizationsByUserId(userId uint) ([]models.Or
 		if err != nil {
 			continue
 		}
-		for _, id := range userIds {
-			if id == uid {
-				result = append(result, org)
-				break
-			}
+		if slices.Contains(userIds, uid) {
+			result = append(result, org)
 		}
 	}
 	return result, nil
@@ -170,10 +168,8 @@ func (s *OrganizationService) AddUserToOrganization(orgId uint, userId uint) err
 		return err
 	}
 	uid := int(userId)
-	for _, id := range userIds {
-		if id == uid {
-			return nil
-		}
+	if slices.Contains(userIds, uid) {
+		return nil
 	}
 	userIds = append(userIds, uid)
 	return s.AssignOrganizationUsers(orgId, userIds)

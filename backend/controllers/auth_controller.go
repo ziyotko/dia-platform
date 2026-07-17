@@ -146,10 +146,7 @@ func (c *AuthController) GetProfile(ctx *gin.Context) {
 	}
 
 	opCount, _ := c.logService.GetUserOperationCount(user.ID)
-	onlineDays := int(math.Floor(time.Since(user.CreatedAt).Hours() / 24))
-	if onlineDays < 1 {
-		onlineDays = 1
-	}
+	onlineDays := max(int(math.Floor(time.Since(user.CreatedAt).Hours()/24)), 1)
 	articleCount := c.articleService.GetArticleCountByAuthor(strconv.FormatUint(uint64(user.ID), 10))
 
 	ctx.JSON(200, utils.Success("获取用户信息成功", gin.H{

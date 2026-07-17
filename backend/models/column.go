@@ -23,7 +23,7 @@ type Column struct {
 	Status      int            `gorm:"default:1" json:"status"`
 	DisplayType int            `gorm:"default:1" json:"displayType"`
 	WorkflowID  *uint          `gorm:"index" json:"workflowId"`
-	Workflow    Workflow       `gorm:"foreignKey:WorkflowID;references:ID" json:"workflow,omitempty"`
+	Workflow    Workflow       `gorm:"foreignKey:WorkflowID;references:ID" json:"workflow"`
 }
 
 func (c Column) MarshalJSON() ([]byte, error) {

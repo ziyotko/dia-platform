@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -499,13 +500,7 @@ func (c *ArticleController) DeleteArticle(ctx *gin.Context) {
 		return
 	}
 	roleIds, _ := c.userService.GetUserRoleIds(userID)
-	isAdmin := false
-	for _, rid := range roleIds {
-		if rid == 1 {
-			isAdmin = true
-			break
-		}
-	}
+	isAdmin := slices.Contains(roleIds, 1)
 	if !isAdmin && strconv.FormatUint(uint64(userID), 10) != article.AuthorCode {
 		ctx.JSON(http.StatusOK, utils.Error(1, "无权操作"))
 		return
