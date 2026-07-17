@@ -63,7 +63,7 @@ func (s *UserService) Login(email, account, mobile, password, captchaID, captcha
 				lockUntil := time.Now().Add(time.Duration(settings.LockDuration) * time.Minute)
 				user.LockedUntil = &lockUntil
 				user.LoginFailCount = 0
-				utils.DB.Model(&user).Updates(map[string]interface{}{
+				utils.DB.Model(&user).Updates(map[string]any{
 					"login_fail_count": 0,
 					"locked_until":     lockUntil,
 				})
@@ -74,7 +74,7 @@ func (s *UserService) Login(email, account, mobile, password, captchaID, captcha
 		}
 
 		if user.LoginFailCount > 0 || user.LockedUntil != nil {
-			utils.DB.Model(&user).Updates(map[string]interface{}{
+			utils.DB.Model(&user).Updates(map[string]any{
 				"login_fail_count": 0,
 				"locked_until":     nil,
 			})
@@ -204,7 +204,7 @@ func (s *UserService) CreateUser(username, nickname, account, email, password, p
 }
 
 func (s *UserService) UpdateUser(id uint, username, nickname, account, email, password, phone string, status int, roleIds []int, orgIds []uint) error {
-	updates := map[string]interface{}{
+	updates := map[string]any{
 		"username": username,
 		"nickname": nickname,
 		"account":  account,
@@ -273,7 +273,7 @@ func (s *UserService) UpdateUserStatus(id uint, status int) error {
 }
 
 func (s *UserService) UpdateProfile(id uint, nickname, email, phone, bio, avatar string) error {
-	return utils.DB.Model(&models.User{}).Where("id = ?", id).Updates(map[string]interface{}{
+	return utils.DB.Model(&models.User{}).Where("id = ?", id).Updates(map[string]any{
 		"nickname": nickname,
 		"email":    email,
 		"mobile":   phone,

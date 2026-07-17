@@ -41,7 +41,7 @@ func (s *TagService) UpdateTag(id uint, tag *models.Tag) error {
 	if err := utils.DB.First(&old, id).Error; err != nil {
 		return err
 	}
-	updates := map[string]interface{}{
+	updates := map[string]any{
 		"name":   tag.Name,
 		"color":  tag.Color,
 		"status": tag.Status,

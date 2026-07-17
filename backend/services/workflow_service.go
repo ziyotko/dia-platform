@@ -49,7 +49,7 @@ func (s *WorkflowService) UpdateWorkflow(id uint, workflow *models.Workflow) err
 	if err := utils.DB.First(&old, id).Error; err != nil {
 		return err
 	}
-	return utils.DB.Model(&old).Updates(map[string]interface{}{
+	return utils.DB.Model(&old).Updates(map[string]any{
 		"name":        workflow.Name,
 		"status":      workflow.Status,
 		"description": workflow.Description,

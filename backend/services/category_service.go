@@ -41,7 +41,7 @@ func (s *CategoryService) UpdateCategory(id uint, category *models.Category) err
 	if err := utils.DB.First(&old, id).Error; err != nil {
 		return err
 	}
-	updates := map[string]interface{}{
+	updates := map[string]any{
 		"name":        category.Name,
 		"code":        category.Code,
 		"description": category.Description,

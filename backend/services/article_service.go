@@ -109,7 +109,7 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 		if err := tx.First(&old, id).Error; err != nil {
 			return err
 		}
-		updates := map[string]interface{}{
+		updates := map[string]any{
 			"title":         article.Title,
 			"summary":       article.Summary,
 			"content":       article.Content,
@@ -483,7 +483,7 @@ func (s *ArticleService) AdvanceArticleAudit(articleID uint, columnID uint, user
 	if err != nil {
 		// 没有下一个节点，标记为已通过，记录通过人信息
 		now := time.Now()
-		if err := utils.DB.Model(&audit).Updates(map[string]interface{}{
+		if err := utils.DB.Model(&audit).Updates(map[string]any{
 			"status":            1,
 			"current_node_id":   0,
 			"approve_remark":    remark,
@@ -497,7 +497,7 @@ func (s *ArticleService) AdvanceArticleAudit(articleID uint, columnID uint, user
 		return nil
 	}
 	// 推进到下一个节点
-	return utils.DB.Model(&audit).Updates(map[string]interface{}{
+	return utils.DB.Model(&audit).Updates(map[string]any{
 		"current_node_id": nextNode.ID,
 		"approve_remark":  remark,
 	}).Error
@@ -536,7 +536,7 @@ func (s *ArticleService) RejectArticleAudit(articleID uint, columnID uint, userI
 	if err := utils.DB.Create(&history).Error; err != nil {
 		return err
 	}
-	if err := utils.DB.Model(&audit).Updates(map[string]interface{}{
+	if err := utils.DB.Model(&audit).Updates(map[string]any{
 		"status":        2,
 		"reject_remark": remark,
 	}).Error; err != nil {
@@ -678,7 +678,7 @@ func (s *ArticleService) CompleteArticleAudit(articleID uint) error {
 			if err := tx.Create(&publish).Error; err != nil {
 				return err
 			}
-			if err := tx.Model(&article).Updates(map[string]interface{}{"status": 1}).Error; err != nil {
+			if err := tx.Model(&article).Updates(map[string]any{"status": 1}).Error; err != nil {
 				return err
 			}
 

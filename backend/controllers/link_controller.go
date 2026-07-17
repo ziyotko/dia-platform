@@ -177,7 +177,7 @@ func (c *LinkController) UpdateLink(ctx *gin.Context) {
 		return
 	}
 	var req models.Link
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+	if err = ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
 		return
 	}

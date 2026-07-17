@@ -29,7 +29,7 @@ func (s *ColumnService) UpdateColumn(id uint, column *models.Column) error {
 	if err := utils.DB.First(&old, id).Error; err != nil {
 		return err
 	}
-	updates := map[string]interface{}{
+	updates := map[string]any{
 		"name":         column.Name,
 		"code":         column.Code,
 		"page_id":      column.PageID,

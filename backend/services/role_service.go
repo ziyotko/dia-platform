@@ -61,7 +61,7 @@ func (s *RoleService) CreateRole(role *models.Role) error {
 }
 
 func (s *RoleService) UpdateRole(id uint, role *models.Role) error {
-	return utils.DB.Model(&models.Role{}).Where("id = ?", id).Updates(map[string]interface{}{
+	return utils.DB.Model(&models.Role{}).Where("id = ?", id).Updates(map[string]any{
 		"name":        role.Name,
 		"code":        role.Code,
 		"description": role.Description,

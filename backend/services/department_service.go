@@ -75,7 +75,7 @@ func (s *DepartmentService) CreateDepartment(dept *models.Department) error {
 }
 
 func (s *DepartmentService) UpdateDepartment(id uint, dept *models.Department) error {
-	return utils.DB.Model(&models.Department{}).Where("id = ?", id).UpdateColumns(map[string]interface{}{
+	return utils.DB.Model(&models.Department{}).Where("id = ?", id).UpdateColumns(map[string]any{
 		"parent_id":   dept.ParentID,
 		"org_id":      dept.OrgID,
 		"name":        dept.Name,
@@ -120,7 +120,7 @@ func (s *DepartmentService) AssignDepartmentUsers(id uint, userIds []int) error 
 	for i, uid := range userIds {
 		ids[i] = strconv.Itoa(uid)
 	}
-	return utils.DB.Model(&models.Department{}).Where("id = ?", id).UpdateColumns(map[string]interface{}{
+	return utils.DB.Model(&models.Department{}).Where("id = ?", id).UpdateColumns(map[string]any{
 		"user_ids":   strings.Join(ids, ","),
 		"user_count": len(userIds),
 	}).Error

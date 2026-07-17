@@ -50,7 +50,7 @@ func (s *AdService) UpdateAd(id uint, ad *models.Ad) error {
 	if err := utils.DB.First(&old, id).Error; err != nil {
 		return err
 	}
-	updates := map[string]interface{}{
+	updates := map[string]any{
 		"name":       ad.Name,
 		"page_id":    ad.PageID,
 		"column_id":  ad.ColumnID,

@@ -69,7 +69,7 @@ func (s *OrganizationService) CreateOrganization(org *models.Organization) error
 }
 
 func (s *OrganizationService) UpdateOrganization(id uint, org *models.Organization) error {
-	return utils.DB.Model(&models.Organization{}).Where("id = ?", id).UpdateColumns(map[string]interface{}{
+	return utils.DB.Model(&models.Organization{}).Where("id = ?", id).UpdateColumns(map[string]any{
 		"parent_id":    org.ParentID,
 		"name":         org.Name,
 		"code":         org.Code,
@@ -120,7 +120,7 @@ func (s *OrganizationService) AssignOrganizationUsers(id uint, userIds []int) er
 	for i, uid := range userIds {
 		ids[i] = strconv.Itoa(uid)
 	}
-	return utils.DB.Model(&models.Organization{}).Where("id = ?", id).UpdateColumns(map[string]interface{}{
+	return utils.DB.Model(&models.Organization{}).Where("id = ?", id).UpdateColumns(map[string]any{
 		"user_ids":   strings.Join(ids, ","),
 		"user_count": len(userIds),
 	}).Error

@@ -8,8 +8,9 @@ import (
 type TemplateService struct{}
 
 type TemplateListResult struct {
-	Total int64             `json:"total"`
-	List  []models.Template `json:"list"`
+	Total      int64             `json:"total"`
+	List       []models.Template `json:"list"`
+	PageCounts map[uint]int      `json:"-"`
 }
 
 func (s *TemplateService) GetTemplateList(page, pageSize int, name, ttype string) (*TemplateListResult, error) {
@@ -36,9 +37,34 @@ func (s *TemplateService) GetTemplateList(page, pageSize int, name, ttype string
 		return nil, err
 	}
 
+	// 实时统计每个模板关联的页面数
+	pageCounts := make(map[uint]int)
+	if len(list) > 0 {
+		ids := make([]uint, len(list))
+		for i, t := range list {
+			ids[i] = t.ID
+		}
+
+		type pageCountRow struct {
+			TemplateID uint
+			Count      int64
+		}
+		var rows []pageCountRow
+		if err := utils.DB.Model(&models.Page{}).
+			Select("template_id, COUNT(*) AS count").
+			Where("template_id IN ?", ids).
+			Group("template_id").
+			Find(&rows).Error; err == nil {
+			for _, r := range rows {
+				pageCounts[r.TemplateID] = int(r.Count)
+			}
+		}
+	}
+
 	return &TemplateListResult{
-		Total: total,
-		List:  list,
+		Total:      total,
+		List:       list,
+		PageCounts: pageCounts,
 	}, nil
 }
 
@@ -54,7 +80,7 @@ func (s *TemplateService) CreateTemplate(template *models.Template) error {
 	return utils.DB.Create(template).Error
 }
 
-func (s *TemplateService) UpdateTemplate(id uint, updates map[string]interface{}) error {
+func (s *TemplateService) UpdateTemplate(id uint, updates map[string]any) error {
 	return utils.DB.Model(&models.Template{}).Where("id = ?", id).Updates(updates).Error
 }
 

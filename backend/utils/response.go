@@ -1,12 +1,12 @@
 package utils
 
 type Response struct {
-	Code int         `json:"code"`
-	Msg  string      `json:"message"`
-	Data interface{} `json:"data,omitempty"`
+	Code int    `json:"code"`
+	Msg  string `json:"message"`
+	Data any    `json:"data,omitempty"`
 }
 
-func Success(msg string, data interface{}) *Response {
+func Success(msg string, data any) *Response {
 	if msg == "" {
 		msg = "success"
 	}

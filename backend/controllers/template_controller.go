@@ -63,7 +63,7 @@ func (c *TemplateController) GetTemplates(ctx *gin.Context) {
 			Status:      t.Status,
 			SourceCode:  t.SourceCode,
 			Layout:      t.Layout,
-			PageCount:   t.PageCount,
+			PageCount:   result.PageCounts[t.ID],
 			CreateTime:  t.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
@@ -104,7 +104,7 @@ func (c *TemplateController) UpdateTemplate(ctx *gin.Context) {
 		return
 	}
 
-	updates := map[string]interface{}{
+	updates := map[string]any{
 		"name":        req.Name,
 		"type":        req.Type,
 		"description": req.Description,
@@ -148,12 +148,12 @@ func (c *TemplateController) UpdateTemplateStatus(ctx *gin.Context) {
 	var req struct {
 		Status int `json:"status"`
 	}
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+	if err = ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误"))
 		return
 	}
 
-	err = c.templateService.UpdateTemplate(uint(id), map[string]interface{}{"status": req.Status})
+	err = c.templateService.UpdateTemplate(uint(id), map[string]any{"status": req.Status})
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "更新状态失败: "+err.Error()))
 		return
@@ -174,12 +174,12 @@ func (c *TemplateController) SaveTemplateDesign(ctx *gin.Context) {
 		SourceCode string `json:"sourceCode"`
 		Layout     string `json:"layout"`
 	}
-	if err := ctx.ShouldBindJSON(&req); err != nil {
+	if err = ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误"))
 		return
 	}
 
-	err = c.templateService.UpdateTemplate(uint(id), map[string]interface{}{
+	err = c.templateService.UpdateTemplate(uint(id), map[string]any{
 		"source_code": req.SourceCode,
 		"layout":      req.Layout,
 	})

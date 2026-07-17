@@ -17,5 +17,4 @@ type Template struct {
 	Status      int            `gorm:"default:1" json:"status"`
 	SourceCode  string         `gorm:"type:text" json:"sourceCode"`
 	Layout      string         `gorm:"type:text" json:"layout"`
-	PageCount   int            `gorm:"default:0" json:"pageCount"`
 }

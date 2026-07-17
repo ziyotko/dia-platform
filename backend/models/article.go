@@ -42,7 +42,7 @@ func (t LocalTime) Value() (driver.Value, error) {
 	return t.Time, nil
 }
 
-func (t *LocalTime) Scan(value interface{}) error {
+func (t *LocalTime) Scan(value any) error {
 	if value == nil {
 		t.Time = time.Time{}
 		return nil
