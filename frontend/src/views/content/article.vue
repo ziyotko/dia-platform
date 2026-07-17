@@ -129,7 +129,7 @@
         <el-table-column prop="createTime" label="创建时间" width="170" />
         <el-table-column label="操作" width="300" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button v-if="isAuthor(row) && row.auditStatus !== 1 && row.auditStatus !== 2" link type="primary" @click="handleEdit(row)">
+            <el-button v-if="isAuthor(row) && row.auditStatus !== 1 && (row.auditStatus !== 2 || row.status === 2)" link type="primary" @click="handleEdit(row)">
               <el-icon><Edit /></el-icon>编辑
             </el-button>
             <el-button v-if="isAuthor(row) && row.auditStatus !== 2" link type="success" @click="row.auditStatus === 1 ? ElMessage.warning('审核中的文章不能修改栏目') : handleSetColumns(row)">
@@ -1294,6 +1294,10 @@ const isAuthor = (row: any) => {
 const handleEdit = async (row: any) => {
   if (row.auditStatus === 1) {
     ElMessage.warning('审核中的文章不能编辑')
+    return
+  }
+  if (row.auditStatus === 2 && row.status !== 2) {
+    ElMessage.warning('已审核通过的文章不能编辑')
     return
   }
   const res: any = await getArticleByID(row.id)
