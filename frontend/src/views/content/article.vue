@@ -605,21 +605,112 @@
       </div>
     </el-dialog>
 
-    <el-dialog v-model="columnDialogVisible" :title="`栏目设置 - ${columnDialogTitle}`" width="500px" destroy-on-close>
-      <el-form label-width="80px">
-        <el-form-item label="选择栏目">
-          <el-select v-model="selectedColumnIds" multiple placeholder="请选择栏目" style="width: 100%">
-            <el-option-group v-for="page in pageList" :key="page.id" :label="page.name">
-              <el-option
-                v-for="col in getColumnsByPage(page.id)"
-                :key="col.id"
-                :label="col.name"
-                :value="col.id"
-              />
-            </el-option-group>
-          </el-select>
-        </el-form-item>
-      </el-form>
+    <el-dialog
+      v-model="columnDialogVisible"
+      :title="`栏目设置 - ${columnDialogTitle}`"
+      width="820px"
+      destroy-on-close
+      class="column-setting-dialog"
+      :close-on-click-modal="false"
+    >
+      <div class="column-setting-hint">
+        <el-icon><InfoFilled /></el-icon>
+        <span>请先选择页面，再勾选该页面下的栏目；支持跨页面多选。</span>
+      </div>
+      <el-row :gutter="16" class="column-setting-body">
+        <el-col :span="8">
+          <div class="column-setting-panel">
+            <div class="column-setting-panel-title">
+              <el-icon><Monitor /></el-icon>
+              <span>选择页面</span>
+              <span class="column-setting-count">({{ pageList.length }})</span>
+            </div>
+            <el-scrollbar height="320px" class="column-setting-scroll">
+              <div v-if="pageList.length === 0" class="column-setting-empty">
+                <el-empty description="暂无页面" :image-size="60" />
+              </div>
+              <div
+                v-for="page in pageList"
+                :key="page.id"
+                :class="['page-item', { active: selectedColumnPageId === page.id }]"
+                @click="selectColumnPage(page.id)"
+              >
+                <div class="page-item-name">{{ page.name }}</div>
+                <div class="page-item-meta">{{ getColumnCountByPage(page.id) }} 个栏目</div>
+                <el-icon v-if="selectedColumnPageId === page.id" class="page-item-check"><Check /></el-icon>
+              </div>
+            </el-scrollbar>
+          </div>
+        </el-col>
+        <el-col :span="16">
+          <div class="column-setting-panel">
+            <div class="column-setting-panel-title">
+              <el-icon><Collection /></el-icon>
+              <span>选择栏目</span>
+              <span class="column-setting-count">({{ selectedColumnPageColumns.length }})</span>
+              <el-checkbox
+                v-if="selectedColumnPageColumns.length > 0"
+                v-model="selectedPageAllSelected"
+                class="column-select-all"
+                @change="toggleSelectAllPageColumns"
+              >全选</el-checkbox>
+            </div>
+            <el-scrollbar height="320px" class="column-setting-scroll">
+              <div v-if="!selectedColumnPageId" class="column-setting-empty">
+                <el-empty description="请先选择左侧页面" :image-size="80" />
+              </div>
+              <div v-else-if="selectedColumnPageColumns.length === 0" class="column-setting-empty">
+                <el-empty description="该页面下暂无栏目" :image-size="80" />
+              </div>
+              <el-checkbox-group v-else v-model="selectedColumnIds" class="column-checkbox-group">
+                <div
+                  v-for="col in selectedColumnPageColumns"
+                  :key="col.id"
+                  :class="['column-card', { checked: selectedColumnIds.includes(col.id), 'is-child': col.parentId && col.parentId > 0 }]"
+                  @click="toggleColumnSelection(col.id)"
+                >
+                  <el-checkbox :label="col.id" @click.stop>
+                    <div class="column-card-info">
+                      <span class="column-card-name">
+                        <el-icon v-if="col.parentId && col.parentId > 0" class="child-column-icon"><ArrowRight /></el-icon>
+                        {{ col.name }}
+                      </span>
+                      <div class="column-card-tags">
+                        <el-tag v-if="col.parentId && col.parentId > 0" size="small" type="warning" effect="light" class="column-card-tag">子栏目</el-tag>
+                        <el-tag v-if="col.workflowId" size="small" type="success" effect="light" class="column-card-tag">需审核</el-tag>
+                        <el-tag v-else size="small" type="info" effect="light" class="column-card-tag">免审核</el-tag>
+                      </div>
+                    </div>
+                    <div v-if="col.parentId && col.parentId > 0" class="column-card-parent">
+                      上级：{{ getColumnParentName(col) }}
+                    </div>
+                  </el-checkbox>
+                </div>
+              </el-checkbox-group>
+            </el-scrollbar>
+          </div>
+        </el-col>
+      </el-row>
+      <div class="column-setting-selected">
+        <div class="column-setting-selected-title">
+          <span>已选栏目</span>
+          <span class="column-setting-count">{{ selectedColumnIds.length }} 个</span>
+        </div>
+        <div v-if="selectedColumnIds.length === 0" class="column-setting-selected-empty">暂未选择任何栏目</div>
+        <div v-else class="column-setting-selected-list">
+          <el-tag
+            v-for="item in selectedColumnSummary"
+            :key="item.id"
+            closable
+            type="primary"
+            effect="light"
+            class="column-selected-tag"
+            @close="removeSelectedColumn(item.id)"
+          >
+            {{ item.pageName }} / {{ item.name }}
+          </el-tag>
+        </div>
+      </div>
       <template #footer>
         <el-button @click="columnDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="columnSubmitLoading" @click="handleSubmitColumns">确定</el-button>
@@ -724,7 +815,12 @@ import {
   Warning,
   Document,
   VideoCamera,
-  DataLine
+  DataLine,
+  InfoFilled,
+  Monitor,
+  Collection,
+  Check,
+  ArrowRight
 } from '@element-plus/icons-vue'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
@@ -803,10 +899,55 @@ const dataDialogTitle = ref('新增数据')
 const columnDialogVisible = ref(false)
 const columnDialogTitle = ref('')
 const selectedColumnIds = ref<number[]>([])
+const selectedColumnPageId = ref<number | undefined>(undefined)
 const columnSubmitLoading = ref(false)
 const currentArticleId = ref<number | undefined>(undefined)
 const pageList = ref<any[]>([])
 const columnList = ref<any[]>([])
+
+const selectedColumnPageColumns = computed(() => {
+  if (!selectedColumnPageId.value) return []
+  const cols = columnList.value.filter((col: any) => col.pageId === selectedColumnPageId.value)
+  return cols.sort((a: any, b: any) => {
+    const aIsRoot = !a.parentId || a.parentId === 0
+    const bIsRoot = !b.parentId || b.parentId === 0
+    if (aIsRoot && !bIsRoot) return -1
+    if (!aIsRoot && bIsRoot) return 1
+    return a.sort - b.sort
+  })
+})
+
+const getColumnParentName = (column: any) => {
+  if (!column.parentId) return ''
+  const parent = columnList.value.find((col: any) => col.id === column.parentId)
+  return parent?.name || ''
+}
+
+const selectedPageAllSelected = computed({
+  get() {
+    const cols = selectedColumnPageColumns.value
+    return cols.length > 0 && cols.every((col: any) => selectedColumnIds.value.includes(col.id))
+  },
+  set(val: boolean) {
+    const ids = selectedColumnPageColumns.value.map((col: any) => col.id)
+    if (val) {
+      selectedColumnIds.value = Array.from(new Set([...selectedColumnIds.value, ...ids]))
+    } else {
+      selectedColumnIds.value = selectedColumnIds.value.filter((id: number) => !ids.includes(id))
+    }
+  }
+})
+
+const selectedColumnSummary = computed(() => {
+  return selectedColumnIds.value
+    .map((id: number) => {
+      const col = columnList.value.find((c: any) => c.id === id)
+      if (!col) return null
+      const page = pageList.value.find((p: any) => p.id === col.pageId)
+      return { id, name: col.name, pageName: page?.name || '未知页面' }
+    })
+    .filter(Boolean) as { id: number; name: string; pageName: string }[]
+})
 
 const auditFlowDialogVisible = ref(false)
 const auditFlowLoading = ref(false)
@@ -908,6 +1049,36 @@ const tagList = ref<any[]>([])
 
 const getColumnsByPage = (pageId: number) => {
   return columnList.value.filter((col: any) => col.pageId === pageId)
+}
+
+const getColumnCountByPage = (pageId: number) => {
+  return getColumnsByPage(pageId).length
+}
+
+const selectColumnPage = (pageId: number) => {
+  selectedColumnPageId.value = pageId
+}
+
+const toggleColumnSelection = (columnId: number) => {
+  const index = selectedColumnIds.value.indexOf(columnId)
+  if (index > -1) {
+    selectedColumnIds.value.splice(index, 1)
+  } else {
+    selectedColumnIds.value.push(columnId)
+  }
+}
+
+const toggleSelectAllPageColumns = (val: any) => {
+  const ids = selectedColumnPageColumns.value.map((col: any) => col.id)
+  if (val) {
+    selectedColumnIds.value = Array.from(new Set([...selectedColumnIds.value, ...ids]))
+  } else {
+    selectedColumnIds.value = selectedColumnIds.value.filter((id: number) => !ids.includes(id))
+  }
+}
+
+const removeSelectedColumn = (columnId: number) => {
+  selectedColumnIds.value = selectedColumnIds.value.filter((id: number) => id !== columnId)
 }
 
 const fetchPages = async () => {
@@ -1604,11 +1775,19 @@ const handleSetColumns = async (row: any) => {
   currentArticleId.value = row.id
   columnDialogTitle.value = row.title
   selectedColumnIds.value = row.columnIds || []
+  selectedColumnPageId.value = undefined
   if (pageList.value.length === 0) {
     await fetchPages()
   }
   if (columnList.value.length === 0) {
     await fetchColumns()
+  }
+  // 若文章已有栏目，默认选中第一个栏目所在页面
+  if (selectedColumnIds.value.length > 0) {
+    const firstCol = columnList.value.find((col: any) => col.id === selectedColumnIds.value[0])
+    if (firstCol) {
+      selectedColumnPageId.value = firstCol.pageId
+    }
   }
   columnDialogVisible.value = true
 }
@@ -2418,6 +2597,249 @@ onMounted(() => {
     width: auto !important;
     height: auto !important;
     object-fit: contain !important;
+  }
+}
+
+.column-setting-dialog {
+  :deep(.el-dialog__body) {
+    padding: 20px;
+    padding-bottom: 12px;
+  }
+
+  .column-setting-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #f0f9ff;
+    border: 1px solid #d9ecff;
+    border-radius: 8px;
+    color: #409eff;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+
+  .column-setting-body {
+    margin-bottom: 16px;
+  }
+
+  .column-setting-panel {
+    height: 368px;
+    border: 1px solid #e6f2ff;
+    border-radius: 12px;
+    background: #fafbfc;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .column-setting-panel-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 14px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #2c3e50;
+    border-bottom: 1px solid #e6f2ff;
+    background: #fff;
+
+    .el-icon {
+      color: #409eff;
+      font-size: 18px;
+    }
+
+    .column-setting-count {
+      font-size: 13px;
+      color: #909399;
+      font-weight: 400;
+      margin-left: 2px;
+    }
+
+    .column-select-all {
+      margin-left: auto;
+      font-weight: 400;
+    }
+  }
+
+  .column-setting-scroll {
+    flex: 1;
+    padding: 10px;
+  }
+
+  .column-setting-empty {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .page-item {
+    position: relative;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    background: #fff;
+    border: 1px solid #e6f2ff;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      border-color: #a0cfff;
+      box-shadow: 0 2px 8px rgba(64, 158, 255, 0.08);
+    }
+
+    &.active {
+      border-color: #409eff;
+      background: #f0f9ff;
+      box-shadow: 0 2px 8px rgba(64, 158, 255, 0.12);
+    }
+
+    .page-item-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: #2c3e50;
+      margin-bottom: 4px;
+      padding-right: 20px;
+    }
+
+    .page-item-meta {
+      font-size: 12px;
+      color: #909399;
+    }
+
+    .page-item-check {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #409eff;
+      font-size: 16px;
+    }
+  }
+
+  .column-checkbox-group {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .column-card {
+    background: #fff;
+    border: 1px solid #e6f2ff;
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      border-color: #a0cfff;
+      box-shadow: 0 2px 8px rgba(64, 158, 255, 0.08);
+    }
+
+    &.checked {
+      border-color: #409eff;
+      background: #f0f9ff;
+      box-shadow: 0 2px 8px rgba(64, 158, 255, 0.12);
+    }
+
+    &.is-child {
+      border-left: 3px solid #e6a23c;
+      background: #fdfcf6;
+    }
+
+    :deep(.el-checkbox) {
+      height: auto;
+      align-items: flex-start;
+
+      .el-checkbox__input {
+        margin-top: 2px;
+      }
+
+      .el-checkbox__label {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding-left: 8px;
+        white-space: normal;
+        line-height: 1.4;
+      }
+    }
+
+    .column-card-info {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .column-card-name {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      color: #2c3e50;
+      font-weight: 500;
+
+      .child-column-icon {
+        color: #e6a23c;
+        font-size: 14px;
+      }
+    }
+
+    .column-card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .column-card-tag {
+      align-self: flex-start;
+    }
+
+    .column-card-parent {
+      font-size: 12px;
+      color: #909399;
+      padding-left: 20px;
+    }
+  }
+
+  .column-setting-selected {
+    border: 1px solid #e6f2ff;
+    border-radius: 12px;
+    padding: 12px 14px;
+    background: #fff;
+
+    .column-setting-selected-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 14px;
+      font-weight: 600;
+      color: #2c3e50;
+      margin-bottom: 10px;
+
+      .column-setting-count {
+        font-size: 13px;
+        color: #909399;
+        font-weight: 400;
+      }
+    }
+
+    .column-setting-selected-empty {
+      font-size: 13px;
+      color: #c0c4cc;
+      padding: 8px 0;
+    }
+
+    .column-setting-selected-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .column-selected-tag {
+      font-size: 13px;
+    }
   }
 }
 </style>
