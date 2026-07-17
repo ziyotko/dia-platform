@@ -24,6 +24,7 @@ func main() {
 		utils.DB.AutoMigrate(m)
 	}
 	models.MigrateArticleCategory()
+	models.MigrateIndexes()
 
 	router := gin.New()
 	router.Use(middleware.GinLogger(), gin.Recovery())

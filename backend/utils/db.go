@@ -35,7 +35,7 @@ func InitDB() {
 		parseTime = "true"
 	}
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=%s&parseTime=%s&loc=%s&timeout=%s&readTimeout=%s",
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=%s&parseTime=%s&loc=%s&timeout=%s&readTimeout=%s&writeTimeout=%s",
 		conf.Username,
 		conf.Password,
 		conf.Host,
@@ -46,6 +46,7 @@ func InitDB() {
 		url.QueryEscape(conf.Loc),
 		conf.Timeout,
 		conf.ReadTimeout,
+		conf.WriteTimeout,
 	)
 	println(dsn)
 	var err error

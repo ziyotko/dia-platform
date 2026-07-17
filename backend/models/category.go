@@ -16,7 +16,7 @@ type Category struct {
 	Code        string         `gorm:"size:100;not null" json:"code"`
 	Description string         `gorm:"size:500" json:"description"`
 	Sort        int            `gorm:"default:0" json:"sort"`
-	Status      int            `gorm:"default:1" json:"status"`
+	Status      int            `gorm:"default:1;index" json:"status"`
 }
 
 func (c Category) MarshalJSON() ([]byte, error) {

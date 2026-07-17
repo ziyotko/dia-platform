@@ -18,7 +18,7 @@ type Ad struct {
 	Image     string         `gorm:"size:500" json:"image"`
 	Link      string         `gorm:"size:500" json:"link"`
 	Sort      int            `gorm:"default:0" json:"sort"`
-	Status     int            `gorm:"default:1" json:"status"`
+	Status     int           `gorm:"default:1;index" json:"status"`
 	StartTime  *time.Time     `json:"startTime"`
 	EndTime    *time.Time     `json:"endTime"`
 	Author     string         `gorm:"size:100" json:"author"`

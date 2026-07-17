@@ -20,7 +20,7 @@ type User struct {
 	Account        string         `gorm:"unique;size:50" json:"account"`
 	Mobile         string         `gorm:"unique;size:20" json:"mobile"`
 	Sex            int            `gorm:"default:0" json:"sex"`
-	Status         int            `gorm:"default:1" json:"status"`
+	Status         int            `gorm:"default:1;index" json:"status"`
 	RoleIds        string         `gorm:"size:255" json:"roleIds"`
 	Bio            string         `gorm:"size:500" json:"bio"`
 	Avatar         string         `gorm:"size:500" json:"avatar"`

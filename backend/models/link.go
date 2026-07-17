@@ -19,7 +19,7 @@ type Link struct {
 	PageID      uint           `gorm:"not null;index" json:"pageId"`
 	ColumnID    uint           `gorm:"default:0;index" json:"columnId"`
 	Sort        int            `gorm:"default:0" json:"sort"`
-	Status      int            `gorm:"default:1" json:"status"`
+	Status      int            `gorm:"default:1;index" json:"status"`
 	Author      string         `gorm:"size:100" json:"author"`
 	AuthorCode  string         `gorm:"size:100" json:"authorCode"`
 }

@@ -15,7 +15,7 @@ type Organization struct {
 	ParentID    uint           `gorm:"default:0;index" json:"parentId"`
 	Name        string         `gorm:"size:100;not null" json:"name"`
 	Code        string         `gorm:"unique;size:50;not null" json:"code"`
-	OrgType     int            `gorm:"default:3;index" json:"orgType"`
+	OrgType     int            `gorm:"default:3;index:idx_organization_status_org_type" json:"orgType"`
 	OrgLevel    int            `gorm:"default:1" json:"orgLevel"`
 	Category    string         `gorm:"size:50" json:"category"`
 	Region      string         `gorm:"size:100" json:"region"`
@@ -25,7 +25,7 @@ type Organization struct {
 	Manager     string         `gorm:"size:50" json:"manager"`
 	ManagerCode string         `gorm:"size:50" json:"managerCode"`
 	Sort        int            `gorm:"default:0" json:"sort"`
-	Status      int            `gorm:"default:1" json:"status"`
+	Status      int            `gorm:"default:1;index:idx_organization_status_org_type" json:"status"`
 	Description string         `gorm:"size:500" json:"description"`
 	UserCount   int            `gorm:"default:0" json:"userCount"`
 	UserIds     string         `gorm:"size:1000" json:"userIds"`

@@ -5,8 +5,8 @@ import "time"
 type ArticleColumnAuditHistory struct {
 	ID           uint      `gorm:"primarykey" json:"id"`
 	CreatedAt    time.Time `json:"createTime"`
-	ArticleID    uint      `gorm:"not null;index" json:"articleId"`
-	ColumnID     uint      `gorm:"not null;index" json:"columnId"`
+	ArticleID    uint      `gorm:"not null;index:idx_acah_article_column" json:"articleId"`
+	ColumnID     uint      `gorm:"not null;index:idx_acah_article_column" json:"columnId"`
 	WorkflowID   uint      `gorm:"not null;index" json:"workflowId"`
 	NodeID       uint      `gorm:"not null;index" json:"nodeId"`
 	NodeName     string    `gorm:"size:200" json:"nodeName"`

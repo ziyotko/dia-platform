@@ -13,7 +13,7 @@ type Workflow struct {
 	UpdatedAt   time.Time      `json:"updatedAt"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deletedAt"`
 	Name        string         `gorm:"size:200;not null" json:"name"`
-	Status      int            `gorm:"default:1" json:"status"` // 1启用 0禁用
+	Status      int            `gorm:"default:1;index" json:"status"` // 1启用 0禁用
 	Description string         `gorm:"size:500" json:"description"`
 	Nodes       []WorkflowNode `gorm:"foreignKey:WorkflowID;references:ID;constraint:OnDelete:CASCADE;" json:"nodes,omitempty"`
 }
@@ -32,9 +32,9 @@ func (w Workflow) MarshalJSON() ([]byte, error) {
 }
 
 type WorkflowNode struct {
-	ID         uint `gorm:"primarykey" json:"id"`
-	WorkflowID uint `gorm:"not null;index" json:"workflowId"`
+	ID         uint   `gorm:"primarykey" json:"id"`
+	WorkflowID uint   `gorm:"not null;index:idx_workflow_node_workflow_sort" json:"workflowId"`
 	Name       string `gorm:"size:200;not null" json:"name"`
 	ApproverID uint   `gorm:"index" json:"approverId"`
-	SortOrder  int    `gorm:"default:0" json:"sortOrder"`
+	SortOrder  int    `gorm:"default:0;index:idx_workflow_node_workflow_sort" json:"sortOrder"`
 }

@@ -69,21 +69,21 @@ func (LocalTime) GORMDataType() string {
 
 type Article struct {
 	ID           uint                `gorm:"primarykey" json:"id"`
-	CreatedAt    time.Time           `json:"createTime"`
+	CreatedAt    time.Time           `gorm:"index:idx_article_status_audit_created;index:idx_article_author_status_created" json:"createTime"`
 	UpdatedAt    time.Time           `json:"updatedAt"`
 	DeletedAt    gorm.DeletedAt      `gorm:"index" json:"deletedAt"`
 	Title        string              `gorm:"size:200;not null" json:"title"`
-	Type         int                 `gorm:"default:1" json:"type"` // 1图文 2视频 3数据
+	Type         int                 `gorm:"default:1;index" json:"type"` // 1图文 2视频 3数据
 	Summary      string              `gorm:"size:500" json:"summary"`
 	Content      string              `gorm:"type:longtext" json:"content"`
-	Status       int                 `gorm:"default:0" json:"status"`      // 0草稿 1已发布 2已下线
-	AuditStatus  int                 `gorm:"default:0" json:"auditStatus"` // 0待审核 1审核中 2已审核
-	IsTop        int                 `gorm:"default:0" json:"isTop"`
+	Status       int                 `gorm:"default:0;index:idx_article_status_audit_created;index:idx_article_author_status_created" json:"status"` // 0草稿 1已发布 2已下线
+	AuditStatus  int                 `gorm:"default:0;index:idx_article_status_audit_created" json:"auditStatus"`                                    // 0待审核 1审核中 2已审核
+	IsTop        int                 `gorm:"default:0;index" json:"isTop"`
 	IsBold       int                 `gorm:"default:0" json:"isBold"`
 	DefaultColor string              `gorm:"size:20" json:"defaultColor"`
 	Cover        string              `gorm:"size:500" json:"cover"`
 	Author       string              `gorm:"size:100" json:"author"`
-	AuthorCode   string              `gorm:"size:100" json:"authorCode"`
+	AuthorCode   string              `gorm:"size:100;index:idx_article_author_status_created" json:"authorCode"`
 	Source       string              `gorm:"size:200" json:"source"`
 	PublishTime  *LocalTime          `json:"publishTime"`
 	URL          string              `gorm:"size:500" json:"url"`

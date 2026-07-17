@@ -14,8 +14,9 @@ database:
   charset: 'utf8mb4'
   parse_time: true
   loc: 'Asia/Shanghai'
-  timeout: '5s'
-  read_timeout: '10s'
+  timeout: '30s'
+  read_timeout: '100s'
+  write_timeout: '100s'
   max_idle_conns: 10
   max_open_conns: 100
   conn_max_lifetime: 3600

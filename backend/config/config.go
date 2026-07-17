@@ -33,6 +33,7 @@ type DatabaseConfig struct {
 	Loc             string `mapstructure:"loc"`
 	Timeout         string `mapstructure:"timeout"`
 	ReadTimeout     string `mapstructure:"read_timeout"`
+	WriteTimeout    string `mapstructure:"write_timeout"`
 	MaxIdleConns    int    `mapstructure:"max_idle_conns"`
 	MaxOpenConns    int    `mapstructure:"max_open_conns"`
 	ConnMaxLifetime int    `mapstructure:"conn_max_lifetime"`
