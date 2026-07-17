@@ -109,6 +109,12 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 		if err := tx.First(&old, id).Error; err != nil {
 			return err
 		}
+		// 已下线文章重新编辑时，转为草稿（编辑状态），并清理栏目、审核、发布等关联数据
+		isOffline := old.Status == 2 || article.Status == 2
+		if isOffline {
+			article.Status = 0
+			article.AuditStatus = 0
+		}
 		updates := map[string]any{
 			"title":         article.Title,
 			"summary":       article.Summary,
@@ -125,8 +131,32 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 			"publish_time":  article.PublishTime,
 			"url":           article.URL,
 		}
+		if isOffline {
+			updates["column_count"] = 0
+		}
 		if err := tx.Model(&old).Updates(updates).Error; err != nil {
 			return err
+		}
+		// 已下线文章清理关联数据
+		if isOffline {
+			if err := tx.Model(&old).Association("Columns").Clear(); err != nil {
+				return err
+			}
+			if err := tx.Where("article_id = ?", id).Delete(&models.ArticleColumnAudit{}).Error; err != nil {
+				return err
+			}
+			if err := tx.Where("article_id = ?", id).Delete(&models.ArticleColumnAuditHistory{}).Error; err != nil {
+				return err
+			}
+			if err := tx.Where("article_id = ?", id).Delete(&models.ArticleColumnPublish{}).Error; err != nil {
+				return err
+			}
+			if err := tx.Model(&old).Association("Categories").Clear(); err != nil {
+				return err
+			}
+			if err := tx.Model(&old).Association("Tags").Clear(); err != nil {
+				return err
+			}
 		}
 		if len(categoryIDs) > 0 {
 			var categories []models.Category
