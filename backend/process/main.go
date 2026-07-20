@@ -40,19 +40,19 @@ func (CmsArchives) TableName() string {
 	return "cms_archives"
 }
 
-var oldColumn = []string{"%首页-轮播%", "%行业要闻%", "%协会活动%"}
-var newColumn = []string{"首页轮播", "首页行业要闻", "首页协会活动"}
+var oldColumn = []string{"%首页-轮播%", "%行业要闻%", "%协会活动%",
+	"%协会简介%", "%协会章程%", "%组织机构%", "%主要职责%", "%协会荣誉%",
+	"%协会工作-轮播图%", "%协会动态%", "%分支机构动态%", "%国际合作%", "%展会信息%",
+	"%国内数据%", "%国外数据%", "%产销%", "%进出口%"}
+var newColumn = []string{"首页轮播", "首页行业要闻", "首页协会活动",
+	"协会概况简介", "协会概况章程", "协会概况组织", "协会概况职责", "协会概况荣誉",
+	"协会工作头条", "协会工作协会动态", "协会工作分支机构动态", "协会工作国际合作", "协会工作展会信息",
+	"统计数据国内数据", "统计数据国外数据", "统计数据产销", "统计数据进出口"}
 
 func main() {
 	createNewDBConnection()
 	createHistoryDBConnection()
 
-	newDB.Unscoped().Table("article_category").Where("article_id < 10000000").Delete(nil)
-	newDB.Unscoped().Table("article_tag").Where("article_id < 10000000").Delete(nil)
-	newDB.Unscoped().Table("article_column").Where("article_id < 10000000").Delete(nil)
-	newDB.Unscoped().Where("article_id < 10000000").Delete(&models.ArticleColumnAudit{})
-	newDB.Unscoped().Where("article_id < 10000000").Delete(&models.ArticleColumnPublish{})
-	newDB.Unscoped().Where("id < 10000000").Delete(&models.Article{})
 	var totalInserted, totalSkipped int
 	for i := range oldColumn {
 		inserted, skipped := migrateHistoryArchives(i)
@@ -195,7 +195,7 @@ func createHistoryDBConnection() {
 
 func getTargetColumn(index int) (models.Column, error) {
 	var col models.Column
-	err := newDB.Where("name like ?", newColumn[index]).First(&col).Error
+	err := newDB.Where("name like ? and display_type<>7", newColumn[index]).First(&col).Error
 	return col, err
 }
 
@@ -218,6 +218,13 @@ func migrateHistoryArchives(index int) (int, int) {
 
 	var inserted, skipped int
 	for _, a := range archives {
+		//删除已经存在的文章
+		newDB.Unscoped().Table("article_category").Where("article_id=?", a.ID).Delete(nil)
+		newDB.Unscoped().Table("article_tag").Where("article_id=?", a.ID).Delete(nil)
+		newDB.Unscoped().Table("article_column").Where("article_id=?", a.ID).Delete(nil)
+		newDB.Unscoped().Where("article_id=?", a.ID).Delete(&models.ArticleColumnAudit{})
+		newDB.Unscoped().Where("article_id=?", a.ID).Delete(&models.ArticleColumnPublish{})
+		newDB.Unscoped().Where("id=?", a.ID).Delete(&models.Article{})
 
 		article := mapArchiveToArticle(a)
 		err := newDB.Transaction(func(tx *gorm.DB) error {
