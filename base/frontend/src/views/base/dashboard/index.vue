@@ -1,24 +1,34 @@
 <template>
   <div class="dashboard-page">
     <el-row :gutter="16">
-      <el-col :span="6">
+      <el-col :span="4">
         <el-card>
           <stat-card title="租户数" :value="stats.tenantCount" icon="OfficeBuilding" color="#409EFF" />
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :span="4">
         <el-card>
           <stat-card title="应用数" :value="stats.appCount" icon="Grid" color="#67C23A" />
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :span="4">
         <el-card>
           <stat-card title="用户数" :value="stats.userCount" icon="User" color="#E6A23C" />
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col :span="4">
         <el-card>
           <stat-card title="角色数" :value="stats.roleCount" icon="UserFilled" color="#F56C6C" />
+        </el-card>
+      </el-col>
+      <el-col :span="4">
+        <el-card>
+          <stat-card title="机构数" :value="stats.organizationCount" icon="OfficeBuilding" color="#909399" />
+        </el-card>
+      </el-col>
+      <el-col :span="4">
+        <el-card>
+          <stat-card title="消息数" :value="stats.messageCount" icon="Message" color="#8E44AD" />
         </el-card>
       </el-col>
     </el-row>
@@ -34,15 +44,25 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, onMounted } from 'vue'
 import StatCard from './components/StatCard.vue'
+import { getDashboardStats, type DashboardStats } from '@/api/dashboard'
 
-const stats = reactive({
-  tenantCount: 12,
-  appCount: 5,
-  userCount: 128,
-  roleCount: 18
+const stats = reactive<DashboardStats>({
+  tenantCount: 0,
+  appCount: 0,
+  userCount: 0,
+  roleCount: 0,
+  organizationCount: 0,
+  messageCount: 0
 })
+
+const fetchStats = async () => {
+  const res: any = await getDashboardStats()
+  Object.assign(stats, res.data || {})
+}
+
+onMounted(fetchStats)
 </script>
 
 <style scoped lang="scss">

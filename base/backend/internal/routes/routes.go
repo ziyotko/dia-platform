@@ -29,6 +29,8 @@ func Register(r *gin.Engine) {
 		authorized.GET("/auth/permissions", (&controllers.AuthController{}).Permissions)
 		authorized.POST("/auth/change-password", (&controllers.AuthController{}).ChangePassword)
 
+		authorized.GET("/dashboard/stats", (&controllers.DashboardController{}).Stats)
+
 		tenants := authorized.Group("/tenants", middleware.SuperAdminOnly())
 		{
 			tenants.POST("", (&controllers.TenantController{}).Create)
