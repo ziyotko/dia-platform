@@ -5,7 +5,7 @@ import { useUserStore } from '@/stores/user'
 
 const request = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/caamm/api',
-  timeout: 10000,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
   }
