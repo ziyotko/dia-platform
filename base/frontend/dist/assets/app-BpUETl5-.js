@@ -1,1 +1,0 @@
-import{q as t}from"./index-C45HLDvF.js";function s(p){return t.get("/apps",{params:p})}function a(p){return t.post("/apps",p)}function r(p,e){return t.put(`/apps/${p}`,e)}function u(p){return t.delete(`/apps/${p}`)}function o(){return t.get("/app-instances/my")}export{o as a,a as c,u as d,s as g,r as u};
