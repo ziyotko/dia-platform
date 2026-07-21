@@ -52,5 +52,8 @@ func migrate() error {
 		&models.OperationLog{},
 		&models.Setting{},
 		&models.LoginLog{},
+		&models.Organization{},
+		&models.Message{},
+		&models.MessageTemplate{},
 	)
 }

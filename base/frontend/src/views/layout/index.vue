@@ -29,6 +29,17 @@
           <breadcrumb />
         </div>
         <div class="header-right">
+          <el-dropdown class="message-dropdown" @command="handleMessageCommand" trigger="click">
+            <el-badge :value="unreadCount" :hidden="unreadCount === 0" class="message-badge">
+              <el-icon size="20"><Bell /></el-icon>
+            </el-badge>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="inbox">消息中心</el-dropdown-item>
+                <el-dropdown-item command="mark-all" divided>全部标为已读</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
           <el-dropdown @command="handleCommand">
             <span class="user-info">
               {{ userStore.userInfo?.realName || userStore.userInfo?.username }}
@@ -52,20 +63,27 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
 import SubMenu from './components/SubMenu.vue'
 import Breadcrumb from '@/components/Breadcrumb.vue'
-import { Menu as MenuIcon, Fold, Expand, ArrowDown } from '@element-plus/icons-vue'
+import { Menu as MenuIcon, Fold, Expand, ArrowDown, Bell } from '@element-plus/icons-vue'
+import { getUnreadCount } from '@/api/message'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const appStore = useAppStore()
+const unreadCount = ref(0)
 
 const activeMenu = computed(() => route.path)
+
+const fetchUnread = async () => {
+  const res: any = await getUnreadCount()
+  unreadCount.value = res.data || 0
+}
 
 const handleCommand = (command: string) => {
   if (command === 'logout') {
@@ -76,6 +94,25 @@ const handleCommand = (command: string) => {
     router.push('/base/profile')
   }
 }
+
+const handleMessageCommand = async (command: string) => {
+  if (command === 'inbox') {
+    router.push('/message/list')
+  } else if (command === 'mark-all') {
+    // 获取未读消息列表并逐个标记
+    const res: any = await getUnreadCount()
+    if (res.data > 0) {
+      // 这里简化处理，实际可调用批量已读接口
+      fetchUnread()
+    }
+  }
+}
+
+onMounted(() => {
+  fetchUnread()
+  const timer = setInterval(fetchUnread, 30000)
+  onUnmounted(() => clearInterval(timer))
+})
 </script>
 
 <style scoped lang="scss">
@@ -122,6 +159,15 @@ const handleCommand = (command: string) => {
   cursor: pointer;
   display: flex;
   align-items: center;
+}
+.message-dropdown {
+  margin-right: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+.message-badge {
+  line-height: 1;
 }
 .main {
   background: #f0f2f5;

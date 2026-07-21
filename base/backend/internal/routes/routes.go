@@ -93,6 +93,35 @@ func Register(r *gin.Engine) {
 			perms.DELETE("/:id", (&controllers.PermissionController{}).Delete)
 			perms.GET("/tree", (&controllers.PermissionController{}).Tree)
 		}
+
+		orgs := authorized.Group("/organizations")
+		{
+			orgs.POST("", (&controllers.OrganizationController{}).Create)
+			orgs.PUT("/:id", (&controllers.OrganizationController{}).Update)
+			orgs.DELETE("/:id", (&controllers.OrganizationController{}).Delete)
+			orgs.GET("/:id", (&controllers.OrganizationController{}).Get)
+			orgs.GET("/tree", (&controllers.OrganizationController{}).Tree)
+		}
+
+		msgs := authorized.Group("/messages")
+		{
+			msgs.GET("", (&controllers.MessageController{}).List)
+			msgs.GET("/unread-count", (&controllers.MessageController{}).UnreadCount)
+			msgs.GET("/:id", (&controllers.MessageController{}).Get)
+			msgs.POST("", (&controllers.MessageController{}).Create)
+			msgs.POST("/send", (&controllers.MessageController{}).Send)
+			msgs.POST("/:id/read", (&controllers.MessageController{}).MarkRead)
+			msgs.DELETE("/:id", (&controllers.MessageController{}).Delete)
+		}
+
+		templates := authorized.Group("/message-templates")
+		{
+			templates.POST("", (&controllers.MessageTemplateController{}).Create)
+			templates.PUT("/:id", (&controllers.MessageTemplateController{}).Update)
+			templates.DELETE("/:id", (&controllers.MessageTemplateController{}).Delete)
+			templates.GET("/:id", (&controllers.MessageTemplateController{}).Get)
+			templates.GET("", (&controllers.MessageTemplateController{}).List)
+		}
 	}
 
 	// 子应用统一代理入口
