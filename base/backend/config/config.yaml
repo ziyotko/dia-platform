@@ -1,0 +1,29 @@
+server:
+  port: 8080
+  mode: debug
+
+mysql:
+  host: 127.0.0.1
+  port: 3306
+  user: root
+  password: root
+  dbname: caam_base
+  charset: utf8mb4
+  max_open: 100
+  max_idle: 10
+
+redis:
+  addr: 127.0.0.1:6379
+  password:
+  db: 0
+
+jwt:
+  secret: base-platform-jwt-secret
+  expire_hours: 8
+  issuer: base-platform
+
+log:
+  path: logs/base.log
+  max_size: 100
+  max_backups: 10
+  max_age: 30

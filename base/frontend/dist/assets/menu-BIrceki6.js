@@ -1,0 +1,1 @@
+import{q as n}from"./index-C45HLDvF.js";function r(e){return n.get("/menus/tree",{params:{appCode:e}})}function s(e){return n.post("/menus",e)}function a(e,t){return n.put(`/menus/${e}`,t)}function o(e){return n.delete(`/menus/${e}`)}export{s as c,o as d,r as g,a as u};

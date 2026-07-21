@@ -1,0 +1,1 @@
+import{d as a,c as t,i as o,p as c,u as r,b as n,_}from"./index-C45HLDvF.js";const d={class:"iframe-page"},u=["src"],i=a({__name:"index",setup(m){const e=r(),s=c(()=>e.meta.url);return(p,l)=>(n(),t("div",d,[o("iframe",{src:s.value,frameborder:"0",class:"iframe-content"},null,8,u)]))}}),x=_(i,[["__scopeId","data-v-e332a4d2"]]);export{x as default};
