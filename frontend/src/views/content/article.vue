@@ -608,14 +608,20 @@
     <el-dialog
       v-model="columnDialogVisible"
       :title="`栏目设置 - ${columnDialogTitle}`"
-      width="820px"
+      width="980px"
       destroy-on-close
       class="column-setting-dialog"
       :close-on-click-modal="false"
     >
       <div class="column-setting-hint">
         <el-icon><InfoFilled /></el-icon>
-        <span>请先选择页面，再勾选该页面下的栏目；支持跨页面多选。</span>
+        <span>
+          当前文章类型：<el-tag size="small" type="primary" effect="light">{{ articleTypeName }}</el-tag>；
+          <template v-if="currentArticleType === 2">仅展示「视频展示」类栏目。</template>
+          <template v-else-if="currentArticleType === 3">仅展示「数据展示」类栏目。</template>
+          <template v-else>不展示「视频展示」和「数据展示」类栏目。</template>
+          请先选择页面，再勾选该页面下的栏目；支持跨页面多选。
+        </span>
       </div>
       <el-row :gutter="16" class="column-setting-body">
         <el-col :span="8">
@@ -625,9 +631,9 @@
               <span>选择页面</span>
               <span class="column-setting-count">({{ pageList.length }})</span>
             </div>
-            <el-scrollbar height="320px" class="column-setting-scroll">
+            <el-scrollbar height="420px" class="column-setting-scroll">
               <div v-if="pageList.length === 0" class="column-setting-empty">
-                <el-empty description="暂无页面" :image-size="60" />
+                <el-empty description="暂无页面" :image-size="80" />
               </div>
               <div
                 v-for="page in pageList"
@@ -655,12 +661,12 @@
                 @change="toggleSelectAllPageColumns"
               >全选</el-checkbox>
             </div>
-            <el-scrollbar height="320px" class="column-setting-scroll">
+            <el-scrollbar height="420px" class="column-setting-scroll">
               <div v-if="!selectedColumnPageId" class="column-setting-empty">
-                <el-empty description="请先选择左侧页面" :image-size="80" />
+                <el-empty description="请先选择左侧页面" :image-size="100" />
               </div>
               <div v-else-if="selectedColumnPageColumns.length === 0" class="column-setting-empty">
-                <el-empty description="该页面下暂无栏目" :image-size="80" />
+                <el-empty description="该页面下暂无符合当前文章类型的栏目" :image-size="100" />
               </div>
               <el-checkbox-group v-else v-model="selectedColumnIds" class="column-checkbox-group">
                 <div
@@ -902,12 +908,26 @@ const selectedColumnIds = ref<number[]>([])
 const selectedColumnPageId = ref<number | undefined>(undefined)
 const columnSubmitLoading = ref(false)
 const currentArticleId = ref<number | undefined>(undefined)
+const currentArticleType = ref<number | undefined>(undefined)
 const pageList = ref<any[]>([])
 const columnList = ref<any[]>([])
 
+const articleTypeName = computed(() => {
+  const map: Record<number, string> = { 1: '图文', 2: '视频', 3: '数据' }
+  return map[currentArticleType.value || 1] || '图文'
+})
+
 const selectedColumnPageColumns = computed(() => {
   if (!selectedColumnPageId.value) return []
-  const cols = columnList.value.filter((col: any) => col.pageId === selectedColumnPageId.value)
+  let cols = columnList.value.filter((col: any) => col.pageId === selectedColumnPageId.value)
+  const type = currentArticleType.value
+  if (type === 2) {
+    cols = cols.filter((col: any) => col.displayType === 8)
+  } else if (type === 3) {
+    cols = cols.filter((col: any) => col.displayType === 7)
+  } else {
+    cols = cols.filter((col: any) => col.displayType !== 7 && col.displayType !== 8)
+  }
   return cols.sort((a: any, b: any) => {
     const aIsRoot = !a.parentId || a.parentId === 0
     const bIsRoot = !b.parentId || b.parentId === 0
@@ -1052,7 +1072,15 @@ const getColumnsByPage = (pageId: number) => {
 }
 
 const getColumnCountByPage = (pageId: number) => {
-  return getColumnsByPage(pageId).length
+  const cols = getColumnsByPage(pageId)
+  const type = currentArticleType.value
+  if (type === 2) {
+    return cols.filter((col: any) => col.displayType === 8).length
+  } else if (type === 3) {
+    return cols.filter((col: any) => col.displayType === 7).length
+  } else {
+    return cols.filter((col: any) => col.displayType !== 7 && col.displayType !== 8).length
+  }
 }
 
 const selectColumnPage = (pageId: number) => {
@@ -1773,6 +1801,7 @@ const handleOffShelf = (row: any) => {
 
 const handleSetColumns = async (row: any) => {
   currentArticleId.value = row.id
+  currentArticleType.value = row.type
   columnDialogTitle.value = row.title
   selectedColumnIds.value = row.columnIds || []
   selectedColumnPageId.value = undefined
@@ -1782,7 +1811,7 @@ const handleSetColumns = async (row: any) => {
   if (columnList.value.length === 0) {
     await fetchColumns()
   }
-  // 若文章已有栏目，默认选中第一个栏目所在页面
+  // 若文章已有栏目，默认选中第一个有效栏目所在页面
   if (selectedColumnIds.value.length > 0) {
     const firstCol = columnList.value.find((col: any) => col.id === selectedColumnIds.value[0])
     if (firstCol) {
@@ -2624,7 +2653,7 @@ onMounted(() => {
   }
 
   .column-setting-panel {
-    height: 368px;
+    height: 468px;
     border: 1px solid #e6f2ff;
     border-radius: 12px;
     background: #fafbfc;
