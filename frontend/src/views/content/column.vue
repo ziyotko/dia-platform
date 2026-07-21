@@ -345,6 +345,7 @@ import {
 } from '@/api/column'
 import { getTemplateList } from '@/api/template'
 import { getWorkflows } from '@/api/workflow'
+import pinyin from 'js-pinyin'
 
 interface PageItem {
   id: number
@@ -378,6 +379,12 @@ interface ColumnItem {
 
 const activePageType = ref<string>('home')
 const selectedPage = ref<PageItem | null>(null)
+
+const toPinyinCode = (str: string): string => {
+  if (!str) return ''
+  const py = pinyin.getFullChars(str)
+  return py.toLowerCase().replace(/[^a-z0-9]/g, '')
+}
 
 const allPages = ref<PageItem[]>([])
 const allColumns = ref<ColumnItem[]>([])
@@ -595,6 +602,12 @@ const fetchColumns = async () => {
 
 watch(() => selectedPage.value, () => {
   fetchColumns()
+})
+
+watch(() => columnForm.name, (val) => {
+  if (val) {
+    columnForm.code = toPinyinCode(val)
+  }
 })
 
 const handleTypeChange = (type: string) => {
