@@ -48,7 +48,7 @@ const handleLogin = async () => {
   try {
     await userStore.login(form)
     ElMessage.success('登录成功')
-    router.push('/base/')
+    router.push('/')
   } finally {
     loading.value = false
   }

@@ -7,7 +7,7 @@ const componentModulesAlias = import.meta.glob('@/views/**/*.vue')
 
 const constantRoutes = [
   {
-    path: '/base/login',
+    path: '/login',
     name: 'Login',
     component: () => import('@/views/login/index.vue'),
     meta: { public: true }
@@ -144,7 +144,7 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   if (!userStore.isLoggedIn) {
-    next('/base/login')
+    next('/login')
     return
   }
 
@@ -153,9 +153,14 @@ router.beforeEach(async (to, _from, next) => {
       await userStore.fetchUserInfo()
       const menus = await userStore.fetchUserMenusAndGenerateRoutes()
       addDynamicRoutes(menus)
-      next({ ...to, replace: true })
+      const first = findFirstValidRoute(generateRoutes(menus))
+      if (to.path === '/' && first) {
+        next({ path: first, replace: true })
+      } else {
+        next({ ...to, replace: true })
+      }
     } catch {
-      next('/base/login')
+      next('/login')
     }
     return
   }

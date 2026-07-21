@@ -51,7 +51,7 @@ export const useUserStore = defineStore('user', () => {
     permissions.value = []
     hasFetchedMenus.value = false
     localStorage.removeItem('base-token')
-    router.push('/base/login')
+    router.push('/login')
   }
 
   return {
