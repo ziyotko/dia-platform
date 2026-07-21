@@ -122,6 +122,7 @@ onMounted(() => {
 .sidebar {
   background-color: #304156;
   transition: width 0.3s;
+  overflow: hidden;
 }
 .logo {
   height: 60px;
@@ -138,6 +139,20 @@ onMounted(() => {
 }
 .menu-scroll {
   height: calc(100vh - 60px);
+  overflow-y: auto;
+}
+.menu-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.menu-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+.menu-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.menu-scroll :deep(.el-menu) {
+  border-right: none;
 }
 .header {
   display: flex;

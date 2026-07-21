@@ -1,6 +1,8 @@
 package main
 
 import (
+	"flag"
+
 	"base/config"
 	"base/internal/adapter"
 	"base/internal/routes"
@@ -13,6 +15,9 @@ import (
 )
 
 func main() {
+	mockData := flag.Bool("mock-data", false, "插入模拟数据（仅本地测试）")
+	flag.Parse()
+
 	cfg, err := config.Load("config.yaml")
 	if err != nil {
 		logrus.WithError(err).Fatal("加载配置失败")
@@ -32,6 +37,12 @@ func main() {
 
 	if err := seed.Run(); err != nil {
 		logrus.WithError(err).Fatal("初始化默认数据失败")
+	}
+
+	if *mockData {
+		if err := seed.MockOrganizations(); err != nil {
+			logrus.WithError(err).Fatal("插入模拟机构数据失败")
+		}
 	}
 
 	gin.SetMode(cfg.Server.Mode)
