@@ -42,11 +42,11 @@ func (CmsArchives) TableName() string {
 
 // 每行对应每个首页的栏目
 var oldColumn = []string{"%首页-轮播%", "%行业要闻%", "%协会活动%", "%文件公告%", "%协会文件%", "%协调合作%", "%行业动态%", "%品牌建设%", "%展会信息%", "%法规标准%", "%企业新闻%", "%国际合作%", "%最新政策%", "%标准法规%",
-	"%协会简介%", "%协会章程%", "%组织机构%", "%主要职责%", "%协会荣誉%",
+	"%协会简介%", "%协会章程%", "%组织机构%", "%主要职责%", "%协会荣誉%", "5231531", "5234908", "5231532", "5231533", "5235950", "5113238",
 	"%协会工作-轮播图%", "%协会动态%", "%分支机构动态%", "%国际合作%", "%展会信息%", "%协调合作%",
 	"%国内数据%", "%国外数据%", "%产销%", "%进出口%"}
 var newColumn = []string{"首页轮播", "首页行业要闻", "首页协会活动", "首页通知公告", "首页协会文件", "首页行业发展", "首页智能网联", "首页品牌服务", "首页展会信息", "首页标准法规", "首页企业新闻", "首页国际合作", "首页行业政策", "首页法律法规",
-	"协会概况简介", "协会概况章程", "协会概况组织", "协会概况职责", "协会概况荣誉",
+	"协会概况简介", "协会概况章程", "协会概况组织", "协会概况职责", "协会概况荣誉", "协会概况轮值会长", "协会概况副会长", "协会概况常务理事", "协会概况理事", "协会概况会员代表", "协会概况普通会员",
 	"协会工作头条", "协会工作协会动态", "协会工作分支机构动态", "协会工作国际合作", "协会工作展会信息", "协会工作行业发展",
 	"统计数据国内数据", "统计数据国外数据", "统计数据产销", "统计数据进出口"}
 
@@ -202,8 +202,18 @@ func getTargetColumn(index int) (models.Column, error) {
 
 func migrateHistoryArchives(index int) (int, int) {
 	var archives []CmsArchives
-	if err := historyDB.Where("category_name like ?", oldColumn[index]).Where("is_publish=?", 1).Find(&archives).Error; err != nil {
-		log.Fatalf("查询历史文章失败: %s", err)
+	if strings.Contains(oldColumn[index], "%") { //模糊查询
+		if err := historyDB.Where("category_name like ?", oldColumn[index]).Find(&archives).Error; err != nil {
+			log.Fatalf("查询历史文章失败: %s", err)
+		}
+	} else { //精确查询
+		id, err := strconv.Atoi(oldColumn[index])
+		if err != nil {
+			log.Fatalf("转换ID失败: %s", err)
+		}
+		if err := historyDB.Where("id = ?", id).Find(&archives).Error; err != nil {
+			log.Fatalf("查询历史文章失败: %s", err)
+		}
 	}
 
 	fmt.Printf("共查询到 %d 条历史文章数据\n", len(archives))
