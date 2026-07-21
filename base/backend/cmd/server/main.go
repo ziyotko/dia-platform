@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	cfg, err := config.Load("config/config.yaml")
+	cfg, err := config.Load("config.yaml")
 	if err != nil {
 		logrus.WithError(err).Fatal("加载配置失败")
 	}

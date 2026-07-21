@@ -77,6 +77,10 @@ func (s MenuService) GetUserMenus(userID, tenantID uint64) ([]models.Menu, error
 	if err := db.DB.Preload("Roles.Menus").First(&user, userID).Error; err != nil {
 		return nil, err
 	}
+	// 超级管理员或租户管理员返回所有可用菜单
+	if user.IsAdmin {
+		return s.GetTree(tenantID, "")
+	}
 	menuMap := make(map[uint64]models.Menu)
 	for _, role := range user.Roles {
 		for _, m := range role.Menus {

@@ -84,5 +84,33 @@ func seedBaseMenus() error {
 		}
 	}
 
+	// 创建默认超级管理员角色并关联所有 base 菜单
+	role := models.Role{
+		TenantID: 0,
+		Code:     "super_admin",
+		Name:     "超级管理员",
+		Status:   1,
+	}
+	if err := db.DB.Create(&role).Error; err != nil {
+		return err
+	}
+
+	var allMenus []models.Menu
+	if err := db.DB.Where("app_code = ?", "base").Find(&allMenus).Error; err != nil {
+		return err
+	}
+	if err := db.DB.Model(&role).Association("Menus").Append(allMenus); err != nil {
+		return err
+	}
+
+	// 将角色赋给 admin 用户
+	var admin models.User
+	if err := db.DB.Where("username = ? AND tenant_id = ?", "admin", 0).First(&admin).Error; err != nil {
+		return err
+	}
+	if err := db.DB.Model(&admin).Association("Roles").Append(&role); err != nil {
+		return err
+	}
+
 	return nil
 }
