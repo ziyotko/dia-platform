@@ -72,6 +72,14 @@
             <el-option v-for="u in userOptions" :key="u.id" :label="u.username" :value="u.id" />
           </el-select>
         </el-form-item>
+        <el-form-item label="发送渠道">
+          <el-select v-model="sendForm.channel" style="width: 100%">
+            <el-option label="站内信" value="in-app" />
+            <el-option label="邮件" value="email" />
+            <el-option label="短信" value="sms" />
+            <el-option label="企微" value="wechat" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="消息类型">
           <el-select v-model="sendForm.type" style="width: 100%">
             <el-option label="通知" value="notice" />
@@ -128,6 +136,7 @@ const userOptions = ref<any[]>([])
 const sendForm = reactive({
   receiverType: 'user',
   receiverIds: [] as number[],
+  channel: 'in-app',
   type: 'notice',
   priority: 'normal',
   title: '',
@@ -164,6 +173,7 @@ const handleSend = async () => {
   sendFormRef.value?.resetFields()
   sendForm.receiverIds = []
   sendForm.receiverType = 'user'
+  sendForm.channel = 'in-app'
   sendForm.title = ''
   sendForm.content = ''
   sendDialogVisible.value = true

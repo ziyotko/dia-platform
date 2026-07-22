@@ -38,6 +38,7 @@ func (ctl *MessageController) Send(c *gin.Context) {
 		Content      string   `json:"content" binding:"required"`
 		Type         string   `json:"type"`
 		Priority     string   `json:"priority"`
+		Channel      string   `json:"channel"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.FailWithCode(c, response.CodeBadRequest, "参数错误")
@@ -53,6 +54,9 @@ func (ctl *MessageController) Send(c *gin.Context) {
 	if req.Priority == "" {
 		req.Priority = "normal"
 	}
+	if req.Channel == "" {
+		req.Channel = "in-app"
+	}
 
 	var err error
 	if req.ReceiverType == "all" {
@@ -64,7 +68,24 @@ func (ctl *MessageController) Send(c *gin.Context) {
 		response.Fail(c, err.Error())
 		return
 	}
+
+	// 站外渠道发送（目前实现邮件）
+	if req.Channel == "email" && req.ReceiverType != "all" {
+		go ctl.sendEmailToUsers(req.ReceiverIDs, req.Title, req.Content)
+	}
+
 	response.OkWithMessage(c, "发送成功", nil)
+}
+
+func (ctl *MessageController) sendEmailToUsers(userIDs []uint64, subject, content string) {
+	userSvc := service.UserService{}
+	for _, uid := range userIDs {
+		user, err := userSvc.GetByID(uid, 0)
+		if err != nil || user.Email == "" {
+			continue
+		}
+		_ = ctl.service.SendExternal("email", user.Email, subject, content)
+	}
 }
 
 func (ctl *MessageController) Delete(c *gin.Context) {

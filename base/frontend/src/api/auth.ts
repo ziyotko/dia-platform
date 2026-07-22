@@ -3,6 +3,8 @@ import request from '@/utils/request'
 export interface LoginReq {
   username: string
   password: string
+  captchaId: string
+  captchaCode: string
 }
 
 export interface UserInfo {
@@ -16,6 +18,10 @@ export interface UserInfo {
 
 export function login(data: LoginReq) {
   return request.post('/auth/login', data)
+}
+
+export function getCaptcha() {
+  return request.get('/auth/captcha')
 }
 
 export function getUserInfo() {

@@ -5,6 +5,7 @@ import (
 
 	"base/internal/models"
 	"base/pkg/db"
+	"base/pkg/notifier"
 )
 
 type MessageService struct{}
@@ -122,4 +123,16 @@ func (s MessageService) Broadcast(senderID uint64, senderName string, tenantID u
 		Status:       3,
 		SendAt:       time.Now(),
 	}).Error
+}
+
+// SendExternal 根据渠道发送站外消息（邮件/短信/企微等）
+func (s MessageService) SendExternal(channel, to, subject, content string) error {
+	if channel == "" || channel == "in-app" {
+		return nil
+	}
+	return notifier.Send(channel, notifier.Message{
+		To:      to,
+		Subject: subject,
+		Body:    content,
+	})
 }

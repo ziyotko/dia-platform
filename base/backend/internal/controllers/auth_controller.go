@@ -13,8 +13,10 @@ type AuthController struct {
 }
 
 type LoginReq struct {
-	Username string `json:"username" binding:"required"`
-	Password string `json:"password" binding:"required"`
+	Username    string `json:"username" binding:"required"`
+	Password    string `json:"password" binding:"required"`
+	CaptchaID   string `json:"captchaId"`
+	CaptchaCode string `json:"captchaCode"`
 }
 
 type LoginResp struct {
@@ -28,10 +30,17 @@ func (ctl *AuthController) Login(c *gin.Context) {
 		response.FailWithCode(c, response.CodeBadRequest, "参数错误")
 		return
 	}
-	user, token, err := ctl.authService.Login(req.Username, req.Password)
+	user, token, err := ctl.authService.Login(service.LoginDTO{
+		Username:    req.Username,
+		Password:    req.Password,
+		CaptchaID:   req.CaptchaID,
+		CaptchaCode: req.CaptchaCode,
+	})
 
-	// 记录登录日志
-	go ctl.recordLoginLog(c, req.Username, user, err)
+	// 提取需要的数据，避免在 goroutine 中访问 gin.Context
+	ip := c.ClientIP()
+	agent := c.Request.UserAgent()
+	go ctl.recordLoginLog(ip, agent, req.Username, user, err)
 
 	if err != nil {
 		response.Fail(c, err.Error())
@@ -40,12 +49,12 @@ func (ctl *AuthController) Login(c *gin.Context) {
 	response.Ok(c, LoginResp{Token: token, User: user})
 }
 
-func (ctl *AuthController) recordLoginLog(c *gin.Context, username string, user *models.User, loginErr error) {
+func (ctl *AuthController) recordLoginLog(ip, agent, username string, user *models.User, loginErr error) {
 	logSvc := service.LoginLogService{}
 	log := models.LoginLog{
 		Username: username,
-		IP:       c.ClientIP(),
-		Agent:    c.Request.UserAgent(),
+		IP:       ip,
+		Agent:    agent,
 		Status:   1,
 	}
 	if user != nil {
@@ -59,6 +68,18 @@ func (ctl *AuthController) recordLoginLog(c *gin.Context, username string, user 
 		log.Message = "登录成功"
 	}
 	_ = logSvc.Create(&log)
+}
+
+func (ctl *AuthController) Captcha(c *gin.Context) {
+	id, b64s, err := service.CaptchaService{}.Generate()
+	if err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+	response.Ok(c, gin.H{
+		"captchaId": id,
+		"image":     b64s,
+	})
 }
 
 func (ctl *AuthController) Info(c *gin.Context) {

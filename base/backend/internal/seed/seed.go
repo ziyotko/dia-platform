@@ -77,7 +77,9 @@ func seedBaseMenus() error {
 		{AppCode: "base", ParentID: systemDirID, Name: "菜单管理", Path: "/system/menu", Component: "base/menu/index.vue", Type: "menu", Sort: 7, Status: 1},
 		{AppCode: "base", ParentID: systemDirID, Name: "审计日志", Path: "/system/log", Component: "base/log/index.vue", Type: "menu", Sort: 8, Status: 1},
 		{AppCode: "base", ParentID: systemDirID, Name: "登录日志", Path: "/system/login-log", Component: "base/login-log/index.vue", Type: "menu", Sort: 9, Status: 1},
-		{AppCode: "base", ParentID: systemDirID, Name: "系统设置", Path: "/system/setting", Component: "base/setting/index.vue", Type: "menu", Sort: 10, Status: 1},
+		{AppCode: "base", ParentID: systemDirID, Name: "数据字典", Path: "/system/dict", Component: "base/dict/index.vue", Type: "menu", Sort: 10, Status: 1},
+		{AppCode: "base", ParentID: systemDirID, Name: "文件管理", Path: "/system/file", Component: "base/file/index.vue", Type: "menu", Sort: 11, Status: 1},
+		{AppCode: "base", ParentID: systemDirID, Name: "系统设置", Path: "/system/setting", Component: "base/setting/index.vue", Type: "menu", Sort: 12, Status: 1},
 
 		{AppCode: "base", ParentID: msgDirID, Name: "消息列表", Path: "/message/list", Component: "base/message/index.vue", Type: "menu", Sort: 1, Status: 1},
 		{AppCode: "base", ParentID: msgDirID, Name: "消息模板", Path: "/message/template", Component: "base/message-template/index.vue", Type: "menu", Sort: 2, Status: 1},

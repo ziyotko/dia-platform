@@ -7,7 +7,9 @@ import (
 	"base/internal/adapter"
 	"base/internal/routes"
 	"base/internal/seed"
+	"base/internal/service"
 	"base/pkg/db"
+	"base/pkg/notifier"
 	"base/pkg/redis"
 
 	"github.com/gin-gonic/gin"
@@ -37,6 +39,12 @@ func main() {
 
 	if err := seed.Run(); err != nil {
 		logrus.WithError(err).Fatal("初始化默认数据失败")
+	}
+
+	// 加载邮件等通知渠道配置
+	emailSettings, err := service.SettingsService{}.GetByCategory("email")
+	if err == nil {
+		notifier.MustLoadEmailSender(func(key string) string { return emailSettings[key] })
 	}
 
 	if *mockData {

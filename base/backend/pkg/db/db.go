@@ -55,5 +55,8 @@ func migrate() error {
 		&models.Organization{},
 		&models.Message{},
 		&models.MessageTemplate{},
+		&models.Dict{},
+		&models.DictItem{},
+		&models.UploadedFile{},
 	)
 }

@@ -18,9 +18,13 @@ func Register(r *gin.Engine) {
 	{
 		auth.POST("/login", (&controllers.AuthController{}).Login)
 		auth.POST("/init", (&controllers.AuthController{}).InitAdmin)
+		auth.GET("/captcha", (&controllers.AuthController{}).Captcha)
 	}
 
 	// 需要登录
+	// 文件公开访问
+	api.GET("/files/:key", (&controllers.FileController{}).Serve)
+
 	authorized := api.Group("", middleware.JWTAuth())
 	authorized.Use(middleware.OperationLog())
 	authorized.Use(middleware.PermissionAuth())
@@ -45,6 +49,17 @@ func Register(r *gin.Engine) {
 		{
 			settings.GET("", (&controllers.SettingsController{}).Get)
 			settings.PUT("", (&controllers.SettingsController{}).Save)
+		}
+
+		dicts := authorized.Group("/dicts")
+		{
+			dicts.POST("", (&controllers.DictController{}).Create)
+			dicts.PUT("/:id", (&controllers.DictController{}).Update)
+			dicts.DELETE("/:id", (&controllers.DictController{}).Delete)
+			dicts.GET("/:id", (&controllers.DictController{}).Get)
+			dicts.GET("", (&controllers.DictController{}).List)
+			dicts.GET("/code/:code", (&controllers.DictController{}).GetByCode)
+			dicts.POST("/:id/items", (&controllers.DictController{}).SaveItems)
 		}
 
 		apps := authorized.Group("/apps")
@@ -146,6 +161,13 @@ func Register(r *gin.Engine) {
 			loginLogs.POST("/delete", (&controllers.LoginLogController{}).Delete)
 			loginLogs.POST("/clear", (&controllers.LoginLogController{}).Clear)
 			loginLogs.GET("/export", (&controllers.LoginLogController{}).Export)
+		}
+
+		files := authorized.Group("/files")
+		{
+			files.POST("/upload", (&controllers.FileController{}).Upload)
+			files.GET("", (&controllers.FileController{}).List)
+			files.DELETE("/:id", (&controllers.FileController{}).Delete)
 		}
 	}
 
