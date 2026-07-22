@@ -11,15 +11,23 @@ func (s AppInstanceService) Create(i *models.AppInstance) error {
 	return db.DB.Create(i).Error
 }
 
-func (s AppInstanceService) Update(i *models.AppInstance) error {
-	return db.DB.Model(i).Updates(map[string]interface{}{
+func (s AppInstanceService) Update(i *models.AppInstance, tenantID uint64) error {
+	db := db.DB.Model(i)
+	if tenantID > 0 {
+		db = db.Where("tenant_id = ?", tenantID)
+	}
+	return db.Updates(map[string]interface{}{
 		"status": i.Status,
 		"config": i.Config,
 	}).Error
 }
 
-func (s AppInstanceService) Delete(id uint64) error {
-	return db.DB.Delete(&models.AppInstance{BaseModel: models.BaseModel{ID: id}}).Error
+func (s AppInstanceService) Delete(id uint64, tenantID uint64) error {
+	db := db.DB
+	if tenantID > 0 {
+		db = db.Where("tenant_id = ?", tenantID)
+	}
+	return db.Delete(&models.AppInstance{BaseModel: models.BaseModel{ID: id}}).Error
 }
 
 func (s AppInstanceService) GetByID(id uint64) (*models.AppInstance, error) {

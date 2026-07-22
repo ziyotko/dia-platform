@@ -16,8 +16,12 @@ func (s MessageService) Create(m *models.Message) error {
 	return db.DB.Create(m).Error
 }
 
-func (s MessageService) Update(m *models.Message) error {
-	return db.DB.Model(m).Updates(map[string]interface{}{
+func (s MessageService) Update(m *models.Message, tenantID uint64) error {
+	db := db.DB.Model(m)
+	if tenantID > 0 {
+		db = db.Where("tenant_id = ?", tenantID)
+	}
+	return db.Updates(map[string]interface{}{
 		"title":         m.Title,
 		"content":       m.Content,
 		"type":          m.Type,
@@ -28,13 +32,21 @@ func (s MessageService) Update(m *models.Message) error {
 	}).Error
 }
 
-func (s MessageService) Delete(id uint64) error {
-	return db.DB.Delete(&models.Message{BaseModel: models.BaseModel{ID: id}}).Error
+func (s MessageService) Delete(id uint64, tenantID uint64) error {
+	db := db.DB
+	if tenantID > 0 {
+		db = db.Where("tenant_id = ?", tenantID)
+	}
+	return db.Delete(&models.Message{BaseModel: models.BaseModel{ID: id}}).Error
 }
 
-func (s MessageService) GetByID(id uint64) (*models.Message, error) {
+func (s MessageService) GetByID(id uint64, tenantID uint64) (*models.Message, error) {
 	var m models.Message
-	err := db.DB.First(&m, id).Error
+	db := db.DB
+	if tenantID > 0 {
+		db = db.Where("tenant_id = ?", tenantID)
+	}
+	err := db.First(&m, id).Error
 	return &m, err
 }
 

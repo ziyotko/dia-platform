@@ -20,6 +20,7 @@ func (ctl *AppInstanceController) Create(c *gin.Context) {
 		response.FailWithCode(c, response.CodeBadRequest, "参数错误")
 		return
 	}
+	i.TenantID = c.GetUint64("tenantID")
 	if err := ctl.service.Create(&i); err != nil {
 		response.Fail(c, err.Error())
 		return
@@ -34,7 +35,8 @@ func (ctl *AppInstanceController) Update(c *gin.Context) {
 		return
 	}
 	i.ID = uint64(parseID(c))
-	if err := ctl.service.Update(&i); err != nil {
+	tenantID := c.GetUint64("tenantID")
+	if err := ctl.service.Update(&i, tenantID); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
@@ -43,7 +45,8 @@ func (ctl *AppInstanceController) Update(c *gin.Context) {
 
 func (ctl *AppInstanceController) Delete(c *gin.Context) {
 	id := uint64(parseID(c))
-	if err := ctl.service.Delete(id); err != nil {
+	tenantID := c.GetUint64("tenantID")
+	if err := ctl.service.Delete(id, tenantID); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}

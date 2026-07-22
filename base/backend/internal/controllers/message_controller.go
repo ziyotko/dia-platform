@@ -69,7 +69,8 @@ func (ctl *MessageController) Send(c *gin.Context) {
 
 func (ctl *MessageController) Delete(c *gin.Context) {
 	id := uint64(parseID(c))
-	if err := ctl.service.Delete(id); err != nil {
+	tenantID := c.GetUint64("tenantID")
+	if err := ctl.service.Delete(id, tenantID); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
@@ -78,9 +79,10 @@ func (ctl *MessageController) Delete(c *gin.Context) {
 
 func (ctl *MessageController) Get(c *gin.Context) {
 	id := uint64(parseID(c))
-	m, err := ctl.service.GetByID(id)
+	tenantID := c.GetUint64("tenantID")
+	m, err := ctl.service.GetByID(id, tenantID)
 	if err != nil {
-		response.Fail(c, err.Error())
+		response.Fail(c, "消息不存在")
 		return
 	}
 	response.Ok(c, m)
