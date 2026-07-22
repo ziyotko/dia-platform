@@ -138,7 +138,13 @@ query := db.DB.Model(&models.User{}).Where("tenant_id = ?", tenantID)
 - `MessageTemplate`：Update/Delete/GetByID
 - `Tenant`：Update/Delete/GetByID（当前仅 SuperAdminOnly 控制路由，但 Get 仍可查任意租户）
 
-### 2.6 平台级资源说明
+### 2.6 不需要租户隔离的模块
+
+#### Tenant 租户管理
+
+`Tenant` 模块本身即为租户管理入口，且路由已绑定 `middleware.SuperAdminOnly()`，只有平台超级管理员能访问。其职责就是管理所有租户，因此 `Update/Delete/Get` 不需要按 `tenant_id` 过滤，保持可直接操作任意租户。
+
+#### 平台级资源
 
 以下模型本身没有 `tenant_id` 字段，属于平台级资源，不在租户隔离范围内：
 
