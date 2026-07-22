@@ -1,8 +1,8 @@
 server:
   port: 8084
   host: 0.0.0.0
-  api_prefix: /caamm/api
-  upload_dir_prefix: "/caamm"
+  api_prefix: /camiem/api
+  upload_dir_prefix: "/camiem"
   max_concurrent_ips: 10
 
 database:
