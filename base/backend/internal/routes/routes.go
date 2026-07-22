@@ -49,6 +49,7 @@ func Register(r *gin.Engine) {
 		{
 			settings.GET("", (&controllers.SettingsController{}).Get)
 			settings.PUT("", (&controllers.SettingsController{}).Save)
+			settings.POST("/email/test", (&controllers.SettingsController{}).TestEmail)
 		}
 
 		dicts := authorized.Group("/dicts")
