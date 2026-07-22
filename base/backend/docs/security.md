@@ -67,7 +67,7 @@ authorized.Use(middleware.PermissionAuth())
 
 - 每个租户只能操作自己租户下的数据。
 - 超级管理员（`tenantID == 0`）可以跨租户管理所有数据。
-- 按 ID 操作的 `Update`、`Delete`、`Get` 接口必须在 SQL 中追加 `WHERE tenant_id = ?` 条件。
+- 按 ID 操作的 `Update`、`Delete`、`GetByID` 接口必须在 SQL 中追加 `WHERE tenant_id = ?` 条件。
 
 ### 2.2 实现模式
 
@@ -114,14 +114,21 @@ func (ctl *UserController) Update(c *gin.Context) {
 
 ### 2.3 已改造模块
 
+以下模块的 `Update` / `Delete` / `GetByID` 已按租户隔离：
+
 | 模块 | Service 方法 | Controller 方法 |
 |------|-------------|----------------|
 | User | `Update/Delete/GetByID` | `Update/Delete/Get` |
-| Role | `Update/Delete` | `Update/Delete` |
-| Menu | `Update/Delete` | `Update/Delete` |
-| Organization | `Update/Delete` | `Update/Delete` |
-| AppInstance | `Update/Delete` | `Update/Delete`（Create 也已强制当前租户） |
+| Role | `Update/Delete/GetByID` | `Update/Delete/Get` |
+| Menu | `Update/Delete/GetByID` | `Update/Delete` |
+| Organization | `Update/Delete/GetByID` | `Update/Delete/Get` |
+| AppInstance | `Update/Delete/GetByID` | `Update/Delete/List`（Create 已强制当前租户） |
 | Message | `Update/Delete/GetByID` | `Delete/Get`（无 Update 接口） |
+| MessageTemplate | `Update/Delete/GetByID` | `Update/Delete/Get` |
+| Dict | `Update/Delete/GetByID` | `Update/Delete/Get` |
+| File | `Delete`（按租户列表） | `Delete/List/Upload`（上传记录当前租户） |
+
+> 注：Role 的 `AssignMenus`、`AssignPermissions`，User 的 `AssignRoles`、`ResetPassword`，以及各模块的 `List/Tree` 查询均已按当前租户过滤。
 
 ### 2.4 List/Tree 查询
 
@@ -131,14 +138,7 @@ func (ctl *UserController) Update(c *gin.Context) {
 query := db.DB.Model(&models.User{}).Where("tenant_id = ?", tenantID)
 ```
 
-### 2.5 待改造模块
-
-以下模块仍存在按 ID 操作不校验租户归属的风险，建议按相同模式补齐：
-
-- `MessageTemplate`：Update/Delete/GetByID
-- `Tenant`：Update/Delete/GetByID（当前仅 SuperAdminOnly 控制路由，但 Get 仍可查任意租户）
-
-### 2.6 不需要租户隔离的模块
+### 2.5 不需要租户隔离的模块
 
 #### Tenant 租户管理
 
@@ -150,10 +150,11 @@ query := db.DB.Model(&models.User{}).Where("tenant_id = ?", tenantID)
 
 - `App`：应用定义全平台共享。
 - `Permission`：权限点定义全平台共享。
+- `Setting`：系统设置全平台共享。
 
 ---
 
-## 3. 开发checklist
+## 3. 开发 checklist
 
 新增一个需要按 ID 操作的接口时，请确认：
 

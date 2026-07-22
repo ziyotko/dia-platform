@@ -1,48 +1,186 @@
 # Base 底座后端
 
-基于 Go + Gin + GORM + MySQL/Redis 实现。
+基于 Go 1.21 + Gin + GORM + MySQL + Redis 实现。
 
 ## 快速开始
 
 ```bash
 cd base/backend
+
+# 1. 安装依赖
 go mod tidy
 
-# 修改 config/config.yaml 中的数据库配置
+# 2. 修改 config.yaml 中的 MySQL/Redis 配置
+# 3. 确保 MySQL 数据库已存在（配置文件中的 dbname）
 
-# 首次运行前初始化超级管理员（可选，也可调用 /auth/init）
-
-# 启动服务
+# 4. 启动服务
 go run cmd/server/main.go
+```
+
+服务默认监听 `:8080`。首次启动会自动执行数据初始化：
+
+- 超级管理员：`admin / admin123`
+- 底座默认菜单（控制台、系统管理、消息管理、工作流管理及其子菜单）
+- 默认超级管理员角色，并关联所有底座菜单
+
+### 命令行参数
+
+```bash
+go run cmd/server/main.go -mock-data    # 额外插入模拟机构数据（仅本地测试）
+```
+
+### 手动初始化管理员
+
+若需要重置超级管理员密码，可调用公开接口：
+
+```bash
+POST /base/api/v1/auth/init
+{ "password": "admin123" }
 ```
 
 ## 目录说明
 
 ```
 backend/
-├── cmd/server/      # 启动入口
-├── config/          # 配置
+├── cmd/server/          # 服务启动入口
+├── config/
+│   └── config.go        # 配置结构定义与加载
+├── config.yaml          # 运行时配置文件（需自行修改数据库连接）
 ├── internal/
-│   ├── adapter/     # 子应用代理与注册表
-│   ├── controllers/ # HTTP 控制器
-│   ├── middleware/  # JWT、租户、审计、CORS
-│   ├── models/      # GORM 模型
-│   ├── routes/      # 路由注册
-│   └── service/     # 业务逻辑
-└── pkg/             # 公共包（db、redis、jwt、response、utils）
+│   ├── adapter/         # 子应用注册表与统一代理
+│   │   ├── controller.go   # /base/api/v1/app/:appCode/* 入口
+│   │   ├── proxy.go        # 反向代理实现
+│   │   └── registry.go     # 应用配置内存缓存
+│   ├── controllers/     # HTTP 控制器
+│   ├── middleware/      # JWT、租户、权限、审计、CORS
+│   ├── models/          # GORM 数据模型
+│   ├── routes/          # 路由注册
+│   ├── seed/            # 默认数据初始化与模拟数据
+│   └── service/         # 业务逻辑
+└── pkg/                 # 公共包
+    ├── db/              # MySQL 连接
+    ├── jwt/             # JWT 生成与解析
+    ├── notifier/        # 邮件等通知渠道
+    ├── redis/           # Redis 连接
+    ├── response/        # 统一响应封装
+    ├── storage/         # 文件存储
+    └── utils/           # 通用工具
+```
+
+## 配置文件
+
+参考 `config.yaml`：
+
+```yaml
+server:
+  port: 8080
+  mode: debug          # debug / release
+
+mysql:
+  host: 127.0.0.1
+  port: 3306
+  user: root
+  password: xxx
+  dbname: caam_base
+  charset: utf8mb4
+  max_open: 100
+  max_idle: 10
+
+redis:
+  addr: 127.0.0.1:6379
+  password:
+  db: 4
+
+jwt:
+  secret: base-platform-jwt-secret
+  expire_hours: 8
+  issuer: base-platform
+
+log:
+  path: logs/base.log
+  max_size: 100
+  max_backups: 10
+  max_age: 30
 ```
 
 ## 核心接口
 
-- `POST /base/api/v1/auth/login` 登录
-- `GET  /base/api/v1/auth/info` 当前用户信息
-- `GET  /base/api/v1/auth/menus` 当前用户菜单树
-- `GET  /base/api/v1/auth/permissions` 当前用户权限
-- `/base/api/v1/tenants` 租户 CRUD
-- `/base/api/v1/apps` 应用 CRUD
-- `/base/api/v1/app-instances` 应用实例 CRUD
-- `/base/api/v1/users` 用户 CRUD
-- `/base/api/v1/roles` 角色 CRUD
-- `/base/api/v1/menus` 菜单 CRUD
-- `/base/api/v1/permissions` 权限 CRUD
-- `/base/api/v1/app/:appCode/*path` 子应用统一代理入口
+### 公开接口
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/base/api/v1/auth/login` | 登录（支持租户编码、验证码） |
+| POST | `/base/api/v1/auth/init` | 初始化/重置超级管理员 |
+| GET  | `/base/api/v1/auth/captcha` | 获取图形验证码 |
+| GET  | `/base/api/v1/files/:key` | 文件公开访问 |
+
+### 登录后接口（均需要 JWT，并经过操作审计、接口权限校验）
+
+| 分组 | 方法 | 路径 | 说明 |
+|------|------|------|------|
+| 认证 | GET/POST | `/base/api/v1/auth/info` / `change-password` | 当前用户、修改密码 |
+| 仪表盘 | GET | `/base/api/v1/dashboard/stats` | 仪表盘统计 |
+| 租户 | CRUD | `/base/api/v1/tenants` | 仅限超级管理员 |
+| 系统设置 | GET/PUT/POST | `/base/api/v1/settings` | 含邮件测试 |
+| 数据字典 | CRUD | `/base/api/v1/dicts` | 含字典项管理 |
+| 应用 | CRUD | `/base/api/v1/apps` | 应用定义管理 |
+| 应用实例 | CRUD | `/base/api/v1/app-instances` | 含我的应用列表 |
+| 用户 | CRUD | `/base/api/v1/users` | 含分配角色、重置密码 |
+| 角色 | CRUD | `/base/api/v1/roles` | 含分配菜单、分配权限 |
+| 菜单 | CRUD | `/base/api/v1/menus/tree` | 菜单树 |
+| 权限 | CRUD | `/base/api/v1/permissions/tree` | 权限树 |
+| 机构 | CRUD | `/base/api/v1/organizations/tree` | 机构树 |
+| 消息 | CRUD | `/base/api/v1/messages` | 含未读数、发送、标记已读 |
+| 消息模板 | CRUD | `/base/api/v1/message-templates` | 模板管理 |
+| 操作日志 | GET/POST/GET | `/base/api/v1/operation-logs` | 列表、删除、清空、导出 |
+| 登录日志 | GET/POST/GET | `/base/api/v1/login-logs` | 列表、删除、清空、导出 |
+| 文件 | POST/GET/DELETE | `/base/api/v1/files/*` | 上传、列表、删除 |
+| 子应用代理 | ANY | `/base/api/v1/app/:appCode/*path` | 统一反向代理入口 |
+
+## 安全与隔离
+
+### 接口权限校验
+
+- 所有登录接口默认挂载 `PermissionAuth` 中间件。
+- 基于 `base_permission` 表的 `method` + `path` 进行匹配，支持 `:param` 通配符。
+- 超级管理员（`tenantID == 0`）、白名单接口、空权限表场景均直接放行。
+- 详见 [docs/security.md](./docs/security.md)。
+
+### 租户数据隔离
+
+- 带 `tenant_id` 的模型，按 ID 操作时 service 层接收 `tenantID` 参数，普通租户自动追加 `WHERE tenant_id = ?`，超级管理员不过滤。
+- `Tenant`、`App`、`Permission`、`Setting` 属于平台级资源，不执行租户隔离。
+- 详见 [docs/security.md](./docs/security.md)。
+
+## 子应用代理
+
+- 应用在 `base_app` 表中注册后，内存注册表 `adapter.DefaultRegistry` 会自动重载。
+- 代理路径：`/base/api/v1/app/{appCode}/{原应用API路径}`。
+- 代理时会在请求头注入当前用户信息：
+  - `X-Base-User-ID`
+  - `X-Base-Username`
+  - `X-Base-Tenant-ID`
+- IFrame 类型应用不支持 API 代理。
+
+## 数据模型
+
+### 带租户隔离（含 `tenant_id`）
+
+- `base_user`
+- `base_role`
+- `base_menu`
+- `base_organization`
+- `base_app_instance`
+- `base_dict`
+- `base_message`
+- `base_message_template`
+- `base_uploaded_file`
+- `base_operation_log`
+- `base_login_log`
+
+### 平台级资源（不含 `tenant_id`）
+
+- `base_app`
+- `base_permission`
+- `base_setting`
+- `base_tenant`
