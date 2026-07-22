@@ -1,13 +1,13 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
-import zhCn from 'element-plus/es/locale/lang/zh-cn'
+import zhCn from 'element-plus/es/locale/lang/zh-cn.mjs'
 import 'element-plus/dist/index.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
 import App from './App.vue'
-import router from './router'
-import { useAppStore } from './stores/app'
+import router from './router/index.ts'
+import { useAppStore } from './stores/app.ts'
 
 // 消除 Element Plus 内部组件的非 passive 事件监听器警告
 const originalAddEventListener = EventTarget.prototype.addEventListener
