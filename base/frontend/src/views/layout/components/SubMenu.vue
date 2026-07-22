@@ -1,16 +1,18 @@
 <template>
   <template v-if="!menu.hidden">
-    <el-sub-menu v-if="menu.type === 'directory' && menu.children?.length" :index="menu.path">
+    <el-sub-menu v-if="menu.type === 'directory' && menu.children?.length" :index="menu.path" popper-class="dark-popper">
       <template #title>
-        <el-icon v-if="menu.icon"><component :is="menu.icon" /></el-icon>
-        <span>{{ menu.name }}</span>
+        <el-icon v-if="menu.icon" class="menu-icon"><component :is="menu.icon" /></el-icon>
+        <span class="menu-title">{{ menu.name }}</span>
       </template>
       <sub-menu v-for="child in menu.children" :key="child.id" :menu="child" />
     </el-sub-menu>
 
     <el-menu-item v-else :index="menu.path">
-      <el-icon v-if="menu.icon"><component :is="menu.icon" /></el-icon>
-      <template #title>{{ menu.name }}</template>
+      <el-icon v-if="menu.icon" class="menu-icon"><component :is="menu.icon" /></el-icon>
+      <template #title>
+        <span class="menu-title">{{ menu.name }}</span>
+      </template>
     </el-menu-item>
   </template>
 </template>
@@ -22,3 +24,38 @@ defineProps<{
   menu: Menu
 }>()
 </script>
+
+<style scoped lang="scss">
+.menu-icon {
+  font-size: 18px;
+  margin-right: 4px;
+}
+
+.menu-title {
+  font-size: 14px;
+}
+
+:deep(.el-menu-item),
+:deep(.el-sub-menu__title) {
+  height: 46px;
+  line-height: 46px;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  transition: all 0.25s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.06) !important;
+    color: #fff !important;
+  }
+}
+
+:deep(.el-menu-item.is-active) {
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+}
+
+:deep(.el-sub-menu.is-active > .el-sub-menu__title) {
+  color: #fff !important;
+}
+</style>

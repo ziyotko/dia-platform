@@ -1,8 +1,10 @@
 <template>
   <el-container class="layout-container">
-    <el-aside :width="appStore.collapsed ? '64px' : '220px'" class="sidebar">
+    <el-aside :width="appStore.collapsed ? '64px' : '230px'" class="sidebar">
       <div class="logo">
-        <el-icon size="28" color="#fff"><MenuIcon /></el-icon>
+        <div class="logo-icon">
+          <el-icon :size="26" color="#fff"><Management /></el-icon>
+        </div>
         <span v-show="!appStore.collapsed" class="logo-text">Base 平台</span>
       </div>
       <el-scrollbar class="menu-scroll">
@@ -11,28 +13,32 @@
           :collapse="appStore.collapsed"
           :collapse-transition="false"
           router
-          background-color="#304156"
-          text-color="#bfcbd9"
-          active-text-color="#409EFF"
+          background-color="transparent"
+          text-color="#94a3b8"
+          active-text-color="#fff"
         >
           <sub-menu v-for="menu in userStore.menus" :key="menu.id" :menu="menu" />
         </el-menu>
       </el-scrollbar>
     </el-aside>
-    <el-container>
+    <el-container class="main-wrapper">
       <el-header class="header">
         <div class="header-left">
-          <el-icon class="collapse-btn" @click="appStore.toggleCollapse">
-            <Fold v-if="!appStore.collapsed" />
-            <Expand v-else />
-          </el-icon>
+          <div class="collapse-btn" @click="appStore.toggleCollapse">
+            <el-icon :size="20">
+              <Fold v-if="!appStore.collapsed" />
+              <Expand v-else />
+            </el-icon>
+          </div>
           <breadcrumb />
         </div>
         <div class="header-right">
           <el-dropdown class="message-dropdown" @command="handleMessageCommand" trigger="click">
-            <el-badge :value="unreadCount" :hidden="unreadCount === 0" class="message-badge">
-              <el-icon size="20"><Bell /></el-icon>
-            </el-badge>
+            <div class="message-trigger">
+              <el-badge :value="unreadCount" :hidden="unreadCount === 0" class="message-badge">
+                <el-icon :size="20"><Bell /></el-icon>
+              </el-badge>
+            </div>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="inbox">消息中心</el-dropdown-item>
@@ -41,10 +47,13 @@
             </template>
           </el-dropdown>
           <el-dropdown @command="handleCommand">
-            <span class="user-info">
-              {{ userStore.userInfo?.realName || userStore.userInfo?.username }}
-              <el-icon class="el-icon--right"><arrow-down /></el-icon>
-            </span>
+            <div class="user-info">
+              <el-avatar :size="32" class="user-avatar">
+                <el-icon :size="18"><UserFilled /></el-icon>
+              </el-avatar>
+              <span class="user-name">{{ userStore.userInfo?.realName || userStore.userInfo?.username }}</span>
+              <el-icon class="user-arrow"><arrow-down /></el-icon>
+            </div>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="profile">个人中心</el-dropdown-item>
@@ -69,7 +78,7 @@ import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
 import SubMenu from './components/SubMenu.vue'
 import Breadcrumb from '@/components/Breadcrumb.vue'
-import { Menu as MenuIcon, Fold, Expand, ArrowDown, Bell } from '@element-plus/icons-vue'
+import { Management, Fold, Expand, ArrowDown, Bell, UserFilled } from '@element-plus/icons-vue'
 import { getUnreadCount } from '@/api/message'
 
 const route = useRoute()
@@ -99,10 +108,8 @@ const handleMessageCommand = async (command: string) => {
   if (command === 'inbox') {
     router.push('/message/list')
   } else if (command === 'mark-all') {
-    // 获取未读消息列表并逐个标记
     const res: any = await getUnreadCount()
     if (res.data > 0) {
-      // 这里简化处理，实际可调用批量已读接口
       fetchUnread()
     }
   }
@@ -118,75 +125,175 @@ onMounted(() => {
 <style scoped lang="scss">
 .layout-container {
   height: 100vh;
+  background: #f1f5f9;
 }
+
 .sidebar {
-  background-color: #304156;
-  transition: width 0.3s;
+  position: relative;
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  transition: width 0.3s ease;
   overflow: hidden;
+  box-shadow: 4px 0 24px rgba(15, 23, 42, 0.2);
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 1px;
+    height: 100%;
+    background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  }
 }
+
 .logo {
-  height: 60px;
+  height: 64px;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 12px;
   color: #fff;
-  font-size: 18px;
-  font-weight: bold;
-  border-bottom: 1px solid #1f2d3d;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+  .logo-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+    flex-shrink: 0;
+  }
+
+  .logo-text {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
 }
-.logo-text {
-  margin-left: 12px;
-}
+
 .menu-scroll {
-  height: calc(100vh - 60px);
+  height: calc(100vh - 64px);
   overflow-y: auto;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 2px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
 }
-.menu-scroll::-webkit-scrollbar {
-  width: 4px;
-}
-.menu-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 2px;
-}
-.menu-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
+
 .menu-scroll :deep(.el-menu) {
   border-right: none;
+  padding: 12px 10px;
 }
+
+.main-wrapper {
+  position: relative;
+  z-index: 1;
+}
+
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  height: 64px;
+  padding: 0 20px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
+
 .header-left {
   display: flex;
   align-items: center;
+  gap: 16px;
 }
+
 .collapse-btn {
-  font-size: 20px;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  margin-right: 16px;
+  color: #475569;
+  transition: all 0.25s ease;
+
+  &:hover {
+    background: #f1f5f9;
+    color: #2563eb;
+  }
 }
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.message-trigger {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #475569;
+  transition: all 0.25s ease;
+
+  &:hover {
+    background: #f1f5f9;
+    color: #2563eb;
+  }
+}
+
 .user-info {
-  cursor: pointer;
   display: flex;
   align-items: center;
-}
-.message-dropdown {
-  margin-right: 20px;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 10px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
+  transition: all 0.25s ease;
+
+  &:hover {
+    background: #f1f5f9;
+  }
+
+  .user-avatar {
+    background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .user-name {
+    font-size: 14px;
+    color: #1e293b;
+    font-weight: 500;
+  }
+
+  .user-arrow {
+    font-size: 12px;
+    color: #94a3b8;
+  }
 }
-.message-badge {
-  line-height: 1;
-}
+
 .main {
-  background: #f0f2f5;
-  padding: 16px;
+  padding: 20px;
   overflow: auto;
 }
 </style>

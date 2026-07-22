@@ -1,10 +1,22 @@
 <template>
   <div class="user-page">
-    <el-card>
+    <div class="page-header">
+      <div class="page-title">
+        <div class="page-icon">
+          <el-icon :size="24" color="#fff"><UserIcon /></el-icon>
+        </div>
+        <div class="page-title-text">
+          <h1>用户管理</h1>
+          <p>管理系统用户账号与权限分配</p>
+        </div>
+      </div>
+      <el-button type="primary" :icon="Plus" @click="handleAdd">新增用户</el-button>
+    </div>
+
+    <el-card shadow="never">
       <template #header>
         <div class="card-header">
-          <span>用户管理</span>
-          <el-button type="primary" @click="handleAdd">新增用户</el-button>
+          <span>用户列表</span>
         </div>
       </template>
       <el-table :data="tableData" v-loading="loading" border>
@@ -71,6 +83,7 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { User as UserIcon, Plus } from '@element-plus/icons-vue'
 import { getUserList, createUser, updateUser, deleteUser, resetUserPassword } from '@/api/user'
 import type { User } from '@/api/user'
 
@@ -158,13 +171,55 @@ onMounted(fetchData)
 
 <style scoped lang="scss">
 .user-page {
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .page-title {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .page-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+  }
+
+  .page-title-text {
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+      color: #1e293b;
+    }
+
+    p {
+      margin: 4px 0 0;
+      font-size: 13px;
+      color: #64748b;
+    }
+  }
+
   .card-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    font-weight: 600;
+    color: #1e293b;
   }
+
   .pagination {
-    margin-top: 16px;
+    margin-top: 20px;
     display: flex;
     justify-content: flex-end;
   }
