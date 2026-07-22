@@ -67,10 +67,11 @@ func (s CaptchaService) IsLocked(username string) (bool, int, error) {
 	key := LoginFailKeyPrefix + username
 	count, err := redis.Client.Get(redis.Ctx, key).Int()
 	if err != nil {
-		return false, 0, nil
+		// redis 中没有失败记录，未锁定，剩余次数为最大允许次数
+		return false, MaxLoginFailCount, nil
 	}
 	if count >= MaxLoginFailCount {
-		return true, MaxLoginFailCount - count, nil
+		return true, 0, nil
 	}
 	return false, MaxLoginFailCount - count, nil
 }
@@ -84,10 +85,7 @@ func (s CaptchaService) CheckAndLock(username string) error {
 	if err != nil {
 		return err
 	}
-	if locked {
-		return errors.New("登录失败次数过多，账号已锁定，请30分钟后再试")
-	}
-	if remain <= 0 {
+	if locked || remain <= 0 {
 		return errors.New("登录失败次数过多，账号已锁定，请30分钟后再试")
 	}
 	return nil
