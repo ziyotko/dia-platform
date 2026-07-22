@@ -1,35 +1,62 @@
 <template>
   <el-container class="layout-container">
-    <el-aside :width="appStore.collapsed ? '64px' : '230px'" class="sidebar">
+    <el-aside width="64px" class="sidebar">
       <div class="logo">
         <div class="logo-icon">
           <el-icon :size="26" color="#fff"><Management /></el-icon>
         </div>
-        <span v-show="!appStore.collapsed" class="logo-text">Base 平台</span>
       </div>
-      <el-scrollbar class="menu-scroll">
-        <el-menu
-          :default-active="activeMenu"
-          :collapse="appStore.collapsed"
-          :collapse-transition="false"
-          router
-          background-color="transparent"
-          text-color="#94a3b8"
-          active-text-color="#fff"
+      <div class="menu-icons">
+        <div
+          v-for="menu in userStore.menus"
+          :key="menu.id"
+          class="menu-icon-item"
+          :class="{ active: isTopActive(menu), 'popup-open': popupMenu?.id === menu.id }"
+          @mouseenter="handleIconEnter(menu)"
+          @mouseleave="handleIconLeave"
+          @click="handleIconClick(menu)"
         >
-          <sub-menu v-for="menu in userStore.menus" :key="menu.id" :menu="menu" />
-        </el-menu>
-      </el-scrollbar>
+          <el-tooltip :content="menu.name" placement="right" :disabled="popupMenu?.id === menu.id">
+            <el-icon :size="20"><component :is="menu.icon || 'Menu'" /></el-icon>
+          </el-tooltip>
+        </div>
+      </div>
     </el-aside>
+
+    <!-- 弹出式菜单面板 -->
+    <transition name="popup-slide">
+      <div
+        v-if="popupMenu"
+        class="menu-popup"
+        @mouseenter="handlePopupEnter"
+        @mouseleave="handlePopupLeave"
+      >
+        <div class="popup-header">
+          <el-icon :size="18"><component :is="popupMenu.icon || 'Menu'" /></el-icon>
+          <span class="popup-title">{{ popupMenu.name }}</span>
+        </div>
+        <el-scrollbar class="popup-scroll">
+          <el-menu
+            :default-active="activeMenu"
+            router
+            background-color="transparent"
+            text-color="#94a3b8"
+            active-text-color="#fff"
+          >
+            <template v-if="popupMenu.children?.length">
+              <sub-menu v-for="child in popupMenu.children" :key="child.id" :menu="child" />
+            </template>
+            <el-menu-item v-else :index="popupMenu.path">
+              <span>{{ popupMenu.name }}</span>
+            </el-menu-item>
+          </el-menu>
+        </el-scrollbar>
+      </div>
+    </transition>
+
     <el-container class="main-wrapper">
       <el-header class="header">
         <div class="header-left">
-          <div class="collapse-btn" @click="appStore.toggleCollapse">
-            <el-icon :size="20">
-              <Fold v-if="!appStore.collapsed" />
-              <Expand v-else />
-            </el-icon>
-          </div>
           <breadcrumb />
         </div>
         <div class="header-right">
@@ -72,22 +99,102 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { useAppStore } from '@/stores/app'
+import type { Menu } from '@/api/menu'
 import SubMenu from './components/SubMenu.vue'
 import Breadcrumb from '@/components/Breadcrumb.vue'
-import { Management, Fold, Expand, ArrowDown, Bell, UserFilled } from '@element-plus/icons-vue'
+import { Management, ArrowDown, Bell, UserFilled } from '@element-plus/icons-vue'
 import { getUnreadCount } from '@/api/message'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
-const appStore = useAppStore()
 const unreadCount = ref(0)
+const popupMenu = ref<Menu | null>(null)
+let showTimer: number | null = null
+let hideTimer: number | null = null
 
 const activeMenu = computed(() => route.path)
+
+const activeTopMenu = computed(() => {
+  const path = route.path
+  for (const menu of userStore.menus) {
+    if (isPathInMenu(path, menu)) return menu
+  }
+  return null
+})
+
+function isMenuPathMatch(routePath: string, menuPath: string): boolean {
+  if (!menuPath) return false
+  if (routePath === menuPath) return true
+  return routePath.startsWith(menuPath + '/')
+}
+
+function isPathInMenu(path: string, menu: Menu): boolean {
+  if (isMenuPathMatch(path, menu.path)) return true
+  return menu.children?.some((child) => isPathInMenu(path, child)) || false
+}
+
+const isTopActive = (menu: Menu) => activeTopMenu.value?.id === menu.id
+
+const showPopup = (menu: Menu) => {
+  popupMenu.value = menu
+}
+
+const hidePopup = () => {
+  popupMenu.value = null
+}
+
+const handleIconEnter = (menu: Menu) => {
+  if (hideTimer) {
+    clearTimeout(hideTimer)
+    hideTimer = null
+  }
+  showTimer = window.setTimeout(() => {
+    showPopup(menu)
+  }, 120)
+}
+
+const handleIconLeave = () => {
+  if (showTimer) {
+    clearTimeout(showTimer)
+    showTimer = null
+  }
+  hideTimer = window.setTimeout(() => {
+    hidePopup()
+  }, 180)
+}
+
+const handlePopupEnter = () => {
+  if (hideTimer) {
+    clearTimeout(hideTimer)
+    hideTimer = null
+  }
+}
+
+const handlePopupLeave = () => {
+  hideTimer = window.setTimeout(() => {
+    hidePopup()
+  }, 180)
+}
+
+const handleIconClick = (menu: Menu) => {
+  if (!menu.children?.length && menu.path) {
+    router.push(menu.path)
+    hidePopup()
+    return
+  }
+  showPopup(menu)
+}
+
+watch(
+  () => route.path,
+  () => {
+    hidePopup()
+  }
+)
 
 const fetchUnread = async () => {
   const res: any = await getUnreadCount()
@@ -118,7 +225,11 @@ const handleMessageCommand = async (command: string) => {
 onMounted(() => {
   fetchUnread()
   const timer = setInterval(fetchUnread, 30000)
-  onUnmounted(() => clearInterval(timer))
+  onUnmounted(() => {
+    clearInterval(timer)
+    if (showTimer) clearTimeout(showTimer)
+    if (hideTimer) clearTimeout(hideTimer)
+  })
 })
 </script>
 
@@ -130,8 +241,8 @@ onMounted(() => {
 
 .sidebar {
   position: relative;
+  z-index: 100;
   background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
-  transition: width 0.3s ease;
   overflow: hidden;
   box-shadow: 4px 0 24px rgba(15, 23, 42, 0.2);
 
@@ -151,7 +262,6 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
   color: #fff;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 
@@ -166,17 +276,94 @@ onMounted(() => {
     box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
     flex-shrink: 0;
   }
+}
 
-  .logo-text {
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    white-space: nowrap;
+.menu-icons {
+  padding: 12px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.menu-icon-item {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+
+  &:hover,
+  &.popup-open {
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+  }
+
+  &.active {
+    background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+  }
+
+  &.active::before {
+    content: '';
+    position: absolute;
+    left: -10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 18px;
+    border-radius: 0 3px 3px 0;
+    background: #fff;
   }
 }
 
-.menu-scroll {
-  height: calc(100vh - 64px);
+.menu-popup {
+  position: fixed;
+  top: 0;
+  left: 64px;
+  width: 220px;
+  height: 100vh;
+  z-index: 99;
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  box-shadow: 8px 0 32px rgba(15, 23, 42, 0.35);
+  display: flex;
+  flex-direction: column;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 1px;
+    height: 100%;
+    background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  }
+}
+
+.popup-header {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 18px;
+  color: #fff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+
+  .popup-title {
+    font-size: 16px;
+    font-weight: 600;
+  }
+}
+
+.popup-scroll {
+  flex: 1;
   overflow-y: auto;
 
   &::-webkit-scrollbar {
@@ -193,9 +380,20 @@ onMounted(() => {
   }
 }
 
-.menu-scroll :deep(.el-menu) {
+.popup-scroll :deep(.el-menu) {
   border-right: none;
   padding: 12px 10px;
+}
+
+.popup-slide-enter-active,
+.popup-slide-leave-active {
+  transition: all 0.25s ease;
+}
+
+.popup-slide-enter-from,
+.popup-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-12px);
 }
 
 .main-wrapper {
@@ -219,23 +417,6 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 16px;
-}
-
-.collapse-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: #475569;
-  transition: all 0.25s ease;
-
-  &:hover {
-    background: #f1f5f9;
-    color: #2563eb;
-  }
 }
 
 .header-right {
