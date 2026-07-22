@@ -120,6 +120,8 @@ func (ctl *UserController) Update(c *gin.Context) {
 | Role | `Update/Delete` | `Update/Delete` |
 | Menu | `Update/Delete` | `Update/Delete` |
 | Organization | `Update/Delete` | `Update/Delete` |
+| AppInstance | `Update/Delete` | `Update/Delete`（Create 也已强制当前租户） |
+| Message | `Update/Delete/GetByID` | `Delete/Get`（无 Update 接口） |
 
 ### 2.4 List/Tree 查询
 
@@ -133,8 +135,6 @@ query := db.DB.Model(&models.User{}).Where("tenant_id = ?", tenantID)
 
 以下模块仍存在按 ID 操作不校验租户归属的风险，建议按相同模式补齐：
 
-- `AppInstance`：Update/Delete/GetByID
-- `Message`：Update/Delete/GetByID
 - `MessageTemplate`：Update/Delete/GetByID
 - `Tenant`：Update/Delete/GetByID（当前仅 SuperAdminOnly 控制路由，但 Get 仍可查任意租户）
 
