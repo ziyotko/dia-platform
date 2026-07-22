@@ -22,7 +22,7 @@ func (s UserService) Create(u *models.User) error {
 	return db.DB.Create(u).Error
 }
 
-func (s UserService) Update(u *models.User) error {
+func (s UserService) Update(u *models.User, tenantID uint64) error {
 	updates := map[string]interface{}{
 		"real_name": u.RealName,
 		"phone":     u.Phone,
@@ -38,16 +38,28 @@ func (s UserService) Update(u *models.User) error {
 		}
 		updates["password"] = hash
 	}
-	return db.DB.Model(u).Updates(updates).Error
+	db := db.DB.Model(u)
+	if tenantID > 0 {
+		db = db.Where("tenant_id = ?", tenantID)
+	}
+	return db.Updates(updates).Error
 }
 
-func (s UserService) Delete(id uint64) error {
-	return db.DB.Delete(&models.User{BaseModel: models.BaseModel{ID: id}}).Error
+func (s UserService) Delete(id uint64, tenantID uint64) error {
+	db := db.DB
+	if tenantID > 0 {
+		db = db.Where("tenant_id = ?", tenantID)
+	}
+	return db.Delete(&models.User{BaseModel: models.BaseModel{ID: id}}).Error
 }
 
-func (s UserService) GetByID(id uint64) (*models.User, error) {
+func (s UserService) GetByID(id uint64, tenantID uint64) (*models.User, error) {
 	var u models.User
-	err := db.DB.Preload("Roles").First(&u, id).Error
+	db := db.DB.Preload("Roles")
+	if tenantID > 0 {
+		db = db.Where("tenant_id = ?", tenantID)
+	}
+	err := db.First(&u, id).Error
 	return &u, err
 }
 

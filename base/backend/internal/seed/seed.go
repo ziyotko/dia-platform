@@ -52,6 +52,7 @@ func seedBaseMenus() error {
 		{AppCode: "base", Name: "控制台", Path: "/index", Component: "base/dashboard/index.vue", Type: "menu", Icon: "HomeFilled", Sort: 1, Status: 1},
 		{AppCode: "base", Name: "系统管理", Path: "/system", Type: "directory", Icon: "Setting", Sort: 100, Status: 1},
 		{AppCode: "base", Name: "消息管理", Path: "/message", Type: "directory", Icon: "Message", Sort: 200, Status: 1},
+		{AppCode: "base", Name: "工作流管理", Path: "/workflow", Type: "directory", Icon: "Connection", Sort: 300, Status: 1},
 	}
 
 	dirIDs := make(map[string]uint64)
@@ -64,6 +65,7 @@ func seedBaseMenus() error {
 
 	systemDirID := dirIDs["系统管理"]
 	msgDirID := dirIDs["消息管理"]
+	workflowDirID := dirIDs["工作流管理"]
 
 	children := []models.Menu{
 		{AppCode: "base", ParentID: systemDirID, Name: "租户管理", Path: "/system/tenant", Component: "base/tenant/index.vue", Type: "menu", Sort: 1, Status: 1},
@@ -76,6 +78,11 @@ func seedBaseMenus() error {
 
 		{AppCode: "base", ParentID: msgDirID, Name: "消息列表", Path: "/message/list", Component: "base/message/index.vue", Type: "menu", Sort: 1, Status: 1},
 		{AppCode: "base", ParentID: msgDirID, Name: "消息模板", Path: "/message/template", Component: "base/message-template/index.vue", Type: "menu", Sort: 2, Status: 1},
+
+		{AppCode: "base", ParentID: workflowDirID, Name: "流程模型", Path: "/workflow/model", Component: "base/workflow/model/index.vue", Type: "menu", Sort: 1, Status: 1},
+		{AppCode: "base", ParentID: workflowDirID, Name: "流程实例", Path: "/workflow/instance", Component: "base/workflow/instance/index.vue", Type: "menu", Sort: 2, Status: 1},
+		{AppCode: "base", ParentID: workflowDirID, Name: "审批任务", Path: "/workflow/task", Component: "base/workflow/task/index.vue", Type: "menu", Sort: 3, Status: 1},
+		{AppCode: "base", ParentID: workflowDirID, Name: "流程设计器", Path: "/workflow/designer", Component: "base/workflow/designer/index.vue", Type: "menu", Sort: 4, Status: 1},
 	}
 
 	for i := range children {

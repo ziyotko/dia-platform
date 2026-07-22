@@ -23,6 +23,7 @@ func Register(r *gin.Engine) {
 	// 需要登录
 	authorized := api.Group("", middleware.JWTAuth())
 	authorized.Use(middleware.OperationLog())
+	authorized.Use(middleware.PermissionAuth())
 	{
 		authorized.GET("/auth/info", (&controllers.AuthController{}).Info)
 		authorized.GET("/auth/menus", (&controllers.AuthController{}).Menus)

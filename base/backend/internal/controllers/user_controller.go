@@ -35,7 +35,8 @@ func (ctl *UserController) Update(c *gin.Context) {
 		return
 	}
 	u.ID = uint64(parseID(c))
-	if err := ctl.service.Update(&u); err != nil {
+	tenantID := c.GetUint64("tenantID")
+	if err := ctl.service.Update(&u, tenantID); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
@@ -44,7 +45,8 @@ func (ctl *UserController) Update(c *gin.Context) {
 
 func (ctl *UserController) Delete(c *gin.Context) {
 	id := uint64(parseID(c))
-	if err := ctl.service.Delete(id); err != nil {
+	tenantID := c.GetUint64("tenantID")
+	if err := ctl.service.Delete(id, tenantID); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
@@ -53,9 +55,10 @@ func (ctl *UserController) Delete(c *gin.Context) {
 
 func (ctl *UserController) Get(c *gin.Context) {
 	id := uint64(parseID(c))
-	u, err := ctl.service.GetByID(id)
+	tenantID := c.GetUint64("tenantID")
+	u, err := ctl.service.GetByID(id, tenantID)
 	if err != nil {
-		response.Fail(c, err.Error())
+		response.Fail(c, "用户不存在")
 		return
 	}
 	response.Ok(c, u)
