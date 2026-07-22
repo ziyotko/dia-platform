@@ -70,11 +70,13 @@ func seedBaseMenus() error {
 	children := []models.Menu{
 		{AppCode: "base", ParentID: systemDirID, Name: "租户管理", Path: "/system/tenant", Component: "base/tenant/index.vue", Type: "menu", Sort: 1, Status: 1},
 		{AppCode: "base", ParentID: systemDirID, Name: "应用管理", Path: "/system/app", Component: "base/app/index.vue", Type: "menu", Sort: 2, Status: 1},
-		{AppCode: "base", ParentID: systemDirID, Name: "用户管理", Path: "/system/user", Component: "base/user/index.vue", Type: "menu", Sort: 3, Status: 1},
-		{AppCode: "base", ParentID: systemDirID, Name: "机构管理", Path: "/system/organization", Component: "base/organization/index.vue", Type: "menu", Sort: 4, Status: 1},
-		{AppCode: "base", ParentID: systemDirID, Name: "角色管理", Path: "/system/role", Component: "base/role/index.vue", Type: "menu", Sort: 5, Status: 1},
-		{AppCode: "base", ParentID: systemDirID, Name: "菜单管理", Path: "/system/menu", Component: "base/menu/index.vue", Type: "menu", Sort: 6, Status: 1},
-		{AppCode: "base", ParentID: systemDirID, Name: "系统设置", Path: "/system/setting", Component: "base/setting/index.vue", Type: "menu", Sort: 7, Status: 1},
+		{AppCode: "base", ParentID: systemDirID, Name: "应用实例", Path: "/system/app-instance", Component: "base/app-instance/index.vue", Type: "menu", Sort: 3, Status: 1},
+		{AppCode: "base", ParentID: systemDirID, Name: "用户管理", Path: "/system/user", Component: "base/user/index.vue", Type: "menu", Sort: 4, Status: 1},
+		{AppCode: "base", ParentID: systemDirID, Name: "机构管理", Path: "/system/organization", Component: "base/organization/index.vue", Type: "menu", Sort: 5, Status: 1},
+		{AppCode: "base", ParentID: systemDirID, Name: "角色管理", Path: "/system/role", Component: "base/role/index.vue", Type: "menu", Sort: 6, Status: 1},
+		{AppCode: "base", ParentID: systemDirID, Name: "菜单管理", Path: "/system/menu", Component: "base/menu/index.vue", Type: "menu", Sort: 7, Status: 1},
+		{AppCode: "base", ParentID: systemDirID, Name: "审计日志", Path: "/system/log", Component: "base/log/index.vue", Type: "menu", Sort: 8, Status: 1},
+		{AppCode: "base", ParentID: systemDirID, Name: "系统设置", Path: "/system/setting", Component: "base/setting/index.vue", Type: "menu", Sort: 9, Status: 1},
 
 		{AppCode: "base", ParentID: msgDirID, Name: "消息列表", Path: "/message/list", Component: "base/message/index.vue", Type: "menu", Sort: 1, Status: 1},
 		{AppCode: "base", ParentID: msgDirID, Name: "消息模板", Path: "/message/template", Component: "base/message-template/index.vue", Type: "menu", Sort: 2, Status: 1},

@@ -41,6 +41,12 @@ func Register(r *gin.Engine) {
 			tenants.GET("", (&controllers.TenantController{}).List)
 		}
 
+		settings := authorized.Group("/settings")
+		{
+			settings.GET("", (&controllers.SettingsController{}).Get)
+			settings.PUT("", (&controllers.SettingsController{}).Save)
+		}
+
 		apps := authorized.Group("/apps")
 		{
 			apps.POST("", (&controllers.AppController{}).Create)
@@ -124,6 +130,14 @@ func Register(r *gin.Engine) {
 			templates.DELETE("/:id", (&controllers.MessageTemplateController{}).Delete)
 			templates.GET("/:id", (&controllers.MessageTemplateController{}).Get)
 			templates.GET("", (&controllers.MessageTemplateController{}).List)
+		}
+
+		logs := authorized.Group("/operation-logs")
+		{
+			logs.GET("", (&controllers.OperationLogController{}).List)
+			logs.POST("/delete", (&controllers.OperationLogController{}).Delete)
+			logs.POST("/clear", (&controllers.OperationLogController{}).Clear)
+			logs.GET("/export", (&controllers.OperationLogController{}).Export)
 		}
 	}
 
