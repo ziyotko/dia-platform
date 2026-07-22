@@ -33,7 +33,8 @@ func (ctl *OrganizationController) Update(c *gin.Context) {
 		return
 	}
 	o.ID = uint64(parseID(c))
-	if err := ctl.service.Update(&o); err != nil {
+	tenantID := c.GetUint64("tenantID")
+	if err := ctl.service.Update(&o, tenantID); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
@@ -42,7 +43,8 @@ func (ctl *OrganizationController) Update(c *gin.Context) {
 
 func (ctl *OrganizationController) Delete(c *gin.Context) {
 	id := uint64(parseID(c))
-	if err := ctl.service.Delete(id); err != nil {
+	tenantID := c.GetUint64("tenantID")
+	if err := ctl.service.Delete(id, tenantID); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}

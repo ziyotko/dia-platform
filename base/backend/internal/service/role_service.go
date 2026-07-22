@@ -11,8 +11,12 @@ func (s RoleService) Create(r *models.Role) error {
 	return db.DB.Create(r).Error
 }
 
-func (s RoleService) Update(r *models.Role) error {
-	return db.DB.Model(r).Updates(map[string]interface{}{
+func (s RoleService) Update(r *models.Role, tenantID uint64) error {
+	db := db.DB.Model(r)
+	if tenantID > 0 {
+		db = db.Where("tenant_id = ?", tenantID)
+	}
+	return db.Updates(map[string]interface{}{
 		"name":   r.Name,
 		"code":   r.Code,
 		"status": r.Status,
@@ -20,8 +24,12 @@ func (s RoleService) Update(r *models.Role) error {
 	}).Error
 }
 
-func (s RoleService) Delete(id uint64) error {
-	return db.DB.Delete(&models.Role{BaseModel: models.BaseModel{ID: id}}).Error
+func (s RoleService) Delete(id uint64, tenantID uint64) error {
+	db := db.DB
+	if tenantID > 0 {
+		db = db.Where("tenant_id = ?", tenantID)
+	}
+	return db.Delete(&models.Role{BaseModel: models.BaseModel{ID: id}}).Error
 }
 
 func (s RoleService) GetByID(id uint64) (*models.Role, error) {

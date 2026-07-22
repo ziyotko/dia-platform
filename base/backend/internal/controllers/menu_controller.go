@@ -35,7 +35,8 @@ func (ctl *MenuController) Update(c *gin.Context) {
 		return
 	}
 	m.ID = uint64(parseID(c))
-	if err := ctl.service.Update(&m); err != nil {
+	tenantID := c.GetUint64("tenantID")
+	if err := ctl.service.Update(&m, tenantID); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
@@ -44,7 +45,8 @@ func (ctl *MenuController) Update(c *gin.Context) {
 
 func (ctl *MenuController) Delete(c *gin.Context) {
 	id := uint64(parseID(c))
-	if err := ctl.service.Delete(id); err != nil {
+	tenantID := c.GetUint64("tenantID")
+	if err := ctl.service.Delete(id, tenantID); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}

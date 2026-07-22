@@ -11,22 +11,30 @@ func (s OrganizationService) Create(o *models.Organization) error {
 	return db.DB.Create(o).Error
 }
 
-func (s OrganizationService) Update(o *models.Organization) error {
-	return db.DB.Model(o).Updates(map[string]interface{}{
-		"parent_id":  o.ParentID,
-		"code":       o.Code,
-		"name":       o.Name,
-		"leader":     o.Leader,
-		"phone":      o.Phone,
-		"email":      o.Email,
-		"sort":       o.Sort,
-		"status":     o.Status,
+func (s OrganizationService) Update(o *models.Organization, tenantID uint64) error {
+	db := db.DB.Model(o)
+	if tenantID > 0 {
+		db = db.Where("tenant_id = ?", tenantID)
+	}
+	return db.Updates(map[string]interface{}{
+		"parent_id":   o.ParentID,
+		"code":        o.Code,
+		"name":        o.Name,
+		"leader":      o.Leader,
+		"phone":       o.Phone,
+		"email":       o.Email,
+		"sort":        o.Sort,
+		"status":      o.Status,
 		"description": o.Description,
 	}).Error
 }
 
-func (s OrganizationService) Delete(id uint64) error {
-	return db.DB.Delete(&models.Organization{BaseModel: models.BaseModel{ID: id}}).Error
+func (s OrganizationService) Delete(id uint64, tenantID uint64) error {
+	db := db.DB
+	if tenantID > 0 {
+		db = db.Where("tenant_id = ?", tenantID)
+	}
+	return db.Delete(&models.Organization{BaseModel: models.BaseModel{ID: id}}).Error
 }
 
 func (s OrganizationService) GetByID(id uint64) (*models.Organization, error) {

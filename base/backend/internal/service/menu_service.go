@@ -11,8 +11,12 @@ func (s MenuService) Create(m *models.Menu) error {
 	return db.DB.Create(m).Error
 }
 
-func (s MenuService) Update(m *models.Menu) error {
-	return db.DB.Model(m).Updates(map[string]interface{}{
+func (s MenuService) Update(m *models.Menu, tenantID uint64) error {
+	db := db.DB.Model(m)
+	if tenantID > 0 {
+		db = db.Where("tenant_id = ?", tenantID)
+	}
+	return db.Updates(map[string]interface{}{
 		"parent_id":  m.ParentID,
 		"app_code":   m.AppCode,
 		"name":       m.Name,
@@ -29,8 +33,12 @@ func (s MenuService) Update(m *models.Menu) error {
 	}).Error
 }
 
-func (s MenuService) Delete(id uint64) error {
-	return db.DB.Delete(&models.Menu{BaseModel: models.BaseModel{ID: id}}).Error
+func (s MenuService) Delete(id uint64, tenantID uint64) error {
+	db := db.DB
+	if tenantID > 0 {
+		db = db.Where("tenant_id = ?", tenantID)
+	}
+	return db.Delete(&models.Menu{BaseModel: models.BaseModel{ID: id}}).Error
 }
 
 func (s MenuService) GetByID(id uint64) (*models.Menu, error) {

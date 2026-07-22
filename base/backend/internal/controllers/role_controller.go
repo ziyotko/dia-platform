@@ -35,7 +35,8 @@ func (ctl *RoleController) Update(c *gin.Context) {
 		return
 	}
 	r.ID = uint64(parseID(c))
-	if err := ctl.service.Update(&r); err != nil {
+	tenantID := c.GetUint64("tenantID")
+	if err := ctl.service.Update(&r, tenantID); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
@@ -44,7 +45,8 @@ func (ctl *RoleController) Update(c *gin.Context) {
 
 func (ctl *RoleController) Delete(c *gin.Context) {
 	id := uint64(parseID(c))
-	if err := ctl.service.Delete(id); err != nil {
+	tenantID := c.GetUint64("tenantID")
+	if err := ctl.service.Delete(id, tenantID); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
