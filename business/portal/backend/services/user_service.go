@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"mime/multipart"
 	"strconv"
 	"strings"
 	"time"
@@ -10,6 +11,8 @@ import (
 	"server/config"
 	"server/models"
 	"server/utils"
+
+	"github.com/xuri/excelize/v2"
 )
 
 type UserService struct{}
@@ -201,6 +204,71 @@ func (s *UserService) CreateUser(username, nickname, account, email, password, p
 	}
 
 	return nil
+}
+
+type ImportUserResult struct {
+	SuccessCount int      `json:"successCount"`
+	FailCount    int      `json:"failCount"`
+	FailDetails  []string `json:"failDetails"`
+}
+
+func (s *UserService) ImportUsers(file multipart.File, fileSize int64) (*ImportUserResult, error) {
+	f, err := excelize.OpenReader(file, excelize.Options{})
+	if err != nil {
+		return nil, fmt.Errorf("读取 Excel 失败: %w", err)
+	}
+	defer f.Close()
+
+	sheetName := f.GetSheetName(0)
+	if sheetName == "" {
+		return nil, errors.New("Excel 工作表为空")
+	}
+
+	rows, err := f.GetRows(sheetName)
+	if err != nil {
+		return nil, fmt.Errorf("读取工作表失败: %w", err)
+	}
+
+	if len(rows) < 2 {
+		return nil, errors.New("Excel 数据行数不足")
+	}
+
+	result := &ImportUserResult{
+		SuccessCount: 0,
+		FailCount:    0,
+		FailDetails:  make([]string, 0),
+	}
+
+	for i, row := range rows[1:] {
+		lineNum := i + 2
+		if len(row) < 5 {
+			result.FailCount++
+			result.FailDetails = append(result.FailDetails, fmt.Sprintf("第 %d 行: 字段数量不足", lineNum))
+			continue
+		}
+
+		username := strings.TrimSpace(row[0])
+		account := strings.TrimSpace(row[1])
+		nickname := strings.TrimSpace(row[2])
+		email := strings.TrimSpace(row[3])
+		phone := strings.TrimSpace(row[4])
+
+		if username == "" || account == "" || nickname == "" || email == "" || phone == "" {
+			result.FailCount++
+			result.FailDetails = append(result.FailDetails, fmt.Sprintf("第 %d 行: 存在空字段", lineNum))
+			continue
+		}
+
+		if err := s.CreateUser(username, nickname, account, email, "Abcd@1234", phone, 1, []int{6}, nil); err != nil {
+			result.FailCount++
+			result.FailDetails = append(result.FailDetails, fmt.Sprintf("第 %d 行 (%s): %s", lineNum, account, err.Error()))
+			continue
+		}
+
+		result.SuccessCount++
+	}
+
+	return result, nil
 }
 
 func (s *UserService) UpdateUser(id uint, username, nickname, account, email, password, phone string, status int, roleIds []int, orgIds []uint) error {

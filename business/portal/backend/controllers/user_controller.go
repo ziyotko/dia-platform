@@ -130,6 +130,29 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("创建用户成功", nil))
 }
 
+func (c *UserController) ImportUsers(ctx *gin.Context) {
+	fileHeader, err := ctx.FormFile("file")
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "上传文件失败: "+err.Error()))
+		return
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "打开文件失败: "+err.Error()))
+		return
+	}
+	defer file.Close()
+
+	result, err := c.userService.ImportUsers(file, fileHeader.Size)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "导入失败: "+err.Error()))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.Success("导入完成", result))
+}
+
 func (c *UserController) UpdateUser(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)

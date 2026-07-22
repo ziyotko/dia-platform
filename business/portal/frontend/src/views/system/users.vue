@@ -29,9 +29,14 @@
       <template #header>
         <div class="card-header">
           <span>用户列表</span>
-          <el-button type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon>新增用户
-          </el-button>
+          <div class="header-actions">
+            <el-button type="success" @click="handleImport">
+              <el-icon><Upload /></el-icon>导入用户
+            </el-button>
+            <el-button type="primary" @click="handleAdd">
+              <el-icon><Plus /></el-icon>新增用户
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -146,6 +151,38 @@
         <el-button v-if="!isReadonly" type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="importDialogVisible"
+      title="导入用户"
+      width="500px"
+      destroy-on-close
+    >
+      <el-upload
+        ref="uploadRef"
+        drag
+        action=""
+        :auto-upload="false"
+        :limit="1"
+        accept=".xlsx,.xls"
+        :on-change="handleImportFileChange"
+        :on-remove="handleImportFileRemove"
+      >
+        <el-icon class="el-icon--upload"><Upload /></el-icon>
+        <div class="el-upload__text">
+          拖拽文件到此处或 <em>点击上传</em>
+        </div>
+        <template #tip>
+          <div class="el-upload__tip">
+            仅支持 .xlsx / .xls 文件，第一行为标题：姓名、登陆账号、昵称、邮箱、手机号
+          </div>
+        </template>
+      </el-upload>
+      <template #footer>
+        <el-button @click="importDialogVisible = false">关闭</el-button>
+        <el-button type="primary" :loading="importLoading" @click="handleImportSubmit">确定导入</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -157,9 +194,10 @@ import {
   RefreshRight,
   Plus,
   Edit,
-  Delete
+  Delete,
+  Upload
 } from '@element-plus/icons-vue'
-import { getUserList, createUser, updateUser, deleteUser, updateUserStatus } from '@/api/user'
+import { getUserList, createUser, updateUser, deleteUser, updateUserStatus, importUsers } from '@/api/user'
 import { getAllRoles } from '@/api/role'
 import { getOrgList, type OrgItem } from '@/api/org'
 
@@ -170,6 +208,10 @@ const submitLoading = ref(false)
 const isReadonly = ref(false)
 const total = ref(0)
 const formRef = ref()
+const importDialogVisible = ref(false)
+const importLoading = ref(false)
+const uploadRef = ref()
+const importFile = ref<File | null>(null)
 
 const queryForm = reactive({
   page: 1,
@@ -365,6 +407,43 @@ const resetForm = () => {
   form.roleIds = []
 }
 
+const handleImport = () => {
+  importFile.value = null
+  importDialogVisible.value = true
+}
+
+const handleImportFileChange = (uploadFile: any) => {
+  importFile.value = uploadFile.raw
+}
+
+const handleImportFileRemove = () => {
+  importFile.value = null
+}
+
+const handleImportSubmit = async () => {
+  if (!importFile.value) {
+    ElMessage.warning('请选择要导入的 Excel 文件')
+    return
+  }
+  importLoading.value = true
+  try {
+    const res: any = await importUsers(importFile.value)
+    if (res && res.code === 0) {
+      const data = res.data || {}
+      ElMessage.success(`导入完成，成功 ${data.successCount || 0} 条，失败 ${data.failCount || 0} 条`)
+      if (data.failDetails && data.failDetails.length > 0) {
+        console.warn('导入失败详情:', data.failDetails)
+      }
+      importDialogVisible.value = false
+      fetchData()
+    }
+  } catch (error) {
+    ElMessage.error('导入失败')
+  } finally {
+    importLoading.value = false
+  }
+}
+
 const handleSizeChange = (val: number) => {
   queryForm.pageSize = val
   fetchData()
@@ -400,6 +479,11 @@ onMounted(() => {
       align-items: center;
       font-weight: 600;
       color: #2c3e50;
+
+      .header-actions {
+        display: flex;
+        gap: 10px;
+      }
     }
   }
 

@@ -39,3 +39,13 @@ export function deleteUser(id: number) {
 export function updateUserStatus(id: number, status: number) {
   return request.patch(`/users/${id}/status`, { status })
 }
+
+export function importUsers(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request.post('/users/import', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}
