@@ -29,11 +29,36 @@ func (ctl *AuthController) Login(c *gin.Context) {
 		return
 	}
 	user, token, err := ctl.authService.Login(req.Username, req.Password)
+
+	// 记录登录日志
+	go ctl.recordLoginLog(c, req.Username, user, err)
+
 	if err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
 	response.Ok(c, LoginResp{Token: token, User: user})
+}
+
+func (ctl *AuthController) recordLoginLog(c *gin.Context, username string, user *models.User, loginErr error) {
+	logSvc := service.LoginLogService{}
+	log := models.LoginLog{
+		Username: username,
+		IP:       c.ClientIP(),
+		Agent:    c.Request.UserAgent(),
+		Status:   1,
+	}
+	if user != nil {
+		log.TenantID = user.TenantID
+		log.UserID = user.ID
+	}
+	if loginErr != nil {
+		log.Status = 0
+		log.Message = loginErr.Error()
+	} else {
+		log.Message = "登录成功"
+	}
+	_ = logSvc.Create(&log)
 }
 
 func (ctl *AuthController) Info(c *gin.Context) {

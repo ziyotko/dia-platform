@@ -3,6 +3,7 @@ package controllers
 import (
 	"strconv"
 
+	"base/internal/adapter"
 	"base/internal/models"
 	"base/internal/service"
 	"base/pkg/response"
@@ -24,6 +25,7 @@ func (ctl *AppController) Create(c *gin.Context) {
 		response.Fail(c, err.Error())
 		return
 	}
+	go adapter.DefaultRegistry.Reload()
 	response.Ok(c, a)
 }
 
@@ -38,6 +40,7 @@ func (ctl *AppController) Update(c *gin.Context) {
 		response.Fail(c, err.Error())
 		return
 	}
+	go adapter.DefaultRegistry.Reload()
 	response.Ok(c, a)
 }
 
@@ -47,6 +50,7 @@ func (ctl *AppController) Delete(c *gin.Context) {
 		response.Fail(c, err.Error())
 		return
 	}
+	go adapter.DefaultRegistry.Reload()
 	response.OkWithMessage(c, "删除成功", nil)
 }
 

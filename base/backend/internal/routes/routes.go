@@ -139,6 +139,14 @@ func Register(r *gin.Engine) {
 			logs.POST("/clear", (&controllers.OperationLogController{}).Clear)
 			logs.GET("/export", (&controllers.OperationLogController{}).Export)
 		}
+
+		loginLogs := authorized.Group("/login-logs")
+		{
+			loginLogs.GET("", (&controllers.LoginLogController{}).List)
+			loginLogs.POST("/delete", (&controllers.LoginLogController{}).Delete)
+			loginLogs.POST("/clear", (&controllers.LoginLogController{}).Clear)
+			loginLogs.GET("/export", (&controllers.LoginLogController{}).Export)
+		}
 	}
 
 	// 子应用统一代理入口
