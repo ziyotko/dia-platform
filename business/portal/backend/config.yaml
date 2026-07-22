@@ -10,7 +10,7 @@ database:
   port: 3305
   username: 'root'
   password: '1qaz@WSX'
-  dbname: 'caam_portal'
+  dbname: 'camie_portal'
   charset: 'utf8mb4'
   parse_time: true
   loc: 'Asia/Shanghai'
