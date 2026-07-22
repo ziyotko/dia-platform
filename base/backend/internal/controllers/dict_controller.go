@@ -101,7 +101,7 @@ func (ctl *DictController) SaveItems(c *gin.Context) {
 		response.FailWithCode(c, response.CodeBadRequest, "参数错误")
 		return
 	}
-	if err := ctl.service.SaveItems(id, req.Items); err != nil {
+	if err := ctl.service.SaveItems(id, req.Items, c.GetUint64("tenantID")); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}

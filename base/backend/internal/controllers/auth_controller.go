@@ -15,6 +15,7 @@ type AuthController struct {
 type LoginReq struct {
 	Username    string `json:"username" binding:"required"`
 	Password    string `json:"password" binding:"required"`
+	TenantCode  string `json:"tenantCode"`
 	CaptchaID   string `json:"captchaId"`
 	CaptchaCode string `json:"captchaCode"`
 }
@@ -33,6 +34,7 @@ func (ctl *AuthController) Login(c *gin.Context) {
 	user, token, err := ctl.authService.Login(service.LoginDTO{
 		Username:    req.Username,
 		Password:    req.Password,
+		TenantCode:  req.TenantCode,
 		CaptchaID:   req.CaptchaID,
 		CaptchaCode: req.CaptchaCode,
 	})

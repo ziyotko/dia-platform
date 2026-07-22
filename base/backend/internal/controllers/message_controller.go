@@ -62,7 +62,7 @@ func (ctl *MessageController) Send(c *gin.Context) {
 	if req.ReceiverType == "all" {
 		err = ctl.service.Broadcast(senderID, senderName, tenantID, req.Title, req.Content, req.Type, req.Priority)
 	} else {
-		err = ctl.service.SendToUsers(senderID, senderName, req.ReceiverIDs, req.Title, req.Content, req.Type, req.Priority)
+		err = ctl.service.SendToUsers(senderID, senderName, tenantID, req.ReceiverIDs, req.Title, req.Content, req.Type, req.Priority)
 	}
 	if err != nil {
 		response.Fail(c, err.Error())
@@ -125,7 +125,7 @@ func (ctl *MessageController) List(c *gin.Context) {
 
 func (ctl *MessageController) UnreadCount(c *gin.Context) {
 	receiverID := c.GetUint64("userID")
-	count, err := ctl.service.GetUnreadCount(receiverID)
+	count, err := ctl.service.GetUnreadCount(receiverID, c.GetUint64("tenantID"))
 	if err != nil {
 		response.Fail(c, err.Error())
 		return
@@ -136,7 +136,7 @@ func (ctl *MessageController) UnreadCount(c *gin.Context) {
 func (ctl *MessageController) MarkRead(c *gin.Context) {
 	id := uint64(parseID(c))
 	receiverID := c.GetUint64("userID")
-	if err := ctl.service.MarkRead(id, receiverID); err != nil {
+	if err := ctl.service.MarkRead(id, receiverID, c.GetUint64("tenantID")); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}

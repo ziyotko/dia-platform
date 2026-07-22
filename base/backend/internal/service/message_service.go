@@ -69,18 +69,26 @@ func (s MessageService) List(tenantID, receiverID uint64, status int, page, size
 	return list, total, err
 }
 
-func (s MessageService) GetUnreadCount(receiverID uint64) (int64, error) {
+func (s MessageService) GetUnreadCount(receiverID uint64, tenantID uint64) (int64, error) {
 	var count int64
-	err := db.DB.Model(&models.Message{}).Where("(receiver_id = ? OR receiver_id = 0) AND status = ?", receiverID, 0).Count(&count).Error
+	query := db.DB.Model(&models.Message{}).Where("(receiver_id = ? OR receiver_id = 0) AND status = ?", receiverID, 0)
+	if tenantID > 0 {
+		query = query.Where("tenant_id = ? OR tenant_id = 0", tenantID)
+	}
+	err := query.Count(&count).Error
 	return count, err
 }
 
-func (s MessageService) MarkRead(id uint64, receiverID uint64) error {
+func (s MessageService) MarkRead(id uint64, receiverID uint64, tenantID uint64) error {
 	updates := map[string]interface{}{
 		"status":  1,
 		"read_at": time.Now(),
 	}
-	return db.DB.Model(&models.Message{}).Where("id = ? AND (receiver_id = ? OR receiver_id = 0)", id, receiverID).Updates(updates).Error
+	query := db.DB.Model(&models.Message{}).Where("id = ? AND (receiver_id = ? OR receiver_id = 0)", id, receiverID)
+	if tenantID > 0 {
+		query = query.Where("tenant_id = ? OR tenant_id = 0", tenantID)
+	}
+	return query.Updates(updates).Error
 }
 
 func (s MessageService) Send(m *models.Message) error {
@@ -89,11 +97,12 @@ func (s MessageService) Send(m *models.Message) error {
 	return db.DB.Create(m).Error
 }
 
-func (s MessageService) SendToUsers(senderID uint64, senderName string, userIDs []uint64, title, content, msgType, priority string) error {
+func (s MessageService) SendToUsers(senderID uint64, senderName string, tenantID uint64, userIDs []uint64, title, content, msgType, priority string) error {
 	now := time.Now()
 	var msgs []models.Message
 	for _, uid := range userIDs {
 		msgs = append(msgs, models.Message{
+			TenantID:     tenantID,
 			SenderID:     senderID,
 			SenderName:   senderName,
 			ReceiverID:   uid,

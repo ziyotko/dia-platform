@@ -3,6 +3,7 @@ import request from '@/utils/request'
 export interface LoginReq {
   username: string
   password: string
+  tenantCode?: string
   captchaId: string
   captchaCode: string
 }

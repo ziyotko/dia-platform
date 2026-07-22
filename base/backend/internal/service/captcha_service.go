@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"strconv"
 	"time"
 
 	"base/pkg/redis"
@@ -51,8 +52,12 @@ func (s CaptchaService) Verify(id, code string) bool {
 	return store.Verify(id, code, true)
 }
 
-func (s CaptchaService) RecordLoginFail(username string) (int, error) {
-	key := LoginFailKeyPrefix + username
+func loginFailKey(tenantID uint64, username string) string {
+	return LoginFailKeyPrefix + strconv.FormatUint(tenantID, 10) + ":" + username
+}
+
+func (s CaptchaService) RecordLoginFail(tenantID uint64, username string) (int, error) {
+	key := loginFailKey(tenantID, username)
 	count, err := redis.Client.Incr(redis.Ctx, key).Result()
 	if err != nil {
 		return 0, err
@@ -63,8 +68,8 @@ func (s CaptchaService) RecordLoginFail(username string) (int, error) {
 	return int(count), nil
 }
 
-func (s CaptchaService) IsLocked(username string) (bool, int, error) {
-	key := LoginFailKeyPrefix + username
+func (s CaptchaService) IsLocked(tenantID uint64, username string) (bool, int, error) {
+	key := loginFailKey(tenantID, username)
 	count, err := redis.Client.Get(redis.Ctx, key).Int()
 	if err != nil {
 		// redis 中没有失败记录，未锁定，剩余次数为最大允许次数
@@ -76,12 +81,12 @@ func (s CaptchaService) IsLocked(username string) (bool, int, error) {
 	return false, MaxLoginFailCount - count, nil
 }
 
-func (s CaptchaService) ClearLoginFail(username string) error {
-	return redis.Client.Del(redis.Ctx, LoginFailKeyPrefix+username).Err()
+func (s CaptchaService) ClearLoginFail(tenantID uint64, username string) error {
+	return redis.Client.Del(redis.Ctx, loginFailKey(tenantID, username)).Err()
 }
 
-func (s CaptchaService) CheckAndLock(username string) error {
-	locked, remain, err := s.IsLocked(username)
+func (s CaptchaService) CheckAndLock(tenantID uint64, username string) error {
+	locked, remain, err := s.IsLocked(tenantID, username)
 	if err != nil {
 		return err
 	}

@@ -13,6 +13,7 @@ type AuthService struct{}
 type LoginDTO struct {
 	Username    string
 	Password    string
+	TenantCode  string
 	CaptchaID   string
 	CaptchaCode string
 }
@@ -20,33 +21,46 @@ type LoginDTO struct {
 func (s AuthService) Login(dto LoginDTO) (*models.User, string, error) {
 	captchaSvc := CaptchaService{}
 
-	// 检查账号是否因登录失败被锁定
-	if err := captchaSvc.CheckAndLock(dto.Username); err != nil {
+	// 解析租户编码，为空则视为平台级（tenantID=0）
+	var tenantID uint64
+	if dto.TenantCode != "" {
+		var tenant models.Tenant
+		if err := db.DB.Where("code = ?", dto.TenantCode).First(&tenant).Error; err != nil {
+			return nil, "", errors.New("租户不存在")
+		}
+		if tenant.Status != 1 {
+			return nil, "", errors.New("租户已禁用")
+		}
+		tenantID = tenant.ID
+	}
+
+	// 检查账号是否因登录失败被锁定（按租户隔离）
+	if err := captchaSvc.CheckAndLock(tenantID, dto.Username); err != nil {
 		return nil, "", err
 	}
 
 	// 校验验证码
 	if !captchaSvc.Verify(dto.CaptchaID, dto.CaptchaCode) {
-		_, _ = captchaSvc.RecordLoginFail(dto.Username)
+		_, _ = captchaSvc.RecordLoginFail(tenantID, dto.Username)
 		return nil, "", errors.New("验证码错误")
 	}
 
 	var user models.User
-	if err := db.DB.Where("username = ?", dto.Username).First(&user).Error; err != nil {
-		_, _ = captchaSvc.RecordLoginFail(dto.Username)
+	if err := db.DB.Where("username = ? AND tenant_id = ?", dto.Username, tenantID).First(&user).Error; err != nil {
+		_, _ = captchaSvc.RecordLoginFail(tenantID, dto.Username)
 		return nil, "", errors.New("用户不存在")
 	}
 	if user.Status != 1 {
-		_, _ = captchaSvc.RecordLoginFail(dto.Username)
+		_, _ = captchaSvc.RecordLoginFail(tenantID, dto.Username)
 		return nil, "", errors.New("账号已禁用")
 	}
 	if !utils.CheckPassword(dto.Password, user.Password) {
-		_, _ = captchaSvc.RecordLoginFail(dto.Username)
+		_, _ = captchaSvc.RecordLoginFail(tenantID, dto.Username)
 		return nil, "", errors.New("密码错误")
 	}
 
 	// 登录成功，清除失败次数
-	_ = captchaSvc.ClearLoginFail(dto.Username)
+	_ = captchaSvc.ClearLoginFail(tenantID, dto.Username)
 
 	token, err := jwt.GenerateToken(user.ID, user.Username, user.TenantID)
 	if err != nil {

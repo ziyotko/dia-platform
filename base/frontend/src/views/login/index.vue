@@ -4,6 +4,9 @@
       <div class="title">Base 底座平台</div>
       <div class="subtitle">统一的管理后台入口</div>
       <el-form :model="form" :rules="rules" ref="formRef" @keyup.enter="handleLogin">
+        <el-form-item prop="tenantCode">
+          <el-input v-model="form.tenantCode" placeholder="租户编码（平台管理员可留空）" prefix-icon="OfficeBuilding" size="large" />
+        </el-form-item>
         <el-form-item prop="username">
           <el-input v-model="form.username" placeholder="用户名" prefix-icon="User" size="large" />
         </el-form-item>
@@ -41,8 +44,9 @@ const captchaImage = ref('')
 const captchaId = ref('')
 
 const form = reactive({
-  username: 'admin',
-  password: 'admin123',
+  tenantCode: '',
+  username: '',
+  password: '',
   captchaCode: ''
 })
 
@@ -71,6 +75,7 @@ const handleLogin = async () => {
     await userStore.login({
       username: form.username,
       password: form.password,
+      tenantCode: form.tenantCode || undefined,
       captchaId: captchaId.value,
       captchaCode: form.captchaCode
     })

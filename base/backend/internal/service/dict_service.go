@@ -94,8 +94,17 @@ func (s DictService) GetByCode(code string, tenantID uint64) (*models.Dict, erro
 	return &d, err
 }
 
-func (s DictService) SaveItems(dictID uint64, items []models.DictItem) error {
+func (s DictService) SaveItems(dictID uint64, items []models.DictItem, tenantID uint64) error {
 	return db.DB.Transaction(func(tx *gorm.DB) error {
+		// 先校验字典归属，防止跨租户操作字典项
+		var dict models.Dict
+		dictQuery := tx.Where("id = ?", dictID)
+		if tenantID > 0 {
+			dictQuery = dictQuery.Where("tenant_id = ?", tenantID)
+		}
+		if err := dictQuery.First(&dict).Error; err != nil {
+			return err
+		}
 		if err := tx.Where("dict_id = ?", dictID).Delete(&models.DictItem{}).Error; err != nil {
 			return err
 		}
