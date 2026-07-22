@@ -50,7 +50,7 @@ func (ctl *LoginLogController) Delete(c *gin.Context) {
 		response.FailWithCode(c, response.CodeBadRequest, "参数错误")
 		return
 	}
-	if err := ctl.service.DeleteByIDs(req.IDs); err != nil {
+	if err := ctl.service.DeleteByIDs(req.IDs, c.GetUint64("tenantID")); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}

@@ -68,11 +68,15 @@ func (s OperationLogService) List(q LogListQuery) ([]models.OperationLog, int64,
 	return list, total, err
 }
 
-func (s OperationLogService) DeleteByIDs(ids []uint64) error {
+func (s OperationLogService) DeleteByIDs(ids []uint64, tenantID uint64) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	return db.DB.Where("id IN ?", ids).Delete(&models.OperationLog{}).Error
+	db := db.DB.Where("id IN ?", ids)
+	if tenantID > 0 {
+		db = db.Where("tenant_id = ?", tenantID)
+	}
+	return db.Delete(&models.OperationLog{}).Error
 }
 
 func (s OperationLogService) ClearBefore(days int, tenantID uint64) error {

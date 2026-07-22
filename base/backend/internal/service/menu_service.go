@@ -41,9 +41,13 @@ func (s MenuService) Delete(id uint64, tenantID uint64) error {
 	return db.Delete(&models.Menu{BaseModel: models.BaseModel{ID: id}}).Error
 }
 
-func (s MenuService) GetByID(id uint64) (*models.Menu, error) {
+func (s MenuService) GetByID(id uint64, tenantID uint64) (*models.Menu, error) {
 	var m models.Menu
-	err := db.DB.First(&m, id).Error
+	query := db.DB.Where("id = ?", id)
+	if tenantID > 0 {
+		query = query.Where("tenant_id = ?", tenantID)
+	}
+	err := query.First(&m).Error
 	return &m, err
 }
 

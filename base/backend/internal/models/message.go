@@ -24,7 +24,8 @@ func (Message) TableName() string {
 
 type MessageTemplate struct {
 	BaseModel
-	Code        string `gorm:"size:64;uniqueIndex;comment:模板编码" json:"code"`
+	TenantID    uint64 `gorm:"index;comment:租户ID" json:"tenantId"`
+	Code        string `gorm:"size:64;comment:模板编码" json:"code"`
 	Name        string `gorm:"size:128;comment:模板名称" json:"name"`
 	Channel     string `gorm:"size:32;comment:渠道 in-app/sms/email/wechat" json:"channel"`
 	Subject     string `gorm:"size:256;comment:主题" json:"subject"`

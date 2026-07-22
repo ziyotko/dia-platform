@@ -20,6 +20,7 @@ func (ctl *MessageTemplateController) Create(c *gin.Context) {
 		response.FailWithCode(c, response.CodeBadRequest, "参数错误")
 		return
 	}
+	t.TenantID = c.GetUint64("tenantID")
 	if err := ctl.service.Create(&t); err != nil {
 		response.Fail(c, err.Error())
 		return
@@ -34,7 +35,7 @@ func (ctl *MessageTemplateController) Update(c *gin.Context) {
 		return
 	}
 	t.ID = uint64(parseID(c))
-	if err := ctl.service.Update(&t); err != nil {
+	if err := ctl.service.Update(&t, c.GetUint64("tenantID")); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
@@ -43,7 +44,7 @@ func (ctl *MessageTemplateController) Update(c *gin.Context) {
 
 func (ctl *MessageTemplateController) Delete(c *gin.Context) {
 	id := uint64(parseID(c))
-	if err := ctl.service.Delete(id); err != nil {
+	if err := ctl.service.Delete(id, c.GetUint64("tenantID")); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
@@ -52,7 +53,7 @@ func (ctl *MessageTemplateController) Delete(c *gin.Context) {
 
 func (ctl *MessageTemplateController) Get(c *gin.Context) {
 	id := uint64(parseID(c))
-	t, err := ctl.service.GetByID(id)
+	t, err := ctl.service.GetByID(id, c.GetUint64("tenantID"))
 	if err != nil {
 		response.Fail(c, err.Error())
 		return
@@ -64,7 +65,7 @@ func (ctl *MessageTemplateController) List(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
 	keyword := c.Query("keyword")
-	list, total, err := ctl.service.List(page, size, keyword)
+	list, total, err := ctl.service.List(page, size, keyword, c.GetUint64("tenantID"))
 	if err != nil {
 		response.Fail(c, err.Error())
 		return

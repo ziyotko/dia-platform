@@ -20,6 +20,7 @@ func (ctl *DictController) Create(c *gin.Context) {
 		response.FailWithCode(c, response.CodeBadRequest, "参数错误")
 		return
 	}
+	d.TenantID = c.GetUint64("tenantID")
 	if err := ctl.service.Create(&d); err != nil {
 		response.Fail(c, err.Error())
 		return
@@ -34,7 +35,7 @@ func (ctl *DictController) Update(c *gin.Context) {
 		return
 	}
 	d.ID = uint64(parseID(c))
-	if err := ctl.service.Update(&d); err != nil {
+	if err := ctl.service.Update(&d, c.GetUint64("tenantID")); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
@@ -43,7 +44,7 @@ func (ctl *DictController) Update(c *gin.Context) {
 
 func (ctl *DictController) Delete(c *gin.Context) {
 	id := uint64(parseID(c))
-	if err := ctl.service.Delete(id); err != nil {
+	if err := ctl.service.Delete(id, c.GetUint64("tenantID")); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
@@ -52,7 +53,7 @@ func (ctl *DictController) Delete(c *gin.Context) {
 
 func (ctl *DictController) Get(c *gin.Context) {
 	id := uint64(parseID(c))
-	d, err := ctl.service.GetByID(id)
+	d, err := ctl.service.GetByID(id, c.GetUint64("tenantID"))
 	if err != nil {
 		response.Fail(c, err.Error())
 		return
@@ -66,11 +67,12 @@ func (ctl *DictController) List(c *gin.Context) {
 	status, _ := strconv.Atoi(c.DefaultQuery("status", "-1"))
 
 	q := service.DictListQuery{
-		Code:   c.Query("code"),
-		Name:   c.Query("name"),
-		Status: status,
-		Page:   page,
-		Size:   size,
+		TenantID: c.GetUint64("tenantID"),
+		Code:     c.Query("code"),
+		Name:     c.Query("name"),
+		Status:   status,
+		Page:     page,
+		Size:     size,
 	}
 	list, total, err := ctl.service.List(q)
 	if err != nil {
@@ -82,7 +84,7 @@ func (ctl *DictController) List(c *gin.Context) {
 
 func (ctl *DictController) GetByCode(c *gin.Context) {
 	code := c.Param("code")
-	d, err := ctl.service.GetByCode(code)
+	d, err := ctl.service.GetByCode(code, c.GetUint64("tenantID"))
 	if err != nil {
 		response.Fail(c, err.Error())
 		return

@@ -86,7 +86,7 @@ func (ctl *UserController) AssignRoles(c *gin.Context) {
 		response.FailWithCode(c, response.CodeBadRequest, "参数错误")
 		return
 	}
-	if err := ctl.service.AssignRoles(id, req.RoleIDs); err != nil {
+	if err := ctl.service.AssignRoles(id, req.RoleIDs, c.GetUint64("tenantID")); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
@@ -95,7 +95,7 @@ func (ctl *UserController) AssignRoles(c *gin.Context) {
 
 func (ctl *UserController) ResetPassword(c *gin.Context) {
 	id := uint64(parseID(c))
-	if err := ctl.service.ResetPassword(id); err != nil {
+	if err := ctl.service.ResetPassword(id, c.GetUint64("tenantID")); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}

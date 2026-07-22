@@ -11,8 +11,12 @@ func (s MessageTemplateService) Create(t *models.MessageTemplate) error {
 	return db.DB.Create(t).Error
 }
 
-func (s MessageTemplateService) Update(t *models.MessageTemplate) error {
-	return db.DB.Model(t).Updates(map[string]interface{}{
+func (s MessageTemplateService) Update(t *models.MessageTemplate, tenantID uint64) error {
+	db := db.DB.Model(t).Where("id = ?", t.ID)
+	if tenantID > 0 {
+		db = db.Where("tenant_id = ?", tenantID)
+	}
+	return db.Updates(map[string]interface{}{
 		"name":        t.Name,
 		"channel":     t.Channel,
 		"subject":     t.Subject,
@@ -23,20 +27,31 @@ func (s MessageTemplateService) Update(t *models.MessageTemplate) error {
 	}).Error
 }
 
-func (s MessageTemplateService) Delete(id uint64) error {
-	return db.DB.Delete(&models.MessageTemplate{BaseModel: models.BaseModel{ID: id}}).Error
+func (s MessageTemplateService) Delete(id uint64, tenantID uint64) error {
+	db := db.DB.Where("id = ?", id)
+	if tenantID > 0 {
+		db = db.Where("tenant_id = ?", tenantID)
+	}
+	return db.Delete(&models.MessageTemplate{}).Error
 }
 
-func (s MessageTemplateService) GetByID(id uint64) (*models.MessageTemplate, error) {
+func (s MessageTemplateService) GetByID(id uint64, tenantID uint64) (*models.MessageTemplate, error) {
 	var t models.MessageTemplate
-	err := db.DB.First(&t, id).Error
+	query := db.DB.Where("id = ?", id)
+	if tenantID > 0 {
+		query = query.Where("tenant_id = ?", tenantID)
+	}
+	err := query.First(&t).Error
 	return &t, err
 }
 
-func (s MessageTemplateService) List(page, size int, keyword string) ([]models.MessageTemplate, int64, error) {
+func (s MessageTemplateService) List(page, size int, keyword string, tenantID uint64) ([]models.MessageTemplate, int64, error) {
 	var list []models.MessageTemplate
 	var total int64
 	query := db.DB.Model(&models.MessageTemplate{})
+	if tenantID > 0 {
+		query = query.Where("tenant_id = ?", tenantID)
+	}
 	if keyword != "" {
 		query = query.Where("name LIKE ? OR code LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
 	}

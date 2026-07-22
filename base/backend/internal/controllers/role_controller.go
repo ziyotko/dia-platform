@@ -55,7 +55,8 @@ func (ctl *RoleController) Delete(c *gin.Context) {
 
 func (ctl *RoleController) Get(c *gin.Context) {
 	id := uint64(parseID(c))
-	r, err := ctl.service.GetByID(id)
+	tenantID := c.GetUint64("tenantID")
+	r, err := ctl.service.GetByID(id, tenantID)
 	if err != nil {
 		response.Fail(c, err.Error())
 		return
@@ -85,7 +86,7 @@ func (ctl *RoleController) AssignMenus(c *gin.Context) {
 		response.FailWithCode(c, response.CodeBadRequest, "参数错误")
 		return
 	}
-	if err := ctl.service.AssignMenus(id, req.MenuIDs); err != nil {
+	if err := ctl.service.AssignMenus(id, req.MenuIDs, c.GetUint64("tenantID")); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
@@ -101,7 +102,7 @@ func (ctl *RoleController) AssignPermissions(c *gin.Context) {
 		response.FailWithCode(c, response.CodeBadRequest, "参数错误")
 		return
 	}
-	if err := ctl.service.AssignPermissions(id, req.PermissionIDs); err != nil {
+	if err := ctl.service.AssignPermissions(id, req.PermissionIDs, c.GetUint64("tenantID")); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}

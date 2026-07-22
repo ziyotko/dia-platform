@@ -81,26 +81,42 @@ func (s UserService) List(tenantID uint64, page, size int, keyword string) ([]mo
 	return list, total, err
 }
 
-func (s UserService) AssignRoles(userID uint64, roleIDs []uint64) error {
+func (s UserService) AssignRoles(userID uint64, roleIDs []uint64, tenantID uint64) error {
 	var user models.User
-	if err := db.DB.First(&user, userID).Error; err != nil {
+	query := db.DB.Where("id = ?", userID)
+	if tenantID > 0 {
+		query = query.Where("tenant_id = ?", tenantID)
+	}
+	if err := query.First(&user).Error; err != nil {
 		return err
 	}
 	var roles []models.Role
 	if len(roleIDs) > 0 {
-		if err := db.DB.Find(&roles, roleIDs).Error; err != nil {
+		roleQuery := db.DB.Where("id IN ?", roleIDs)
+		if tenantID > 0 {
+			roleQuery = roleQuery.Where("tenant_id = ?", tenantID)
+		}
+		if err := roleQuery.Find(&roles).Error; err != nil {
 			return err
 		}
 	}
 	return db.DB.Model(&user).Association("Roles").Replace(roles)
 }
 
-func (s UserService) ResetPassword(userID uint64) error {
+func (s UserService) ResetPassword(userID uint64, tenantID uint64) error {
+	var user models.User
+	query := db.DB.Where("id = ?", userID)
+	if tenantID > 0 {
+		query = query.Where("tenant_id = ?", tenantID)
+	}
+	if err := query.First(&user).Error; err != nil {
+		return err
+	}
 	hash, err := utils.HashPassword("123456")
 	if err != nil {
 		return err
 	}
-	return db.DB.Model(&models.User{BaseModel: models.BaseModel{ID: userID}}).Update("password", hash).Error
+	return db.DB.Model(&user).Update("password", hash).Error
 }
 
 func (s UserService) ChangePassword(userID uint64, oldPwd, newPwd string) error {

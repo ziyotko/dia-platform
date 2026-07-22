@@ -59,7 +59,7 @@ func (ctl *FileController) List(c *gin.Context) {
 
 func (ctl *FileController) Delete(c *gin.Context) {
 	id := uint64(parseID(c))
-	if err := ctl.service.Delete(id); err != nil {
+	if err := ctl.service.Delete(id, c.GetUint64("tenantID")); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}

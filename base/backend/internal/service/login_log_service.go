@@ -52,11 +52,15 @@ func (s LoginLogService) List(q LoginLogListQuery) ([]models.LoginLog, int64, er
 	return list, total, err
 }
 
-func (s LoginLogService) DeleteByIDs(ids []uint64) error {
+func (s LoginLogService) DeleteByIDs(ids []uint64, tenantID uint64) error {
 	if len(ids) == 0 {
 		return nil
 	}
-	return db.DB.Where("id IN ?", ids).Delete(&models.LoginLog{}).Error
+	db := db.DB.Where("id IN ?", ids)
+	if tenantID > 0 {
+		db = db.Where("tenant_id = ?", tenantID)
+	}
+	return db.Delete(&models.LoginLog{}).Error
 }
 
 func (s LoginLogService) ClearBefore(days int, tenantID uint64) error {

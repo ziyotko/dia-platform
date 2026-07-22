@@ -5,10 +5,11 @@ import "gorm.io/gorm"
 // Dict 数据字典分组
 type Dict struct {
 	BaseModel
-	Code        string `gorm:"size:64;uniqueIndex;comment:字典编码" json:"code"`
-	Name        string `gorm:"size:128;comment:字典名称" json:"name"`
-	Description string `gorm:"size:512;comment:描述" json:"description"`
-	Status      int    `gorm:"default:1;comment:状态" json:"status"`
+	TenantID    uint64     `gorm:"index;comment:租户ID" json:"tenantId"`
+	Code        string     `gorm:"size:64;comment:字典编码" json:"code"`
+	Name        string     `gorm:"size:128;comment:字典名称" json:"name"`
+	Description string     `gorm:"size:512;comment:描述" json:"description"`
+	Status      int        `gorm:"default:1;comment:状态" json:"status"`
 	Items       []DictItem `json:"items" gorm:"foreignKey:DictID"`
 }
 

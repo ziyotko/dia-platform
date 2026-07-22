@@ -37,9 +37,13 @@ func (s OrganizationService) Delete(id uint64, tenantID uint64) error {
 	return db.Delete(&models.Organization{BaseModel: models.BaseModel{ID: id}}).Error
 }
 
-func (s OrganizationService) GetByID(id uint64) (*models.Organization, error) {
+func (s OrganizationService) GetByID(id uint64, tenantID uint64) (*models.Organization, error) {
 	var o models.Organization
-	err := db.DB.First(&o, id).Error
+	query := db.DB.Where("id = ?", id)
+	if tenantID > 0 {
+		query = query.Where("tenant_id = ?", tenantID)
+	}
+	err := query.First(&o).Error
 	return &o, err
 }
 

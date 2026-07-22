@@ -54,9 +54,13 @@ func (s *FileService) List(tenantID uint64, page, size int) ([]models.UploadedFi
 	return list, total, err
 }
 
-func (s *FileService) Delete(id uint64) error {
+func (s *FileService) Delete(id uint64, tenantID uint64) error {
 	var file models.UploadedFile
-	if err := db.DB.First(&file, id).Error; err != nil {
+	query := db.DB.Where("id = ?", id)
+	if tenantID > 0 {
+		query = query.Where("tenant_id = ?", tenantID)
+	}
+	if err := query.First(&file).Error; err != nil {
 		return err
 	}
 	_ = s.storage.Delete(file.FileKey)

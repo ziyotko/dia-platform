@@ -53,7 +53,8 @@ func (ctl *OrganizationController) Delete(c *gin.Context) {
 
 func (ctl *OrganizationController) Get(c *gin.Context) {
 	id := uint64(parseID(c))
-	o, err := ctl.service.GetByID(id)
+	tenantID := c.GetUint64("tenantID")
+	o, err := ctl.service.GetByID(id, tenantID)
 	if err != nil {
 		response.Fail(c, err.Error())
 		return

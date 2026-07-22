@@ -10,19 +10,24 @@ import (
 type DictService struct{}
 
 type DictListQuery struct {
-	Code   string
-	Name   string
-	Status int
-	Page   int
-	Size   int
+	TenantID uint64
+	Code     string
+	Name     string
+	Status   int
+	Page     int
+	Size     int
 }
 
 func (s DictService) Create(d *models.Dict) error {
 	return db.DB.Create(d).Error
 }
 
-func (s DictService) Update(d *models.Dict) error {
-	return db.DB.Model(d).Updates(map[string]interface{}{
+func (s DictService) Update(d *models.Dict, tenantID uint64) error {
+	db := db.DB.Model(d).Where("id = ?", d.ID)
+	if tenantID > 0 {
+		db = db.Where("tenant_id = ?", tenantID)
+	}
+	return db.Updates(map[string]interface{}{
 		"code":        d.Code,
 		"name":        d.Name,
 		"description": d.Description,
@@ -30,8 +35,16 @@ func (s DictService) Update(d *models.Dict) error {
 	}).Error
 }
 
-func (s DictService) Delete(id uint64) error {
+func (s DictService) Delete(id uint64, tenantID uint64) error {
 	return db.DB.Transaction(func(tx *gorm.DB) error {
+		var d models.Dict
+		query := tx.Where("id = ?", id)
+		if tenantID > 0 {
+			query = query.Where("tenant_id = ?", tenantID)
+		}
+		if err := query.First(&d).Error; err != nil {
+			return err
+		}
 		if err := tx.Where("dict_id = ?", id).Delete(&models.DictItem{}).Error; err != nil {
 			return err
 		}
@@ -39,9 +52,13 @@ func (s DictService) Delete(id uint64) error {
 	})
 }
 
-func (s DictService) GetByID(id uint64) (*models.Dict, error) {
+func (s DictService) GetByID(id uint64, tenantID uint64) (*models.Dict, error) {
 	var d models.Dict
-	err := db.DB.Preload("Items").First(&d, id).Error
+	query := db.DB.Where("id = ?", id)
+	if tenantID > 0 {
+		query = query.Where("tenant_id = ?", tenantID)
+	}
+	err := query.Preload("Items").First(&d).Error
 	return &d, err
 }
 
@@ -49,6 +66,9 @@ func (s DictService) List(q DictListQuery) ([]models.Dict, int64, error) {
 	var list []models.Dict
 	var total int64
 	query := db.DB.Model(&models.Dict{})
+	if q.TenantID > 0 {
+		query = query.Where("tenant_id = ?", q.TenantID)
+	}
 	if q.Code != "" {
 		query = query.Where("code LIKE ?", "%"+q.Code+"%")
 	}
@@ -64,9 +84,13 @@ func (s DictService) List(q DictListQuery) ([]models.Dict, int64, error) {
 	return list, total, err
 }
 
-func (s DictService) GetByCode(code string) (*models.Dict, error) {
+func (s DictService) GetByCode(code string, tenantID uint64) (*models.Dict, error) {
 	var d models.Dict
-	err := db.DB.Where("code = ? AND status = ?", code, 1).Preload("Items", "status = ?", 1).First(&d).Error
+	query := db.DB.Where("code = ? AND status = ?", code, 1)
+	if tenantID > 0 {
+		query = query.Where("tenant_id = ?", tenantID)
+	}
+	err := query.Preload("Items", "status = ?", 1).First(&d).Error
 	return &d, err
 }
 

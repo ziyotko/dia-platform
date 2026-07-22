@@ -30,9 +30,13 @@ func (s AppInstanceService) Delete(id uint64, tenantID uint64) error {
 	return db.Delete(&models.AppInstance{BaseModel: models.BaseModel{ID: id}}).Error
 }
 
-func (s AppInstanceService) GetByID(id uint64) (*models.AppInstance, error) {
+func (s AppInstanceService) GetByID(id uint64, tenantID uint64) (*models.AppInstance, error) {
 	var i models.AppInstance
-	err := db.DB.Preload("App").First(&i, id).Error
+	query := db.DB.Preload("App").Where("id = ?", id)
+	if tenantID > 0 {
+		query = query.Where("tenant_id = ?", tenantID)
+	}
+	err := query.First(&i).Error
 	return &i, err
 }
 
