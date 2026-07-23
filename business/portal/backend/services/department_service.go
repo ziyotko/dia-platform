@@ -2,11 +2,15 @@ package services
 
 import (
 	"errors"
+	"fmt"
+	"mime/multipart"
 	"strconv"
 	"strings"
 
 	"server/models"
 	"server/utils"
+
+	"github.com/xuri/excelize/v2"
 )
 
 type DepartmentService struct{}
@@ -72,6 +76,101 @@ func (s *DepartmentService) GetDepartmentByID(id uint) (*models.Department, erro
 
 func (s *DepartmentService) CreateDepartment(dept *models.Department) error {
 	return utils.DB.Create(dept).Error
+}
+
+type ImportDepartmentResult struct {
+	SuccessCount int      `json:"successCount"`
+	FailCount    int      `json:"failCount"`
+	FailDetails  []string `json:"failDetails"`
+}
+
+func (s *DepartmentService) ImportDepartments(file multipart.File, fileSize int64) (*ImportDepartmentResult, error) {
+	f, err := excelize.OpenReader(file, excelize.Options{})
+	if err != nil {
+		return nil, fmt.Errorf("读取 Excel 失败: %w", err)
+	}
+	defer f.Close()
+
+	sheetName := f.GetSheetName(0)
+	if sheetName == "" {
+		return nil, errors.New("Excel 工作表为空")
+	}
+
+	rows, err := f.GetRows(sheetName)
+	if err != nil {
+		return nil, fmt.Errorf("读取工作表失败: %w", err)
+	}
+
+	if len(rows) < 2 {
+		return nil, errors.New("Excel 数据行数不足")
+	}
+
+	orgService := &OrganizationService{}
+	result := &ImportDepartmentResult{
+		SuccessCount: 0,
+		FailCount:    0,
+		FailDetails:  make([]string, 0),
+	}
+
+	for i, row := range rows[1:] {
+		lineNum := i + 2
+		if len(row) < 4 {
+			result.FailCount++
+			result.FailDetails = append(result.FailDetails, fmt.Sprintf("第 %d 行: 字段数量不足", lineNum))
+			continue
+		}
+
+		parentIDStr := strings.TrimSpace(row[0])
+		name := strings.TrimSpace(row[1])
+		code := strings.TrimSpace(row[2])
+		orgName := strings.TrimSpace(row[3])
+
+		if name == "" || code == "" || orgName == "" {
+			result.FailCount++
+			result.FailDetails = append(result.FailDetails, fmt.Sprintf("第 %d 行: 部门名称、部门编码、机构名称不能为空", lineNum))
+			continue
+		}
+
+		var parentID uint
+		if parentIDStr != "" {
+			pid, err := strconv.ParseUint(parentIDStr, 10, 32)
+			if err != nil {
+				result.FailCount++
+				result.FailDetails = append(result.FailDetails, fmt.Sprintf("第 %d 行: 上级部门ID格式错误", lineNum))
+				continue
+			}
+			parentID = uint(pid)
+		}
+
+		org, err := orgService.GetOrganizationByName(orgName)
+		if err != nil {
+			result.FailCount++
+			result.FailDetails = append(result.FailDetails, fmt.Sprintf("第 %d 行: 机构 '%s' 不存在", lineNum, orgName))
+			continue
+		}
+
+		dept := &models.Department{
+			ParentID:    parentID,
+			OrgID:       org.ID,
+			Name:        name,
+			Code:        code,
+			Leader:      "",
+			LeaderCode:  "",
+			Sort:        1,
+			Status:      1,
+			Description: "",
+		}
+
+		if err := s.CreateDepartment(dept); err != nil {
+			result.FailCount++
+			result.FailDetails = append(result.FailDetails, fmt.Sprintf("第 %d 行 (%s): %s", lineNum, code, err.Error()))
+			continue
+		}
+
+		result.SuccessCount++
+	}
+
+	return result, nil
 }
 
 func (s *DepartmentService) UpdateDepartment(id uint, dept *models.Department) error {

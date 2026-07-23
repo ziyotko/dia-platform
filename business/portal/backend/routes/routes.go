@@ -176,6 +176,7 @@ func SetupRoutes(router *gin.Engine) {
 		protected.GET("/departments/:id/users", deptController.GetDepartmentUsers)
 		protected.PUT("/departments/:id/users", deptController.AssignDepartmentUsers)
 		protected.POST("/departments", deptController.CreateDepartment)
+		protected.POST("/departments/import", deptController.ImportDepartments)
 		protected.PUT("/departments/:id", deptController.UpdateDepartment)
 		protected.DELETE("/departments/:id", deptController.DeleteDepartment)
 

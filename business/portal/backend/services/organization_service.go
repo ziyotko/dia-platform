@@ -65,6 +65,14 @@ func (s *OrganizationService) GetOrganizationByID(id uint) (*models.Organization
 	return &org, nil
 }
 
+func (s *OrganizationService) GetOrganizationByName(name string) (*models.Organization, error) {
+	var org models.Organization
+	if err := utils.DB.Where("name = ?", name).First(&org).Error; err != nil {
+		return nil, errors.New("机构不存在")
+	}
+	return &org, nil
+}
+
 func (s *OrganizationService) CreateOrganization(org *models.Organization) error {
 	return utils.DB.Create(org).Error
 }

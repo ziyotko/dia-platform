@@ -48,3 +48,13 @@ export function deleteDepartment(id: number) {
 export function assignDepartmentUsers(id: number, userIds: number[]) {
   return request.put(`/departments/${id}/users`, { userIds })
 }
+
+export function importDepartments(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request.post('/departments/import', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}
