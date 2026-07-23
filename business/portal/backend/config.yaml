@@ -1,8 +1,8 @@
 server:
   port: 8084
   host: 0.0.0.0
-  api_prefix: /camiem/api
-  upload_dir_prefix: "/camiem"
+  api_prefix: /caamm/api
+  upload_dir_prefix: "/caamm"
   max_concurrent_ips: 10
 
 database:
@@ -10,7 +10,7 @@ database:
   port: 3305
   username: 'root'
   password: '1qaz@WSX'
-  dbname: 'camie_portal'
+  dbname: 'caam_portal'
   charset: 'utf8mb4'
   parse_time: true
   loc: 'Asia/Shanghai'

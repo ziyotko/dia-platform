@@ -350,7 +350,6 @@ const formRules = {
   name: [{ required: true, message: '请输入部门名称', trigger: 'blur' }],
   code: [{ required: true, message: '请输入部门编码', trigger: 'blur' }],
   orgId: [{ required: true, message: '请选择所属机构', trigger: 'change' }],
-  leader: [{ required: true, message: '请输入负责人', trigger: 'blur' }],
   sort: [{ required: true, message: '请输入排序', trigger: 'blur' }]
 }
 
