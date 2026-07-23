@@ -10,6 +10,7 @@ type ArticleColumnAuditHistory struct {
 	WorkflowID   uint      `gorm:"not null;index" json:"workflowId"`
 	NodeID       uint      `gorm:"not null;index" json:"nodeId"`
 	NodeName     string    `gorm:"size:200" json:"nodeName"`
+	ApproverType string    `gorm:"size:20" json:"approverType"`
 	Action       int       `gorm:"default:1" json:"action"` // 1通过 2驳回
 	OperatorID   uint      `gorm:"index" json:"operatorId"`
 	OperatorName string    `gorm:"size:50" json:"operatorName"`

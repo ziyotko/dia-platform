@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"server/models"
 	"server/utils"
+	"strconv"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -474,6 +476,95 @@ func (s *ArticleService) getUserName(userID uint) string {
 	return user.Username
 }
 
+func parseIntIDs(s string) []int {
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	ids := make([]int, 0, len(parts))
+	for _, p := range parts {
+		if id, err := strconv.Atoi(strings.TrimSpace(p)); err == nil {
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
+func containsInt(ids []int, target int) bool {
+	for _, id := range ids {
+		if id == target {
+			return true
+		}
+	}
+	return false
+}
+
+// getUserDepartmentIDs 返回用户所属的所有部门 ID
+func (s *ArticleService) getUserDepartmentIDs(userID uint) ([]uint, error) {
+	var departments []models.Department
+	uidStr := strconv.Itoa(int(userID))
+	err := utils.DB.Where("user_ids LIKE ? OR user_ids LIKE ? OR user_ids LIKE ?", "%"+uidStr+"%", "%"+uidStr+",%", "%,"+uidStr+"%").Find(&departments).Error
+	if err != nil {
+		return nil, err
+	}
+	uid := int(userID)
+	var result []uint
+	for _, dept := range departments {
+		if containsInt(parseIntIDs(dept.UserIds), uid) {
+			result = append(result, dept.ID)
+		}
+	}
+	return result, nil
+}
+
+// canUserApproveNode 判断指定用户是否有权限审批当前节点
+func (s *ArticleService) canUserApproveNode(node *models.WorkflowNode, userID uint, authorCode string) (bool, error) {
+	switch node.ApproverType {
+	case "role":
+		if node.ApproverID == 0 {
+			return true, nil
+		}
+		userService := UserService{}
+		roleIDs, err := userService.GetUserRoleIds(userID)
+		if err != nil {
+			return false, err
+		}
+		return containsInt(roleIDs, int(node.ApproverID)), nil
+	case "dept_head":
+		var currentUser models.User
+		if err := utils.DB.First(&currentUser, userID).Error; err != nil {
+			return false, err
+		}
+		var author models.User
+		if err := utils.DB.Where("account = ?", authorCode).First(&author).Error; err != nil {
+			return false, nil
+		}
+		authorDeptIDs, err := s.getUserDepartmentIDs(author.ID)
+		if err != nil {
+			return false, err
+		}
+		var headDepartments []models.Department
+		if err := utils.DB.Where("leader_code = ?", currentUser.Account).Find(&headDepartments).Error; err != nil {
+			return false, err
+		}
+		for _, hd := range headDepartments {
+			for _, adid := range authorDeptIDs {
+				if hd.ID == adid {
+					return true, nil
+				}
+			}
+		}
+		return false, nil
+	case "user", "":
+		if node.ApproverID == 0 || node.ApproverID == userID {
+			return true, nil
+		}
+		return false, nil
+	default:
+		return false, fmt.Errorf("未知的审批人类型: %s", node.ApproverType)
+	}
+}
+
 // AdvanceArticleAudit 推进指定文章栏目的审核到下一节点
 func (s *ArticleService) AdvanceArticleAudit(articleID uint, columnID uint, userID uint, remark string) error {
 	var audit models.ArticleColumnAudit
@@ -488,7 +579,15 @@ func (s *ArticleService) AdvanceArticleAudit(articleID uint, columnID uint, user
 	if err := utils.DB.First(&currentNode, audit.CurrentNodeID).Error; err != nil {
 		return err
 	}
-	if currentNode.ApproverID != 0 && currentNode.ApproverID != userID {
+	var article models.Article
+	if err := utils.DB.First(&article, articleID).Error; err != nil {
+		return err
+	}
+	canApprove, err := s.canUserApproveNode(&currentNode, userID, article.AuthorCode)
+	if err != nil {
+		return err
+	}
+	if !canApprove {
 		return fmt.Errorf("当前节点审批人不是您，无权操作")
 	}
 	userName := s.getUserName(userID)
@@ -499,6 +598,7 @@ func (s *ArticleService) AdvanceArticleAudit(articleID uint, columnID uint, user
 		WorkflowID:   audit.WorkflowID,
 		NodeID:       currentNode.ID,
 		NodeName:     currentNode.Name,
+		ApproverType: currentNode.ApproverType,
 		Action:       1,
 		OperatorID:   userID,
 		OperatorName: userName,
@@ -509,7 +609,7 @@ func (s *ArticleService) AdvanceArticleAudit(articleID uint, columnID uint, user
 	}
 	// 查找下一个节点
 	var nextNode models.WorkflowNode
-	err := utils.DB.Where("workflow_id = ? AND sort_order > ?", audit.WorkflowID, currentNode.SortOrder).Order("sort_order ASC").First(&nextNode).Error
+	err = utils.DB.Where("workflow_id = ? AND sort_order > ?", audit.WorkflowID, currentNode.SortOrder).Order("sort_order ASC").First(&nextNode).Error
 	if err != nil {
 		// 没有下一个节点，标记为已通过，记录通过人信息
 		now := time.Now()
@@ -547,7 +647,15 @@ func (s *ArticleService) RejectArticleAudit(articleID uint, columnID uint, userI
 	if err := utils.DB.First(&currentNode, audit.CurrentNodeID).Error; err != nil {
 		return err
 	}
-	if currentNode.ApproverID != 0 && currentNode.ApproverID != userID {
+	var article models.Article
+	if err := utils.DB.First(&article, articleID).Error; err != nil {
+		return err
+	}
+	canApprove, err := s.canUserApproveNode(&currentNode, userID, article.AuthorCode)
+	if err != nil {
+		return err
+	}
+	if !canApprove {
 		return fmt.Errorf("当前节点审批人不是您，无权操作")
 	}
 	userName := s.getUserName(userID)
@@ -558,6 +666,7 @@ func (s *ArticleService) RejectArticleAudit(articleID uint, columnID uint, userI
 		WorkflowID:   audit.WorkflowID,
 		NodeID:       currentNode.ID,
 		NodeName:     currentNode.Name,
+		ApproverType: currentNode.ApproverType,
 		Action:       2,
 		OperatorID:   userID,
 		OperatorName: userName,
@@ -647,23 +756,122 @@ func (s *ArticleService) GetArticleColumnPublishes(articleTitle string, columnID
 
 // GetMyAuditArticles 获取当前用户需要审核的文章列表
 func (s *ArticleService) GetMyAuditArticles(userID uint, page, pageSize int) ([]models.Article, int64, error) {
+	// 当前用户角色
+	userService := UserService{}
+	roleIDs, _ := userService.GetUserRoleIds(userID)
+	roleIDMap := make(map[uint]bool)
+	for _, id := range roleIDs {
+		roleIDMap[uint(id)] = true
+	}
+
+	// 当前用户账号及担任负责人的部门
+	var currentUser models.User
+	if err := utils.DB.First(&currentUser, userID).Error; err != nil {
+		return nil, 0, err
+	}
+	var headDepartments []models.Department
+	if err := utils.DB.Where("leader_code = ?", currentUser.Account).Find(&headDepartments).Error; err != nil {
+		return nil, 0, err
+	}
+	headDeptIDMap := make(map[uint]bool)
+	for _, d := range headDepartments {
+		headDeptIDMap[d.ID] = true
+	}
+
+	type auditItem struct {
+		ArticleID  uint
+		AuthorCode string
+		NodeType   string
+		ApproverID uint
+	}
+	var items []auditItem
+	err := utils.DB.Table("article_column_audit aca").
+		Select("aca.article_id, article.author_code, wn.approver_type, wn.approver_id").
+		Joins("JOIN article ON article.id = aca.article_id").
+		Joins("JOIN workflow_node wn ON wn.id = aca.current_node_id").
+		Where("aca.status = ?", 0).
+		Scan(&items).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// 收集需要查询的作者
+	authorCodes := make(map[string]bool)
+	for _, item := range items {
+		if item.AuthorCode != "" {
+			authorCodes[item.AuthorCode] = true
+		}
+	}
+	authorMap := make(map[string]*models.User)
+	if len(authorCodes) > 0 {
+		codes := make([]string, 0, len(authorCodes))
+		for code := range authorCodes {
+			codes = append(codes, code)
+		}
+		var authors []models.User
+		if err := utils.DB.Where("account IN ?", codes).Find(&authors).Error; err != nil {
+			return nil, 0, err
+		}
+		for i := range authors {
+			authorMap[authors[i].Account] = &authors[i]
+		}
+	}
+
+	// 预缓存部门负责人判断所需的作者部门信息
+	authorDeptMap := make(map[uint][]uint)
+	for _, author := range authorMap {
+		deptIDs, err := s.getUserDepartmentIDs(author.ID)
+		if err != nil {
+			continue
+		}
+		authorDeptMap[author.ID] = deptIDs
+	}
+
+	seen := make(map[uint]bool)
+	var allowedArticleIDs []uint
+	for _, item := range items {
+		var ok bool
+		switch item.NodeType {
+		case "user", "":
+			if item.ApproverID == 0 || item.ApproverID == userID {
+				ok = true
+			}
+		case "role":
+			if roleIDMap[item.ApproverID] {
+				ok = true
+			}
+		case "dept_head":
+			author := authorMap[item.AuthorCode]
+			if author != nil {
+				for _, deptID := range authorDeptMap[author.ID] {
+					if headDeptIDMap[deptID] {
+						ok = true
+						break
+					}
+				}
+			}
+		}
+		if ok && !seen[item.ArticleID] {
+			seen[item.ArticleID] = true
+			allowedArticleIDs = append(allowedArticleIDs, item.ArticleID)
+		}
+	}
+
+	total := int64(len(allowedArticleIDs))
+	start := (page - 1) * pageSize
+	if start >= len(allowedArticleIDs) {
+		return []models.Article{}, total, nil
+	}
+	end := start + pageSize
+	if end > len(allowedArticleIDs) {
+		end = len(allowedArticleIDs)
+	}
+	pageIDs := allowedArticleIDs[start:end]
+
 	var articles []models.Article
-	err := utils.DB.
-		Joins("JOIN article_column_audit aca ON aca.article_id = article.id").
-		Joins("JOIN workflow_node wn ON wn.id = aca.current_node_id").
-		Where("aca.status = ? AND (wn.approver_id = ? OR wn.approver_id = 0)", 0, userID).
-		Group("article.id").
-		Order("article.created_at DESC").
-		Offset((page - 1) * pageSize).Limit(pageSize).
-		Find(&articles).Error
-	var total int64
-	err = utils.DB.
-		Table("article").
-		Joins("JOIN article_column_audit aca ON aca.article_id = article.id").
-		Joins("JOIN workflow_node wn ON wn.id = aca.current_node_id").
-		Where("aca.status = ? AND (wn.approver_id = ? OR wn.approver_id = 0)", 0, userID).
-		Select("COUNT(DISTINCT article.id)").
-		Scan(&total).Error
+	if len(pageIDs) > 0 {
+		err = utils.DB.Where("id IN ?", pageIDs).Order("created_at DESC").Find(&articles).Error
+	}
 	return articles, total, err
 }
 

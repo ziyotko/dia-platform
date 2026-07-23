@@ -50,6 +50,19 @@ func MigrateWorkflowNodeApproverType() {
 	_ = utils.DB.Exec("UPDATE workflow_node SET approver_type = 'user' WHERE approver_type = '' OR approver_type IS NULL")
 }
 
+// MigrateArticleColumnAuditHistoryApproverType 从历史节点回写 approver_type
+func MigrateArticleColumnAuditHistoryApproverType() {
+	if utils.DB == nil {
+		return
+	}
+	_ = utils.DB.Exec(`
+		UPDATE article_column_audit_history acah
+		JOIN workflow_node wn ON wn.id = acah.node_id
+		SET acah.approver_type = IFNULL(wn.approver_type, 'user')
+		WHERE acah.approver_type = '' OR acah.approver_type IS NULL
+	`)
+}
+
 // MigrateIndexes 创建 GORM AutoMigrate 不便表达或列顺序需要控制的辅助索引
 func MigrateIndexes() {
 	if utils.DB == nil {

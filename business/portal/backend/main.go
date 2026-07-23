@@ -25,6 +25,7 @@ func main() {
 	}
 	models.MigrateArticleCategory()
 	models.MigrateWorkflowNodeApproverType()
+	models.MigrateArticleColumnAuditHistoryApproverType()
 	models.MigrateIndexes()
 
 	router := gin.New()
