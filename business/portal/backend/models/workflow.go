@@ -32,9 +32,10 @@ func (w Workflow) MarshalJSON() ([]byte, error) {
 }
 
 type WorkflowNode struct {
-	ID         uint   `gorm:"primarykey" json:"id"`
-	WorkflowID uint   `gorm:"not null;index:idx_workflow_node_workflow_sort" json:"workflowId"`
-	Name       string `gorm:"size:200;not null" json:"name"`
-	ApproverID uint   `gorm:"index" json:"approverId"`
-	SortOrder  int    `gorm:"default:0;index:idx_workflow_node_workflow_sort" json:"sortOrder"`
+	ID           uint   `gorm:"primarykey" json:"id"`
+	WorkflowID   uint   `gorm:"not null;index:idx_workflow_node_workflow_sort" json:"workflowId"`
+	Name         string `gorm:"size:200;not null" json:"name"`
+	ApproverType string `gorm:"size:20;default:'user'" json:"approverType"`
+	ApproverID   uint   `gorm:"index" json:"approverId"`
+	SortOrder    int    `gorm:"default:0;index:idx_workflow_node_workflow_sort" json:"sortOrder"`
 }

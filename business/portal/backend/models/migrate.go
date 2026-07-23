@@ -42,6 +42,14 @@ func createIndexIfNotExists(table, index, columns string) {
 	}
 }
 
+// MigrateWorkflowNodeApproverType 为 workflow_node 表补充 approver_type 字段默认值
+func MigrateWorkflowNodeApproverType() {
+	if utils.DB == nil {
+		return
+	}
+	_ = utils.DB.Exec("UPDATE workflow_node SET approver_type = 'user' WHERE approver_type = '' OR approver_type IS NULL")
+}
+
 // MigrateIndexes 创建 GORM AutoMigrate 不便表达或列顺序需要控制的辅助索引
 func MigrateIndexes() {
 	if utils.DB == nil {

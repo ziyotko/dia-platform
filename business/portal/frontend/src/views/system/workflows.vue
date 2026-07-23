@@ -129,14 +129,29 @@
               <el-input
                 v-model="node.name"
                 placeholder="节点名称"
-                style="width: 180px"
+                style="width: 160px"
                 size="small"
               />
               <el-select
+                v-model="node.approverType"
+                placeholder="审批人类型"
+                style="width: 130px"
+                size="small"
+                @change="node.approverId = undefined"
+              >
+                <el-option
+                  v-for="type in APPROVER_TYPES"
+                  :key="type.value"
+                  :label="type.label"
+                  :value="type.value"
+                />
+              </el-select>
+              <el-select
+                v-if="node.approverType === 'user'"
                 v-model="node.approverId"
-                placeholder="选择审批人"
+                placeholder="选择成员"
                 clearable
-                style="width: 180px"
+                style="width: 160px"
                 size="small"
                 filterable
               >
@@ -147,6 +162,29 @@
                   :value="user.id"
                 />
               </el-select>
+              <el-select
+                v-else-if="node.approverType === 'role'"
+                v-model="node.approverId"
+                placeholder="选择角色"
+                clearable
+                style="width: 160px"
+                size="small"
+                filterable
+              >
+                <el-option
+                  v-for="role in roleList"
+                  :key="role.id"
+                  :label="role.name"
+                  :value="role.id"
+                />
+              </el-select>
+              <el-input
+                v-else-if="node.approverType === 'dept_head'"
+                value="部门负责人"
+                disabled
+                style="width: 160px"
+                size="small"
+              />
             </div>
             <div class="node-actions">
               <el-button
@@ -203,6 +241,7 @@ import {
   Bottom
 } from '@element-plus/icons-vue'
 import { getUserList } from '@/api/user'
+import { getAllRoles } from '@/api/role'
 import {
   getWorkflows,
   createWorkflow,
@@ -243,6 +282,13 @@ const designLoading = ref(false)
 const currentFlow = reactive({ id: 0, name: '' })
 const nodeList = ref<any[]>([])
 const userList = ref<any[]>([])
+const roleList = ref<any[]>([])
+
+const APPROVER_TYPES = [
+  { value: 'user', label: '指定成员' },
+  { value: 'dept_head', label: '部门负责人' },
+  { value: 'role', label: '角色' }
+]
 
 const fetchData = async () => {
   loading.value = true
@@ -271,6 +317,15 @@ const fetchUsers = async () => {
       { id: 2, username: 'editor' },
       { id: 3, username: 'reviewer' }
     ]
+  }
+}
+
+const fetchRoles = async () => {
+  try {
+    const res: any = await getAllRoles()
+    roleList.value = res.data || []
+  } catch {
+    roleList.value = []
   }
 }
 
@@ -371,6 +426,7 @@ const handleDesign = async (row: any) => {
     nodeList.value = nodes.map((n: any) => ({
       id: n.id,
       name: n.name,
+      approverType: n.approverType || 'user',
       approverId: n.approverId
     }))
   } catch {
@@ -383,6 +439,7 @@ const addNode = () => {
   nodeList.value.push({
     id: `n${Date.now()}`,
     name: '',
+    approverType: 'user',
     approverId: undefined
   })
 }
@@ -407,11 +464,16 @@ const handleSaveDesign = async () => {
       ElMessage.warning(`第 ${i + 1} 个节点名称不能为空`)
       return
     }
+    if ((node.approverType === 'user' || node.approverType === 'role') && !node.approverId) {
+      ElMessage.warning(`第 ${i + 1} 个节点请选择${node.approverType === 'user' ? '成员' : '角色'}`)
+      return
+    }
   }
   designLoading.value = true
   try {
     const nodes = nodeList.value.map((n, idx) => ({
       name: n.name,
+      approverType: n.approverType,
       approverId: n.approverId || undefined,
       sortOrder: idx
     }))
@@ -429,6 +491,7 @@ const handleSaveDesign = async () => {
 onMounted(() => {
   fetchData()
   fetchUsers()
+  fetchRoles()
 })
 </script>
 

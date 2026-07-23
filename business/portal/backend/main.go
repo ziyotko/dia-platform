@@ -24,6 +24,7 @@ func main() {
 		utils.DB.AutoMigrate(m)
 	}
 	models.MigrateArticleCategory()
+	models.MigrateWorkflowNodeApproverType()
 	models.MigrateIndexes()
 
 	router := gin.New()

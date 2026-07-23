@@ -11,6 +11,7 @@ export interface WorkflowNode {
   id?: number
   workflowId?: number
   name: string
+  approverType?: 'user' | 'dept_head' | 'role'
   approverId?: number
   sortOrder?: number
 }
