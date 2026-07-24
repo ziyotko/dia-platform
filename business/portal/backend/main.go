@@ -19,14 +19,9 @@ func main() {
 	utils.InitRedisCaptcha()
 	utils.InitRedisAnti()
 
-	models.MigrateArticleCategoryNullable()
 	for _, m := range models.AllModels() {
 		utils.DB.AutoMigrate(m)
 	}
-	models.MigrateDropUserNickname()
-	models.MigrateArticleCategory()
-	models.MigrateWorkflowNodeApproverType()
-	models.MigrateArticleColumnAuditHistoryApproverType()
 	models.MigrateIndexes()
 
 	router := gin.New()
