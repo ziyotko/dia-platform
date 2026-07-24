@@ -857,7 +857,7 @@ func (s *ArticleService) GetMyAuditArticles(userID uint, page, pageSize int) ([]
 		Joins("JOIN article ON article.id = aca.article_id").
 		Joins("JOIN workflow_node wn ON wn.id = aca.current_node_id").
 		Where("aca.status = ?", 0).
-		Where("article.author_code != ?", strconv.FormatUint(uint64(userID), 10)).
+		//Where("article.author_code != ?", strconv.FormatUint(uint64(userID), 10)).
 		Scan(&items).Error
 	if err != nil {
 		return nil, 0, err
@@ -870,6 +870,7 @@ func (s *ArticleService) GetMyAuditArticles(userID uint, page, pageSize int) ([]
 			ApproverType: item.ApproverType,
 			ApproverID:   item.ApproverID,
 		}
+
 		ok, err := s.canUserApproveNode(node, userID, item.AuthorCode)
 		if err != nil {
 			continue
