@@ -14,6 +14,7 @@ func SetupRoutes(router *gin.Engine) {
 	userController := controllers.NewUserController()
 	menuController := controllers.NewMenuController()
 	roleController := controllers.NewRoleController()
+	workflowRoleController := controllers.NewWorkflowRoleController()
 	logController := controllers.NewLogController()
 	settingsController := controllers.NewSettingsController()
 	uploadController := controllers.NewUploadController()
@@ -90,6 +91,14 @@ func SetupRoutes(router *gin.Engine) {
 		protected.POST("/roles", roleController.CreateRole)
 		protected.PUT("/roles/:id", roleController.UpdateRole)
 		protected.DELETE("/roles/:id", roleController.DeleteRole)
+
+		protected.GET("/workflow-roles", workflowRoleController.GetWorkflowRoles)
+		protected.POST("/workflow-roles", workflowRoleController.CreateWorkflowRole)
+		protected.GET("/workflow-roles/:id", workflowRoleController.GetWorkflowRoleByID)
+		protected.PUT("/workflow-roles/:id", workflowRoleController.UpdateWorkflowRole)
+		protected.DELETE("/workflow-roles/:id", workflowRoleController.DeleteWorkflowRole)
+		protected.GET("/workflow-roles/:id/users", workflowRoleController.GetWorkflowRoleUsers)
+		protected.PUT("/workflow-roles/:id/users", workflowRoleController.UpdateWorkflowRoleUsers)
 
 		protected.GET("/logs", logController.GetLogs)
 		protected.DELETE("/logs", logController.ClearLogs)

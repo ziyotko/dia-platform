@@ -117,6 +117,8 @@ func AllModels() []any {
 		&Organization{},
 		&Workflow{},
 		&WorkflowNode{},
+		&WorkflowRole{},
+		&WorkflowRoleUser{},
 		&ArticleColumnAudit{},
 		&ArticleColumnAuditHistory{},
 		&ArticleColumnPublish{},

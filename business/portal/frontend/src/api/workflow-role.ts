@@ -1,0 +1,43 @@
+import request from '@/utils/request'
+
+export interface WorkflowRoleQuery {
+  page?: number
+  pageSize?: number
+  name?: string
+}
+
+export interface WorkflowRoleForm {
+  id?: number
+  name: string
+  code: string
+  description: string
+  status: number
+}
+
+export function getWorkflowRoleList(params: WorkflowRoleQuery) {
+  return request.get('/workflow-roles', { params })
+}
+
+export function getWorkflowRoleById(id: number) {
+  return request.get(`/workflow-roles/${id}`)
+}
+
+export function createWorkflowRole(data: WorkflowRoleForm) {
+  return request.post('/workflow-roles', data)
+}
+
+export function updateWorkflowRole(id: number, data: WorkflowRoleForm) {
+  return request.put(`/workflow-roles/${id}`, data)
+}
+
+export function deleteWorkflowRole(id: number) {
+  return request.delete(`/workflow-roles/${id}`)
+}
+
+export function getWorkflowRoleUsers(id: number) {
+  return request.get(`/workflow-roles/${id}/users`)
+}
+
+export function updateWorkflowRoleUsers(id: number, userIds: number[]) {
+  return request.put(`/workflow-roles/${id}/users`, { userIds })
+}
