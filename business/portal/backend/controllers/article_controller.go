@@ -31,6 +31,7 @@ func NewArticleController() *ArticleController {
 func (c *ArticleController) GetArticles(ctx *gin.Context) {
 	title := ctx.Query("title")
 	categoryIDStr := ctx.Query("categoryId")
+	tagIDStr := ctx.Query("tagId")
 	statusStr := ctx.Query("status")
 	auditStatusStr := ctx.Query("auditStatus")
 	typeStr := ctx.Query("type")
@@ -43,6 +44,12 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 	if categoryIDStr != "" {
 		if id, err := strconv.Atoi(categoryIDStr); err == nil {
 			categoryID = id
+		}
+	}
+	tagID := 0
+	if tagIDStr != "" {
+		if id, err := strconv.Atoi(tagIDStr); err == nil {
+			tagID = id
 		}
 	}
 	status := -1
@@ -72,7 +79,7 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 		pageSize = 10
 	}
 
-	articles, total, err := c.articleService.GetArticles(title, categoryID, status, auditStatus, articleType, author, source, page, pageSize)
+	articles, total, err := c.articleService.GetArticles(title, categoryID, tagID, status, auditStatus, articleType, author, source, page, pageSize)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取文章列表失败"))
 		return

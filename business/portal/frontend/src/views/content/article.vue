@@ -15,6 +15,16 @@
             />
           </el-select>
         </el-form-item>
+        <el-form-item label="文章标签">
+          <el-select v-model="queryForm.tagId" placeholder="全部标签" clearable style="width: 140px">
+            <el-option
+              v-for="item in tagList"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-form-item label="发布状态">
           <el-select v-model="queryForm.status" placeholder="全部状态" clearable style="width: 120px">
             <el-option label="已发布" :value="1" />
@@ -858,7 +868,7 @@ import {
 } from '@/api/article'
 import { getWorkflowByID } from '@/api/workflow'
 import { getUserList } from '@/api/user'
-import { getAllRoles } from '@/api/role'
+import { getWorkflowRoleList } from '@/api/workflow-role'
 import { getAllCategories } from '@/api/category'
 import { getAllTags } from '@/api/tag'
 import { getPages } from '@/api/page'
@@ -989,6 +999,7 @@ const queryForm = reactive({
   pageSize: 10,
   title: '',
   categoryId: undefined as number | undefined,
+  tagId: undefined as number | undefined,
   status: undefined as number | undefined,
   auditStatus: undefined as number | undefined,
   type: undefined as number | undefined,
@@ -1428,6 +1439,7 @@ const fetchData = async () => {
     }
     if (queryForm.title) params.title = queryForm.title
     if (queryForm.categoryId !== undefined) params.categoryId = queryForm.categoryId
+    if (queryForm.tagId !== undefined) params.tagId = queryForm.tagId
     if (queryForm.status !== undefined) params.status = queryForm.status
     if (queryForm.auditStatus !== undefined) params.auditStatus = queryForm.auditStatus
     if (queryForm.type !== undefined) params.type = queryForm.type
@@ -1469,6 +1481,7 @@ const handleSearch = () => {
 const resetQuery = () => {
   queryForm.title = ''
   queryForm.categoryId = undefined
+  queryForm.tagId = undefined
   queryForm.status = undefined
   queryForm.auditStatus = undefined
   queryForm.type = undefined
@@ -1663,8 +1676,8 @@ const handleShowAuditFlow = async (row: any) => {
     }
     if (auditFlowRoleList.value.length === 0) {
       try {
-        const roleRes: any = await getAllRoles()
-        auditFlowRoleList.value = roleRes.data || []
+        const roleRes: any = await getWorkflowRoleList({ page: 1, pageSize: 9999 })
+        auditFlowRoleList.value = roleRes.data?.list || []
       } catch {
         auditFlowRoleList.value = []
       }

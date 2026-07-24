@@ -13,7 +13,7 @@ import (
 
 type ArticleService struct{}
 
-func (s *ArticleService) GetArticles(title string, categoryID int, status int, auditStatus int, articleType int, author string, source string, page int, pageSize int) ([]models.Article, int64, error) {
+func (s *ArticleService) GetArticles(title string, categoryID int, tagID int, status int, auditStatus int, articleType int, author string, source string, page int, pageSize int) ([]models.Article, int64, error) {
 	var articles []models.Article
 	var total int64
 	query := utils.DB.Model(&models.Article{})
@@ -22,6 +22,9 @@ func (s *ArticleService) GetArticles(title string, categoryID int, status int, a
 	}
 	if categoryID > 0 {
 		query = query.Where("article.id IN (SELECT article_id FROM article_category WHERE category_id = ?)", categoryID)
+	}
+	if tagID > 0 {
+		query = query.Where("article.id IN (SELECT article_id FROM article_tag WHERE tag_id = ?)", tagID)
 	}
 	if status >= 0 {
 		query = query.Where("status = ?", status)
