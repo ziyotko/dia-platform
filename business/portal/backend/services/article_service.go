@@ -14,12 +14,10 @@ import (
 
 type ArticleService struct{}
 
-func (s *ArticleService) GetArticles(title string, categoryID int, tagID int, status int, auditStatus int, articleType int, author string, source string, page int, pageSize int) ([]models.Article, int64, error) {
-	var articles []models.Article
-	var total int64
+func (s *ArticleService) buildArticleListQuery(title string, categoryID int, tagID int, status int, auditStatus int, articleType int, author string, source string) *gorm.DB {
 	query := utils.DB.Model(&models.Article{})
 	if title != "" {
-		query = query.Where("title LIKE ?", "%"+title+"%")
+		query = query.Where("MATCH(title) AGAINST (? IN BOOLEAN MODE) OR title LIKE ?", title, "%"+title+"%")
 	}
 	if categoryID > 0 {
 		query = query.Where("article.id IN (SELECT article_id FROM article_category WHERE category_id = ?)", categoryID)
@@ -37,17 +35,37 @@ func (s *ArticleService) GetArticles(title string, categoryID int, tagID int, st
 		query = query.Where("type = ?", articleType)
 	}
 	if author != "" {
-		query = query.Where("author LIKE ?", "%"+author+"%")
+		query = query.Where("MATCH(author) AGAINST (? IN BOOLEAN MODE) OR author LIKE ?", author, "%"+author+"%")
 	}
 	if source != "" {
-		query = query.Where("source LIKE ?", "%"+source+"%")
+		query = query.Where("MATCH(source) AGAINST (? IN BOOLEAN MODE) OR source LIKE ?", source, "%"+source+"%")
 	}
-	err := query.Count(&total).Error
-	if err != nil {
+	return query
+}
+
+func (s *ArticleService) GetArticles(title string, categoryID int, tagID int, status int, auditStatus int, articleType int, author string, source string, page int, pageSize int) ([]models.Article, int64, error) {
+	var total int64
+	countQuery := s.buildArticleListQuery(title, categoryID, tagID, status, auditStatus, articleType, author, source)
+	if err := countQuery.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
+
 	offset := (page - 1) * pageSize
-	err = query.Preload("Categories").Preload("Tags").Preload("Columns").Preload("Attachments").Order("is_top DESC, created_at DESC").Limit(pageSize).Offset(offset).Find(&articles).Error
+	idQuery := s.buildArticleListQuery(title, categoryID, tagID, status, auditStatus, articleType, author, source)
+	var ids []uint
+	if err := idQuery.Select("article.id").Order("article.is_top DESC, article.created_at DESC").Limit(pageSize).Offset(offset).Scan(&ids).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if len(ids) == 0 {
+		return []models.Article{}, total, nil
+	}
+
+	var articles []models.Article
+	err := utils.DB.Where("id IN ?", ids).
+		Order("is_top DESC, created_at DESC").
+		Preload("Categories").Preload("Tags").Preload("Columns").Preload("Attachments").
+		Find(&articles).Error
 	return articles, total, err
 }
 

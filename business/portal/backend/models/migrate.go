@@ -42,6 +42,21 @@ func createIndexIfNotExists(table, index, columns string) {
 	}
 }
 
+// createFullTextIndexIfNotExists 在索引不存在时创建全文索引（兼容 MySQL 5.7/8.0）
+func createFullTextIndexIfNotExists(table, index, columns string) {
+	if utils.DB == nil {
+		return
+	}
+	var count int64
+	utils.DB.Raw(
+		"SELECT COUNT(*) FROM information_schema.STATISTICS WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ?",
+		table, index,
+	).Scan(&count)
+	if count == 0 {
+		utils.DB.Exec(fmt.Sprintf("CREATE FULLTEXT INDEX %s ON %s(%s)", index, table, columns))
+	}
+}
+
 // MigrateWorkflowNodeApproverType 为 workflow_node 表补充 approver_type 字段默认值
 func MigrateWorkflowNodeApproverType() {
 	if utils.DB == nil {
@@ -98,6 +113,11 @@ func MigrateIndexes() {
 	createIndexIfNotExists("article", "idx_article_status_audit_created", "status, audit_status, created_at")
 	// 仪表盘：WHERE author_code=? AND status=?
 	createIndexIfNotExists("article", "idx_article_author_status_created", "author_code, status, created_at")
+
+	// 文章标题/作者/来源搜索全文索引（提升 LIKE '%keyword%' 场景下的检索性能）
+	createFullTextIndexIfNotExists("article", "idx_article_title_fulltext", "title")
+	createFullTextIndexIfNotExists("article", "idx_article_author_fulltext", "author")
+	createFullTextIndexIfNotExists("article", "idx_article_source_fulltext", "source")
 }
 
 // AllModels 返回所有需要自动迁移的数据库模型
