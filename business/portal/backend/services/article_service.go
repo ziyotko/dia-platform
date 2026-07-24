@@ -844,10 +844,10 @@ func (s *ArticleService) GetArticleColumnPublishes(articleTitle string, columnID
 // GetMyAuditArticles 获取当前用户需要审核的文章列表
 func (s *ArticleService) GetMyAuditArticles(userID uint, page, pageSize int) ([]models.Article, int64, error) {
 	type auditItem struct {
-		ArticleID  uint
-		AuthorCode string
-		NodeType   string
-		ApproverID uint
+		ArticleID    uint
+		AuthorCode   string
+		ApproverType string
+		ApproverID   uint
 	}
 	var items []auditItem
 	err := utils.DB.Table("article_column_audit aca").
@@ -865,7 +865,7 @@ func (s *ArticleService) GetMyAuditArticles(userID uint, page, pageSize int) ([]
 	var allowedArticleIDs []uint
 	for _, item := range items {
 		node := &models.WorkflowNode{
-			ApproverType: item.NodeType,
+			ApproverType: item.ApproverType,
 			ApproverID:   item.ApproverID,
 		}
 		ok, err := s.canUserApproveNode(node, userID, item.AuthorCode)
