@@ -4,6 +4,7 @@ export interface WorkflowRoleQuery {
   page?: number
   pageSize?: number
   name?: string
+  status?: number
 }
 
 export interface WorkflowRoleForm {

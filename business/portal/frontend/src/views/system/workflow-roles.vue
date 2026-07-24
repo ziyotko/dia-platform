@@ -104,9 +104,20 @@
     <el-dialog
       v-model="membersVisible"
       title="设置成员"
-      width="600px"
+      width="880px"
+      top="8vh"
       destroy-on-close
+      class="members-dialog"
     >
+      <div class="members-header">
+        <div class="members-role">
+          <el-icon class="role-icon"><User /></el-icon>
+          <span class="role-name">{{ currentRoleName }}</span>
+        </div>
+        <el-tag type="primary" size="large" effect="light" round>
+          已选 {{ selectedUserIds.length }} 人
+        </el-tag>
+      </div>
       <el-transfer
         v-model="selectedUserIds"
         :data="userTransferData"
@@ -114,7 +125,7 @@
         :props="{ key: 'id', label: 'label' }"
         filterable
         :filter-method="filterUser"
-        filter-placeholder="请输入用户名/账号"
+        filter-placeholder="请输入用户名 / 账号搜索"
       />
       <template #footer>
         <el-button @click="membersVisible = false">取消</el-button>
@@ -154,6 +165,7 @@ const submitLoading = ref(false)
 const total = ref(0)
 const formRef = ref()
 const currentRoleId = ref<number>(0)
+const currentRoleName = ref('')
 
 const queryForm = reactive({
   page: 1,
@@ -275,6 +287,7 @@ const handleDelete = (row: any) => {
 
 const handleMembers = async (row: any) => {
   currentRoleId.value = row.id
+  currentRoleName.value = row.name || ''
   membersVisible.value = true
   selectedUserIds.value = []
   await fetchUsers()
@@ -390,13 +403,110 @@ onMounted(() => {
     justify-content: flex-end;
   }
 
+  :deep(.members-dialog) {
+    .el-dialog__body {
+      padding-top: 12px;
+    }
+  }
+
+  .members-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 14px 18px;
+    background: linear-gradient(135deg, #f0f7ff 0%, #e6f2ff 100%);
+    border-radius: 12px;
+    border: 1px solid #d0e6ff;
+
+    .members-role {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+
+      .role-icon {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #409eff;
+        color: #fff;
+        border-radius: 50%;
+        font-size: 18px;
+      }
+
+      .role-name {
+        font-size: 16px;
+        font-weight: 600;
+        color: #2c3e50;
+      }
+    }
+  }
+
   :deep(.el-transfer) {
     display: flex;
     justify-content: center;
     align-items: center;
+    padding: 10px 0;
 
     .el-transfer-panel {
-      width: 220px;
+      width: 340px;
+      height: 460px;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(64, 158, 255, 0.08);
+      border: 1px solid #e4e7ed;
+
+      .el-transfer-panel__header {
+        border-radius: 12px 12px 0 0;
+        background: #f5f7fa;
+        padding: 12px 16px;
+
+        .el-checkbox__label {
+          font-size: 15px;
+          font-weight: 600;
+          color: #303133;
+        }
+      }
+
+      .el-transfer-panel__body {
+        height: calc(100% - 50px);
+      }
+
+      .el-transfer-panel__list {
+        height: calc(100% - 42px);
+      }
+
+      .el-transfer-panel__filter {
+        margin: 12px;
+        width: auto;
+
+        .el-input__inner {
+          border-radius: 8px;
+        }
+      }
+
+      .el-transfer-panel__item {
+        padding-left: 12px;
+        margin-right: 0;
+        height: 40px;
+        line-height: 40px;
+
+        .el-checkbox__label {
+          font-size: 14px;
+        }
+      }
+    }
+
+    .el-transfer__buttons {
+      padding: 0 24px;
+
+      .el-button {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        font-size: 18px;
+      }
     }
   }
 }

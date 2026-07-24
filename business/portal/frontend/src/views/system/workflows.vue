@@ -165,14 +165,14 @@
               <el-select
                 v-else-if="node.approverType === 'role'"
                 v-model="node.approverId"
-                placeholder="选择角色"
+                placeholder="选择流程角色"
                 clearable
-                style="width: 160px"
+                style="width: 180px"
                 size="small"
                 filterable
               >
                 <el-option
-                  v-for="role in roleList"
+                  v-for="role in workflowRoleList"
                   :key="role.id"
                   :label="role.name"
                   :value="role.id"
@@ -241,7 +241,7 @@ import {
   Bottom
 } from '@element-plus/icons-vue'
 import { getUserList } from '@/api/user'
-import { getAllRoles } from '@/api/role'
+import { getWorkflowRoleList } from '@/api/workflow-role'
 import {
   getWorkflows,
   createWorkflow,
@@ -282,7 +282,7 @@ const designLoading = ref(false)
 const currentFlow = reactive({ id: 0, name: '' })
 const nodeList = ref<any[]>([])
 const userList = ref<any[]>([])
-const roleList = ref<any[]>([])
+const workflowRoleList = ref<any[]>([])
 
 const APPROVER_TYPES = [
   { value: 'user', label: '指定成员' },
@@ -325,12 +325,12 @@ const fetchUsers = async () => {
   }
 }
 
-const fetchRoles = async () => {
+const fetchWorkflowRoles = async () => {
   try {
-    const res: any = await getAllRoles()
-    roleList.value = res.data || []
+    const res: any = await getWorkflowRoleList({ page: 1, pageSize: 9999, status: 1 })
+    workflowRoleList.value = res.data?.list || []
   } catch {
-    roleList.value = []
+    workflowRoleList.value = []
   }
 }
 
@@ -470,7 +470,7 @@ const handleSaveDesign = async () => {
       return
     }
     if ((node.approverType === 'user' || node.approverType === 'role') && !node.approverId) {
-      ElMessage.warning(`第 ${i + 1} 个节点请选择${node.approverType === 'user' ? '成员' : '角色'}`)
+      ElMessage.warning(`第 ${i + 1} 个节点请选择${node.approverType === 'user' ? '成员' : '流程角色'}`)
       return
     }
     if (node.approverType === 'dept_head' && i > 0) {
@@ -500,7 +500,7 @@ const handleSaveDesign = async () => {
 onMounted(() => {
   fetchData()
   fetchUsers()
-  fetchRoles()
+  fetchWorkflowRoles()
 })
 </script>
 

@@ -83,6 +83,15 @@ func (s *WorkflowRoleService) GetWorkflowRoleUsers(id uint) ([]models.User, erro
 	return users, err
 }
 
+func (s *WorkflowRoleService) GetUserWorkflowRoleIds(userID uint) ([]uint, error) {
+	var roleIDs []uint
+	err := utils.DB.Model(&models.WorkflowRoleUser{}).
+		Select("workflow_role_id").
+		Where("user_id = ?", userID).
+		Scan(&roleIDs).Error
+	return roleIDs, err
+}
+
 func (s *WorkflowRoleService) UpdateWorkflowRoleUsers(id uint, userIDs []uint) error {
 	return utils.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("workflow_role_id = ?", id).Delete(&models.WorkflowRoleUser{}).Error; err != nil {

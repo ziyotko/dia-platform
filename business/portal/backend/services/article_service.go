@@ -524,12 +524,17 @@ func (s *ArticleService) canUserApproveNode(node *models.WorkflowNode, userID ui
 		if node.ApproverID == 0 {
 			return true, nil
 		}
-		userService := UserService{}
-		roleIDs, err := userService.GetUserRoleIds(userID)
+		workflowRoleService := WorkflowRoleService{}
+		roleIDs, err := workflowRoleService.GetUserWorkflowRoleIds(userID)
 		if err != nil {
 			return false, err
 		}
-		return containsInt(roleIDs, int(node.ApproverID)), nil
+		for _, rid := range roleIDs {
+			if rid == node.ApproverID {
+				return true, nil
+			}
+		}
+		return false, nil
 	case "dept_head":
 		var currentUser models.User
 		if err := utils.DB.First(&currentUser, userID).Error; err != nil {
@@ -613,11 +618,11 @@ func (s *ArticleService) GetApproverName(node *models.WorkflowNode, authorCode s
 		return user.Username
 	case "role":
 		if node.ApproverID == 0 {
-			return "角色（未指定）"
+			return "流程角色（未指定）"
 		}
-		var role models.Role
+		var role models.WorkflowRole
 		if err := utils.DB.First(&role, node.ApproverID).Error; err != nil {
-			return "角色（未知）"
+			return "流程角色（未知）"
 		}
 		return role.Name
 	case "dept_head":
