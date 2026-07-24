@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"server/models"
 	"server/utils"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -491,12 +492,7 @@ func parseIntIDs(s string) []int {
 }
 
 func containsInt(ids []int, target int) bool {
-	for _, id := range ids {
-		if id == target {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ids, target)
 }
 
 // getUserDepartmentIDs 返回用户所属的所有部门 ID
@@ -529,10 +525,8 @@ func (s *ArticleService) canUserApproveNode(node *models.WorkflowNode, userID ui
 		if err != nil {
 			return false, err
 		}
-		for _, rid := range roleIDs {
-			if rid == node.ApproverID {
-				return true, nil
-			}
+		if slices.Contains(roleIDs, node.ApproverID) {
+			return true, nil
 		}
 		return false, nil
 	case "dept_head":
@@ -557,10 +551,8 @@ func (s *ArticleService) canUserApproveNode(node *models.WorkflowNode, userID ui
 			return false, err
 		}
 		for _, hd := range headDepartments {
-			for _, adid := range authorDeptIDs {
-				if hd.ID == adid {
-					return true, nil
-				}
+			if slices.Contains(authorDeptIDs, hd.ID) {
+				return true, nil
 			}
 		}
 		return false, nil
@@ -886,10 +878,7 @@ func (s *ArticleService) GetMyAuditArticles(userID uint, page, pageSize int) ([]
 	if start >= len(allowedArticleIDs) {
 		return []models.Article{}, total, nil
 	}
-	end := start + pageSize
-	if end > len(allowedArticleIDs) {
-		end = len(allowedArticleIDs)
-	}
+	end := min(start+pageSize, len(allowedArticleIDs))
 	pageIDs := allowedArticleIDs[start:end]
 
 	var articles []models.Article
