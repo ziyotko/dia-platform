@@ -140,7 +140,7 @@
                 @change="node.approverId = undefined"
               >
                 <el-option
-                  v-for="type in APPROVER_TYPES"
+                  v-for="type in getApproverTypes(index)"
                   :key="type.value"
                   :label="type.label"
                   :value="type.value"
@@ -290,6 +290,11 @@ const APPROVER_TYPES = [
   { value: 'role', label: '角色' }
 ]
 
+const getApproverTypes = (index: number) => {
+  if (index === 0) return APPROVER_TYPES
+  return APPROVER_TYPES.filter(t => t.value !== 'dept_head')
+}
+
 const fetchData = async () => {
   loading.value = true
   try {
@@ -423,11 +428,11 @@ const handleDesign = async (row: any) => {
   try {
     const res: any = await getWorkflowNodes(row.id)
     const nodes = res.data || []
-    nodeList.value = nodes.map((n: any) => ({
+    nodeList.value = nodes.map((n: any, idx: number) => ({
       id: n.id,
       name: n.name,
-      approverType: n.approverType || 'user',
-      approverId: n.approverId
+      approverType: (n.approverType === 'dept_head' && idx > 0 ? 'user' : n.approverType) || 'user',
+      approverId: n.approverType === 'dept_head' && idx > 0 ? undefined : n.approverId
     }))
   } catch {
     nodeList.value = []
@@ -466,6 +471,10 @@ const handleSaveDesign = async () => {
     }
     if ((node.approverType === 'user' || node.approverType === 'role') && !node.approverId) {
       ElMessage.warning(`第 ${i + 1} 个节点请选择${node.approverType === 'user' ? '成员' : '角色'}`)
+      return
+    }
+    if (node.approverType === 'dept_head' && i > 0) {
+      ElMessage.warning('只有第一个节点可以设置部门负责人')
       return
     }
   }
