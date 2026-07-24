@@ -565,6 +565,26 @@ func (s *ArticleService) canUserApproveNode(node *models.WorkflowNode, userID ui
 	}
 }
 
+// CanApproveArticleColumn 判断指定用户是否能审批文章指定栏目的当前节点
+func (s *ArticleService) CanApproveArticleColumn(articleID uint, columnID uint, userID uint) (bool, error) {
+	var audit models.ArticleColumnAudit
+	if err := utils.DB.Where("article_id = ? AND column_id = ? AND status = ?", articleID, columnID, 0).First(&audit).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	var currentNode models.WorkflowNode
+	if err := utils.DB.First(&currentNode, audit.CurrentNodeID).Error; err != nil {
+		return false, err
+	}
+	var article models.Article
+	if err := utils.DB.First(&article, articleID).Error; err != nil {
+		return false, err
+	}
+	return s.canUserApproveNode(&currentNode, userID, article.AuthorCode)
+}
+
 // AdvanceArticleAudit 推进指定文章栏目的审核到下一节点
 func (s *ArticleService) AdvanceArticleAudit(articleID uint, columnID uint, userID uint, remark string) error {
 	var audit models.ArticleColumnAudit

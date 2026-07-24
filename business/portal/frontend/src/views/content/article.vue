@@ -773,6 +773,10 @@
               </el-steps>
             </div>
             <el-empty v-else description="该流程未配置节点" :image-size="60" />
+            <div v-if="item.auditStatus === 0 && item.workflow && item.workflow.nodes && item.currentNodeId" class="audit-current-node">
+              <el-icon><User /></el-icon>
+              <span>当前节点审批人：{{ formatApproverType(item.currentApproverType) }}</span>
+            </div>
             <div v-if="item.auditStatus === 1 && item.approveUserName" class="audit-flow-result">
               <el-icon color="#67c23a"><CircleCheck /></el-icon>
               <span>已通过：{{ item.approverRemark }}</span>
@@ -782,7 +786,7 @@
               <span>已驳回：{{ item.rejectRemark }}</span>
             </div>
             <div v-if="item.auditStatus === 0 && item.workflow && item.workflow.nodes && item.workflow.nodes.length > 0">
-              <div v-if="item.currentApproverId == 0 || currentUserId == item.currentApproverId" class="audit-flow-actions">
+              <div v-if="item.canApprove" class="audit-flow-actions">
                 <el-button type="primary" size="small" @click="handleAdvanceAuditNode(item.columnId)">
                   <el-icon><CircleCheck /></el-icon>通过当前节点
                 </el-button>
@@ -826,7 +830,8 @@ import {
   Monitor,
   Collection,
   Check,
-  ArrowRight
+  ArrowRight,
+  User
 } from '@element-plus/icons-vue'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
@@ -1588,6 +1593,15 @@ const getStepActive = (item: any) => {
   return 0
 }
 
+const formatApproverType = (type: string) => {
+  switch (type) {
+    case 'dept_head': return '部门负责人'
+    case 'role': return '角色'
+    case 'user':
+    default: return '指定成员'
+  }
+}
+
 const getNodeHistory = (item: any, nodeId: number) => {
   if (!item.histories || item.histories.length === 0) return null
   return item.histories.find((h: any) => h.nodeId === nodeId) || null
@@ -1645,6 +1659,9 @@ const handleShowAuditFlow = async (row: any) => {
         currentNodeId: 0,
         auditStatus: -1,
         currentApproverId: 0,
+        currentApproverType: 'user',
+        currentApproverName: '',
+        canApprove: false,
         approveUserName: '',
         approveTime: '',
         rejectRemark: '',
@@ -1657,6 +1674,7 @@ const handleShowAuditFlow = async (row: any) => {
         item.approveUserName = progress.approveUserName || ''
         item.approveTime = progress.approveTime || ''
         item.rejectRemark = progress.rejectRemark || ''
+        item.canApprove = !!progress.canApprove
       }
       if (col.workflowId) {
         try {
@@ -1666,6 +1684,8 @@ const handleShowAuditFlow = async (row: any) => {
             const node = item.workflow.nodes.find((n: any) => n.id === item.currentNodeId)
             if (node) {
               item.currentApproverId = node.approverId || 0
+              item.currentApproverType = node.approverType || 'user'
+              item.currentApproverName = node.approverName || ''
             }
           }
         } catch {
@@ -2487,6 +2507,16 @@ onMounted(() => {
   padding-top: 12px;
   border-top: 1px dashed #e6f2ff;
   color: #909399;
+  font-size: 13px;
+}
+
+.audit-current-node {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 12px;
+  color: #606266;
   font-size: 13px;
 }
 

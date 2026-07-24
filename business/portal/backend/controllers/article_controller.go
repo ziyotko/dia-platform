@@ -382,7 +382,20 @@ func (c *ArticleController) GetArticleAuditProgress(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取审核进度失败"))
 		return
 	}
-	ctx.JSON(http.StatusOK, utils.Success("获取审核进度成功", audits))
+	userID := ctx.GetUint("userID")
+	type auditProgressItem struct {
+		models.ArticleColumnAudit
+		CanApprove bool `json:"canApprove"`
+	}
+	list := make([]auditProgressItem, 0, len(audits))
+	for _, audit := range audits {
+		item := auditProgressItem{ArticleColumnAudit: audit}
+		if audit.Status == 0 {
+			item.CanApprove, _ = c.articleService.CanApproveArticleColumn(uint(id), audit.ColumnID, userID)
+		}
+		list = append(list, item)
+	}
+	ctx.JSON(http.StatusOK, utils.Success("获取审核进度成功", list))
 }
 
 func (c *ArticleController) AdvanceArticleAudit(ctx *gin.Context) {
