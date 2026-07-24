@@ -1717,7 +1717,10 @@ const handleShowAuditFlow = async (row: any) => {
             if (node) {
               item.currentApproverId = node.approverId || 0
               item.currentApproverType = node.approverType || 'user'
-              item.currentApproverName = node.approverName || ''
+              // 优先使用后端 progress 返回的具体审批人名称，workflow 节点本身不保存名称
+              if (!item.currentApproverName) {
+                item.currentApproverName = node.approverName || ''
+              }
             }
           }
         } catch {

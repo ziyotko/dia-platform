@@ -535,8 +535,12 @@ func (s *ArticleService) canUserApproveNode(node *models.WorkflowNode, userID ui
 		if err := utils.DB.First(&currentUser, userID).Error; err != nil {
 			return false, err
 		}
+		authorID, err := strconv.ParseUint(authorCode, 10, 32)
+		if err != nil {
+			return false, nil
+		}
 		var author models.User
-		if err := utils.DB.Where("account = ?", authorCode).First(&author).Error; err != nil {
+		if err := utils.DB.First(&author, authorID).Error; err != nil {
 			return false, nil
 		}
 		authorDeptIDs, err := s.getUserDepartmentIDs(author.ID)
@@ -544,7 +548,7 @@ func (s *ArticleService) canUserApproveNode(node *models.WorkflowNode, userID ui
 			return false, err
 		}
 		var headDepartments []models.Department
-		if err := utils.DB.Where("leader_code = ?", currentUser.Account).Find(&headDepartments).Error; err != nil {
+		if err := utils.DB.Where("leader_code = ?", currentUser.ID).Find(&headDepartments).Error; err != nil {
 			return false, err
 		}
 		for _, hd := range headDepartments {
@@ -590,7 +594,11 @@ func (s *ArticleService) GetApproverName(node *models.WorkflowNode, authorCode s
 	if node == nil {
 		return ""
 	}
-	switch node.ApproverType {
+	approverType := node.ApproverType
+	if approverType == "" {
+		approverType = "user"
+	}
+	switch approverType {
 	case "user":
 		if node.ApproverID == 0 {
 			return "指定成员（未指定）"
@@ -613,8 +621,12 @@ func (s *ArticleService) GetApproverName(node *models.WorkflowNode, authorCode s
 		}
 		return role.Name
 	case "dept_head":
+		authorID, err := strconv.ParseUint(authorCode, 10, 32)
+		if err != nil {
+			return "部门负责人（作者ID无效）"
+		}
 		var author models.User
-		if err := utils.DB.Where("account = ?", authorCode).First(&author).Error; err != nil {
+		if err := utils.DB.First(&author, authorID).Error; err != nil {
 			return "部门负责人（作者未知）"
 		}
 		deptIDs, err := s.getUserDepartmentIDs(author.ID)
@@ -870,25 +882,27 @@ func (s *ArticleService) GetMyAuditArticles(userID uint, page, pageSize int) ([]
 		return nil, 0, err
 	}
 
-	// 收集需要查询的作者
-	authorCodes := make(map[string]bool)
+	// 收集需要查询的作者（author_code 实际存的是用户 ID）
+	authorIDMap := make(map[uint]bool)
 	for _, item := range items {
 		if item.AuthorCode != "" {
-			authorCodes[item.AuthorCode] = true
+			if id, err := strconv.ParseUint(item.AuthorCode, 10, 32); err == nil {
+				authorIDMap[uint(id)] = true
+			}
 		}
 	}
-	authorMap := make(map[string]*models.User)
-	if len(authorCodes) > 0 {
-		codes := make([]string, 0, len(authorCodes))
-		for code := range authorCodes {
-			codes = append(codes, code)
+	authorMap := make(map[uint]*models.User)
+	if len(authorIDMap) > 0 {
+		ids := make([]uint, 0, len(authorIDMap))
+		for id := range authorIDMap {
+			ids = append(ids, id)
 		}
 		var authors []models.User
-		if err := utils.DB.Where("account IN ?", codes).Find(&authors).Error; err != nil {
+		if err := utils.DB.Where("id IN ?", ids).Find(&authors).Error; err != nil {
 			return nil, 0, err
 		}
 		for i := range authors {
-			authorMap[authors[i].Account] = &authors[i]
+			authorMap[authors[i].ID] = &authors[i]
 		}
 	}
 
@@ -916,7 +930,11 @@ func (s *ArticleService) GetMyAuditArticles(userID uint, page, pageSize int) ([]
 				ok = true
 			}
 		case "dept_head":
-			author := authorMap[item.AuthorCode]
+			var authorID uint
+			if id, err := strconv.ParseUint(item.AuthorCode, 10, 32); err == nil {
+				authorID = uint(id)
+			}
+			author := authorMap[authorID]
 			if author != nil {
 				for _, deptID := range authorDeptMap[author.ID] {
 					if headDeptIDMap[deptID] {
