@@ -231,7 +231,6 @@
         </el-table-column>
         <el-table-column prop="username" label="用户名" min-width="120" />
         <el-table-column prop="account" label="账号" min-width="120" />
-        <el-table-column prop="nickname" label="昵称" min-width="120" />
         <el-table-column prop="phone" label="手机号" min-width="130" />
       </el-table>
       <div class="user-pagination">
@@ -278,7 +277,6 @@
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column prop="username" label="用户名" min-width="120" />
         <el-table-column prop="account" label="账号" min-width="120" />
-        <el-table-column prop="nickname" label="昵称" min-width="120" />
         <el-table-column prop="phone" label="手机号" min-width="130" />
       </el-table>
       <template #footer>
@@ -338,7 +336,6 @@ interface UserItem {
   id: number
   username: string
   account: string
-  nickname: string
   phone: string
 }
 
@@ -407,8 +404,7 @@ const filteredUserOptions = computed(() => {
   return userOptions.value.filter(
     (u) =>
       u.username.toLowerCase().includes(keyword) ||
-      u.account.toLowerCase().includes(keyword) ||
-      u.nickname.toLowerCase().includes(keyword)
+      u.account.toLowerCase().includes(keyword)
   )
 })
 
@@ -418,8 +414,7 @@ const filteredViewUserOptions = computed(() => {
   return viewUserOptions.value.filter(
     (u) =>
       u.username.toLowerCase().includes(keyword) ||
-      u.account.toLowerCase().includes(keyword) ||
-      u.nickname.toLowerCase().includes(keyword)
+      u.account.toLowerCase().includes(keyword)
   )
 })
 
@@ -687,7 +682,6 @@ const handleViewUsers = async (row: DeptItem) => {
         id: u.id,
         username: u.username,
         account: u.account,
-        nickname: u.nickname,
         phone: u.phone || u.mobile || ''
       }))
   } catch (error) {
@@ -705,7 +699,6 @@ const fetchDialogUsers = async () => {
         id: u.id,
         username: u.username,
         account: u.account,
-        nickname: u.nickname,
         phone: u.phone || u.mobile || ''
       }))
     }
@@ -735,7 +728,6 @@ const handleAssignUsers = async (row: DeptItem) => {
         id: u.id,
         username: u.username,
         account: u.account,
-        nickname: u.nickname,
         phone: u.phone || u.mobile || ''
       }))
     selectedUserIds.value = deptUsersRes?.data || []

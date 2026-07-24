@@ -21,7 +21,6 @@ type UserListItem struct {
 	ID         uint     `json:"id"`
 	Username   string   `json:"username"`
 	Account    string   `json:"account"`
-	Nickname   string   `json:"nickname"`
 	OrgIds     []uint   `json:"orgIds"`
 	OrgNames   []string `json:"orgNames"`
 	Email      string   `json:"email"`
@@ -70,7 +69,6 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 			ID:         user.ID,
 			Username:   user.Username,
 			Account:    user.Account,
-			Nickname:   user.Nickname,
 			Email:      user.Email,
 			Phone:      user.Mobile,
 			Status:     user.Status,
@@ -106,7 +104,6 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 func (c *UserController) CreateUser(ctx *gin.Context) {
 	var req struct {
 		Username string `json:"username"`
-		Nickname string `json:"nickname"`
 		Account  string `json:"account"`
 		Email    string `json:"email" binding:"required,email"`
 		Phone    string `json:"phone"`
@@ -121,7 +118,7 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		return
 	}
 
-	err := c.userService.CreateUser(req.Username, req.Nickname, req.Account, req.Email, req.Password, req.Phone, req.Status, req.RoleIds, req.OrgIds)
+	err := c.userService.CreateUser(req.Username, req.Account, req.Email, req.Password, req.Phone, req.Status, req.RoleIds, req.OrgIds)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "创建用户失败: "+err.Error()))
 		return
@@ -163,7 +160,6 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 
 	var req struct {
 		Username string `json:"username"`
-		Nickname string `json:"nickname"`
 		Account  string `json:"account"`
 		Email    string `json:"email" binding:"required,email"`
 		Phone    string `json:"phone"`
@@ -178,7 +174,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 		return
 	}
 
-	err = c.userService.UpdateUser(uint(id), req.Username, req.Nickname, req.Account, req.Email, req.Password, req.Phone, req.Status, req.RoleIds, req.OrgIds)
+	err = c.userService.UpdateUser(uint(id), req.Username, req.Account, req.Email, req.Password, req.Phone, req.Status, req.RoleIds, req.OrgIds)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "更新用户失败: "+err.Error()))
 		return
@@ -248,7 +244,6 @@ func (c *UserController) GetUserByID(ctx *gin.Context) {
 		ID:         user.ID,
 		Username:   user.Username,
 		Account:    user.Account,
-		Nickname:   user.Nickname,
 		Email:      user.Email,
 		Phone:      user.Mobile,
 		Status:     user.Status,
@@ -286,7 +281,6 @@ func (c *UserController) convertUsers(users []models.User) []UserListItem {
 			ID:         user.ID,
 			Username:   user.Username,
 			Account:    user.Account,
-			Nickname:   user.Nickname,
 			Email:      user.Email,
 			Phone:      user.Mobile,
 			Status:     user.Status,

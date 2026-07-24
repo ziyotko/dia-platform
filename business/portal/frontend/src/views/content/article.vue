@@ -1611,7 +1611,7 @@ const formatApprover = (item: any) => {
     case 'user':
     default: {
       const user = auditFlowUserList.value.find((u: any) => u.id === id)
-      return user ? `指定成员：${user.nickname || user.username}` : '指定成员'
+      return user ? `指定成员：${user.username}` : '指定成员'
     }
   }
 }

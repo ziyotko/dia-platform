@@ -193,7 +193,7 @@ const selectedUserIds = ref<number[]>([])
 const userTransferData = computed(() => {
   return userList.value.map(user => ({
     id: user.id,
-    label: `${user.username || user.nickname || ''}（${user.account || ''}）`
+    label: `${user.username || ''}（${user.account || ''}）`
   }))
 })
 

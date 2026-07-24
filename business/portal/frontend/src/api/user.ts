@@ -12,7 +12,6 @@ export interface UserForm {
   id?: number
   username: string
   account: string
-  nickname: string
   email: string
   phone: string
   status: number

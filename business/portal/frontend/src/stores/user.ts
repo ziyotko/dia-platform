@@ -5,7 +5,6 @@ import { getUserMenus, type MenuItem } from '@/api/menus'
 export interface UserInfo {
   id: number
   username: string
-  nickname: string
   avatar: string
   roleIds: number[]
 }

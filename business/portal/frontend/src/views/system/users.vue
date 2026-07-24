@@ -44,8 +44,7 @@
         <el-table-column type="index" width="60" align="center" />
         <el-table-column prop="username" label="用户名" min-width="120" />
         <el-table-column prop="account" label="用户账号" min-width="120" />
-        <el-table-column prop="nickname" label="昵称" min-width="120" />
-        <el-table-column label="所属机构" min-width="180">
+        <el-table-column label="所属机构" min-width="200">
           <template #default="{ row }">
             <span>{{ row.orgNames?.join('、') || '-' }}</span>
           </template>
@@ -106,9 +105,6 @@
         </el-form-item>
         <el-form-item label="用户账号" prop="account">
           <el-input v-model="form.account" placeholder="请输入用户账号" :disabled="isReadonly" />
-        </el-form-item>
-        <el-form-item label="昵称" prop="nickname">
-          <el-input v-model="form.nickname" placeholder="请输入昵称" :disabled="isReadonly" />
         </el-form-item>
         <el-form-item label="所属机构" prop="orgIds">
           <el-tree-select
@@ -225,7 +221,6 @@ const form = reactive({
   id: undefined as number | undefined,
   username: '',
   account: '',
-  nickname: '',
   orgIds: [] as number[],
   email: '',
   phone: '',
@@ -236,7 +231,6 @@ const form = reactive({
 const formRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   account: [{ required: true, message: '请输入用户账号', trigger: 'blur' }],
-  nickname: [{ required: true, message: '请输入昵称', trigger: 'blur' }],
   email: [
     { required: true, message: '请输入邮箱', trigger: 'blur' },
     { type: 'email', message: '邮箱格式不正确', trigger: 'blur' }
@@ -320,7 +314,6 @@ const handleEdit = (row: any) => {
     id: row.id,
     username: row.username,
     account: row.account,
-    nickname: row.nickname,
     orgIds: row.orgIds || [],
     email: row.email,
     phone: row.phone,
@@ -365,7 +358,6 @@ const handleSubmit = async () => {
       await updateUser(form.id, {
         username: form.username,
         account: form.account,
-        nickname: form.nickname,
         email: form.email,
         phone: form.phone,
         status: form.status,
@@ -377,7 +369,6 @@ const handleSubmit = async () => {
       await createUser({
         username: form.username,
         account: form.account,
-        nickname: form.nickname,
         email: form.email,
         phone: form.phone,
         status: form.status,
@@ -399,7 +390,6 @@ const resetForm = () => {
   form.id = undefined
   form.username = ''
   form.account = ''
-  form.nickname = ''
   form.orgIds = []
   form.email = ''
   form.phone = ''

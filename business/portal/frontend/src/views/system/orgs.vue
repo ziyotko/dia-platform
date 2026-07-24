@@ -345,7 +345,6 @@
         </el-table-column>
         <el-table-column prop="username" label="用户名" min-width="120" />
         <el-table-column prop="account" label="账号" min-width="120" />
-        <el-table-column prop="nickname" label="昵称" min-width="120" />
         <el-table-column prop="phone" label="手机号" min-width="130" />
       </el-table>
       <div class="user-pagination">
@@ -399,7 +398,6 @@ interface UserItem {
   id: number
   username: string
   account: string
-  nickname: string
   phone: string
   roleIds?: number[]
 }
@@ -512,8 +510,7 @@ const filteredUserOptions = computed(() => {
   return userOptions.value.filter(
     (u) =>
       u.username.toLowerCase().includes(keyword) ||
-      u.account.toLowerCase().includes(keyword) ||
-      u.nickname.toLowerCase().includes(keyword)
+      u.account.toLowerCase().includes(keyword)
   )
 })
 
@@ -841,7 +838,6 @@ const fetchDialogUsers = async () => {
         id: u.id,
         username: u.username,
         account: u.account,
-        nickname: u.nickname,
         phone: u.phone || u.mobile || '',
         roleIds: u.roleIds || []
       }))
@@ -875,7 +871,6 @@ const handleAssignUsers = async (row: OrgItem) => {
         id: u.id,
         username: u.username,
         account: u.account,
-        nickname: u.nickname,
         phone: u.phone || u.mobile || ''
       }))
   } catch (error) {

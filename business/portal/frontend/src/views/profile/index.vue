@@ -38,8 +38,8 @@
                 </el-button>
               </div>
             </div>
-            <h3>{{ profile.nickname || profile.username }}</h3>
-            <p>{{ profile.username }}</p>
+            <h3>{{ profile.username }}</h3>
+            <p>{{ profile.account || profile.username }}</p>
             <el-tag type="primary">{{ profile.roleName || '用户' }}</el-tag>
           </div>
           <div class="profile-stats">
@@ -92,9 +92,6 @@
             label-width="100px"
             class="profile-form"
           >
-            <el-form-item label="用户昵称" prop="nickname">
-              <el-input v-model="form.nickname" placeholder="请输入昵称" />
-            </el-form-item>
             <el-form-item label="邮箱" prop="email">
               <el-input v-model="form.email" placeholder="请输入邮箱" />
             </el-form-item>
@@ -157,7 +154,6 @@ const profileLoading = ref(false)
 const profile = reactive<ProfileUser>({
   id: 0,
   username: '',
-  nickname: '',
   email: '',
   phone: '',
   account: '',
@@ -176,7 +172,6 @@ const submitLoading = ref(false)
 const pwdLoading = ref(false)
 
 const form = reactive({
-  nickname: '',
   email: '',
   phone: '',
   bio: '',
@@ -184,7 +179,6 @@ const form = reactive({
 })
 
 const rules = {
-  nickname: [{ required: true, message: '请输入昵称', trigger: 'blur' }],
   email: [
     { required: true, message: '请输入邮箱', trigger: 'blur' },
     { type: 'email', message: '邮箱格式不正确', trigger: 'blur' }
@@ -226,7 +220,6 @@ const handleAvatarUpload = async (options: any) => {
     profile.avatar = url
     form.avatar = url
     await updateProfile({
-      nickname: form.nickname,
       email: form.email,
       phone: form.phone,
       bio: form.bio,
@@ -249,7 +242,6 @@ const handleRemoveAvatar = async () => {
   form.avatar = ''
   try {
     await updateProfile({
-      nickname: form.nickname,
       email: form.email,
       phone: form.phone,
       bio: form.bio,
@@ -273,7 +265,6 @@ const handleSubmit = async () => {
   submitLoading.value = true
   try {
     await updateProfile({
-      nickname: form.nickname,
       email: form.email,
       phone: form.phone,
       bio: form.bio,
@@ -314,7 +305,6 @@ const loadProfile = async () => {
     const res: any = await getUserInfo()
     const data = res.data.user as ProfileUser
     Object.assign(profile, data)
-    form.nickname = data.nickname || ''
     form.email = data.email || ''
     form.phone = data.phone || ''
     form.bio = data.bio || ''
@@ -322,7 +312,6 @@ const loadProfile = async () => {
     if (userStore.userInfo) {
       userStore.setUserInfo({
         ...userStore.userInfo,
-        nickname: data.nickname || data.username,
         avatar: data.avatar || ''
       })
     }

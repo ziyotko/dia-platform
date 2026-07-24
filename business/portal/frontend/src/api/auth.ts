@@ -13,7 +13,6 @@ export interface LoginResult {
   user: {
     id: number
     username: string
-    nickname: string
     avatar: string
     roleIds: number[]
   }
@@ -22,7 +21,6 @@ export interface LoginResult {
 export interface ProfileUser {
   id: number
   username: string
-  nickname: string
   email: string
   phone: string
   account: string
@@ -36,7 +34,6 @@ export interface ProfileUser {
 }
 
 export interface ProfileForm {
-  nickname: string
   email: string
   phone: string
   bio: string

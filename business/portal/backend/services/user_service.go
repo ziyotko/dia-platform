@@ -165,14 +165,13 @@ func (s *UserService) GetUserList(page, pageSize int, username, account string, 
 	}, nil
 }
 
-func (s *UserService) CreateUser(username, nickname, account, email, password, phone string, status int, roleIds []int, orgIds []uint) error {
+func (s *UserService) CreateUser(username, account, email, password, phone string, status int, roleIds []int, orgIds []uint) error {
 	if password == "" {
 		password = "Abcd@1234"
 	}
 
 	user := &models.User{
 		Username: username,
-		Nickname: nickname,
 		Account:  account,
 		Email:    email,
 		Password: password,
@@ -241,7 +240,7 @@ func (s *UserService) ImportUsers(file multipart.File, fileSize int64) (*ImportU
 
 	for i, row := range rows[1:] {
 		lineNum := i + 2
-		if len(row) < 5 {
+		if len(row) < 4 {
 			result.FailCount++
 			result.FailDetails = append(result.FailDetails, fmt.Sprintf("第 %d 行: 字段数量不足", lineNum))
 			continue
@@ -249,17 +248,16 @@ func (s *UserService) ImportUsers(file multipart.File, fileSize int64) (*ImportU
 
 		username := strings.TrimSpace(row[0])
 		account := strings.TrimSpace(row[1])
-		nickname := strings.TrimSpace(row[2])
-		email := strings.TrimSpace(row[3])
-		phone := strings.TrimSpace(row[4])
+		email := strings.TrimSpace(row[2])
+		phone := strings.TrimSpace(row[3])
 
-		if username == "" || account == "" || nickname == "" || email == "" || phone == "" {
+		if username == "" || account == "" || email == "" || phone == "" {
 			result.FailCount++
 			result.FailDetails = append(result.FailDetails, fmt.Sprintf("第 %d 行: 存在空字段", lineNum))
 			continue
 		}
 
-		if err := s.CreateUser(username, nickname, account, email, "Abcd@1234", phone, 1, []int{6}, nil); err != nil {
+		if err := s.CreateUser(username, account, email, "Abcd@1234", phone, 1, []int{6}, nil); err != nil {
 			result.FailCount++
 			result.FailDetails = append(result.FailDetails, fmt.Sprintf("第 %d 行 (%s): %s", lineNum, account, err.Error()))
 			continue
@@ -271,10 +269,9 @@ func (s *UserService) ImportUsers(file multipart.File, fileSize int64) (*ImportU
 	return result, nil
 }
 
-func (s *UserService) UpdateUser(id uint, username, nickname, account, email, password, phone string, status int, roleIds []int, orgIds []uint) error {
+func (s *UserService) UpdateUser(id uint, username, account, email, password, phone string, status int, roleIds []int, orgIds []uint) error {
 	updates := map[string]any{
 		"username": username,
-		"nickname": nickname,
 		"account":  account,
 		"email":    email,
 		"mobile":   phone,
@@ -340,13 +337,12 @@ func (s *UserService) UpdateUserStatus(id uint, status int) error {
 	return utils.DB.Model(&models.User{}).Where("id = ?", id).Update("status", status).Error
 }
 
-func (s *UserService) UpdateProfile(id uint, nickname, email, phone, bio, avatar string) error {
+func (s *UserService) UpdateProfile(id uint, email, phone, bio, avatar string) error {
 	return utils.DB.Model(&models.User{}).Where("id = ?", id).Updates(map[string]any{
-		"nickname": nickname,
-		"email":    email,
-		"mobile":   phone,
-		"bio":      bio,
-		"avatar":   avatar,
+		"email":  email,
+		"mobile": phone,
+		"bio":    bio,
+		"avatar": avatar,
 	}).Error
 }
 

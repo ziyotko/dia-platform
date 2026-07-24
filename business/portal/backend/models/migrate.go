@@ -63,6 +63,14 @@ func MigrateArticleColumnAuditHistoryApproverType() {
 	`)
 }
 
+// MigrateDropUserNickname 删除 user 表已废弃的 nickname 列
+func MigrateDropUserNickname() {
+	if utils.DB == nil {
+		return
+	}
+	_ = utils.DB.Migrator().DropColumn(&User{}, "nickname")
+}
+
 // MigrateIndexes 创建 GORM AutoMigrate 不便表达或列顺序需要控制的辅助索引
 func MigrateIndexes() {
 	if utils.DB == nil {

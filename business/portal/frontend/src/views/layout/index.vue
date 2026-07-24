@@ -50,7 +50,7 @@
           <el-dropdown @command="handleCommand">
             <div class="user-info">
               <el-avatar :size="32" :src="userStore.userInfo?.avatar || defaultAvatar" />
-              <span class="username">{{ userStore.userInfo?.nickname || userStore.userInfo?.username }}</span>
+              <span class="username">{{ userStore.userInfo?.username }}</span>
               <el-icon><ArrowDown /></el-icon>
             </div>
             <template #dropdown>

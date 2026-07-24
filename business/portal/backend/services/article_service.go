@@ -470,9 +470,6 @@ func (s *ArticleService) getUserName(userID uint) string {
 	if err := utils.DB.First(&user, userID).Error; err != nil {
 		return ""
 	}
-	if user.Nickname != "" {
-		return user.Nickname
-	}
 	return user.Username
 }
 
@@ -611,9 +608,6 @@ func (s *ArticleService) GetApproverName(node *models.WorkflowNode, authorCode s
 		var user models.User
 		if err := utils.DB.First(&user, node.ApproverID).Error; err != nil {
 			return "指定成员（未知）"
-		}
-		if user.Nickname != "" {
-			return user.Nickname
 		}
 		return user.Username
 	case "role":
