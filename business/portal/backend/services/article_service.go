@@ -843,28 +843,6 @@ func (s *ArticleService) GetArticleColumnPublishes(articleTitle string, columnID
 
 // GetMyAuditArticles 获取当前用户需要审核的文章列表
 func (s *ArticleService) GetMyAuditArticles(userID uint, page, pageSize int) ([]models.Article, int64, error) {
-	// 当前用户角色
-	userService := UserService{}
-	roleIDs, _ := userService.GetUserRoleIds(userID)
-	roleIDMap := make(map[uint]bool)
-	for _, id := range roleIDs {
-		roleIDMap[uint(id)] = true
-	}
-
-	// 当前用户账号及担任负责人的部门
-	var currentUser models.User
-	if err := utils.DB.First(&currentUser, userID).Error; err != nil {
-		return nil, 0, err
-	}
-	var headDepartments []models.Department
-	if err := utils.DB.Where("leader_code = ?", currentUser.Account).Find(&headDepartments).Error; err != nil {
-		return nil, 0, err
-	}
-	headDeptIDMap := make(map[uint]bool)
-	for _, d := range headDepartments {
-		headDeptIDMap[d.ID] = true
-	}
-
 	type auditItem struct {
 		ArticleID  uint
 		AuthorCode string
@@ -877,72 +855,22 @@ func (s *ArticleService) GetMyAuditArticles(userID uint, page, pageSize int) ([]
 		Joins("JOIN article ON article.id = aca.article_id").
 		Joins("JOIN workflow_node wn ON wn.id = aca.current_node_id").
 		Where("aca.status = ?", 0).
+		Where("article.author_code != ?", strconv.FormatUint(uint64(userID), 10)).
 		Scan(&items).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
-	// 收集需要查询的作者（author_code 实际存的是用户 ID）
-	authorIDMap := make(map[uint]bool)
-	for _, item := range items {
-		if item.AuthorCode != "" {
-			if id, err := strconv.ParseUint(item.AuthorCode, 10, 32); err == nil {
-				authorIDMap[uint(id)] = true
-			}
-		}
-	}
-	authorMap := make(map[uint]*models.User)
-	if len(authorIDMap) > 0 {
-		ids := make([]uint, 0, len(authorIDMap))
-		for id := range authorIDMap {
-			ids = append(ids, id)
-		}
-		var authors []models.User
-		if err := utils.DB.Where("id IN ?", ids).Find(&authors).Error; err != nil {
-			return nil, 0, err
-		}
-		for i := range authors {
-			authorMap[authors[i].ID] = &authors[i]
-		}
-	}
-
-	// 预缓存部门负责人判断所需的作者部门信息
-	authorDeptMap := make(map[uint][]uint)
-	for _, author := range authorMap {
-		deptIDs, err := s.getUserDepartmentIDs(author.ID)
-		if err != nil {
-			continue
-		}
-		authorDeptMap[author.ID] = deptIDs
-	}
-
 	seen := make(map[uint]bool)
 	var allowedArticleIDs []uint
 	for _, item := range items {
-		var ok bool
-		switch item.NodeType {
-		case "user", "":
-			if item.ApproverID == 0 || item.ApproverID == userID {
-				ok = true
-			}
-		case "role":
-			if roleIDMap[item.ApproverID] {
-				ok = true
-			}
-		case "dept_head":
-			var authorID uint
-			if id, err := strconv.ParseUint(item.AuthorCode, 10, 32); err == nil {
-				authorID = uint(id)
-			}
-			author := authorMap[authorID]
-			if author != nil {
-				for _, deptID := range authorDeptMap[author.ID] {
-					if headDeptIDMap[deptID] {
-						ok = true
-						break
-					}
-				}
-			}
+		node := &models.WorkflowNode{
+			ApproverType: item.NodeType,
+			ApproverID:   item.ApproverID,
+		}
+		ok, err := s.canUserApproveNode(node, userID, item.AuthorCode)
+		if err != nil {
+			continue
 		}
 		if ok && !seen[item.ArticleID] {
 			seen[item.ArticleID] = true
