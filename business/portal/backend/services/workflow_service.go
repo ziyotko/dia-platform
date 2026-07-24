@@ -83,3 +83,12 @@ func (s *WorkflowService) GetWorkflowNodes(workflowID uint) ([]models.WorkflowNo
 	err := utils.DB.Where("workflow_id = ?", workflowID).Order("sort_order ASC").Find(&nodes).Error
 	return nodes, err
 }
+
+func (s *WorkflowService) GetWorkflowNodeByID(id uint) (*models.WorkflowNode, error) {
+	var node models.WorkflowNode
+	err := utils.DB.First(&node, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &node, nil
+}

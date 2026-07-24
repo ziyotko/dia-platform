@@ -776,6 +776,7 @@
             <div v-if="item.auditStatus === 0 && item.workflow && item.workflow.nodes && item.currentNodeId" class="audit-current-node">
               <el-icon><User /></el-icon>
               <span>当前节点审批人：{{ formatApprover(item) }}</span>
+              <span v-if="item.currentApproverName" class="audit-debug-name">（调试：{{ item.currentApproverName }}）</span>
             </div>
             <div v-if="item.auditStatus === 1 && item.approveUserName" class="audit-flow-result">
               <el-icon color="#67c23a"><CircleCheck /></el-icon>
@@ -1705,6 +1706,7 @@ const handleShowAuditFlow = async (row: any) => {
         item.approveTime = progress.approveTime || ''
         item.rejectRemark = progress.rejectRemark || ''
         item.canApprove = !!progress.canApprove
+        item.currentApproverName = progress.currentApproverName || ''
       }
       if (col.workflowId) {
         try {
@@ -2548,6 +2550,11 @@ onMounted(() => {
   margin-top: 12px;
   color: #606266;
   font-size: 13px;
+
+  .audit-debug-name {
+    color: #909399;
+    font-size: 12px;
+  }
 }
 
 .audit-flow-result {

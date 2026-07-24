@@ -585,6 +585,61 @@ func (s *ArticleService) CanApproveArticleColumn(articleID uint, columnID uint, 
 	return s.canUserApproveNode(&currentNode, userID, article.AuthorCode)
 }
 
+// GetApproverName 根据节点和文章作者解析审批人显示名称（调试用）
+func (s *ArticleService) GetApproverName(node *models.WorkflowNode, authorCode string) string {
+	if node == nil {
+		return ""
+	}
+	switch node.ApproverType {
+	case "user":
+		if node.ApproverID == 0 {
+			return "指定成员（未指定）"
+		}
+		var user models.User
+		if err := utils.DB.First(&user, node.ApproverID).Error; err != nil {
+			return "指定成员（未知）"
+		}
+		if user.Nickname != "" {
+			return user.Nickname
+		}
+		return user.Username
+	case "role":
+		if node.ApproverID == 0 {
+			return "角色（未指定）"
+		}
+		var role models.Role
+		if err := utils.DB.First(&role, node.ApproverID).Error; err != nil {
+			return "角色（未知）"
+		}
+		return role.Name
+	case "dept_head":
+		var author models.User
+		if err := utils.DB.Where("account = ?", authorCode).First(&author).Error; err != nil {
+			return "部门负责人（作者未知）"
+		}
+		deptIDs, err := s.getUserDepartmentIDs(author.ID)
+		if err != nil || len(deptIDs) == 0 {
+			return "部门负责人（未找到作者部门）"
+		}
+		var departments []models.Department
+		if err := utils.DB.Where("id IN ?", deptIDs).Find(&departments).Error; err != nil {
+			return "部门负责人（查询失败）"
+		}
+		names := make([]string, 0, len(departments))
+		for _, d := range departments {
+			if d.Leader != "" {
+				names = append(names, d.Leader)
+			}
+		}
+		if len(names) == 0 {
+			return "部门负责人（未设置负责人）"
+		}
+		return strings.Join(names, "、")
+	default:
+		return ""
+	}
+}
+
 // AdvanceArticleAudit 推进指定文章栏目的审核到下一节点
 func (s *ArticleService) AdvanceArticleAudit(articleID uint, columnID uint, userID uint, remark string) error {
 	var audit models.ArticleColumnAudit

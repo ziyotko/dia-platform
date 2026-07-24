@@ -15,14 +15,16 @@ import (
 )
 
 type ArticleController struct {
-	articleService *services.ArticleService
-	userService    *services.UserService
+	articleService  *services.ArticleService
+	userService     *services.UserService
+	workflowService *services.WorkflowService
 }
 
 func NewArticleController() *ArticleController {
 	return &ArticleController{
-		articleService: &services.ArticleService{},
-		userService:    &services.UserService{},
+		articleService:  &services.ArticleService{},
+		userService:     &services.UserService{},
+		workflowService: &services.WorkflowService{},
 	}
 }
 
@@ -382,16 +384,26 @@ func (c *ArticleController) GetArticleAuditProgress(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取审核进度失败"))
 		return
 	}
+	article, err := c.articleService.GetArticleByID(uint(id))
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "文章不存在"))
+		return
+	}
 	userID := ctx.GetUint("userID")
 	type auditProgressItem struct {
 		models.ArticleColumnAudit
-		CanApprove bool `json:"canApprove"`
+		CanApprove          bool   `json:"canApprove"`
+		CurrentApproverName string `json:"currentApproverName"`
 	}
 	list := make([]auditProgressItem, 0, len(audits))
 	for _, audit := range audits {
 		item := auditProgressItem{ArticleColumnAudit: audit}
 		if audit.Status == 0 {
 			item.CanApprove, _ = c.articleService.CanApproveArticleColumn(uint(id), audit.ColumnID, userID)
+			node, err := c.workflowService.GetWorkflowNodeByID(audit.CurrentNodeID)
+			if err == nil {
+				item.CurrentApproverName = c.articleService.GetApproverName(node, article.AuthorCode)
+			}
 		}
 		list = append(list, item)
 	}
