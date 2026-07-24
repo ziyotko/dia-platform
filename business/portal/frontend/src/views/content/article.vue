@@ -775,7 +775,7 @@
             <el-empty v-else description="该流程未配置节点" :image-size="60" />
             <div v-if="item.auditStatus === 0 && item.workflow && item.workflow.nodes && item.currentNodeId" class="audit-current-node">
               <el-icon><User /></el-icon>
-              <span>当前节点审批人：{{ formatApproverType(item.currentApproverType) }}</span>
+              <span>当前节点审批人：{{ formatApprover(item) }}</span>
             </div>
             <div v-if="item.auditStatus === 1 && item.approveUserName" class="audit-flow-result">
               <el-icon color="#67c23a"><CircleCheck /></el-icon>
@@ -856,6 +856,8 @@ import {
   getArticleAuditHistory
 } from '@/api/article'
 import { getWorkflowByID } from '@/api/workflow'
+import { getUserList } from '@/api/user'
+import { getAllRoles } from '@/api/role'
 import { getAllCategories } from '@/api/category'
 import { getAllTags } from '@/api/tag'
 import { getPages } from '@/api/page'
@@ -978,6 +980,8 @@ const auditFlowDialogVisible = ref(false)
 const auditFlowLoading = ref(false)
 const auditFlowList = ref<any[]>([])
 const auditFlowArticleTitle = ref('')
+const auditFlowUserList = ref<any[]>([])
+const auditFlowRoleList = ref<any[]>([])
 
 const queryForm = reactive({
   page: 1,
@@ -1593,12 +1597,21 @@ const getStepActive = (item: any) => {
   return 0
 }
 
-const formatApproverType = (type: string) => {
+const formatApprover = (item: any) => {
+  const type = item.currentApproverType || 'user'
+  const id = item.currentApproverId || 0
   switch (type) {
-    case 'dept_head': return '部门负责人'
-    case 'role': return '角色'
+    case 'dept_head':
+      return '部门负责人'
+    case 'role': {
+      const role = auditFlowRoleList.value.find((r: any) => r.id === id)
+      return role ? `角色：${role.name}` : '角色'
+    }
     case 'user':
-    default: return '指定成员'
+    default: {
+      const user = auditFlowUserList.value.find((u: any) => u.id === id)
+      return user ? `指定成员：${user.nickname || user.username}` : '指定成员'
+    }
   }
 }
 
@@ -1637,6 +1650,23 @@ const handleShowAuditFlow = async (row: any) => {
   try {
     if (columnList.value.length === 0) {
       await fetchColumns()
+    }
+    // 加载用户/角色列表，用于显示审批人名称
+    if (auditFlowUserList.value.length === 0) {
+      try {
+        const userRes: any = await getUserList({ page: 1, pageSize: 9999 })
+        auditFlowUserList.value = userRes.data?.list || userRes.data || []
+      } catch {
+        auditFlowUserList.value = []
+      }
+    }
+    if (auditFlowRoleList.value.length === 0) {
+      try {
+        const roleRes: any = await getAllRoles()
+        auditFlowRoleList.value = roleRes.data || []
+      } catch {
+        auditFlowRoleList.value = []
+      }
     }
     const columnIds = row.columnIds || []
     const columns = columnList.value.filter((col: any) => columnIds.includes(col.id))
