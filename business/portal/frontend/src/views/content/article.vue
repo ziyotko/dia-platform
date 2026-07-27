@@ -1036,6 +1036,7 @@ const hasRealContent = (html: string) => {
 
 const formRules = {
   title: [{ required: true, message: '请输入文章标题', trigger: 'blur' }],
+  publishTime: [{ required: true, message: '请选择发布时间', trigger: 'change' }],
   url: [
     {
       validator: (_rule: any, value: any, callback: any) => {
@@ -1072,11 +1073,13 @@ const formRules = {
 
 const videoFormRules = {
   title: [{ required: true, message: '请输入视频标题', trigger: 'blur' }],
+  publishTime: [{ required: true, message: '请选择发布时间', trigger: 'change' }],
   videoUrl: [{ required: true, message: '请上传视频', trigger: 'change' }]
 }
 
 const dataFormRules = {
   title: [{ required: true, message: '请输入数据标题', trigger: 'blur' }],
+  publishTime: [{ required: true, message: '请选择发布时间', trigger: 'change' }],
   yearMonth: [{ required: true, message: '请选择年月', trigger: 'change' }],
   content: [{ required: true, message: '请输入数据内容', trigger: 'blur' }]
 }
