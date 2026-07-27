@@ -83,30 +83,28 @@
 
       <el-table :data="tableData" v-loading="loading" border stripe>
         <el-table-column type="index" width="60" align="center" />
-        <el-table-column label="类型" width="90" align="center">
+        <el-table-column label="文章标题" min-width="200" show-overflow-tooltip>
           <template #default="{ row }">
-            <el-tag v-if="row.type === 2" type="danger" effect="light">
-              <el-icon><VideoCamera /></el-icon>视频
-            </el-tag>
-            <el-tag v-else-if="row.type === 3" type="warning" effect="light">
-              <el-icon><DataLine /></el-icon>数据
-            </el-tag>
-            <el-tag v-else type="primary" effect="light">
-              <el-icon><Document /></el-icon>图文
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="title" label="文章标题" min-width="120" show-overflow-tooltip>
-          <template #default="{ row }">
-            <el-link
-              v-if="row.status === 1"
-              type="primary"
-              :underline="'never'"
-              @click="handlePreview(row)"
-            >
-              {{ row.type === 3 && row.summary ? `${row.summary}${row.title}` : row.title }}
-            </el-link>
-            <span v-else>{{ row.type === 3 && row.summary ? `${row.summary}${row.title}` : row.title }}</span>
+            <span class="title-with-type">
+              <el-tag v-if="row.type === 2" type="danger" effect="light" size="small" class="type-tag">
+                <el-icon><VideoCamera /></el-icon>视频
+              </el-tag>
+              <el-tag v-else-if="row.type === 3" type="warning" effect="light" size="small" class="type-tag">
+                <el-icon><DataLine /></el-icon>数据
+              </el-tag>
+              <el-tag v-else type="primary" effect="light" size="small" class="type-tag">
+                <el-icon><Document /></el-icon>图文
+              </el-tag>
+              <el-link
+                v-if="row.status === 1"
+                type="primary"
+                :underline="'never'"
+                @click="handlePreview(row)"
+              >
+                {{ row.type === 3 && row.summary ? `${row.summary}${row.title}` : row.title }}
+              </el-link>
+              <span v-else>{{ row.type === 3 && row.summary ? `${row.summary}${row.title}` : row.title }}</span>
+            </span>
           </template>
         </el-table-column>
         <el-table-column prop="author" label="作者" width="100" />
@@ -2955,6 +2953,23 @@ onMounted(() => {
     .column-selected-tag {
       font-size: 13px;
     }
+  }
+}
+
+.title-with-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  .type-tag {
+    flex-shrink: 0;
+  }
+
+  .el-link,
+  > span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 </style>
