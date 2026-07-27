@@ -51,6 +51,11 @@
         </el-table-column>
         <el-table-column prop="email" label="邮箱" min-width="180" />
         <el-table-column prop="phone" label="手机号" min-width="130" />
+        <el-table-column label="性别" width="80" align="center">
+          <template #default="{ row }">
+            <span>{{ row.sex === 1 ? '男' : row.sex === 2 ? '女' : '-' }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-switch
@@ -124,6 +129,13 @@
         </el-form-item>
         <el-form-item label="手机号" prop="phone">
           <el-input v-model="form.phone" placeholder="请输入手机号" :disabled="isReadonly" />
+        </el-form-item>
+        <el-form-item label="性别" prop="sex">
+          <el-select v-model="form.sex" placeholder="请选择性别" clearable style="width: 100%" :disabled="isReadonly">
+            <el-option label="男" :value="1" />
+            <el-option label="女" :value="2" />
+            <el-option label="未知" :value="0" />
+          </el-select>
         </el-form-item>
         <el-form-item label="角色" prop="roleIds">
           <el-select v-model="form.roleIds" multiple placeholder="请选择角色" style="width: 100%" :disabled="isReadonly">
@@ -226,7 +238,8 @@ const form = reactive({
   email: '',
   phone: '',
   status: 1,
-  roleIds: [] as number[]
+  roleIds: [] as number[],
+  sex: undefined as number | undefined
 })
 
 const checkUnique = (field: string, label: string) => {
@@ -345,7 +358,8 @@ const handleEdit = (row: any) => {
     email: row.email,
     phone: row.phone,
     status: row.status,
-    roleIds: row.roleIds || []
+    roleIds: row.roleIds || [],
+    sex: row.sex
   })
   dialogVisible.value = true
 }
@@ -389,7 +403,8 @@ const handleSubmit = async () => {
         phone: form.phone,
         status: form.status,
         roleIds: form.roleIds,
-        orgIds: form.orgIds
+        orgIds: form.orgIds,
+        sex: form.sex
       })
       ElMessage.success('修改成功')
     } else {
@@ -400,7 +415,8 @@ const handleSubmit = async () => {
         phone: form.phone,
         status: form.status,
         roleIds: form.roleIds,
-        orgIds: form.orgIds
+        orgIds: form.orgIds,
+        sex: form.sex
       })
       ElMessage.success('新增成功')
     }
@@ -422,6 +438,7 @@ const resetForm = () => {
   form.phone = ''
   form.status = 1
   form.roleIds = []
+  form.sex = undefined
 }
 
 const handleImport = () => {

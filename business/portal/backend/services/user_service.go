@@ -165,7 +165,7 @@ func (s *UserService) GetUserList(page, pageSize int, username, account string, 
 	}, nil
 }
 
-func (s *UserService) CreateUser(username, account, email, password, phone string, status int, roleIds []int, orgIds []uint) error {
+func (s *UserService) CreateUser(username, account, email, password, phone string, status int, sex int, roleIds []int, orgIds []uint) error {
 	if password == "" {
 		password = "Abcd@1234"
 	}
@@ -177,6 +177,7 @@ func (s *UserService) CreateUser(username, account, email, password, phone strin
 		Password: password,
 		Mobile:   phone,
 		Status:   status,
+		Sex:      sex,
 	}
 
 	if len(roleIds) > 0 {
@@ -280,7 +281,7 @@ func (s *UserService) ImportUsers(file multipart.File, fileSize int64) (*ImportU
 			continue
 		}
 
-		if err := s.CreateUser(username, account, email, "Abcd@1234", phone, 1, []int{6}, nil); err != nil {
+		if err := s.CreateUser(username, account, email, "Abcd@1234", phone, 1, 0, []int{6}, nil); err != nil {
 			result.FailCount++
 			result.FailDetails = append(result.FailDetails, fmt.Sprintf("第 %d 行 (%s): %s", lineNum, account, err.Error()))
 			continue
@@ -292,13 +293,14 @@ func (s *UserService) ImportUsers(file multipart.File, fileSize int64) (*ImportU
 	return result, nil
 }
 
-func (s *UserService) UpdateUser(id uint, username, account, email, password, phone string, status int, roleIds []int, orgIds []uint) error {
+func (s *UserService) UpdateUser(id uint, username, account, email, password, phone string, status int, sex int, roleIds []int, orgIds []uint) error {
 	updates := map[string]any{
 		"username": username,
 		"account":  account,
 		"email":    email,
 		"mobile":   phone,
 		"status":   status,
+		"sex":      sex,
 	}
 
 	if password != "" {

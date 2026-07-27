@@ -26,6 +26,7 @@ type UserListItem struct {
 	Email      string   `json:"email"`
 	Phone      string   `json:"phone"`
 	Status     int      `json:"status"`
+	Sex        int      `json:"sex"`
 	RoleIds    []int    `json:"roleIds"`
 	CreateTime string   `json:"createTime"`
 }
@@ -72,6 +73,7 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 			Email:      user.Email,
 			Phone:      user.Mobile,
 			Status:     user.Status,
+			Sex:        user.Sex,
 			CreateTime: user.CreatedAt.Format("2006-01-02 15:04:05"),
 		}
 
@@ -109,6 +111,7 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		Phone    string `json:"phone"`
 		Password string `json:"password"`
 		Status   int    `json:"status"`
+		Sex      int    `json:"sex"`
 		RoleIds  []int  `json:"roleIds"`
 		OrgIds   []uint `json:"orgIds"`
 	}
@@ -118,7 +121,7 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		return
 	}
 
-	err := c.userService.CreateUser(req.Username, req.Account, req.Email, req.Password, req.Phone, req.Status, req.RoleIds, req.OrgIds)
+	err := c.userService.CreateUser(req.Username, req.Account, req.Email, req.Password, req.Phone, req.Status, req.Sex, req.RoleIds, req.OrgIds)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "创建用户失败: "+err.Error()))
 		return
@@ -165,6 +168,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 		Phone    string `json:"phone"`
 		Password string `json:"password"`
 		Status   int    `json:"status"`
+		Sex      int    `json:"sex"`
 		RoleIds  []int  `json:"roleIds"`
 		OrgIds   []uint `json:"orgIds"`
 	}
@@ -174,7 +178,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 		return
 	}
 
-	err = c.userService.UpdateUser(uint(id), req.Username, req.Account, req.Email, req.Password, req.Phone, req.Status, req.RoleIds, req.OrgIds)
+	err = c.userService.UpdateUser(uint(id), req.Username, req.Account, req.Email, req.Password, req.Phone, req.Status, req.Sex, req.RoleIds, req.OrgIds)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "更新用户失败: "+err.Error()))
 		return

@@ -17,6 +17,7 @@ export interface UserForm {
   status: number
   roleIds: number[]
   orgIds?: number[]
+  sex?: number
 }
 
 export function getUserList(params: UserQuery) {
