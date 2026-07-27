@@ -219,7 +219,6 @@ const total = ref(0)
 const formRef = ref()
 const importDialogVisible = ref(false)
 const importLoading = ref(false)
-const uploadRef = ref()
 const importFile = ref<File | null>(null)
 
 const queryForm = reactive({

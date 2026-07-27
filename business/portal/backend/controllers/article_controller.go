@@ -353,7 +353,8 @@ func (c *ArticleController) AuditArticle(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误"))
 		return
 	}
-	if req.AuditStatus == 1 {
+	switch req.AuditStatus {
+	case 1:
 		// 提交审核
 		userID := ctx.GetUint("userID")
 		article, err := c.articleService.GetArticleByID(uint(id))
@@ -366,10 +367,10 @@ func (c *ArticleController) AuditArticle(ctx *gin.Context) {
 			return
 		}
 		err = c.articleService.StartArticleAudit(uint(id))
-	} else if req.AuditStatus == 2 {
+	case 2:
 		// 完成审核
 		err = c.articleService.CompleteArticleAudit(uint(id))
-	} else {
+	default:
 		err = c.articleService.UpdateAuditStatus(uint(id), req.AuditStatus)
 	}
 	if err != nil {

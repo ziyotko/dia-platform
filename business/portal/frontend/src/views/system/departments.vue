@@ -347,7 +347,6 @@ const formRef = ref()
 const tableData = ref<DeptItem[]>([])
 const importDialogVisible = ref(false)
 const importLoading = ref(false)
-const uploadRef = ref()
 const importFile = ref<File | null>(null)
 
 const userDialogVisible = ref(false)
