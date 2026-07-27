@@ -10,6 +10,7 @@ import (
 
 func Register(r *gin.Engine) {
 	r.Use(middleware.CORS())
+	r.SetTrustedProxies([]string{"127.0.0.1"})
 
 	api := r.Group("/base/api/v1")
 
