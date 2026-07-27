@@ -205,6 +205,29 @@ func (s *UserService) CreateUser(username, account, email, password, phone strin
 	return nil
 }
 
+func (s *UserService) CheckFieldUnique(field, value string, excludeID uint) (bool, error) {
+	columnMap := map[string]string{
+		"account": "account",
+		"email":   "email",
+		"phone":   "mobile",
+	}
+	column, ok := columnMap[field]
+	if !ok {
+		return false, errors.New("无效的字段")
+	}
+
+	var count int64
+	query := utils.DB.Model(&models.User{}).Where(column+" = ?", value)
+	if excludeID > 0 {
+		query = query.Where("id != ?", excludeID)
+	}
+	err := query.Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count == 0, nil
+}
+
 type ImportUserResult struct {
 	SuccessCount int      `json:"successCount"`
 	FailCount    int      `json:"failCount"`

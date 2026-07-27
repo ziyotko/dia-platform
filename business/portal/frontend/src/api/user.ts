@@ -39,6 +39,12 @@ export function updateUserStatus(id: number, status: number) {
   return request.patch(`/users/${id}/status`, { status })
 }
 
+export function checkUserUnique(field: string, value: string, excludeId?: number) {
+  return request.get('/users/check-unique', {
+    params: { field, value, excludeId }
+  })
+}
+
 export function importUsers(file: File) {
   const formData = new FormData()
   formData.append('file', file)

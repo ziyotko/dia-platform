@@ -73,6 +73,7 @@ func SetupRoutes(router *gin.Engine) {
 		protected.POST("/users/import", userController.ImportUsers)
 		protected.GET("/users/:id", userController.GetUserByID)
 		protected.PUT("/users/:id", userController.UpdateUser)
+		protected.GET("/users/check-unique", userController.CheckFieldUnique)
 		protected.DELETE("/users/:id", userController.DeleteUser)
 		protected.PATCH("/users/:id/status", userController.UpdateUserStatus)
 

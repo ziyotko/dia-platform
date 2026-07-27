@@ -226,6 +226,35 @@ func (c *UserController) UpdateUserStatus(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("更新状态成功", nil))
 }
 
+func (c *UserController) CheckFieldUnique(ctx *gin.Context) {
+	field := ctx.Query("field")
+	value := ctx.Query("value")
+	excludeIDStr := ctx.Query("excludeId")
+
+	if field == "" || value == "" {
+		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误"))
+		return
+	}
+
+	var excludeID uint
+	if excludeIDStr != "" {
+		id, err := strconv.ParseUint(excludeIDStr, 10, 32)
+		if err == nil {
+			excludeID = uint(id)
+		}
+	}
+
+	unique, err := c.userService.CheckFieldUnique(field, value, excludeID)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, err.Error()))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.Success("", gin.H{
+		"unique": unique,
+	}))
+}
+
 func (c *UserController) GetUserByID(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)

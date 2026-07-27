@@ -104,7 +104,7 @@
           <el-input v-model="form.username" placeholder="请输入用户名" :disabled="isReadonly" />
         </el-form-item>
         <el-form-item label="用户账号" prop="account">
-          <el-input v-model="form.account" placeholder="请输入用户账号" :disabled="isReadonly" />
+          <el-input v-model="form.account" placeholder="请输入用户账号" :disabled="isReadonly || isEditing" />
         </el-form-item>
         <el-form-item label="所属机构" prop="orgIds">
           <el-tree-select
@@ -193,7 +193,7 @@ import {
   Delete,
   Upload
 } from '@element-plus/icons-vue'
-import { getUserList, createUser, updateUser, deleteUser, updateUserStatus, importUsers } from '@/api/user'
+import { getUserList, createUser, updateUser, deleteUser, updateUserStatus, importUsers, checkUserUnique } from '@/api/user'
 import { getAllRoles } from '@/api/role'
 import { getOrgList, type OrgItem } from '@/api/org'
 
@@ -202,6 +202,7 @@ const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const submitLoading = ref(false)
 const isReadonly = ref(false)
+const isEditing = ref(false)
 const total = ref(0)
 const formRef = ref()
 const importDialogVisible = ref(false)
@@ -228,16 +229,40 @@ const form = reactive({
   roleIds: [] as number[]
 })
 
+const checkUnique = (field: string, label: string) => {
+  return async (_rule: any, value: any, callback: any) => {
+    if (!value) {
+      callback()
+      return
+    }
+    try {
+      const res: any = await checkUserUnique(field, value, form.id)
+      if (res.code === 0 && !res.data?.unique) {
+        callback(new Error(`${label}已存在，请重新输入`))
+      } else {
+        callback()
+      }
+    } catch {
+      callback()
+    }
+  }
+}
+
 const formRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  account: [{ required: true, message: '请输入用户账号', trigger: 'blur' }],
+  account: [
+    { required: true, message: '请输入用户账号', trigger: 'blur' },
+    { validator: checkUnique('account', '用户账号'), trigger: 'blur' }
+  ],
   email: [
     { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '邮箱格式不正确', trigger: 'blur' }
+    { type: 'email', message: '邮箱格式不正确', trigger: 'blur' },
+    { validator: checkUnique('email', '邮箱'), trigger: 'blur' }
   ],
   phone: [
     { required: true, message: '请输入手机号', trigger: 'blur' },
-    { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' }
+    { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' },
+    { validator: checkUnique('phone', '手机号'), trigger: 'blur' }
   ],
   roleIds: [{ required: true, message: '请选择角色', trigger: 'change', type: 'array' }]
 }
@@ -302,6 +327,7 @@ const fetchData = async () => {
 
 const handleAdd = () => {
   isReadonly.value = false
+  isEditing.value = false
   dialogTitle.value = '新增用户'
   resetForm()
   dialogVisible.value = true
@@ -309,6 +335,7 @@ const handleAdd = () => {
 
 const handleEdit = (row: any) => {
   isReadonly.value = row.id === 1
+  isEditing.value = true
   dialogTitle.value = isReadonly.value ? '查看用户' : '编辑用户'
   Object.assign(form, {
     id: row.id,
