@@ -170,7 +170,7 @@
         </div>
         <template #tip>
           <div class="el-upload__tip">
-            仅支持 .xlsx / .xls 文件，第一行为标题：姓名、登陆账号、昵称、邮箱、手机号
+            仅支持 .xlsx / .xls 文件，第一行为标题：姓名、登陆账号、邮箱、手机号
           </div>
         </template>
       </el-upload>

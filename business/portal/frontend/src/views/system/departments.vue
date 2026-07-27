@@ -191,7 +191,7 @@
         </div>
         <template #tip>
           <div class="el-upload__tip">
-            仅支持 .xlsx / .xls 文件，第一行为标题：上级部门ID、部门名称、部门编码、机构名称
+            仅支持 .xlsx / .xls 文件，第一行为标题：上级部门ID（没有就是0）、部门名称、部门编码、机构名称
           </div>
         </template>
       </el-upload>
