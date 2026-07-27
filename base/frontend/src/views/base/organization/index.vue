@@ -7,7 +7,7 @@
           <el-button type="primary" @click="handleAdd">新增机构</el-button>
         </div>
       </template>
-      <el-table :data="tableData" v-loading="loading" row-key="id" border default-expand-all>
+      <el-table :data="tableData" v-loading="loading" row-key="id" border default-expand-all empty-text="暂无数据">
         <el-table-column prop="name" label="机构名称" width="220" />
         <el-table-column prop="code" label="机构编码" />
         <el-table-column prop="leader" label="负责人" />
@@ -105,8 +105,9 @@ const rules = {
 const fetchData = async () => {
   loading.value = true
   const res: any = await getOrganizationTree()
-  tableData.value = res.data || []
-  orgOptions.value = [{ id: 0, parentId: 0, code: '', name: '根机构', sort: 0, status: 1 }, ...res.data]
+  const data = res.data || []
+  tableData.value = data
+  orgOptions.value = [{ id: 0, parentId: 0, code: '', name: '根机构', sort: 0, status: 1 }, ...data]
   loading.value = false
 }
 

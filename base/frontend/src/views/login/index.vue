@@ -168,7 +168,7 @@ onMounted(loadCaptcha)
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #2563eb 100%);
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%);
 }
 
 /* 背景装饰 */
@@ -189,7 +189,7 @@ onMounted(loadCaptcha)
   .blob-1 {
     width: 500px;
     height: 500px;
-    background: #60a5fa;
+    background: #93c5fd;
     top: -120px;
     left: -120px;
     animation-delay: 0s;
@@ -198,7 +198,7 @@ onMounted(loadCaptcha)
   .blob-2 {
     width: 400px;
     height: 400px;
-    background: #818cf8;
+    background: #a5b4fc;
     bottom: -80px;
     right: -80px;
     animation-delay: -7s;
@@ -207,7 +207,7 @@ onMounted(loadCaptcha)
   .blob-3 {
     width: 300px;
     height: 300px;
-    background: #34d399;
+    background: #67e8f9;
     top: 50%;
     left: 60%;
     animation-delay: -14s;

@@ -44,18 +44,18 @@ defineProps<{
   transition: all 0.25s ease;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.06) !important;
-    color: #fff !important;
+    background: rgba(59, 130, 246, 0.06) !important;
+    color: #2563eb !important;
   }
 }
 
 :deep(.el-menu-item.is-active) {
-  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%) !important;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
   color: #fff !important;
   box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
 }
 
 :deep(.el-sub-menu.is-active > .el-sub-menu__title) {
-  color: #fff !important;
+  color: #2563eb !important;
 }
 </style>

@@ -40,7 +40,7 @@
             :default-active="activeMenu"
             router
             background-color="transparent"
-            text-color="#94a3b8"
+            text-color="#475569"
             active-text-color="#fff"
           >
             <template v-if="popupMenu.children?.length">
@@ -242,9 +242,9 @@ onMounted(() => {
 .sidebar {
   position: relative;
   z-index: 100;
-  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  background: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%);
   overflow: hidden;
-  box-shadow: 4px 0 24px rgba(15, 23, 42, 0.2);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.06);
 
   &::after {
     content: '';
@@ -253,7 +253,7 @@ onMounted(() => {
     right: 0;
     width: 1px;
     height: 100%;
-    background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+    background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.06), transparent);
   }
 }
 
@@ -262,18 +262,18 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: #1e293b;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 
   .logo-icon {
     width: 40px;
     height: 40px;
     border-radius: 10px;
-    background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
     flex-shrink: 0;
   }
 }
@@ -293,19 +293,19 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #94a3b8;
+  color: #64748b;
   cursor: pointer;
   transition: all 0.25s ease;
   position: relative;
 
   &:hover,
   &.popup-open {
-    background: rgba(255, 255, 255, 0.06);
-    color: #fff;
+    background: rgba(59, 130, 246, 0.08);
+    color: #3b82f6;
   }
 
   &.active {
-    background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
     color: #fff;
     box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
   }
@@ -319,7 +319,7 @@ onMounted(() => {
     width: 3px;
     height: 18px;
     border-radius: 0 3px 3px 0;
-    background: #fff;
+    background: #3b82f6;
   }
 }
 
@@ -330,20 +330,11 @@ onMounted(() => {
   width: 220px;
   height: 100vh;
   z-index: 99;
-  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
-  box-shadow: 8px 0 32px rgba(15, 23, 42, 0.35);
+  background: #fff;
+  border-right: 1px solid #e2e8f0;
+  box-shadow: 8px 0 32px rgba(0, 0, 0, 0.06);
   display: flex;
   flex-direction: column;
-
-  &::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 1px;
-    height: 100%;
-    background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.08), transparent);
-  }
 }
 
 .popup-header {
@@ -352,8 +343,8 @@ onMounted(() => {
   align-items: center;
   gap: 10px;
   padding: 0 18px;
-  color: #fff;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: #1e293b;
+  border-bottom: 1px solid #e2e8f0;
   flex-shrink: 0;
 
   .popup-title {
@@ -371,7 +362,7 @@ onMounted(() => {
   }
 
   &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
+    background: #cbd5e1;
     border-radius: 2px;
   }
 
@@ -383,6 +374,31 @@ onMounted(() => {
 .popup-scroll :deep(.el-menu) {
   border-right: none;
   padding: 12px 10px;
+}
+
+.popup-scroll :deep(.el-menu-item),
+.popup-scroll :deep(.el-sub-menu__title) {
+  color: #475569 !important;
+  border-radius: 8px;
+  height: 46px;
+  line-height: 46px;
+  margin-bottom: 4px;
+  transition: all 0.25s ease;
+
+  &:hover {
+    background: rgba(59, 130, 246, 0.06) !important;
+    color: #2563eb !important;
+  }
+}
+
+.popup-scroll :deep(.el-menu-item.is-active) {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+}
+
+.popup-scroll :deep(.el-sub-menu.is-active > .el-sub-menu__title) {
+  color: #2563eb !important;
 }
 
 .popup-slide-enter-active,
