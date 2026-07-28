@@ -73,12 +73,14 @@ func (ctrl *FeeController) UpdateFee(c *gin.Context) {
 		InvoiceNo string  `json:"invoice_no"`
 		Amount    float64 `json:"amount"`
 		Remark    string  `json:"remark"`
+		LevelID   uint64  `json:"level_id"`
+		LevelName string  `json:"level_name"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "参数错误")
 		return
 	}
-	if err := ctrl.feeService.UpdateFeeRecord(id, req.Status, req.InvoiceNo, req.Amount, req.Remark); err != nil {
+	if err := ctrl.feeService.UpdateFeeRecord(id, req.Status, req.InvoiceNo, req.Amount, req.Remark, req.LevelID, req.LevelName); err != nil {
 		response.BadRequest(c, err.Error())
 		return
 	}

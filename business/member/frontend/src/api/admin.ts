@@ -39,10 +39,10 @@ export const adminApi = {
   getOrgLevels: (id: number) => request.get(`/admin/organizations/${id}/levels`),
   setOrgLevels: (id: number, levelIds: number[]) => request.put(`/admin/organizations/${id}/levels`, { level_ids: levelIds }),
 
-  // Member levels
+  // Member level definitions
   getMemberLevels: (params?: any) => request.get('/admin/member-levels', { params }),
   createMemberLevel: (data: any) => request.post('/admin/member-levels', data),
-  updateMemberLevel: (id: number, data: any) => request.put(`/admin/member-levels/${id}`, data),
+  updateLevelDefinition: (id: number, data: any) => request.put(`/admin/member-levels/${id}`, data),
   deleteMemberLevel: (id: number) => request.delete(`/admin/member-levels/${id}`),
   moveLevelUp: (id: number) => request.put(`/admin/member-levels/${id}/move-up`),
   moveLevelDown: (id: number) => request.put(`/admin/member-levels/${id}/move-down`),

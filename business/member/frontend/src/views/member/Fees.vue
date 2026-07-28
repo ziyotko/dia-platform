@@ -16,6 +16,8 @@
       </el-alert>
 
       <el-table :data="fees" stripe>
+        <el-table-column prop="org_name" label="入会信息" min-width="140" />
+        <el-table-column prop="level_name" label="会员级别" width="110" />
         <el-table-column prop="year" label="年度" width="100">
           <template #default="{ row }">{{ row.year }}年</template>
         </el-table-column>
@@ -97,7 +99,7 @@ function formatDate(d: string) { return d ? d.slice(0, 16) : '' }
 </script>
 
 <style scoped lang="scss">
-.fees-page { max-width: 1000px; margin: 0 auto; }
+.fees-page { max-width: 1100px; margin: 0 auto; }
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .bank-info { margin-bottom: 16px; }
 </style>

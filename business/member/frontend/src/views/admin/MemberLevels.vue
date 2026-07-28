@@ -98,7 +98,7 @@ async function saveLevel() {
   saving.value = true
   try {
     if (editingId.value) {
-      await adminApi.updateMemberLevel(editingId.value, { name: levelForm.name, description: levelForm.description })
+      await adminApi.updateLevelDefinition(editingId.value, { name: levelForm.name, description: levelForm.description })
       ElMessage.success('更新成功')
     } else {
       await adminApi.createMemberLevel({ name: levelForm.name, description: levelForm.description })

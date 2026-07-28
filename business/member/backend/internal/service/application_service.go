@@ -117,7 +117,7 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 	newMemberStatus := models.MemberStatusRejected
 	if approved {
 		newStatus = models.AppStatusApproved
-		newMemberStatus = models.MemberStatusPendingCert
+		newMemberStatus = models.MemberStatusPendingPay
 	}
 
 	tx := db.DB.Begin()

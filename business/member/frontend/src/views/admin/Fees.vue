@@ -58,10 +58,9 @@
     <el-card shadow="never" class="table-card">
       <el-table :data="list" stripe highlight-current-row>
         <el-table-column type="index" label="#" width="50" align="center" />
-        <el-table-column prop="member.username" label="会员" min-width="200">
+        <el-table-column prop="member.username" label="会员信息" min-width="200">
           <template #default="{row}">
             <div class="cell-member">
-              <span class="member-name">{{ row.member?.username }}</span>
               <span v-if="row.member?.company_name" class="member-unit">{{ row.member.company_name }}</span>
             </div>
           </template>
@@ -93,7 +92,7 @@
           <template #default="{row}">
             <div class="action-btns">
               <el-button text size="small" :icon="Edit" @click="editFee(row)">编辑</el-button>
-              <el-button v-if="row.status!=='paid'" text size="small" type="success" :icon="CircleCheck" @click="markPaid(row)">缴费</el-button>
+              <el-button v-if="row.status!=='paid'" text size="small" type="success" :icon="CircleCheck" @click="markPaid(row)">确认缴费</el-button>
               <el-button v-if="row.status!=='paid'" text size="small" type="danger" :icon="Delete" @click="deleteFee(row)">删除</el-button>
             </div>
           </template>
@@ -144,23 +143,51 @@
     </el-dialog>
 
     <!-- Edit Dialog -->
-    <el-dialog v-model="showEdit" title="编辑费用" width="480px" :close-on-click-modal="false" class="fee-dialog">
-      <el-form :model="editForm" label-width="80px" class="fee-form">
+    <el-dialog v-model="showEdit" title="编辑费用" width="560px" :close-on-click-modal="false" class="fee-dialog">
+      <el-form :model="editForm" label-width="90px" class="fee-form">
+        <el-form-item label="会员单位">
+          <span class="form-value">{{ editForm.memberName || '-' }}</span>
+        </el-form-item>
+        <el-form-item label="入会信息">
+          <div v-if="editForm.orgName" class="member-info-tag">
+            <el-tag type="info" round>{{ editForm.orgName }}</el-tag>
+          </div>
+          <span v-else class="form-hint">-</span>
+        </el-form-item>
+        <el-form-item label="会员级别">
+          <el-select
+            v-model="editForm.levelId"
+            style="width:100%"
+            :loading="editLevelLoading"
+            @change="onEditLevelChange"
+            placeholder="选择会员级别"
+          >
+            <el-option
+              v-for="l in editLevelOptions"
+              :key="l.id"
+              :label="l.name"
+              :value="l.id"
+            />
+          </el-select>
+        </el-form-item>
         <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="年度">
+              <span class="form-value">{{ editForm.year }}年</span>
+            </el-form-item>
+          </el-col>
           <el-col :span="12">
             <el-form-item label="金额" required>
               <el-input-number v-model="editForm.amount" :min="0" :precision="2" :step="500" style="width:100%" />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
-            <el-form-item label="状态">
-              <el-select v-model="editForm.status" style="width:100%">
-                <el-option label="未缴费" value="unpaid" />
-                <el-option label="已缴费" value="paid" />
-              </el-select>
-            </el-form-item>
-          </el-col>
         </el-row>
+        <el-form-item label="状态">
+          <el-select v-model="editForm.status" style="width:100%">
+            <el-option label="未缴费" value="unpaid" />
+            <el-option label="已缴费" value="paid" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="editForm.remark" type="textarea" :rows="2" placeholder="可选填写备注信息" />
         </el-form-item>
@@ -190,7 +217,9 @@ const selectedMemberInfo = reactive({ orgId: 0, levelId: 0, orgName: '', levelNa
 const feeForm = reactive({ memberId: null as number | null, year: new Date().getFullYear(), amount: 2000, remark: '' })
 
 const showEdit = ref(false)
-const editForm = reactive({ id: 0, amount: 0, status: 'unpaid', remark: '' })
+const editForm = reactive({ id: 0, memberId: 0, memberName: '', orgId: 0, orgName: '', levelId: 0, levelName: '', year: 0, amount: 0, status: 'unpaid', remark: '' })
+const editLevelOptions = ref<any[]>([])
+const editLevelLoading = ref(false)
 
 const filterYear = ref<number | null>(null)
 const filterStatus = ref<string | null>(null)
@@ -258,14 +287,54 @@ async function createFee() {
 }
 function editFee(row: any) {
   editForm.id = row.id
+  editForm.memberId = row.member_id
+  editForm.memberName = row.member?.company_name || row.member?.username || ''
+  editForm.orgId = row.org_id
+  editForm.orgName = row.org_name || ''
+  editForm.levelId = row.level_id
+  editForm.year = row.year
   editForm.amount = row.amount
   editForm.status = row.status
   editForm.remark = row.remark || ''
   showEdit.value = true
+  // 异步加载该会员所属组织的所有级别
+  fetchEditLevels(row.org_id, row.level_id)
+}
+async function fetchEditLevels(orgId: number, currentLevelId: number) {
+  editLevelOptions.value = []
+  if (!orgId) return
+  editLevelLoading.value = true
+  try {
+    const r = await adminApi.getOrgLevels(orgId)
+    // 接口返回 MemberOrgLevel[]，每个元素有 level 嵌套对象
+    const items: any[] = r.data || []
+    editLevelOptions.value = items.map((item: any) => item.level || item).filter(Boolean)
+    // 若当前级别不在列表中，仍保留显示
+  } catch {} finally { editLevelLoading.value = false }
+}
+async function onEditLevelChange(levelId: number) {
+  // 找到级别名称
+  const found = editLevelOptions.value.find((l: any) => l.id === levelId)
+  editForm.levelName = found?.name || ''
+  // 根据新级别 + 当前年度自动查询会费标准，填充金额
+  if (!levelId || !editForm.year) return
+  try {
+    const r = await adminApi.getFeeStandardsByLevel(levelId)
+    const standards: any[] = r.data || []
+    const std = standards.find((s: any) => s.year === editForm.year)
+    if (std && std.amount > 0) {
+      editForm.amount = std.amount
+    }
+  } catch {}
 }
 async function saveEdit() {
   try {
-    await adminApi.updateFee(editForm.id, { amount: editForm.amount, status: editForm.status })
+    await adminApi.updateFee(editForm.id, {
+      amount: editForm.amount,
+      status: editForm.status,
+      level_id: editForm.levelId || undefined,
+      level_name: editForm.levelName || undefined
+    })
     ElMessage.success('保存成功')
     showEdit.value = false
     fetchData()
@@ -432,6 +501,7 @@ async function deleteFee(row: any) {
 }
 .fee-form {
   .form-hint { color: #94a3b8; font-size: 13px; }
+  .form-value { color: #1a1a2e; font-size: 14px; }
 }
 .member-info-tag {
   display: flex;
