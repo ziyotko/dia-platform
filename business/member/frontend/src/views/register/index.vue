@@ -28,8 +28,10 @@
       </div>
 
       <!-- Step 1: Account -->
+      <!-- Step 2: Profile (unit only) -->
+      <!-- Step 3: Confirm + Captcha + Submit -->
       <transition name="fade-slide" mode="out-in">
-        <el-form v-if="step === 0" ref="form1Ref" :model="form1" :rules="rules1" size="large" label-width="0" class="register-form">
+        <el-form v-if="step === 0" key="step0" ref="form1Ref" :model="form1" :rules="rules1" size="large" label-width="0" class="register-form">
           <div class="form-section-title">账户信息</div>
           <el-form-item prop="username">
             <el-input v-model="form1.username" placeholder="请输入用户名" :prefix-icon="User" />
@@ -74,11 +76,8 @@
             </el-button>
           </el-form-item>
         </el-form>
-      </transition>
 
-      <!-- Step 2: Profile (unit only) -->
-      <transition name="fade-slide" mode="out-in">
-        <el-form v-if="step === 1 && form1.memberType === 'unit'" ref="form2Ref" :model="form2" :rules="rules2" size="large" label-width="0" class="register-form">
+        <el-form v-else-if="step === 1 && form1.memberType === 'unit'" key="step1" ref="form2Ref" :model="form2" :rules="rules2" size="large" label-width="0" class="register-form">
           <div class="form-section-title">单位信息</div>
           <el-form-item prop="companyName">
             <el-input v-model="form2.companyName" placeholder="请输入单位全称" :prefix-icon="OfficeBuilding" />
@@ -136,11 +135,8 @@
             </el-button>
           </el-form-item>
         </el-form>
-      </transition>
 
-      <!-- Step 3: Confirm + Captcha + Submit -->
-      <transition name="fade-slide" mode="out-in">
-        <div v-if="step === (form1.memberType === 'unit' ? 2 : 1)" class="confirm-step">
+        <div v-else key="stepConfirm" class="confirm-step">
           <div class="confirm-header">
             <el-icon :size="28" color="#409eff"><CircleCheckFilled /></el-icon>
             <span>{{ form1.memberType === 'unit' ? '请确认入会信息' : '确认注册信息' }}</span>
