@@ -38,8 +38,8 @@
 
       <!-- Step 1: Fill Info -->
       <el-form v-if="createStep === 0" :model="appForm" label-width="100px" size="large">
-        <el-form-item label="申请分会" required>
-          <el-select v-model="appForm.orgId" placeholder="选择分会" style="width:100%">
+        <el-form-item label="申请入会" required>
+          <el-select v-model="appForm.orgId" placeholder="选择总会或分会" style="width:100%">
             <el-option v-for="org in orgs" :key="org.id" :label="org.name" :value="org.id" />
           </el-select>
         </el-form-item>
@@ -119,7 +119,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { applicationApi, orgApi } from '@/api/index'
 import { authApi } from '@/api/auth'
 import { ElMessage } from 'element-plus'
@@ -136,6 +136,23 @@ const createStep = ref(0)
 const uploadedFile = ref<{ name: string; url: string } | null>(null)
 
 const appForm = reactive({ orgId: null as number | null, companyName: '', creditCode: '', contactPerson: '', address: '' })
+
+// 打开对话框时自动读取会员档案信息，预填单位信息
+watch(showCreate, async (val) => {
+  if (val) {
+    try {
+      const res = await authApi.getProfile()
+      if (res.data) {
+        appForm.companyName = res.data.company_name || ''
+        appForm.creditCode = res.data.credit_code || ''
+        appForm.contactPerson = res.data.contact_person || ''
+        appForm.address = res.data.address || ''
+      }
+    } catch {
+      // 读取失败则留空让用户手动填写
+    }
+  }
+})
 
 const uploadUrl = computed(() => `${import.meta.env.VITE_API_BASE_URL || '/member/api'}/upload`)
 const uploadHeaders = computed(() => ({ Authorization: `Bearer ${userStore.token}` }))
