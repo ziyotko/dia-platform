@@ -5,33 +5,57 @@ const router = createRouter({
   history: createWebHistory('/member/'),
   routes: [
     {
-      path: '/login',
-      name: 'Login',
-      component: () => import('@/views/login/index.vue'),
-      meta: { public: true }
-    },
-    {
-      path: '/register',
-      name: 'Register',
-      component: () => import('@/views/register/index.vue'),
-      meta: { public: true }
-    },
-    {
-      path: '/announcements',
-      name: 'Announcements',
-      component: () => import('@/views/announcements/index.vue'),
-      meta: { public: true }
-    },
-    {
-      path: '/announcements/:id',
-      name: 'AnnouncementDetail',
-      component: () => import('@/views/announcements/detail.vue'),
-      meta: { public: true }
-    },
-    {
       path: '/',
+      component: () => import('@/views/layout/PublicLayout.vue'),
+      children: [
+        {
+          path: '',
+          name: 'Home',
+          component: () => import('@/views/home/index.vue'),
+          meta: { public: true }
+        },
+        {
+          path: 'login',
+          name: 'Login',
+          component: () => import('@/views/login/index.vue'),
+          meta: { public: true }
+        },
+        {
+          path: 'register',
+          name: 'Register',
+          component: () => import('@/views/register/index.vue'),
+          meta: { public: true }
+        },
+        {
+          path: 'reset-password',
+          name: 'ResetPassword',
+          component: () => import('@/views/login/ResetPassword.vue'),
+          meta: { public: true }
+        },
+        {
+          path: 'announcements',
+          name: 'Announcements',
+          component: () => import('@/views/announcements/index.vue'),
+          meta: { public: true }
+        },
+        {
+          path: 'announcements/:id',
+          name: 'AnnouncementDetail',
+          component: () => import('@/views/announcements/detail.vue'),
+          meta: { public: true }
+        },
+        {
+          path: '/:pathMatch(.*)*',
+          name: 'NotFound',
+          component: () => import('@/views/error/404.vue'),
+          meta: { public: true }
+        }
+      ]
+    },
+    {
+      path: '/member',
       component: () => import('@/views/layout/MemberLayout.vue'),
-      redirect: '/dashboard',
+      redirect: '/member/dashboard',
       children: [
         { path: 'dashboard', name: 'Dashboard', component: () => import('@/views/member/Dashboard.vue') },
         { path: 'profile', name: 'Profile', component: () => import('@/views/member/Profile.vue') },
@@ -84,7 +108,7 @@ router.beforeEach((to, _from, next) => {
   }
 
   if (to.meta.admin && !userStore.isAdmin) {
-    next('/dashboard')
+    next('/member/dashboard')
     return
   }
 

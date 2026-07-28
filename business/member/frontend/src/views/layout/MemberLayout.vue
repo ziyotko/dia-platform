@@ -1,7 +1,7 @@
 <template>
   <el-container class="member-layout">
     <el-aside :width="collapsed ? '64px' : '220px'" class="sidebar">
-      <div class="sidebar-header" @click="$router.push('/dashboard')">
+      <div class="sidebar-header" @click="$router.push('/member/dashboard')">
         <el-icon :size="24"><OfficeBuilding /></el-icon>
         <span v-show="!collapsed" class="title">会员中心</span>
       </div>
@@ -14,39 +14,39 @@
         text-color="#9ca3af"
         active-text-color="#fff"
       >
-        <el-menu-item index="/dashboard">
+        <el-menu-item index="/member/dashboard">
           <el-icon><HomeFilled /></el-icon>
           <span>会员首页</span>
         </el-menu-item>
-        <el-menu-item index="/profile">
+        <el-menu-item index="/member/profile">
           <el-icon><User /></el-icon>
           <span>我的资料</span>
         </el-menu-item>
-        <el-menu-item index="/applications">
+        <el-menu-item index="/member/applications">
           <el-icon><Document /></el-icon>
           <span>我的申请</span>
         </el-menu-item>
-        <el-menu-item index="/fees">
+        <el-menu-item index="/member/fees">
           <el-icon><Money /></el-icon>
           <span>会费管理</span>
         </el-menu-item>
-        <el-menu-item index="/certificates">
+        <el-menu-item index="/member/certificates">
           <el-icon><Medal /></el-icon>
           <span>我的证书</span>
         </el-menu-item>
-        <el-menu-item index="/organizations">
+        <el-menu-item index="/member/organizations">
           <el-icon><Connection /></el-icon>
           <span>参加的组织</span>
         </el-menu-item>
-        <el-menu-item index="/articles">
+        <el-menu-item index="/member/articles">
           <el-icon><EditPen /></el-icon>
           <span>我的文章</span>
         </el-menu-item>
-        <el-menu-item index="/messages">
+        <el-menu-item index="/member/messages">
           <el-icon><ChatDotRound /></el-icon>
           <span>会员留言</span>
         </el-menu-item>
-        <el-menu-item index="/service">
+        <el-menu-item index="/member/service">
           <el-icon><Reading /></el-icon>
           <span>服务中心</span>
         </el-menu-item>
@@ -100,7 +100,7 @@ const appStore = useAppStore()
 const collapsed = computed(() => appStore.collapsed)
 
 function handleCommand(cmd: string) {
-  if (cmd === 'profile') router.push('/profile')
+  if (cmd === 'profile') router.push('/member/profile')
   else if (cmd === 'admin') router.push('/admin/dashboard')
   else if (cmd === 'logout') {
     userStore.logout()

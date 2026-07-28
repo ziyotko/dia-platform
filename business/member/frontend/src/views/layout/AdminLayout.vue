@@ -3,7 +3,7 @@
     <el-aside width="220px" class="sidebar">
       <div class="sidebar-header" @click="$router.push('/admin/dashboard')">
         <el-icon :size="24"><Setting /></el-icon>
-        <span class="title">管理后台</span>
+        <span class="title">会员管理后台</span>
       </div>
       <el-menu router background-color="#1f2937" text-color="#9ca3af" active-text-color="#fff">
         <el-menu-item index="/admin/dashboard"><el-icon><DataAnalysis /></el-icon>控制台</el-menu-item>
@@ -19,7 +19,7 @@
     </el-aside>
     <el-container>
       <el-header class="topbar">
-        <span class="title">管理后台</span>
+        <span class="title">会员管理后台</span>
         <el-dropdown @command="handleCommand">
           <span class="user-info">
             <el-avatar :size="32" icon="UserFilled" />
@@ -44,7 +44,7 @@ import { useUserStore } from '@/stores/user'
 const router = useRouter()
 const userStore = useUserStore()
 function handleCommand(cmd: string) {
-  if (cmd === 'member') router.push('/dashboard')
+  if (cmd === 'member') router.push('/member/dashboard')
   else if (cmd === 'logout') userStore.logout()
 }
 </script>

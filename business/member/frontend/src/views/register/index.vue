@@ -208,7 +208,7 @@ async function submitApplication() {
       member_type: form1.memberType
     })
     ElMessage.success('入会申请提交成功！')
-    router.push('/dashboard')
+    router.push('/member/dashboard')
   } catch {} finally {
     submitting.value = false
   }
