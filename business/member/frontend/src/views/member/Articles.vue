@@ -41,7 +41,7 @@
     </el-card>
 
     <!-- Create/Edit Dialog -->
-    <el-dialog v-model="showDialog" :title="editingId ? '编辑文章' : '发布文章'" width="720px">
+    <el-dialog v-model="showDialog" :title="editingId ? '编辑文章' : '发布文章'" width="1000px" top="3vh">
       <el-form :model="articleForm" label-width="80px" size="large">
         <el-form-item label="标题" required><el-input v-model="articleForm.title" /></el-form-item>
         <el-form-item label="分类">
@@ -49,9 +49,24 @@
             <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
         </el-form-item>
+        <el-form-item label="封面图">
+          <el-upload
+            :show-file-list="false"
+            :before-upload="uploadCover"
+            accept="image/*"
+          >
+            <img v-if="articleForm.coverImage" :src="articleForm.coverImage" class="cover-preview" />
+            <el-button v-else type="default">
+              <el-icon><Plus /></el-icon> 上传封面
+            </el-button>
+          </el-upload>
+        </el-form-item>
         <el-form-item label="摘要"><el-input v-model="articleForm.summary" type="textarea" :rows="2" /></el-form-item>
         <el-form-item label="内容" required>
-          <el-input v-model="articleForm.content" type="textarea" :rows="8" placeholder="请输入文章内容" />
+          <div class="editor-wrapper">
+            <Toolbar :editor="editorRef" :defaultConfig="toolbarConfig" />
+            <Editor v-model="articleForm.content" :defaultConfig="editorConfig" @onCreated="handleCreated" />
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -64,9 +79,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, shallowRef, onMounted, onBeforeUnmount } from 'vue'
+import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
+import '@wangeditor/editor/dist/css/style.css'
 import { articleApi } from '@/api/index'
+import { authApi } from '@/api/auth'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus } from '@element-plus/icons-vue'
 
 const articles = ref<any[]>([])
 const categories = ref<any[]>([])
@@ -76,7 +95,23 @@ const editingId = ref<number | null>(null)
 const filterStatus = ref('')
 const filterCat = ref<number | ''>('')
 
-const articleForm = reactive({ title: '', categoryId: null as number | null, summary: '', content: '' })
+const articleForm = reactive({ title: '', categoryId: null as number | null, summary: '', content: '', coverImage: '' })
+
+/* ---- wangEditor ---- */
+const editorRef = shallowRef()
+const toolbarConfig = {}
+const editorConfig = { placeholder: '请输入文章内容...' }
+
+function handleCreated(editor: any) {
+  editorRef.value = editor
+}
+
+onBeforeUnmount(() => {
+  const editor = editorRef.value
+  if (editor == null) return
+  editor.destroy()
+  editorRef.value = null
+})
 
 const statusMap: Record<string, { label: string; tag: string }> = {
   draft: { label: '草稿', tag: 'info' },
@@ -111,7 +146,7 @@ async function fetchData() {
 
 function openCreate() {
   editingId.value = null
-  Object.assign(articleForm, { title: '', categoryId: null, summary: '', content: '' })
+  Object.assign(articleForm, { title: '', categoryId: null, summary: '', content: '', coverImage: '' })
   showDialog.value = true
 }
 
@@ -121,9 +156,21 @@ function editArticle(row: any) {
     title: row.title,
     categoryId: row.category_id,
     summary: row.summary,
-    content: row.content
+    content: row.content,
+    coverImage: row.cover_image || ''
   })
   showDialog.value = true
+}
+
+async function uploadCover(file: File) {
+  const fd = new FormData()
+  fd.append('file', file)
+  fd.append('dir', 'covers')
+  try {
+    const res = await authApi.upload(fd)
+    articleForm.coverImage = res.data?.url || ''
+    ElMessage.success('封面上传成功')
+  } catch {} finally { return false }
 }
 
 function viewArticle(row: any) {
@@ -138,6 +185,7 @@ async function saveArticle(submit: boolean) {
       category_id: articleForm.categoryId,
       summary: articleForm.summary,
       content: articleForm.content,
+      cover_image: articleForm.coverImage,
       submit
     }
     if (editingId.value) {
@@ -168,4 +216,17 @@ function formatDate(d: string) { return d ? d.slice(0, 16) : '' }
 .articles-page { max-width: 1000px; margin: 0 auto; }
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .filter-bar { margin-bottom: 16px; }
+.cover-preview {
+  width: 200px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #dcdfe6;
+  cursor: pointer;
+}
+.editor-wrapper {
+  width: 100%;
+  border: 1px solid #dcdfe6;
+  :deep(.w-e-text-container) { min-height: 350px; }
+}
 </style>

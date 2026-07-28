@@ -15,9 +15,6 @@
           </template>
         </el-table-column>
         <el-table-column prop="description" label="描述" min-width="250" />
-        <el-table-column prop="level" label="权重值" width="100">
-          <template #default="{ row }">{{ row.level }}</template>
-        </el-table-column>
         <el-table-column label="操作" width="200">
           <template #default="{ row, $index }">
             <el-button text size="small" type="primary" :disabled="$index === 0" @click="moveUp(row)">

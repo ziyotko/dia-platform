@@ -10,9 +10,9 @@
         :collapse="collapsed"
         :collapse-transition="false"
         router
-        background-color="#1f2937"
-        text-color="#9ca3af"
-        active-text-color="#fff"
+        background-color="#f8fafc"
+        text-color="#4b5563"
+        active-text-color="#409eff"
       >
         <el-menu-item index="/member/dashboard">
           <el-icon><HomeFilled /></el-icon>
@@ -112,7 +112,8 @@ function handleCommand(cmd: string) {
 <style scoped lang="scss">
 .member-layout { height: 100vh; }
 .sidebar {
-  background: #1f2937;
+  background: #f8fafc;
+  border-right: 1px solid #e5e7eb;
   overflow: hidden;
   transition: width 0.3s;
   .sidebar-header {
@@ -120,7 +121,7 @@ function handleCommand(cmd: string) {
     align-items: center;
     gap: 10px;
     padding: 20px;
-    color: #fff;
+    color: #1f2937;
     cursor: pointer;
     .title { font-size: 16px; font-weight: 600; white-space: nowrap; }
   }
@@ -144,7 +145,7 @@ function handleCommand(cmd: string) {
   }
 }
 .main-content {
-  background: #f5f7fa;
+  background: #f0f4f8;
   padding: 24px;
 }
 </style>
