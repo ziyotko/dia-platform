@@ -133,11 +133,18 @@ function viewArticle(row: any) {
 async function saveArticle(submit: boolean) {
   if (!articleForm.title) { ElMessage.warning('请输入标题'); return }
   try {
+    const data = {
+      title: articleForm.title,
+      category_id: articleForm.categoryId,
+      summary: articleForm.summary,
+      content: articleForm.content,
+      submit
+    }
     if (editingId.value) {
-      await articleApi.updateArticle(editingId.value, { ...articleForm, submit })
+      await articleApi.updateArticle(editingId.value, data)
       ElMessage.success('更新成功')
     } else {
-      await articleApi.createArticle({ ...articleForm, submit })
+      await articleApi.createArticle(data)
       ElMessage.success(submit ? '提交成功' : '草稿已保存')
     }
     showDialog.value = false
