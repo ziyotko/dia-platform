@@ -37,12 +37,13 @@ func (s *AuthService) Register(req RegisterRequest) (*LoginResponse, error) {
 	}
 
 	member := models.Member{
-		Username:   req.Username,
-		Password:   string(hashed),
-		Mobile:     req.Mobile,
-		Email:      req.Email,
-		MemberType: req.MemberType,
-		Status:     models.MemberStatusRegistering,
+		Username:    req.Username,
+		Password:    string(hashed),
+		Mobile:      req.Mobile,
+		Email:       req.Email,
+		MemberType:  req.MemberType,
+		MemberLevel: "",
+		Status:      models.MemberStatusRegistering,
 	}
 
 	// Save company info for unit members
@@ -52,6 +53,7 @@ func (s *AuthService) Register(req RegisterRequest) (*LoginResponse, error) {
 		member.LegalPerson = req.LegalPerson
 		member.ContactPerson = req.ContactPerson
 		member.Address = req.Address
+		member.CertFile = req.CertFile
 	}
 
 	if err := db.DB.Create(&member).Error; err != nil {
@@ -234,7 +236,7 @@ type RegisterRequest struct {
 	LegalPerson   string `json:"legal_person"`
 	ContactPerson string `json:"contact_person"`
 	Address       string `json:"address"`
-	OrgID         uint64 `json:"org_id"`
+	CertFile      string `json:"cert_file"`
 }
 
 type LoginRequest struct {
