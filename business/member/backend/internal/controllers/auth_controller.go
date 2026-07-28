@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"os"
+
 	"member/internal/middleware"
 	"member/internal/service"
 	"member/pkg/captcha"
@@ -137,6 +139,25 @@ func (ctrl *AuthController) ResetPassword(c *gin.Context) {
 func (ctrl *AuthController) GetSiteInfo(c *gin.Context) {
 	config := ctrl.authService.GetSiteConfig()
 	response.Success(c, config)
+}
+
+// DownloadCharter serves the membership charter document
+func (ctrl *AuthController) DownloadCharter(c *gin.Context) {
+	charterPath := "./uploads/charter/charter.pdf"
+	if _, err := os.Stat(charterPath); err == nil {
+		c.Header("Content-Disposition", "attachment; filename=入会章程.pdf")
+		c.File(charterPath)
+		return
+	}
+	// Fallback: try charter.txt
+	charterTxtPath := "./uploads/charter/charter.txt"
+	if _, err := os.Stat(charterTxtPath); err == nil {
+		c.Header("Content-Type", "text/plain; charset=utf-8")
+		c.Header("Content-Disposition", "attachment; filename=入会章程.txt")
+		c.File(charterTxtPath)
+		return
+	}
+	response.NotFound(c, "章程文件暂未上传，请联系管理员")
 }
 
 // DownloadApplicationTemplate serves the membership application form template

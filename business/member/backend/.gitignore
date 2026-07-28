@@ -2,3 +2,4 @@ server.exe
 logs/
 *.log
 member.exe
+uploads/

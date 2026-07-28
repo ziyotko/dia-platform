@@ -42,6 +42,9 @@ func Register(r *gin.Engine) {
 		// Download application template
 		public.GET("/application-template", authCtrl.DownloadApplicationTemplate)
 
+		// Download charter document
+		public.GET("/charter", authCtrl.DownloadCharter)
+
 		// Announcements (public)
 		public.GET("/announcements", announceCtrl.GetPublishedAnnouncements)
 		public.GET("/announcements/:id", announceCtrl.GetAnnouncement)

@@ -21,7 +21,7 @@
         </el-table-column>
         <el-table-column label="操作" width="100">
           <template #default="{ row }">
-            <el-button text type="primary" @click="viewDetail(row)">详情</el-button>
+            <el-button v-if="row.status === 'pending_review'" text type="danger" @click="withdrawApp(row)">撤回</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -42,6 +42,11 @@
           <el-select v-model="appForm.orgId" placeholder="选择总会或分会" style="width:100%">
             <el-option v-for="org in orgs" :key="org.id" :label="org.name" :value="org.id" />
           </el-select>
+          <div class="charter-hint">
+            <el-link type="primary" :icon="Download" @click="downloadCharter" :underline="false">
+              入会章程
+            </el-link>
+          </div>
         </el-form-item>
         <el-form-item label="单位名称"><el-input v-model="appForm.companyName" /></el-form-item>
         <el-form-item label="信用代码"><el-input v-model="appForm.creditCode" /></el-form-item>
@@ -53,7 +58,7 @@
       <div v-if="createStep === 1" class="confirm-section">
         <el-alert title="请确认填写信息是否正确" type="info" show-icon :closable="false" style="margin-bottom:20px" />
         <el-descriptions :column="1" border size="small">
-          <el-descriptions-item label="申请分会">{{ selectedOrgName }}</el-descriptions-item>
+          <el-descriptions-item label="申请入会">{{ selectedOrgName }}</el-descriptions-item>
           <el-descriptions-item label="单位名称">{{ appForm.companyName || '未填写' }}</el-descriptions-item>
           <el-descriptions-item label="信用代码">{{ appForm.creditCode || '未填写' }}</el-descriptions-item>
           <el-descriptions-item label="联系人">{{ appForm.contactPerson || '未填写' }}</el-descriptions-item>
@@ -122,7 +127,7 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { applicationApi, orgApi } from '@/api/index'
 import { authApi } from '@/api/auth'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 
@@ -187,8 +192,18 @@ function flattenOrgs(nodes: any[]): any[] {
   return r
 }
 
-function viewDetail(row: any) {
-  ElMessage.info(`申请详情 - 编号: ${row.id}`)
+async function withdrawApp(row: any) {
+  try {
+    await ElMessageBox.confirm('确定要撤回该入会申请吗？', '确认撤回', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await applicationApi.withdraw(row.id)
+    ElMessage.success('申请已撤回')
+    const res = await applicationApi.getMyApplications()
+    applications.value = res.data || []
+  } catch {}
 }
 
 function closeDialog() {
@@ -201,6 +216,11 @@ function closeDialog() {
 function downloadTemplate() {
   const baseUrl = import.meta.env.VITE_API_BASE_URL || '/member/api'
   window.open(`${baseUrl}/application-template`, '_blank')
+}
+
+function downloadCharter() {
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || '/member/api'
+  window.open(`${baseUrl}/charter`, '_blank')
 }
 
 function handleUploadSuccess(response: any) {
@@ -240,12 +260,17 @@ async function submitApp() {
   } catch {} finally { submitting.value = false }
 }
 
-function formatDate(d: string) { return d ? d.slice(0, 16) : '' }
+function formatDate(d: string) { return d ? d.slice(0, 16).replace('T', ' ') : '' }
 </script>
 
 <style scoped lang="scss">
 .applications-page { max-width: 1000px; margin: 0 auto; }
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+
+.charter-hint {
+  margin-top: 6px;
+  padding-left: 2px;
+}
 
 .confirm-section {
   .download-area {

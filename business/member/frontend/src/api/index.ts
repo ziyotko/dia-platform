@@ -8,7 +8,8 @@ export const applicationApi = {
   getMyApplications: () => request.get('/applications'),
   getApplication: (id: number) => request.get(`/applications/${id}`),
   createApplication: (data: any) => request.post('/applications', data),
-  saveDraft: (data: any) => request.post('/applications/draft', data)
+  saveDraft: (data: any) => request.post('/applications/draft', data),
+  withdraw: (id: number) => request.post(`/applications/${id}/withdraw`)
 }
 
 export const feeApi = {
