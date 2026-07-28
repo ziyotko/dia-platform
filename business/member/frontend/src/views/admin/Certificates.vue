@@ -189,8 +189,23 @@ async function deleteTemplate(row: any) {
 </script>
 
 <style scoped lang="scss">
-.admin-certs { max-width: 1000px; }
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.admin-certs {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 0;
+}
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  h3 {
+    font-size: 22px;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin: 0;
+  }
+}
 .file-link {
   display: inline-flex; align-items: center; gap: 4px; color: #409eff; text-decoration: none;
   &:hover { text-decoration: underline; }

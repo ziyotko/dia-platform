@@ -41,13 +41,22 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
-.admin-dash { max-width: 1000px; }
+.admin-dash {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 0;
+}
 .stat-card {
-  :deep(.el-card__body) { display: flex; align-items: center; gap: 16px; padding: 24px; }
+  border-radius: 12px;
+  border: 1px solid #eef2f6;
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  transition: transform .2s, box-shadow .2s;
+  &:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+  :deep(.el-card__body) { display: flex; align-items: center; gap: 16px; padding: 20px 24px; }
   .stat-icon { width: 52px; height: 52px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
   .stat-info {
-    .value { font-size: 28px; font-weight: 700; }
-    .label { font-size: 13px; color: #9ca3af; margin-top: 4px; }
+    .value { font-size: 22px; font-weight: 700; color: #1a1a2e; }
+    .label { font-size: 13px; color: #94a3b8; margin-top: 4px; }
   }
 }
 </style>

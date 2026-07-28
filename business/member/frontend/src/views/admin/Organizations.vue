@@ -246,15 +246,28 @@ async function delChild(data: any) {
 </script>
 
 <style scoped lang="scss">
-.admin-orgs { max-width: 800px; }
+.admin-orgs {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 0;
+}
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  h3 {
+    font-size: 22px;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin: 0;
+  }
   .header-actions { display: flex; gap: 12px; }
 }
 
+.el-card {
+  border-radius: 10px;
+}
 .root-card {
   border: 1px solid #e5e7eb;
   border-radius: 12px;

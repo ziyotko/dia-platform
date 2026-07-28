@@ -136,8 +136,26 @@ async function moveDown(row: any) {
 </script>
 
 <style scoped lang="scss">
-.admin-levels { max-width: 900px; }
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.admin-levels {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 0;
+}
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  h3 {
+    font-size: 22px;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin: 0;
+  }
+}
+.el-card {
+  border-radius: 10px;
+}
 .level-badge {
   display: inline-block;
   padding: 4px 14px;

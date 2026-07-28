@@ -118,8 +118,23 @@ async function review(row: any, approved: boolean) {
 </script>
 
 <style scoped lang="scss">
-.admin-apps { max-width: 1100px; }
-.page-header { margin-bottom: 16px; }
+.admin-apps {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 0;
+}
+.page-header {
+  margin-bottom: 24px;
+  h3 {
+    font-size: 22px;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin: 0;
+  }
+}
 .filter-bar { margin-bottom: 16px; }
-.pagination { display: flex; justify-content: center; margin-top: 24px; }
+.el-card {
+  border-radius: 10px;
+}
+.pagination { display: flex; justify-content: center; padding: 20px 0; }
 </style>

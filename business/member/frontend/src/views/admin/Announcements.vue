@@ -59,7 +59,25 @@ async function delAnn(row: any) {
 </script>
 
 <style scoped lang="scss">
-.admin-anns { max-width: 1000px; }
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.pagination { display: flex; justify-content: center; margin-top: 24px; }
+.admin-anns {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 0;
+}
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  h3 {
+    font-size: 22px;
+    font-weight: 600;
+    color: #1a1a2e;
+    margin: 0;
+  }
+}
+.el-card {
+  border-radius: 10px;
+}
+.pagination { display: flex; justify-content: center; padding: 20px 0; }
 </style>

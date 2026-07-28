@@ -3,8 +3,7 @@
     <!-- Header -->
     <div class="page-header">
       <div class="header-left">
-        <h3><el-icon><Coin /></el-icon> 会费管理</h3>
-        <span class="header-subtitle">管理会员年度会费的缴纳与查询</span>
+        <h3>会费管理</h3>
       </div>
       <el-button type="primary" :icon="Plus" size="large" @click="showCreate=true">新增费用</el-button>
     </div>
