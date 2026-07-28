@@ -78,13 +78,6 @@
               </el-button>
               <el-button
                 size="small"
-                :disabled="row._saving"
-                @click="resetRow(row)"
-              >
-                重置
-              </el-button>
-              <el-button
-                size="small"
                 type="danger"
                 :loading="row._deleting"
                 @click="deleteRow(level, row)"
@@ -218,12 +211,6 @@ async function saveRow(level: any, row: FeeItem) {
   } finally {
     row._saving = false
   }
-}
-
-function resetRow(row: FeeItem) {
-  row._editing.year = row.year
-  row._editing.amount = row.amount
-  row._changed = false
 }
 
 async function deleteRow(level: any, row: FeeItem) {

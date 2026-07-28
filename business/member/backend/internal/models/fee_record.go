@@ -18,6 +18,9 @@ type FeeRecord struct {
 	TransactionID string     `gorm:"size:128" json:"transaction_id"`
 	InvoiceNo     string     `gorm:"size:64" json:"invoice_no"`
 	Remark        string     `gorm:"size:500" json:"remark"`
+	FeeStandardID uint64     `gorm:"default:0" json:"fee_standard_id"`
+	LevelID       uint64     `gorm:"default:0" json:"level_id"`
+	LevelName     string     `gorm:"size:64" json:"level_name"`
 }
 
 func (FeeRecord) TableName() string {

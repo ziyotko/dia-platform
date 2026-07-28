@@ -142,6 +142,29 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 	// If approved, auto-create certificate record and first-year fee
 	if approved {
 		now := time.Now()
+
+		// Look up the minimum member level for the org and get its fee standard for current year
+		var feeAmount float64 = 2000.00 // fallback default
+		var feeStandardID, levelID uint64
+		var levelName string
+
+		var orgLevel models.MemberOrgLevel
+		if err := db.DB.Preload("Level").
+			Joins("JOIN member_levels ml ON ml.id = member_org_levels.level_id").
+			Where("member_org_levels.org_id = ?", app.OrgID).
+			Order("ml.level ASC").
+			First(&orgLevel).Error; err == nil {
+			// Found the minimum level for this org
+			levelID = orgLevel.LevelID
+			levelName = orgLevel.Level.Name
+
+			var std models.MemberFeeStandard
+			if err := db.DB.Where("level_id = ? AND year = ?", levelID, now.Year()).First(&std).Error; err == nil {
+				feeAmount = std.Amount
+				feeStandardID = std.ID
+			}
+		}
+
 		cert := models.Certificate{
 			MemberID: app.MemberID,
 			CertNo:   generateCertNo(app.MemberID),
@@ -154,12 +177,15 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 			return err
 		}
 
-		// Create first-year fee record (using default amount)
+		// Create first-year fee record with org's minimum level fee standard
 		fee := models.FeeRecord{
-			MemberID: app.MemberID,
-			Year:     now.Year(),
-			Amount:   2000.00, // Default, can be configured
-			Status:   models.FeeStatusUnpaid,
+			MemberID:      app.MemberID,
+			Year:          now.Year(),
+			Amount:        feeAmount,
+			Status:        models.FeeStatusUnpaid,
+			FeeStandardID: feeStandardID,
+			LevelID:       levelID,
+			LevelName:     levelName,
 		}
 		if err := tx.Create(&fee).Error; err != nil {
 			tx.Rollback()
