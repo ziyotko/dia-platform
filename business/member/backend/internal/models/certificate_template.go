@@ -4,7 +4,7 @@ package models
 type MemberCertificateTemplate struct {
 	BaseModel
 	Name         string      `gorm:"size:64;not null" json:"name"`
-	LevelID      uint64      `gorm:"uniqueIndex;not null" json:"level_id"`
+	LevelID      uint64      `gorm:"uniqueIndex:uk_cert_tpl_level;not null" json:"level_id"`
 	Level        MemberLevel `gorm:"foreignKey:LevelID" json:"level,omitempty"`
 	TemplateFile string      `gorm:"size:255" json:"template_file"` // PDF file path
 }
