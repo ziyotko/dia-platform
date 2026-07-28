@@ -19,6 +19,7 @@ func Register(r *gin.Engine) {
 	orgCtrl := controllers.OrganizationController{}
 	memberOrgCtrl := controllers.MemberOrgController{}
 	levelCtrl := controllers.MemberLevelController{}
+	feeStdCtrl := controllers.FeeStandardController{}
 	msgCtrl := controllers.MessageController{}
 	articleCtrl := controllers.ArticleController{}
 	announceCtrl := controllers.AnnouncementController{}
@@ -143,6 +144,13 @@ func Register(r *gin.Engine) {
 		admin.DELETE("/admin/member-levels/:id", levelCtrl.Delete)
 		admin.PUT("/admin/member-levels/:id/move-up", levelCtrl.MoveUp)
 		admin.PUT("/admin/member-levels/:id/move-down", levelCtrl.MoveDown)
+
+		// Fee standard management
+		admin.GET("/admin/fee-standards", feeStdCtrl.ListAll)
+		admin.GET("/admin/fee-standards/levels/:levelId", feeStdCtrl.ListByLevel)
+		admin.POST("/admin/fee-standards", feeStdCtrl.Upsert)
+		admin.POST("/admin/fee-standards/batch", feeStdCtrl.BatchUpsert)
+		admin.DELETE("/admin/fee-standards/:id", feeStdCtrl.Delete)
 
 		// Message management
 		admin.GET("/admin/messages", msgCtrl.ListAllMessages)

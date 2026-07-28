@@ -17,9 +17,12 @@
             <span class="root-name">{{ rootNode.name }}</span>
             <el-tag size="small" type="info" effect="plain">上级机构</el-tag>
           </div>
+          <div class="root-levels" v-if="rootNode.levels?.length">
+            <el-tag v-for="lvl in rootNode.levels" :key="lvl.id" size="small" effect="plain" round>{{ lvl.level?.name || lvl.name }}</el-tag>
+          </div>
           <div class="root-actions">
             <el-button text size="small" type="primary" @click="editRoot">
-              <el-icon><Edit /></el-icon> 改名
+              <el-icon><Edit /></el-icon> 编辑
             </el-button>
           </div>
         </div>
@@ -58,10 +61,15 @@
     </el-card>
 
     <!-- Dialog: Edit Root -->
-    <el-dialog v-model="showRootDialog" title="修改机构名称" width="400px">
+    <el-dialog v-model="showRootDialog" title="编辑上级机构" width="420px">
       <el-form :model="rootForm" size="large">
         <el-form-item label="名称" required>
           <el-input v-model="rootForm.name" />
+        </el-form-item>
+        <el-form-item label="关联等级">
+          <el-select v-model="rootForm.levelIds" multiple placeholder="选择关联的会员等级" style="width:100%">
+            <el-option v-for="l in allLevels" :key="l.id" :label="l.name" :value="l.id" />
+          </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -118,7 +126,7 @@ const children = computed(() => rootNode.value?.children || [])
 
 // Root dialog
 const showRootDialog = ref(false)
-const rootForm = reactive({ name: '' })
+const rootForm = reactive({ name: '', levelIds: [] as number[] })
 
 // Child dialog
 const showChildDialog = ref(false)
@@ -143,7 +151,9 @@ async function fetchData() {
 // ---- Root operations ----
 
 function editRoot() {
-  rootForm.name = rootNode.value?.name || ''
+  const node = rootNode.value
+  rootForm.name = node?.name || ''
+  rootForm.levelIds = node?.levels?.map((l: any) => l.level_id || l.id) || []
   showRootDialog.value = true
 }
 
@@ -152,7 +162,13 @@ async function saveRoot() {
   saving.value = true
   try {
     await adminApi.updateOrg(rootNode.value.id, { name: rootForm.name })
-    ElMessage.success('名称已修改')
+    // Save level associations
+    if (rootNode.value.id && rootForm.levelIds.length > 0) {
+      await adminApi.setOrgLevels(rootNode.value.id, rootForm.levelIds)
+    } else if (rootNode.value.id) {
+      await adminApi.setOrgLevels(rootNode.value.id, [])
+    }
+    ElMessage.success('已保存')
     showRootDialog.value = false
     fetchData()
   } catch {} finally { saving.value = false }
@@ -262,6 +278,12 @@ async function delChild(data: any) {
       font-weight: 700;
       color: #1f2937;
     }
+  }
+  .root-levels {
+    margin-left: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 }
 

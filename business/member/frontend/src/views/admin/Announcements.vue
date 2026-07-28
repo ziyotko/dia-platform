@@ -4,7 +4,7 @@
     <el-card>
       <el-table :data="list" stripe>
         <el-table-column prop="title" label="标题" min-width="200" />
-        <el-table-column label="类型" width="80"><template #default="{row}">{{ {notice:'通知',article:'文章',policy:'政策'}[row.type] || row.type }}</template></el-table-column>
+        <el-table-column label="类型" width="80"><template #default="{row}">{{ ({notice:'通知',article:'文章',policy:'政策'} as Record<string, string>)[row.type] || row.type }}</template></el-table-column>
         <el-table-column prop="is_pinned" label="置顶" width="70"><template #default="{row}"><el-tag size="small" :type="row.is_pinned?'danger':''">{{ row.is_pinned?'是':'否' }}</el-tag></template></el-table-column>
         <el-table-column prop="view_count" label="浏览" width="70" />
         <el-table-column prop="published_at" label="发布时间" width="160"><template #default="{row}">{{ row.published_at?.slice(0,16) || '未发布' }}</template></el-table-column>

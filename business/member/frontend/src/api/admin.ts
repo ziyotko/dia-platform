@@ -53,5 +53,12 @@ export const adminApi = {
   createAnnouncement: (data: any) => request.post('/admin/announcements', data),
   updateAnnouncement: (id: number, data: any) => request.put(`/admin/announcements/${id}`, data),
   deleteAnnouncement: (id: number) => request.delete(`/admin/announcements/${id}`),
-  getAnnouncements: (params?: any) => request.get('/admin/announcements', { params })
+  getAnnouncements: (params?: any) => request.get('/admin/announcements', { params }),
+
+  // Fee Standards
+  getFeeStandards: () => request.get('/admin/fee-standards'),
+  getFeeStandardsByLevel: (levelId: number) => request.get(`/admin/fee-standards/levels/${levelId}`),
+  upsertFeeStandard: (data: { level_id: number; year: number; amount: number }) => request.post('/admin/fee-standards', data),
+  batchUpsertFeeStandard: (data: { level_id: number; items: { year: number; amount: number }[] }) => request.post('/admin/fee-standards/batch', data),
+  deleteFeeStandard: (id: number) => request.delete(`/admin/fee-standards/${id}`)
 }

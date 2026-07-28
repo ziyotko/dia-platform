@@ -46,6 +46,8 @@ func main() {
 		&models.SystemConfig{},
 		&models.PasswordReset{},
 		&models.MemberLevel{},
+		&models.MemberOrgLevel{},
+		&models.MemberFeeStandard{},
 	); err != nil {
 		utils.Logger.Fatalf("AutoMigrate failed: %v", err)
 	}
@@ -62,6 +64,7 @@ func main() {
 	r.Use(middleware.Logger())
 	r.Use(middleware.IPLimit())
 	r.Use(gin.Recovery())
+	r.SetTrustedProxies([]string{"127.0.0.1"})
 
 	// Serve uploaded files
 	r.Static("/uploads", "./uploads")

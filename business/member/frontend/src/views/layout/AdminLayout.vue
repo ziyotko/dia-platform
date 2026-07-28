@@ -21,6 +21,7 @@
         <el-menu-item index="/admin/certificates"><el-icon><Medal /></el-icon><span>证书管理</span></el-menu-item>
         <el-menu-item index="/admin/organizations"><el-icon><Connection /></el-icon><span>组织机构</span></el-menu-item>
         <el-menu-item index="/admin/member-levels"><el-icon><Sort /></el-icon><span>会员等级</span></el-menu-item>
+        <el-menu-item index="/admin/fee-standards"><el-icon><Coin /></el-icon><span>会费标准</span></el-menu-item>
         <el-menu-item index="/admin/messages"><el-icon><ChatDotRound /></el-icon><span>会员留言</span></el-menu-item>
         <el-menu-item index="/admin/articles"><el-icon><Document /></el-icon><span>文章管理</span></el-menu-item>
         <el-menu-item index="/admin/announcements"><el-icon><Notification /></el-icon><span>公告管理</span></el-menu-item>
@@ -55,7 +56,7 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { UserFilled, Fold, Expand } from '@element-plus/icons-vue'
+import { UserFilled, Fold, Expand, Coin } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()

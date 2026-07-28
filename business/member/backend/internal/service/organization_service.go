@@ -102,7 +102,7 @@ func (s *OrganizationService) DeleteOrganization(id uint64) error {
 		return errors.New("该组织下有子组织，无法删除")
 	}
 	// Clean up level associations
-	db.DB.Where("org_id = ?", id).Delete(&models.OrgLevel{})
+	db.DB.Where("org_id = ?", id).Delete(&models.MemberOrgLevel{})
 	return db.DB.Delete(&models.Organization{}, id).Error
 }
 
