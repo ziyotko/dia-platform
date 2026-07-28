@@ -16,6 +16,10 @@ func (s *OrganizationService) GetOrganizationTree() ([]*models.Organization, err
 	if err := db.DB.Order("sort ASC, id ASC").Find(&orgs).Error; err != nil {
 		return nil, err
 	}
+	// Load levels for each org
+	for i := range orgs {
+		db.DB.Where("org_id = ?", orgs[i].ID).Preload("Level").Find(&orgs[i].Levels)
+	}
 	return buildTree(orgs, 0), nil
 }
 
@@ -97,6 +101,8 @@ func (s *OrganizationService) DeleteOrganization(id uint64) error {
 	if count > 0 {
 		return errors.New("该组织下有子组织，无法删除")
 	}
+	// Clean up level associations
+	db.DB.Where("org_id = ?", id).Delete(&models.OrgLevel{})
 	return db.DB.Delete(&models.Organization{}, id).Error
 }
 

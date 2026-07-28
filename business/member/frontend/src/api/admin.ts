@@ -27,6 +27,8 @@ export const adminApi = {
   createOrg: (data: any) => request.post('/admin/organizations', data),
   updateOrg: (id: number, data: any) => request.put(`/admin/organizations/${id}`, data),
   deleteOrg: (id: number) => request.delete(`/admin/organizations/${id}`),
+  getOrgLevels: (id: number) => request.get(`/admin/organizations/${id}/levels`),
+  setOrgLevels: (id: number, levelIds: number[]) => request.put(`/admin/organizations/${id}/levels`, { level_ids: levelIds }),
 
   // Member levels
   getMemberLevels: (params?: any) => request.get('/admin/member-levels', { params }),

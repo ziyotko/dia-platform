@@ -11,6 +11,7 @@ type Organization struct {
 	Sort        int    `gorm:"default:0" json:"sort"`
 
 	Children []*Organization `gorm:"-" json:"children,omitempty"`
+	Levels   []OrgLevel      `gorm:"foreignKey:OrgID" json:"levels,omitempty"`
 }
 
 func (Organization) TableName() string {

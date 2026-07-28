@@ -36,6 +36,9 @@
                 {{ child.type === 'branch' ? '分支机构' : '代表机构' }}
               </el-tag>
               <span class="child-name">{{ child.name }}</span>
+              <div class="child-levels" v-if="child.levels?.length">
+                <el-tag v-for="lvl in child.levels" :key="lvl.id" size="small" effect="plain" round>{{ lvl.level?.name || lvl.name }}</el-tag>
+              </div>
             </div>
             <div class="child-actions">
               <el-button text size="small" type="warning" @click="editChild(child)">
@@ -84,6 +87,11 @@
         <el-form-item label="排序">
           <el-input-number v-model="childForm.sort" :min="0" />
         </el-form-item>
+        <el-form-item label="关联等级">
+          <el-select v-model="childForm.levelIds" multiple placeholder="选择关联的会员等级" style="width:100%">
+            <el-option v-for="l in allLevels" :key="l.id" :label="l.name" :value="l.id" />
+          </el-select>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showChildDialog = false">取消</el-button>
@@ -101,6 +109,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Edit, Delete } from '@element-plus/icons-vue'
 
 const tree = ref<any[]>([])
+const allLevels = ref<any[]>([])
 const loading = ref(true)
 const saving = ref(false)
 
@@ -115,15 +124,19 @@ const rootForm = reactive({ name: '' })
 const showChildDialog = ref(false)
 const editingChild = ref<any>(null)
 const childType = ref<'branch' | 'representative'>('branch')
-const childForm = reactive({ name: '', description: '', sort: 0 })
+const childForm = reactive({ name: '', description: '', sort: 0, levelIds: [] as number[] })
 
 onMounted(() => fetchData())
 
 async function fetchData() {
   loading.value = true
   try {
-    const r = await orgApi.getTree()
-    tree.value = r.data || []
+    const [treeRes, levelsRes] = await Promise.all([
+      orgApi.getTree(),
+      adminApi.getMemberLevels()
+    ])
+    tree.value = treeRes.data || []
+    allLevels.value = levelsRes.data || []
   } catch {} finally { loading.value = false }
 }
 
@@ -153,15 +166,25 @@ function openAddChild(type: 'branch' | 'representative') {
   childForm.name = ''
   childForm.description = ''
   childForm.sort = 0
+  childForm.levelIds = []
   showChildDialog.value = true
 }
 
-function editChild(data: any) {
+async function editChild(data: any) {
   childType.value = data.type
   editingChild.value = data
   childForm.name = data.name
   childForm.description = data.description
   childForm.sort = data.sort || 0
+  // Load existing level associations
+  childForm.levelIds = data.levels?.map((l: any) => l.level_id || l.id) || []
+  // If levels haven't been fetched yet, fetch them
+  if (!data.levels && data.id) {
+    try {
+      const r = await adminApi.getOrgLevels(data.id)
+      childForm.levelIds = (r.data || []).map((l: any) => l.level_id)
+    } catch {}
+  }
   showChildDialog.value = true
 }
 
@@ -169,18 +192,25 @@ async function saveChild() {
   if (!childForm.name) { ElMessage.warning('请输入名称'); return }
   saving.value = true
   try {
+    let orgId: number
     if (editingChild.value) {
       await adminApi.updateOrg(editingChild.value.id, { name: childForm.name, description: childForm.description })
+      orgId = editingChild.value.id
       ElMessage.success('修改成功')
     } else {
-      await adminApi.createOrg({
+      const r = await adminApi.createOrg({
         name: childForm.name,
         parent_id: rootNode.value.id,
         type: childType.value,
         description: childForm.description,
         sort: childForm.sort
       })
+      orgId = r.data?.id
       ElMessage.success(childType.value === 'branch' ? '分支机构创建成功' : '代表机构创建成功')
+    }
+    // Save level associations
+    if (orgId && childForm.levelIds.length > 0) {
+      await adminApi.setOrgLevels(orgId, childForm.levelIds)
     }
     showChildDialog.value = false
     editingChild.value = null

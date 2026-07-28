@@ -8,7 +8,8 @@ import (
 )
 
 type OrganizationController struct {
-	orgService service.OrganizationService
+	orgService      service.OrganizationService
+	orgLevelService service.OrgLevelService
 }
 
 func (ctrl *OrganizationController) GetTree(c *gin.Context) {
@@ -65,6 +66,34 @@ func (ctrl *OrganizationController) DeleteOrganization(c *gin.Context) {
 		return
 	}
 	response.SuccessWithMessage(c, "删除成功", nil)
+}
+
+// ---- Org-Level Association (Admin) ----
+
+func (ctrl *OrganizationController) GetOrgLevels(c *gin.Context) {
+	id := parseUint(c.Param("id"))
+	levels, err := ctrl.orgLevelService.GetOrgLevels(id)
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+	response.Success(c, levels)
+}
+
+func (ctrl *OrganizationController) SetOrgLevels(c *gin.Context) {
+	id := parseUint(c.Param("id"))
+	var req struct {
+		LevelIDs []uint64 `json:"level_ids" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if err := ctrl.orgLevelService.SetOrgLevels(id, req.LevelIDs); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.SuccessWithMessage(c, "关联等级已更新", nil)
 }
 
 // ---- Member Organizations ----

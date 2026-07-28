@@ -133,6 +133,8 @@ func Register(r *gin.Engine) {
 		admin.PUT("/admin/organizations/:id", orgCtrl.UpdateOrganization)
 		admin.DELETE("/admin/organizations/:id", orgCtrl.DeleteOrganization)
 		admin.GET("/admin/organizations/:id", orgCtrl.GetOrganization)
+		admin.GET("/admin/organizations/:id/levels", orgCtrl.GetOrgLevels)
+		admin.PUT("/admin/organizations/:id/levels", orgCtrl.SetOrgLevels)
 
 		// Member level management
 		admin.GET("/admin/member-levels", levelCtrl.List)
