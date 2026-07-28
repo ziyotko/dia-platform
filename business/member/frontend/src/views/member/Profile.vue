@@ -12,7 +12,9 @@
               <el-tag>{{ form.member_type === 'unit' ? '单位会员' : '个人会员' }}</el-tag>
             </el-form-item>
             <el-form-item label="会员等级">
-              <el-tag type="warning">{{ form.member_level || '普通会员' }}</el-tag>
+              <el-tag :type="!form.member_level || form.member_level === 'normal' ? 'info' : 'warning'">
+                {{ !form.member_level || form.member_level === 'normal' ? '暂无' : form.member_level }}
+              </el-tag>
             </el-form-item>
           </el-col>
           <el-col :span="12">

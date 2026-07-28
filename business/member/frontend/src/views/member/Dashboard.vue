@@ -10,7 +10,7 @@
             <el-tag :type="statusType" size="large">{{ statusText }}</el-tag>
           </p>
         </div>
-        <el-button v-if="dash.member.status === 'registering'" type="primary" @click="$router.push('/applications')">继续完善资料</el-button>
+        <el-button v-if="dash.member.status === 'registering'" type="primary" @click="$router.push({ name: 'Applications' })">继续完善资料</el-button>
         <el-button v-if="dash.member.status === 'pending_payment'" type="warning" @click="$router.push('/fees')">立即缴费</el-button>
       </div>
     </el-card>
