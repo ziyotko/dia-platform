@@ -28,6 +28,14 @@ export const adminApi = {
   updateOrg: (id: number, data: any) => request.put(`/admin/organizations/${id}`, data),
   deleteOrg: (id: number) => request.delete(`/admin/organizations/${id}`),
 
+  // Member levels
+  getMemberLevels: (params?: any) => request.get('/admin/member-levels', { params }),
+  createMemberLevel: (data: any) => request.post('/admin/member-levels', data),
+  updateMemberLevel: (id: number, data: any) => request.put(`/admin/member-levels/${id}`, data),
+  deleteMemberLevel: (id: number) => request.delete(`/admin/member-levels/${id}`),
+  moveLevelUp: (id: number) => request.put(`/admin/member-levels/${id}/move-up`),
+  moveLevelDown: (id: number) => request.put(`/admin/member-levels/${id}/move-down`),
+
   // Messages
   getMessages: (params?: any) => request.get('/admin/messages', { params }),
   replyMessage: (id: number, reply: string) => request.put(`/admin/messages/${id}/reply`, { reply }),

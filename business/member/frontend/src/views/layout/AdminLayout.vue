@@ -12,6 +12,7 @@
         <el-menu-item index="/admin/fees"><el-icon><Money /></el-icon>会费管理</el-menu-item>
         <el-menu-item index="/admin/certificates"><el-icon><Medal /></el-icon>证书管理</el-menu-item>
         <el-menu-item index="/admin/organizations"><el-icon><Connection /></el-icon>组织机构</el-menu-item>
+        <el-menu-item index="/admin/member-levels"><el-icon><Sort /></el-icon>会员等级</el-menu-item>
         <el-menu-item index="/admin/messages"><el-icon><ChatDotRound /></el-icon>会员留言</el-menu-item>
         <el-menu-item index="/admin/articles"><el-icon><Document /></el-icon>文章管理</el-menu-item>
         <el-menu-item index="/admin/announcements"><el-icon><Notification /></el-icon>公告管理</el-menu-item>

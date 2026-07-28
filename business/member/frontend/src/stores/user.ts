@@ -31,8 +31,10 @@ export const useUserStore = defineStore('user', () => {
   function logout() {
     token.value = ''
     userInfo.value = null
-    localStorage.removeItem('member-token')
-    router.push('/login')
+    menus.value = []
+    localStorage.clear()
+    sessionStorage.clear()
+    window.location.href = '/member/login'
   }
 
   return { token, userInfo, menus, isLoggedIn, isAdmin, setToken, login, fetchUserInfo, logout }

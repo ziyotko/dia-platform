@@ -80,6 +80,7 @@ const router = createRouter({
         { path: 'fees', name: 'AdminFees', component: () => import('@/views/admin/Fees.vue') },
         { path: 'certificates', name: 'AdminCertificates', component: () => import('@/views/admin/Certificates.vue') },
         { path: 'organizations', name: 'AdminOrganizations', component: () => import('@/views/admin/Organizations.vue') },
+        { path: 'member-levels', name: 'AdminMemberLevels', component: () => import('@/views/admin/MemberLevels.vue') },
         { path: 'messages', name: 'AdminMessages', component: () => import('@/views/admin/Messages.vue') },
         { path: 'articles', name: 'AdminArticles', component: () => import('@/views/admin/Articles.vue') },
         { path: 'announcements', name: 'AdminAnnouncements', component: () => import('@/views/admin/Announcements.vue') }

@@ -217,7 +217,7 @@ async function submitApplication() {
 
 <style scoped lang="scss">
 .register-page {
-  min-height: calc(100vh - 200px);
+  min-height: calc(100vh - 180px);
   display: flex;
   justify-content: center;
   padding: 40px;

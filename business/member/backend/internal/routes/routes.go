@@ -18,6 +18,7 @@ func Register(r *gin.Engine) {
 	certCtrl := controllers.CertificateController{}
 	orgCtrl := controllers.OrganizationController{}
 	memberOrgCtrl := controllers.MemberOrgController{}
+	levelCtrl := controllers.MemberLevelController{}
 	msgCtrl := controllers.MessageController{}
 	articleCtrl := controllers.ArticleController{}
 	announceCtrl := controllers.AnnouncementController{}
@@ -45,6 +46,9 @@ func Register(r *gin.Engine) {
 
 		// Organizations (public tree for registration)
 		public.GET("/organizations/tree", orgCtrl.GetTree)
+
+		// Member levels (public list for dropdowns)
+		public.GET("/member-levels", levelCtrl.List)
 	}
 
 	// === Member routes (auth required) ===
@@ -129,6 +133,14 @@ func Register(r *gin.Engine) {
 		admin.PUT("/admin/organizations/:id", orgCtrl.UpdateOrganization)
 		admin.DELETE("/admin/organizations/:id", orgCtrl.DeleteOrganization)
 		admin.GET("/admin/organizations/:id", orgCtrl.GetOrganization)
+
+		// Member level management
+		admin.GET("/admin/member-levels", levelCtrl.List)
+		admin.POST("/admin/member-levels", levelCtrl.Create)
+		admin.PUT("/admin/member-levels/:id", levelCtrl.Update)
+		admin.DELETE("/admin/member-levels/:id", levelCtrl.Delete)
+		admin.PUT("/admin/member-levels/:id/move-up", levelCtrl.MoveUp)
+		admin.PUT("/admin/member-levels/:id/move-down", levelCtrl.MoveDown)
 
 		// Message management
 		admin.GET("/admin/messages", msgCtrl.ListAllMessages)

@@ -20,6 +20,9 @@ func Run() {
 
 	// Create system config
 	createSystemConfig()
+
+	// Create default member levels
+	createMemberLevels()
 }
 
 func createAdmin() {
@@ -111,4 +114,20 @@ func createSystemConfig() {
 		CreatedBy:   "admin",
 	}
 	db.DB.Create(&announcement)
+}
+
+func createMemberLevels() {
+	var count int64
+	db.DB.Model(&models.MemberLevel{}).Count(&count)
+	if count > 0 {
+		return
+	}
+
+	levels := []models.MemberLevel{
+		{Name: "会员单位", Level: 0, Description: "普通会员单位"},
+		{Name: "理事单位", Level: 1, Description: "理事会员单位"},
+		{Name: "副理事长单位", Level: 2, Description: "副理事长会员单位"},
+		{Name: "理事长单位", Level: 3, Description: "理事长会员单位"},
+	}
+	db.DB.Create(&levels)
 }

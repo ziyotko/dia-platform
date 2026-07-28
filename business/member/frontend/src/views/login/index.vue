@@ -154,7 +154,7 @@ $primary-dark: #0d4f85;
 $primary-gradient: linear-gradient(160deg, #1a6fb5 0%, #0d4f85 100%);
 
 .login-container {
-  min-height: calc(100vh - 200px);
+  min-height: calc(100vh - 180px);
   display: flex;
   flex-direction: column;
   align-items: center;

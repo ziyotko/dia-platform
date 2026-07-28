@@ -45,6 +45,7 @@ func main() {
 		&models.Announcement{},
 		&models.SystemConfig{},
 		&models.PasswordReset{},
+		&models.MemberLevel{},
 	); err != nil {
 		utils.Logger.Fatalf("AutoMigrate failed: %v", err)
 	}
