@@ -68,7 +68,7 @@ func main() {
 	r.SetTrustedProxies([]string{"127.0.0.1"})
 
 	// Serve uploaded files
-	r.Static("/uploads", "./uploads")
+	r.Static(config.Cfg.Server.UploadDirPrefix+"/uploads", "./uploads")
 
 	// Register routes
 	routes.Register(r)

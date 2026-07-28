@@ -54,6 +54,9 @@ func Register(r *gin.Engine) {
 
 		// Member levels (public list for dropdowns)
 		public.GET("/member-levels", levelCtrl.List)
+
+		// Public upload (for registration certificate upload)
+		public.POST("/upload", authCtrl.UploadFile)
 	}
 
 	// === Member routes (auth required) ===
@@ -64,9 +67,6 @@ func Register(r *gin.Engine) {
 		member.GET("/member/profile", authCtrl.GetProfile)
 		member.PUT("/member/profile", authCtrl.UpdateProfile)
 		member.PUT("/member/change-password", authCtrl.ChangePassword)
-
-		// Upload
-		member.POST("/upload", authCtrl.UploadFile)
 
 		// Dashboard
 		member.GET("/member/dashboard", dashCtrl.GetMemberDashboard)

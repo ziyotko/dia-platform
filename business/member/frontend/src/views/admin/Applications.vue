@@ -19,19 +19,41 @@
           <template #default="{row}"><el-tag :type="row.status==='pending_review'?'warning':row.status==='approved'?'success':'danger'">{{ statusLabel(row.status) }}</el-tag></template>
         </el-table-column>
         <el-table-column prop="created_at" label="申请时间" width="170"><template #default="{row}">{{ row.created_at?.slice(0,16) }}</template></el-table-column>
-        <el-table-column label="操作" width="200" v-if="list.length">
+        <el-table-column label="操作" width="280" v-if="list.length">
           <template #default="{row}">
+            <el-button size="small" @click="viewMember(row)">查看</el-button>
             <template v-if="row.status === 'pending_review'">
               <el-button size="small" type="success" @click="review(row, true)">通过</el-button>
               <el-button size="small" type="danger" @click="review(row, false)">拒绝</el-button>
             </template>
-            <span v-else style="color:#9ca3af">-</span>
           </template>
         </el-table-column>
       </el-table>
       <el-empty v-if="!loading && list.length===0" />
       <div class="pagination"><el-pagination background layout="prev, pager, next" :total="total" :page-size="size" v-model:current-page="page" @change="fetchData" /></div>
     </el-card>
+
+    <!-- Member Detail Dialog -->
+    <el-dialog v-model="showMemberDetail" title="申请单位信息" width="640px">
+      <el-descriptions :column="1" border v-if="currentMember">
+        <el-descriptions-item label="单位名称">{{ currentMember.company_name || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="统一社会信用代码">
+          {{ currentMember.credit_code || '-' }}
+          <el-link v-if="currentMember.cert_file" :href="fileUrl(currentMember.cert_file)" target="_blank" type="primary" :underline="false" style="margin-left:12px">下载证照</el-link>
+        </el-descriptions-item>
+        <el-descriptions-item label="法定代表人">{{ currentMember.legal_person || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="联系人">{{ currentMember.contact_person || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="联系电话">{{ currentMember.mobile || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="邮箱">{{ currentMember.email || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="单位地址">{{ currentMember.address || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="网站">{{ currentMember.website || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="会员类型">{{ currentMember.member_type === 'personal' ? '个人会员' : '单位会员' }}</el-descriptions-item>
+        <el-descriptions-item label="入会申请书">
+          <el-link v-if="currentRow?.signed_file" :href="fileUrl(currentRow.signed_file)" target="_blank" type="primary" :underline="false">下载申请书</el-link>
+          <span v-else>-</span>
+        </el-descriptions-item>
+      </el-descriptions>
+    </el-dialog>
   </div>
 </template>
 
@@ -43,6 +65,9 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 const list = ref<any[]>([]); const loading = ref(true)
 const page = ref(1); const size = ref(10); const total = ref(0)
 const statusFilter = ref('')
+const showMemberDetail = ref(false)
+const currentMember = ref<any>(null)
+const currentRow = ref<any>(null)
 
 const sm: Record<string,string> = { draft:'草稿', pending_review:'待审核', approved:'已通过', rejected:'已拒绝' }
 function statusLabel(s: string) { return sm[s] || s }
@@ -63,6 +88,18 @@ async function fetchData() {
     total.value = r.data?.total || 0
   } catch {} finally { loading.value = false }
 }
+function viewMember(row: any) {
+  currentMember.value = row.member || null
+  currentRow.value = row
+  showMemberDetail.value = true
+}
+
+function fileUrl(path: string) {
+  if (!path) return ''
+  if (path.startsWith('http://') || path.startsWith('https://')) return path
+  return '/' + path.replace(/^\//, '')
+}
+
 async function review(row: any, approved: boolean) {
   try {
     const comment = approved ? '' : (await ElMessageBox.prompt('请输入拒绝理由', '拒绝申请')).value || ''
