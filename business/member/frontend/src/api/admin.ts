@@ -23,6 +23,13 @@ export const adminApi = {
   updateCertificate: (id: number, data: any) => request.put(`/admin/certificates/${id}`, data),
   generateCertificate: (memberId: number) => request.post(`/admin/certificates/generate/${memberId}`),
 
+  // Certificate Templates
+  getCertTemplates: () => request.get('/admin/certificate-templates'),
+  getCertTemplate: (id: number) => request.get(`/admin/certificate-templates/${id}`),
+  createCertTemplate: (data: any) => request.post('/admin/certificate-templates', data),
+  updateCertTemplate: (id: number, data: any) => request.put(`/admin/certificate-templates/${id}`, data),
+  deleteCertTemplate: (id: number) => request.delete(`/admin/certificate-templates/${id}`),
+
   // Organizations
   createOrg: (data: any) => request.post('/admin/organizations', data),
   updateOrg: (id: number, data: any) => request.put(`/admin/organizations/${id}`, data),
