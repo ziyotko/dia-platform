@@ -139,6 +139,51 @@ func (ctrl *AuthController) GetSiteInfo(c *gin.Context) {
 	response.Success(c, config)
 }
 
+// DownloadApplicationTemplate serves the membership application form template
+func (ctrl *AuthController) DownloadApplicationTemplate(c *gin.Context) {
+	content := `中国电器工业协会入会申请表
+
+申请日期：______年____月____日
+
+一、申请单位信息
+单位名称：__________________________
+统一社会信用代码：__________________
+法定代表人：______________ 职务：____
+联系人：__________________ 电话：____
+手机：__________________ 邮箱：______
+单位地址：__________________________
+邮政编码：______________
+单位网址：__________________________
+
+二、申请会员类别
+□ 单位会员  □ 个人会员
+
+三、申请分会
+□ 变压器分会  □ 高压开关分会  □ 电线电缆分会
+□ 电机分会    □ 新能源电器分会  □ 绝缘材料分会
+□ 电力电子分会  □ 其他：__________
+
+四、单位简介
+_______________________________________________
+_______________________________________________
+_______________________________________________
+
+五、申请单位意见（签字盖章）
+法定代表人签字：______________
+单位盖章：
+日期：______年____月____日
+
+六、协会审批意见
+审批人：______________
+协会盖章：
+日期：______年____月____日
+
+注：请将此表打印并签字盖章后，上传至会员系统。`
+	c.Header("Content-Type", "text/plain; charset=utf-8")
+	c.Header("Content-Disposition", "attachment; filename=入会申请表.txt")
+	c.String(200, content)
+}
+
 // UploadFile handles file upload
 func (ctrl *AuthController) UploadFile(c *gin.Context) {
 	file, err := c.FormFile("file")

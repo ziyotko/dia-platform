@@ -4,7 +4,7 @@
       <div class="header-inner">
         <div class="logo" @click="$router.push('/')">
           <el-icon :size="28"><OfficeBuilding /></el-icon>
-          <span class="logo-text">中国电器工业协会会员系统</span>
+          <span class="logo-text">会员系统</span>
         </div>
         <nav class="nav-links">
           <router-link to="/announcements">公告动态</router-link>
@@ -19,8 +19,8 @@
       <router-view />
     </main>
     <footer class="public-footer">
-      <p>© 2024 中国电器工业协会 版权所有</p>
-      <p>地址：北京市丰台区南四环西路188号12区30号楼 电话：010-68166500</p>
+      <p>© 2024 xxxxxx 版权所有</p>
+      <p>地址：北京市 电话：</p>
     </footer>
   </div>
 </template>

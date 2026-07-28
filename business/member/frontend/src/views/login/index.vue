@@ -4,7 +4,7 @@
       <div class="card-header">
         <el-icon :size="36" color="#1a6fb5"><OfficeBuilding /></el-icon>
         <h2>会员登录</h2>
-        <p>中国电器工业协会会员系统</p>
+        <p>会员系统</p>
       </div>
       <el-form ref="formRef" :model="form" :rules="rules" size="large">
         <el-form-item prop="username">

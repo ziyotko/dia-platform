@@ -2,7 +2,7 @@
   <div class="home-page">
     <section class="hero">
       <div class="hero-content">
-        <h1>中国电器工业协会</h1>
+        <h1>XXXXXXXXXXXX协会</h1>
         <p class="subtitle">会员服务系统</p>
         <p class="desc">数字化会员服务 · 数字化管理 · 数字化增值服务</p>
         <div class="hero-actions">

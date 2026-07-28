@@ -36,6 +36,9 @@ func Register(r *gin.Engine) {
 		// Site info
 		public.GET("/site-info", authCtrl.GetSiteInfo)
 
+		// Download application template
+		public.GET("/application-template", authCtrl.DownloadApplicationTemplate)
+
 		// Announcements (public)
 		public.GET("/announcements", announceCtrl.GetPublishedAnnouncements)
 		public.GET("/announcements/:id", announceCtrl.GetAnnouncement)
