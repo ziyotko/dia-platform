@@ -4,6 +4,8 @@ import (
 	"errors"
 	"member/internal/models"
 	"member/pkg/db"
+
+	"gorm.io/gorm"
 )
 
 type OrganizationService struct{}
@@ -11,7 +13,7 @@ type OrganizationService struct{}
 // GetOrganizationTree returns the org tree
 func (s *OrganizationService) GetOrganizationTree() ([]*models.Organization, error) {
 	var orgs []models.Organization
-	if err := db.DB.Order("sort ASC").Find(&orgs).Error; err != nil {
+	if err := db.DB.Order("sort ASC, id ASC").Find(&orgs).Error; err != nil {
 		return nil, err
 	}
 	return buildTree(orgs, 0), nil
@@ -28,10 +30,33 @@ func (s *OrganizationService) GetOrganization(id uint64) (*models.Organization, 
 
 // CreateOrganization creates an org (admin)
 func (s *OrganizationService) CreateOrganization(req CreateOrgRequest) (*models.Organization, error) {
+	orgType := req.Type
+	if orgType == "" {
+		if req.ParentID == 0 {
+			orgType = "branch"
+		} else {
+			orgType = "representative"
+		}
+	}
+
+	// Validate 2-level max
+	if req.ParentID > 0 {
+		var parent models.Organization
+		if err := db.DB.First(&parent, req.ParentID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, errors.New("上级机构不存在")
+			}
+			return nil, err
+		}
+		if parent.ParentID != 0 {
+			return nil, errors.New("不能超过两级")
+		}
+	}
+
 	org := models.Organization{
 		Name:        req.Name,
 		ParentID:    req.ParentID,
-		Type:        req.Type,
+		Type:        orgType,
 		Description: req.Description,
 		ContactInfo: req.ContactInfo,
 		Sort:        req.Sort,
@@ -46,7 +71,6 @@ func (s *OrganizationService) CreateOrganization(req CreateOrgRequest) (*models.
 func (s *OrganizationService) UpdateOrganization(id uint64, req UpdateOrgRequest) error {
 	updates := map[string]interface{}{
 		"name":         req.Name,
-		"type":         req.Type,
 		"description":  req.Description,
 		"contact_info": req.ContactInfo,
 		"sort":         req.Sort,
@@ -59,7 +83,15 @@ func (s *OrganizationService) UpdateOrganization(id uint64, req UpdateOrgRequest
 
 // DeleteOrganization deletes an org (admin)
 func (s *OrganizationService) DeleteOrganization(id uint64) error {
-	// Check for children
+	var org models.Organization
+	if err := db.DB.First(&org, id).Error; err != nil {
+		return errors.New("组织不存在")
+	}
+	// Level-1 (parent_id = 0) cannot be deleted
+	if org.ParentID == 0 {
+		return errors.New("分支机构为一级组织，不可删除，可修改名称")
+	}
+	// Check for children (shouldn't happen since we limit to 2 levels)
 	var count int64
 	db.DB.Model(&models.Organization{}).Where("parent_id = ?", id).Count(&count)
 	if count > 0 {

@@ -5,7 +5,7 @@ type Organization struct {
 	BaseModel
 	Name        string `gorm:"size:255;not null" json:"name"`
 	ParentID    uint64 `gorm:"default:0" json:"parent_id"`
-	Type        string `gorm:"size:20;default:branch" json:"type"` // association/branch/committee
+	Type        string `gorm:"size:20;default:branch" json:"type"` // branch(分支机构) / representative(代表机构)
 	Description string `gorm:"type:text" json:"description"`
 	ContactInfo string `gorm:"size:255" json:"contact_info"`
 	Sort        int    `gorm:"default:0" json:"sort"`

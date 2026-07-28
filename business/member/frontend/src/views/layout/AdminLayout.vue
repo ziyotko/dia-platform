@@ -1,29 +1,41 @@
 <template>
   <el-container class="admin-layout">
-    <el-aside width="220px" class="sidebar">
+    <el-aside :width="collapsed ? '80px' : '200px'" class="sidebar">
       <div class="sidebar-header" @click="$router.push('/admin/dashboard')">
-        <el-icon :size="24"><Setting /></el-icon>
-        <span class="title">会员管理后台</span>
+        <el-icon :size="24" color="#1a6fb5"><Setting /></el-icon>
+        <span v-show="!collapsed" class="title">会员管理后台</span>
       </div>
-      <el-menu router background-color="#1f2937" text-color="#9ca3af" active-text-color="#fff">
-        <el-menu-item index="/admin/dashboard"><el-icon><DataAnalysis /></el-icon>控制台</el-menu-item>
-        <el-menu-item index="/admin/members"><el-icon><UserFilled /></el-icon>会员管理</el-menu-item>
-        <el-menu-item index="/admin/applications"><el-icon><DocumentChecked /></el-icon>入会审核</el-menu-item>
-        <el-menu-item index="/admin/fees"><el-icon><Money /></el-icon>会费管理</el-menu-item>
-        <el-menu-item index="/admin/certificates"><el-icon><Medal /></el-icon>证书管理</el-menu-item>
-        <el-menu-item index="/admin/organizations"><el-icon><Connection /></el-icon>组织机构</el-menu-item>
-        <el-menu-item index="/admin/member-levels"><el-icon><Sort /></el-icon>会员等级</el-menu-item>
-        <el-menu-item index="/admin/messages"><el-icon><ChatDotRound /></el-icon>会员留言</el-menu-item>
-        <el-menu-item index="/admin/articles"><el-icon><Document /></el-icon>文章管理</el-menu-item>
-        <el-menu-item index="/admin/announcements"><el-icon><Notification /></el-icon>公告管理</el-menu-item>
+      <el-menu
+        router
+        :collapse="collapsed"
+        :collapse-transition="false"
+        :default-active="route.path"
+        background-color="#fff"
+        text-color="#4b5563"
+        active-text-color="#1a6fb5"
+      >
+        <el-menu-item index="/admin/dashboard"><el-icon><DataAnalysis /></el-icon><span>控制台</span></el-menu-item>
+        <el-menu-item index="/admin/members"><el-icon><UserFilled /></el-icon><span>会员管理</span></el-menu-item>
+        <el-menu-item index="/admin/applications"><el-icon><DocumentChecked /></el-icon><span>入会审核</span></el-menu-item>
+        <el-menu-item index="/admin/fees"><el-icon><Money /></el-icon><span>会费管理</span></el-menu-item>
+        <el-menu-item index="/admin/certificates"><el-icon><Medal /></el-icon><span>证书管理</span></el-menu-item>
+        <el-menu-item index="/admin/organizations"><el-icon><Connection /></el-icon><span>组织机构</span></el-menu-item>
+        <el-menu-item index="/admin/member-levels"><el-icon><Sort /></el-icon><span>会员等级</span></el-menu-item>
+        <el-menu-item index="/admin/messages"><el-icon><ChatDotRound /></el-icon><span>会员留言</span></el-menu-item>
+        <el-menu-item index="/admin/articles"><el-icon><Document /></el-icon><span>文章管理</span></el-menu-item>
+        <el-menu-item index="/admin/announcements"><el-icon><Notification /></el-icon><span>公告管理</span></el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
       <el-header class="topbar">
-        <span class="title">会员管理后台</span>
+        <div class="topbar-left">
+          <el-icon class="collapse-btn" @click="toggleCollapse" :size="20">
+            <Fold v-if="!collapsed" /><Expand v-else />
+          </el-icon>
+        </div>
         <el-dropdown @command="handleCommand">
           <span class="user-info">
-            <el-avatar :size="32" icon="UserFilled" />
+            <el-avatar :size="32" :icon="UserFilled" />
             <span>{{ userStore.userInfo?.username }}</span>
           </span>
           <template #dropdown>
@@ -40,10 +52,20 @@
 </template>
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
+import { ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { UserFilled, Fold, Expand } from '@element-plus/icons-vue'
+
+const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const collapsed = ref(false)
+
+function toggleCollapse() {
+  collapsed.value = !collapsed.value
+}
+
 function handleCommand(cmd: string) {
   if (cmd === 'member') router.push('/member/dashboard')
   else if (cmd === 'logout') userStore.logout()
@@ -52,15 +74,62 @@ function handleCommand(cmd: string) {
 
 <style scoped lang="scss">
 .admin-layout { height: 100vh; }
-.sidebar { background: #1f2937; overflow: hidden;
-  .sidebar-header { display: flex; align-items: center; gap: 10px; padding: 20px; color: #fff; cursor: pointer;
-    .title { font-size: 16px; font-weight: 600; }
+
+.sidebar {
+  background: #fff;
+  border-right: 1px solid #f0f0f0;
+  overflow: hidden;
+  box-shadow: 2px 0 8px rgba(0,0,0,0.02);
+  transition: width 0.3s;
+
+  .sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 20px;
+    cursor: pointer;
+    border-bottom: 1px solid #f5f5f5;
+    .title { font-size: 16px; font-weight: 600; color: #1f2937; white-space: nowrap; }
+  }
+
+  :deep(.el-menu) {
+    border-right: none;
+    .el-menu-item {
+      margin: 2px 8px;
+      border-radius: 8px;
+      white-space: nowrap;
+      &:hover { background: #f0f7ff; }
+      &.is-active { background: #e8f4fd; font-weight: 600; }
+    }
   }
 }
-.topbar { display: flex; justify-content: space-between; align-items: center; background: #fff;
-  border-bottom: 1px solid #e5e7eb; padding: 0 24px; height: 56px;
-  .title { font-size: 16px; font-weight: 600; }
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+  padding: 0 24px;
+  height: 56px;
+
+  .topbar-left {
+    display: flex;
+    align-items: center;
+  }
+
+  .collapse-btn {
+    cursor: pointer;
+    color: #6b7280;
+    transition: color 0.2s;
+    &:hover { color: #1a6fb5; }
+  }
+
   .user-info { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 }
-.main-content { background: #f5f7fa; padding: 24px; }
+
+.main-content {
+  background: #f8fafc;
+  padding: 24px;
+}
 </style>

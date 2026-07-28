@@ -108,7 +108,7 @@ router.beforeEach((to, _from, next) => {
     return
   }
 
-  if (to.meta.admin && !userStore.isAdmin) {
+  if (to.meta.admin && userStore.userInfo !== null && !userStore.isAdmin) {
     next('/member/dashboard')
     return
   }

@@ -54,16 +54,28 @@ func createDefaultOrgs() {
 	}
 
 	orgs := []models.Organization{
-		{Name: "中国电器工业协会", Type: "association", Sort: 1},
-		{Name: "变压器分会", ParentID: 1, Type: "branch", Sort: 1},
-		{Name: "高压开关分会", ParentID: 1, Type: "branch", Sort: 2},
-		{Name: "电线电缆分会", ParentID: 1, Type: "branch", Sort: 3},
-		{Name: "电机分会", ParentID: 1, Type: "branch", Sort: 4},
-		{Name: "新能源电器分会", ParentID: 1, Type: "branch", Sort: 5},
-		{Name: "绝缘材料分会", ParentID: 1, Type: "branch", Sort: 6},
-		{Name: "电力电子分会", ParentID: 1, Type: "branch", Sort: 7},
+		{Name: "机构", Type: "root", Sort: 0},
 	}
 	db.DB.Create(&orgs)
+
+	// Get the root ID
+	var root models.Organization
+	db.DB.Where("type = ?", "root").First(&root)
+
+	// Children: branches + representatives under the single root
+	children := []models.Organization{
+		{Name: "变压器分会", ParentID: root.ID, Type: "branch", Sort: 1},
+		{Name: "高压开关分会", ParentID: root.ID, Type: "branch", Sort: 2},
+		{Name: "电线电缆分会", ParentID: root.ID, Type: "branch", Sort: 3},
+		{Name: "电机分会", ParentID: root.ID, Type: "branch", Sort: 4},
+		{Name: "新能源电器分会", ParentID: root.ID, Type: "branch", Sort: 5},
+		{Name: "绝缘材料分会", ParentID: root.ID, Type: "branch", Sort: 6},
+		{Name: "电力电子分会", ParentID: root.ID, Type: "branch", Sort: 7},
+		{Name: "华北代表处", ParentID: root.ID, Type: "representative", Sort: 8},
+		{Name: "华东代表处", ParentID: root.ID, Type: "representative", Sort: 9},
+		{Name: "华南代表处", ParentID: root.ID, Type: "representative", Sort: 10},
+	}
+	db.DB.Create(&children)
 }
 
 func createArticleCategories() {
