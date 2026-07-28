@@ -22,7 +22,7 @@ import { adminApi } from '@/api/admin'
 
 const loading = ref(true)
 const stats = ref([
-  { icon: 'UserFilled', label: '会员总数', value: 0, color: '#1a6fb5', bg: '#e8f4fd' },
+  { icon: 'UserFilled', label: '会员总数', value: 0, color: '#3b82f6', bg: '#dbeafe' },
   { icon: 'User', label: '正式会员', value: 0, color: '#22c55e', bg: '#dcfce7' },
   { icon: 'Clock', label: '待处理', value: 0, color: '#f59e0b', bg: '#fef3c7' },
   { icon: 'CircleClose', label: '已拒绝', value: 0, color: '#ef4444', bg: '#fee2e2' }

@@ -2,7 +2,7 @@
   <el-container class="admin-layout">
     <el-aside :width="collapsed ? '80px' : '200px'" class="sidebar">
       <div class="sidebar-header" @click="$router.push('/admin/dashboard')">
-        <el-icon :size="24" color="#1a6fb5"><Setting /></el-icon>
+        <el-icon :size="24" color="#3b82f6"><Setting /></el-icon>
         <span v-show="!collapsed" class="title">会员管理后台</span>
       </div>
       <el-menu
@@ -12,7 +12,7 @@
         :default-active="route.path"
         background-color="#fff"
         text-color="#4b5563"
-        active-text-color="#1a6fb5"
+        active-text-color="#3b82f6"
       >
         <el-menu-item index="/admin/dashboard"><el-icon><DataAnalysis /></el-icon><span>控制台</span></el-menu-item>
         <el-menu-item index="/admin/members"><el-icon><UserFilled /></el-icon><span>会员管理</span></el-menu-item>
@@ -122,7 +122,7 @@ function handleCommand(cmd: string) {
     cursor: pointer;
     color: #6b7280;
     transition: color 0.2s;
-    &:hover { color: #1a6fb5; }
+    &:hover { color: #3b82f6; }
   }
 
   .user-info { display: flex; align-items: center; gap: 8px; cursor: pointer; }

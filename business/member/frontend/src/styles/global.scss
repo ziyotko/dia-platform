@@ -1,6 +1,6 @@
-$primary: #1a6fb5;
-$primary-light: #4a9fd5;
-$primary-dark: #0d4f85;
+$primary: #60a5fa;
+$primary-light: #93c5fd;
+$primary-dark: #3b82f6;
 $success: #22c55e;
 $warning: #f59e0b;
 $danger: #ef4444;
@@ -34,14 +34,29 @@ body {
   }
 }
 
-// Button styles
+// Button styles - light/pastel theme
 .el-button--primary {
-  background: linear-gradient(135deg, $primary, $primary-light) !important;
-  border: none !important;
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe) !important;
+  border: 1px solid #93c5fd !important;
+  color: #1e40af !important;
   &:hover {
-    background: linear-gradient(135deg, $primary-dark, $primary) !important;
+    background: linear-gradient(135deg, #bfdbfe, #93c5fd) !important;
+    border-color: #60a5fa !important;
+    color: #1e3a8a !important;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba($primary, 0.3);
+    box-shadow: 0 4px 12px rgba(96, 165, 250, 0.25);
+  }
+  &:active {
+    background: linear-gradient(135deg, #93c5fd, #60a5fa) !important;
+  }
+}
+
+// Text primary buttons
+.el-button--primary.is-text {
+  color: #3b82f6 !important;
+  &:hover {
+    background: #dbeafe !important;
+    color: #2563eb !important;
   }
 }
 

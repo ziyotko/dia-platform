@@ -13,7 +13,7 @@
         <!-- Root -->
         <div class="root-header">
           <div class="root-info">
-            <el-icon :size="22" color="#1a6fb5"><OfficeBuilding /></el-icon>
+            <el-icon :size="22" color="#3b82f6"><OfficeBuilding /></el-icon>
             <span class="root-name">{{ rootNode.name }}</span>
             <el-tag size="small" type="info" effect="plain">上级机构</el-tag>
           </div>
