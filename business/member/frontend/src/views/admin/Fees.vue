@@ -59,10 +59,11 @@
     <el-card shadow="never" class="table-card">
       <el-table :data="list" stripe highlight-current-row>
         <el-table-column type="index" label="#" width="50" align="center" />
-        <el-table-column prop="member.username" label="会员" min-width="120">
+        <el-table-column prop="member.username" label="会员" min-width="200">
           <template #default="{row}">
             <div class="cell-member">
-              <span>{{ row.member?.username }}</span>
+              <span class="member-name">{{ row.member?.username }}</span>
+              <span v-if="row.member?.company_name" class="member-unit">{{ row.member.company_name }}</span>
             </div>
           </template>
         </el-table-column>
@@ -177,7 +178,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { adminApi } from '@/api/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Edit, Delete, CircleCheck, CircleCheckFilled, WarningFilled, Coin, List, Money } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, CircleCheck, CircleCheckFilled, WarningFilled, Coin, List, Money, Check } from '@element-plus/icons-vue'
 
 const list = ref<any[]>([]); const loading = ref(true); const showCreate = ref(false)
 const page = ref(1); const size = ref(10); const total = ref(0)
@@ -301,7 +302,7 @@ async function deleteFee(row: any) {
 
 <style scoped lang="scss">
 .admin-fees {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 24px 0;
 }
@@ -391,9 +392,18 @@ async function deleteFee(row: any) {
 }
 .cell-member {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  span { font-weight: 500; color: #1a1a2e; }
+  flex-direction: column;
+  gap: 2px;
+  .member-name {
+    font-weight: 500;
+    color: #1a1a2e;
+    line-height: 1.4;
+  }
+  .member-unit {
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.3;
+  }
 }
 .cell-amount {
   font-weight: 600;
