@@ -50,6 +50,22 @@ func (ctrl *FeeController) CreateFee(c *gin.Context) {
 	response.SuccessWithMessage(c, "创建成功", fee)
 }
 
+// GetMemberFeeInfo returns member's org and level info for fee creation
+func (ctrl *FeeController) GetMemberFeeInfo(c *gin.Context) {
+	memberID := parseUint(c.Param("id"))
+	orgID, levelID, orgName, levelName, err := ctrl.feeService.GetMemberFeeInfo(memberID)
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.Success(c, gin.H{
+		"org_id":     orgID,
+		"level_id":   levelID,
+		"org_name":   orgName,
+		"level_name": levelName,
+	})
+}
+
 func (ctrl *FeeController) UpdateFee(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	var req struct {
@@ -67,6 +83,15 @@ func (ctrl *FeeController) UpdateFee(c *gin.Context) {
 		return
 	}
 	response.SuccessWithMessage(c, "更新成功", nil)
+}
+
+func (ctrl *FeeController) DeleteFee(c *gin.Context) {
+	id := parseUint(c.Param("id"))
+	if err := ctrl.feeService.DeleteFeeRecord(id); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.SuccessWithMessage(c, "删除成功", nil)
 }
 
 func (ctrl *FeeController) ListAllFees(c *gin.Context) {

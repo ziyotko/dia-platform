@@ -125,8 +125,10 @@ func Register(r *gin.Engine) {
 		admin.PUT("/admin/applications/:id/review", appCtrl.ReviewApplication)
 
 		// Fee management
+		admin.GET("/admin/members/:id/fee-info", feeCtrl.GetMemberFeeInfo)
 		admin.POST("/admin/fees", feeCtrl.CreateFee)
 		admin.PUT("/admin/fees/:id", feeCtrl.UpdateFee)
+		admin.DELETE("/admin/fees/:id", feeCtrl.DeleteFee)
 		admin.GET("/admin/fees", feeCtrl.ListAllFees)
 
 		// Certificate management
