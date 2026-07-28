@@ -59,6 +59,31 @@ func (s *ApplicationService) SaveDraft(memberID uint64, req CreateAppRequest) (*
 	return &app, nil
 }
 
+// WithdrawApplication withdraws a pending application (sets back to draft)
+func (s *ApplicationService) WithdrawApplication(id, memberID uint64) error {
+	var app models.Application
+	if err := db.DB.First(&app, id).Error; err != nil {
+		return errors.New("申请不存在")
+	}
+	if app.MemberID != memberID {
+		return errors.New("无权操作该申请")
+	}
+	if app.Status != models.AppStatusPendingReview {
+		return errors.New("仅待审核状态的申请可以撤回")
+	}
+
+	if err := db.DB.Model(&app).Update("status", models.AppStatusDraft).Error; err != nil {
+		return err
+	}
+
+	// Reset member status back to allow re-application
+	db.DB.Model(&models.Member{}).Where("id = ?", memberID).
+		Where("status = ?", models.MemberStatusPendingReview).
+		Update("status", models.MemberStatusRegistering)
+
+	return nil
+}
+
 // GetMyApplications returns the member's applications
 func (s *ApplicationService) GetMyApplications(memberID uint64) ([]models.Application, error) {
 	var apps []models.Application

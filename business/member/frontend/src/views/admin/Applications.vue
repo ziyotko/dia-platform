@@ -1,6 +1,14 @@
 <template>
   <div class="admin-apps" v-loading="loading">
     <div class="page-header"><h3>入会审核</h3></div>
+    <div class="filter-bar">
+      <el-radio-group v-model="statusFilter" @change="onFilterChange" size="small">
+        <el-radio-button value="">全部</el-radio-button>
+        <el-radio-button value="pending_review">待审核</el-radio-button>
+        <el-radio-button value="approved">已通过</el-radio-button>
+        <el-radio-button value="rejected">已拒绝</el-radio-button>
+      </el-radio-group>
+    </div>
     <el-card>
       <el-table :data="list" stripe>
         <el-table-column prop="id" label="ID" width="70" />
@@ -34,14 +42,26 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 
 const list = ref<any[]>([]); const loading = ref(true)
 const page = ref(1); const size = ref(10); const total = ref(0)
+const statusFilter = ref('')
 
 const sm: Record<string,string> = { draft:'草稿', pending_review:'待审核', approved:'已通过', rejected:'已拒绝' }
 function statusLabel(s: string) { return sm[s] || s }
 
 onMounted(() => fetchData())
+function onFilterChange() {
+  page.value = 1
+  fetchData()
+}
+
 async function fetchData() {
   loading.value = true
-  try { const r = await adminApi.getApplications({ page: page.value, size: size.value }); list.value = r.data?.list || []; total.value = r.data?.total || 0 } catch {} finally { loading.value = false }
+  try {
+    const params: any = { page: page.value, size: size.value }
+    if (statusFilter.value) params.status = statusFilter.value
+    const r = await adminApi.getApplications(params)
+    list.value = r.data?.list || []
+    total.value = r.data?.total || 0
+  } catch {} finally { loading.value = false }
 }
 async function review(row: any, approved: boolean) {
   try {
@@ -55,6 +75,7 @@ async function review(row: any, approved: boolean) {
 
 <style scoped lang="scss">
 .admin-apps { max-width: 1100px; }
-.page-header { margin-bottom: 20px; }
+.page-header { margin-bottom: 16px; }
+.filter-bar { margin-bottom: 16px; }
 .pagination { display: flex; justify-content: center; margin-top: 24px; }
 </style>

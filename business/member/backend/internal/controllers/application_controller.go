@@ -46,6 +46,18 @@ func (ctrl *ApplicationController) SaveDraft(c *gin.Context) {
 	response.SuccessWithMessage(c, "草稿保存成功", app)
 }
 
+// WithdrawApplication withdraws a pending application
+func (ctrl *ApplicationController) WithdrawApplication(c *gin.Context) {
+	memberID := middleware.GetMemberID(c)
+	id := parseUint(c.Param("id"))
+
+	if err := ctrl.appService.WithdrawApplication(id, memberID); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.SuccessWithMessage(c, "申请已撤回", nil)
+}
+
 // GetMyApplications returns member's applications
 func (ctrl *ApplicationController) GetMyApplications(c *gin.Context) {
 	memberID := middleware.GetMemberID(c)
