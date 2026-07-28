@@ -8,6 +8,8 @@
       <el-table :data="list" stripe>
         <el-table-column prop="id" label="ID" width="70" />
         <el-table-column prop="member.username" label="会员" />
+        <el-table-column prop="org_name" label="申请入会" min-width="150" />
+        <el-table-column prop="level_name" label="会员级别" width="120" />
         <el-table-column prop="year" label="年度" width="80" />
         <el-table-column prop="amount" label="金额" width="100"><template #default="{row}">¥{{ row.amount?.toFixed(2) }}</template></el-table-column>
         <el-table-column prop="status" label="状态" width="90"><template #default="{row}"><el-tag :type="row.status==='paid'?'success':'warning'">{{ row.status==='paid'?'已缴费':'未缴费' }}</el-tag></template></el-table-column>

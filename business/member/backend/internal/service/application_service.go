@@ -178,6 +178,11 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 		}
 
 		// Create first-year fee record with org's minimum level fee standard
+		var orgName string
+		var org models.Organization
+		if err := db.DB.First(&org, app.OrgID).Error; err == nil {
+			orgName = org.Name
+		}
 		fee := models.FeeRecord{
 			MemberID:      app.MemberID,
 			Year:          now.Year(),
@@ -186,6 +191,8 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 			FeeStandardID: feeStandardID,
 			LevelID:       levelID,
 			LevelName:     levelName,
+			OrgID:         app.OrgID,
+			OrgName:       orgName,
 		}
 		if err := tx.Create(&fee).Error; err != nil {
 			tx.Rollback()
