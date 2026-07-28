@@ -72,7 +72,7 @@ func (s *FeeService) CreateFeeRecord(req CreateFeeRequest) (*models.FeeRecord, e
 }
 
 // UpdateFeeRecord updates a fee record (admin)
-func (s *FeeService) UpdateFeeRecord(id uint64, status, invoiceNo string) error {
+func (s *FeeService) UpdateFeeRecord(id uint64, status, invoiceNo string, amount float64, remark string) error {
 	updates := map[string]interface{}{}
 	if status != "" {
 		updates["status"] = status
@@ -83,6 +83,12 @@ func (s *FeeService) UpdateFeeRecord(id uint64, status, invoiceNo string) error 
 	}
 	if invoiceNo != "" {
 		updates["invoice_no"] = invoiceNo
+	}
+	if amount > 0 {
+		updates["amount"] = amount
+	}
+	if remark != "" {
+		updates["remark"] = remark
 	}
 	return db.DB.Model(&models.FeeRecord{}).Where("id = ?", id).Updates(updates).Error
 }

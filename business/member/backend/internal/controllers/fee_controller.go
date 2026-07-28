@@ -53,14 +53,16 @@ func (ctrl *FeeController) CreateFee(c *gin.Context) {
 func (ctrl *FeeController) UpdateFee(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	var req struct {
-		Status    string `json:"status"`
-		InvoiceNo string `json:"invoice_no"`
+		Status    string  `json:"status"`
+		InvoiceNo string  `json:"invoice_no"`
+		Amount    float64 `json:"amount"`
+		Remark    string  `json:"remark"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "参数错误")
 		return
 	}
-	if err := ctrl.feeService.UpdateFeeRecord(id, req.Status, req.InvoiceNo); err != nil {
+	if err := ctrl.feeService.UpdateFeeRecord(id, req.Status, req.InvoiceNo, req.Amount, req.Remark); err != nil {
 		response.BadRequest(c, err.Error())
 		return
 	}
