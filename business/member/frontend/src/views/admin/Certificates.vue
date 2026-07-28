@@ -2,7 +2,9 @@
   <div class="admin-certs" v-loading="loading">
     <div class="page-header">
       <h3>证书样式管理</h3>
-      <el-button type="primary" @click="openCreate">新增样式</el-button>
+      <el-button type="primary" @click="openCreate" :disabled="availableLevels.length === 0">
+        {{ availableLevels.length === 0 ? '所有等级已创建' : '新增样式' }}
+      </el-button>
     </div>
 
     <el-card>
@@ -20,7 +22,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="created_at" label="创建时间" width="170">
-          <template #default="{ row }">{{ row.created_at?.slice(0, 16) }}</template>
+          <template #default="{ row }">{{ formatDate(row.created_at) }}</template>
         </el-table-column>
         <el-table-column label="操作" width="180">
           <template #default="{ row }">
@@ -39,9 +41,13 @@
           <el-input v-model="form.name" placeholder="如：理事单位证书、会员单位证书" />
         </el-form-item>
         <el-form-item label="证书分类" required>
-          <el-select v-model="form.levelId" placeholder="选择会员等级" style="width:100%">
-            <el-option v-for="l in levels" :key="l.id" :label="l.name" :value="l.id" />
+          <el-select v-model="form.levelId" placeholder="选择会员等级" style="width:100%" :disabled="!!editingId">
+            <el-option
+              v-for="l in editingId ? levels : availableLevels"
+              :key="l.id" :label="l.name" :value="l.id"
+            />
           </el-select>
+          <div v-if="!editingId && availableLevels.length === 0" class="level-tip">所有等级已有证书样式</div>
         </el-form-item>
         <el-form-item label="PDF模板">
           <el-upload
@@ -73,7 +79,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { adminApi } from '@/api/admin'
 import { authApi } from '@/api/auth'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -91,6 +97,14 @@ const form = reactive({
   levelId: null as number | null,
   templateFile: ''
 })
+
+/** Levels that don't have a template yet — for create mode */
+const availableLevels = computed(() => {
+  const takenIds = new Set(list.value.map((t: any) => t.level_id))
+  return levels.value.filter((l: any) => !takenIds.has(l.id))
+})
+
+function formatDate(d: string) { return d ? d.replace('T', ' ').slice(0, 16) : '' }
 
 onMounted(async () => {
   try {
@@ -189,4 +203,5 @@ async function deleteTemplate(row: any) {
   &:hover { border-color: #409eff; color: #409eff; }
   .upload-hint { font-size: 12px; color: #999; }
 }
+.level-tip { font-size: 12px; color: #999; margin-top: 4px; }
 </style>

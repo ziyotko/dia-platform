@@ -1,5 +1,4 @@
 package service
-package service
 
 import (
 	"errors"
@@ -10,8 +9,8 @@ import (
 type CertificateTemplateService struct{}
 
 // List returns all certificate templates ordered by created_at DESC
-func (s *CertificateTemplateService) List() ([]models.CertificateTemplate, error) {
-	var list []models.CertificateTemplate
+func (s *CertificateTemplateService) List() ([]models.MemberCertificateTemplate, error) {
+	var list []models.MemberCertificateTemplate
 	if err := db.DB.Preload("Level").Order("created_at DESC").Find(&list).Error; err != nil {
 		return nil, err
 	}
@@ -19,8 +18,8 @@ func (s *CertificateTemplateService) List() ([]models.CertificateTemplate, error
 }
 
 // Get returns a single template by ID
-func (s *CertificateTemplateService) Get(id uint64) (*models.CertificateTemplate, error) {
-	var tpl models.CertificateTemplate
+func (s *CertificateTemplateService) Get(id uint64) (*models.MemberCertificateTemplate, error) {
+	var tpl models.MemberCertificateTemplate
 	if err := db.DB.Preload("Level").First(&tpl, id).Error; err != nil {
 		return nil, errors.New("证书样式不存在")
 	}
@@ -28,14 +27,21 @@ func (s *CertificateTemplateService) Get(id uint64) (*models.CertificateTemplate
 }
 
 // Create creates a new certificate template
-func (s *CertificateTemplateService) Create(req CertTemplateRequest) (*models.CertificateTemplate, error) {
+func (s *CertificateTemplateService) Create(req CertTemplateRequest) (*models.MemberCertificateTemplate, error) {
 	// Verify level exists
 	var level models.MemberLevel
 	if err := db.DB.First(&level, req.LevelID).Error; err != nil {
 		return nil, errors.New("会员等级不存在")
 	}
 
-	tpl := models.CertificateTemplate{
+	// Check if template already exists for this level
+	var count int64
+	db.DB.Model(&models.MemberCertificateTemplate{}).Where("level_id = ?", req.LevelID).Count(&count)
+	if count > 0 {
+		return nil, errors.New("该等级已有证书样式，请直接编辑")
+	}
+
+	tpl := models.MemberCertificateTemplate{
 		Name:         req.Name,
 		LevelID:      req.LevelID,
 		TemplateFile: req.TemplateFile,
@@ -50,7 +56,7 @@ func (s *CertificateTemplateService) Create(req CertTemplateRequest) (*models.Ce
 
 // Update updates a certificate template
 func (s *CertificateTemplateService) Update(id uint64, req CertTemplateRequest) error {
-	var tpl models.CertificateTemplate
+	var tpl models.MemberCertificateTemplate
 	if err := db.DB.First(&tpl, id).Error; err != nil {
 		return errors.New("证书样式不存在")
 	}
@@ -74,7 +80,7 @@ func (s *CertificateTemplateService) Update(id uint64, req CertTemplateRequest) 
 
 // Delete deletes a certificate template
 func (s *CertificateTemplateService) Delete(id uint64) error {
-	var tpl models.CertificateTemplate
+	var tpl models.MemberCertificateTemplate
 	if err := db.DB.First(&tpl, id).Error; err != nil {
 		return errors.New("证书样式不存在")
 	}
