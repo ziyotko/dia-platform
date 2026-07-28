@@ -45,6 +45,15 @@ func (s *AuthService) Register(req RegisterRequest) (*LoginResponse, error) {
 		Status:     models.MemberStatusRegistering,
 	}
 
+	// Save company info for unit members
+	if req.MemberType == models.MemberTypeUnit {
+		member.CompanyName = req.CompanyName
+		member.CreditCode = req.CreditCode
+		member.LegalPerson = req.LegalPerson
+		member.ContactPerson = req.ContactPerson
+		member.Address = req.Address
+	}
+
 	if err := db.DB.Create(&member).Error; err != nil {
 		return nil, fmt.Errorf("注册失败: %w", err)
 	}
@@ -213,13 +222,19 @@ func (s *AuthService) ResetPassword(token, newPwd string) error {
 // --- Request/Response types ---
 
 type RegisterRequest struct {
-	Username    string `json:"username" binding:"required"`
-	Password    string `json:"password" binding:"required,min=6"`
-	Mobile      string `json:"mobile"`
-	Email       string `json:"email"`
-	MemberType  string `json:"member_type"`
-	CaptchaID   string `json:"captcha_id" binding:"required"`
-	CaptchaCode string `json:"captcha_code" binding:"required"`
+	Username      string `json:"username" binding:"required"`
+	Password      string `json:"password" binding:"required,min=6"`
+	Mobile        string `json:"mobile"`
+	Email         string `json:"email"`
+	MemberType    string `json:"member_type"`
+	CaptchaID     string `json:"captcha_id" binding:"required"`
+	CaptchaCode   string `json:"captcha_code" binding:"required"`
+	CompanyName   string `json:"company_name"`
+	CreditCode    string `json:"credit_code"`
+	LegalPerson   string `json:"legal_person"`
+	ContactPerson string `json:"contact_person"`
+	Address       string `json:"address"`
+	OrgID         uint64 `json:"org_id"`
 }
 
 type LoginRequest struct {

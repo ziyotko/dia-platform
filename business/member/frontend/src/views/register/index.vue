@@ -2,15 +2,15 @@
   <div class="register-page">
     <div class="register-card">
       <div class="card-header">
-        <h2>入会申请</h2>
-        <el-steps :active="step" align-center>
+        <h2>注册会员</h2>
+        <el-steps :active="step" :simple="form1.memberType === 'personal'" align-center>
           <el-step title="账户注册" />
-          <el-step title="填写资料" />
+          <el-step v-if="form1.memberType === 'unit'" title="填写资料" />
           <el-step title="确认提交" />
         </el-steps>
       </div>
 
-      <!-- Step 1: Account -->
+      <!-- Step 1: Account (no captcha) -->
       <el-form v-if="step === 0" ref="form1Ref" :model="form1" :rules="rules1" size="large" label-width="100px">
         <el-form-item label="用户名" prop="username">
           <el-input v-model="form1.username" placeholder="请输入用户名" />
@@ -33,19 +33,13 @@
             <el-radio value="personal">个人会员</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="验证码" prop="captchaCode">
-          <div class="captcha-row">
-            <el-input v-model="form1.captchaCode" placeholder="验证码" />
-            <img :src="captchaImage" class="captcha-img" @click="loadCaptcha" />
-          </div>
-        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="nextStep">下一步</el-button>
         </el-form-item>
       </el-form>
 
-      <!-- Step 2: Profile -->
-      <el-form v-if="step === 1" ref="form2Ref" :model="form2" size="large" label-width="100px">
+      <!-- Step 2: Profile (unit only) -->
+      <el-form v-if="step === 1 && form1.memberType === 'unit'" ref="form2Ref" :model="form2" size="large" label-width="100px">
         <el-form-item label="单位名称" prop="companyName">
           <el-input v-model="form2.companyName" placeholder="请输入单位全称" />
         </el-form-item>
@@ -72,20 +66,35 @@
         </el-form-item>
       </el-form>
 
-      <!-- Step 3: Confirm -->
-      <div v-if="step === 2" class="confirm-step">
-        <el-descriptions title="请确认入会信息" :column="1" border>
+      <!-- Step 3: Confirm + Captcha + Submit -->
+      <div v-if="step === (form1.memberType === 'unit' ? 2 : 1)" class="confirm-step">
+        <el-descriptions :title="form1.memberType === 'unit' ? '请确认入会信息' : '确认注册信息'" :column="1" border>
           <el-descriptions-item label="用户名">{{ form1.username }}</el-descriptions-item>
           <el-descriptions-item label="手机号">{{ form1.mobile }}</el-descriptions-item>
           <el-descriptions-item label="邮箱">{{ form1.email }}</el-descriptions-item>
           <el-descriptions-item label="会员类型">{{ form1.memberType === 'unit' ? '单位会员' : '个人会员' }}</el-descriptions-item>
-          <el-descriptions-item label="单位名称">{{ form2.companyName }}</el-descriptions-item>
-          <el-descriptions-item label="联系人">{{ form2.contactPerson }}</el-descriptions-item>
-          <el-descriptions-item label="申请分会">{{ selectedOrgName }}</el-descriptions-item>
+          <template v-if="form1.memberType === 'unit'">
+            <el-descriptions-item label="单位名称">{{ form2.companyName }}</el-descriptions-item>
+            <el-descriptions-item label="信用代码">{{ form2.creditCode }}</el-descriptions-item>
+            <el-descriptions-item label="法定代表人">{{ form2.legalPerson }}</el-descriptions-item>
+            <el-descriptions-item label="联系人">{{ form2.contactPerson }}</el-descriptions-item>
+            <el-descriptions-item label="单位地址">{{ form2.address }}</el-descriptions-item>
+            <el-descriptions-item label="申请分会">{{ selectedOrgName }}</el-descriptions-item>
+          </template>
         </el-descriptions>
+        <div class="captcha-confirm">
+          <el-form ref="captchaFormRef" :model="captchaForm" :rules="captchaRules" size="large" label-width="100px">
+            <el-form-item label="验证码" prop="code">
+              <div class="captcha-row">
+                <el-input v-model="captchaForm.code" placeholder="验证码" />
+                <img :src="captchaImage" class="captcha-img" @click="loadCaptcha" />
+              </div>
+            </el-form-item>
+          </el-form>
+        </div>
         <div class="confirm-actions">
-          <el-button @click="step = 1">上一步</el-button>
-          <el-button type="primary" :loading="submitting" @click="submitApplication">提交入会申请</el-button>
+          <el-button @click="step = form1.memberType === 'unit' ? 1 : 0">上一步</el-button>
+          <el-button type="primary" :loading="submitting" @click="handleSubmit">确认提交</el-button>
         </div>
       </div>
     </div>
@@ -107,11 +116,15 @@ const captchaId = ref('')
 const orgs = ref<any[]>([])
 const form1Ref = ref()
 const form2Ref = ref()
+const captchaFormRef = ref()
 
 const form1 = reactive({
   username: '', password: '', confirmPwd: '', mobile: '', email: '',
-  memberType: 'unit', captchaCode: ''
+  memberType: 'unit'
 })
+
+const captchaForm = reactive({ code: '' })
+const captchaRules = { code: [{ required: true, message: '请输入验证码' }] }
 
 const validatePass = (_rule: any, value: string, callback: any) => {
   if (value !== form1.password) callback(new Error('两次密码不一致'))
@@ -123,8 +136,7 @@ const rules1 = {
   password: [{ required: true, min: 6, message: '密码至少6位' }],
   confirmPwd: [{ required: true, validator: validatePass, trigger: 'blur' }],
   mobile: [{ required: true, message: '请输入手机号' }],
-  email: [{ type: 'email', message: '邮箱格式不正确' }],
-  captchaCode: [{ required: true, message: '请输入验证码' }]
+  email: [{ type: 'email', message: '邮箱格式不正确', required: false }]
 }
 
 const form2 = reactive({
@@ -166,50 +178,63 @@ async function nextStep() {
   if (step.value === 0) {
     const valid = await form1Ref.value?.validate().catch(() => false)
     if (!valid) return
-    // Register and get token directly
-    try {
-      const res = await authApi.register({
-        username: form1.username,
-        password: form1.password,
-        mobile: form1.mobile,
-        email: form1.email,
-        member_type: form1.memberType,
-        captcha_id: captchaId.value,
-        captcha_code: form1.captchaCode
-      })
-      // Use the token returned from register, no need to call login again
-      const { token, member } = res.data
-      if (token) {
-        localStorage.setItem('member-token', token)
-      }
-      ElMessage.success('注册成功')
-      step.value = 1
-    } catch {
-      loadCaptcha()
-    }
-  } else if (step.value === 1) {
+    // Personal members skip to confirm; unit members go to profile
+    step.value = form1.memberType === 'personal' ? 1 : 1
+  } else if (step.value === 1 && form1.memberType === 'unit') {
     step.value = 2
   }
 }
 
-async function submitApplication() {
+async function handleSubmit() {
+  // Validate captcha first
+  const valid = await captchaFormRef.value?.validate().catch(() => false)
+  if (!valid) { loadCaptcha(); return }
+
   submitting.value = true
   try {
-    // Use application API to submit
-    const { applicationApi } = await import('@/api/index')
-    await applicationApi.createApplication({
-      org_id: form2.orgId,
-      form_data: JSON.stringify(form2),
-      company_name: form2.companyName,
-      credit_code: form2.creditCode,
-      legal_person: form2.legalPerson,
-      contact_person: form2.contactPerson,
-      address: form2.address,
-      member_type: form1.memberType
-    })
-    ElMessage.success('入会申请提交成功！')
+    const registerData: any = {
+      username: form1.username,
+      password: form1.password,
+      mobile: form1.mobile,
+      email: form1.email,
+      member_type: form1.memberType,
+      captcha_id: captchaId.value,
+      captcha_code: captchaForm.code
+    }
+    // For unit members, also send company info with registration
+    if (form1.memberType === 'unit') {
+      registerData.company_name = form2.companyName
+      registerData.credit_code = form2.creditCode
+      registerData.legal_person = form2.legalPerson
+      registerData.contact_person = form2.contactPerson
+      registerData.address = form2.address
+    }
+
+    const res = await authApi.register(registerData)
+    const { token } = res.data
+    if (token) {
+      localStorage.setItem('member-token', token)
+    }
+
+    // For unit members, also submit an application
+    if (form1.memberType === 'unit') {
+      const { applicationApi } = await import('@/api/index')
+      await applicationApi.createApplication({
+        org_id: form2.orgId,
+        form_data: JSON.stringify(form2),
+        company_name: form2.companyName,
+        credit_code: form2.creditCode,
+        legal_person: form2.legalPerson,
+        contact_person: form2.contactPerson,
+        address: form2.address
+      }).catch(() => {}) // Application submission is supplementary
+    }
+
+    ElMessage.success(form1.memberType === 'unit' ? '入会申请提交成功！' : '注册成功！')
     router.push('/member/dashboard')
-  } catch {} finally {
+  } catch {
+    loadCaptcha()
+  } finally {
     submitting.value = false
   }
 }
