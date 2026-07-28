@@ -24,6 +24,14 @@
             <el-form-item label="联系人"><el-input v-model="form.contact_person" /></el-form-item>
             <el-form-item label="单位地址"><el-input v-model="form.address" /></el-form-item>
             <el-form-item label="网站"><el-input v-model="form.website" /></el-form-item>
+            <el-form-item label="组织机构证" v-if="form.member_type === 'unit'">
+              <template v-if="form.cert_file">
+                <el-link :href="fileUrl(form.cert_file)" target="_blank" type="primary" :underline="false">
+                  <el-icon style="margin-right:4px"><Download /></el-icon>查看证照
+                </el-link>
+              </template>
+              <span v-else style="color:#9ca3af">未上传</span>
+            </el-form-item>
           </el-col>
         </el-row>
         <el-form-item label="简介">
@@ -53,6 +61,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { authApi } from '@/api/auth'
 import { ElMessage } from 'element-plus'
+import { Download } from '@element-plus/icons-vue'
 
 const form = reactive<any>({})
 const loading = ref(true)
@@ -73,6 +82,12 @@ async function saveProfile() {
     await authApi.updateProfile(form)
     ElMessage.success('保存成功')
   } catch {} finally { saving.value = false }
+}
+
+function fileUrl(path: string) {
+  if (!path) return ''
+  if (path.startsWith('http://') || path.startsWith('https://')) return path
+  return '/' + path.replace(/^\//, '')
 }
 
 async function changePwd() {

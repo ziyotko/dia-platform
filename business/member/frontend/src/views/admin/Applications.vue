@@ -18,7 +18,7 @@
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{row}"><el-tag :type="row.status==='pending_review'?'warning':row.status==='approved'?'success':'danger'">{{ statusLabel(row.status) }}</el-tag></template>
         </el-table-column>
-        <el-table-column prop="created_at" label="申请时间" width="170"><template #default="{row}">{{ row.created_at?.slice(0,16) }}</template></el-table-column>
+        <el-table-column prop="created_at" label="申请时间" width="170"><template #default="{row}">{{ row.created_at?.slice(0,16).replace('T', ' ') }}</template></el-table-column>
         <el-table-column label="操作" width="280" v-if="list.length">
           <template #default="{row}">
             <el-button size="small" @click="viewMember(row)">查看</el-button>
@@ -102,8 +102,15 @@ function fileUrl(path: string) {
 
 async function review(row: any, approved: boolean) {
   try {
-    const comment = approved ? '' : (await ElMessageBox.prompt('请输入拒绝理由', '拒绝申请')).value || ''
-    await adminApi.reviewApplication(row.id, { approved, comment })
+    const title = approved ? '通过申请' : '拒绝申请'
+    const tip = approved ? '请输入审核意见（选填）' : '请输入拒绝理由'
+    const { value: comment } = await ElMessageBox.prompt(tip, title, {
+      inputType: 'textarea',
+      inputPlaceholder: approved ? '可选，输入审核意见...' : '请输入拒绝理由...',
+      confirmButtonText: '确定',
+      cancelButtonText: '取消'
+    })
+    await adminApi.reviewApplication(row.id, { approved, comment: comment || '' })
     ElMessage.success(approved ? '已通过' : '已拒绝')
     fetchData()
   } catch {}
