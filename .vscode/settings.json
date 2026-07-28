@@ -1,0 +1,13 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "go": true,
+        "/^powershell -Command \"Get-Content -Path 'config\\\\config\\.go' -Encoding byte -TotalCount 4 \\| ForEach-Object \\{ '\\{0:X2\\}' -f \\$_ \\}\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "npm install": true,
+        "npx vue-tsc": true,
+        "npx vite": true,
+        "Test-Path": true
+    }
+}

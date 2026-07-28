@@ -1,0 +1,33 @@
+server:
+  port: 8085
+  mode: debug
+  api_prefix: /member/api
+  max_concurrent_ips: 100
+  upload_dir_prefix: uploads
+
+mysql:
+  host: 10.3.1.95
+  port: 3305
+  user: root
+  password: "1qaz@WSX"
+  db_name: caam_member
+  charset: utf8mb4
+  max_open: 50
+  max_idle: 10
+
+redis:
+  addr: 127.0.0.1:6379
+  password: ""
+  captcha_db: 11
+  anti_replay_db: 12
+
+jwt:
+  secret: member-jwt-secret-key-2024
+  expire_hours: 24
+  issuer: caam-member
+
+log:
+  path: logs/member.log
+  max_size: 100
+  max_backups: 30
+  max_age: 180

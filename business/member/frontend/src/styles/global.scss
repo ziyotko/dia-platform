@@ -1,0 +1,82 @@
+$primary: #1a6fb5;
+$primary-light: #4a9fd5;
+$primary-dark: #0d4f85;
+$success: #22c55e;
+$warning: #f59e0b;
+$danger: #ef4444;
+$bg: #f5f7fa;
+$card-bg: #ffffff;
+$text: #1f2937;
+$text-secondary: #6b7280;
+$border: #e5e7eb;
+$radius: 12px;
+
+// Global styles
+body {
+  background: $bg;
+  color: $text;
+}
+
+// Card styles
+.el-card {
+  border-radius: $radius !important;
+  border: 1px solid $border !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+}
+
+// Table styles
+.el-table {
+  border-radius: $radius;
+  th.el-table__cell {
+    background: #f8fafc !important;
+    color: $text-secondary;
+    font-weight: 600;
+  }
+}
+
+// Button styles
+.el-button--primary {
+  background: linear-gradient(135deg, $primary, $primary-light) !important;
+  border: none !important;
+  &:hover {
+    background: linear-gradient(135deg, $primary-dark, $primary) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba($primary, 0.3);
+  }
+}
+
+// Input styles
+.el-input__wrapper {
+  border-radius: 8px !important;
+}
+
+// Dialog styles
+.el-dialog {
+  border-radius: $radius !important;
+}
+
+// Pagination
+.el-pagination .btn-next, .el-pagination .btn-prev {
+  border-radius: 6px !important;
+}
+
+// Tag
+.el-tag {
+  border-radius: 6px !important;
+}
+
+// Custom scrollbar
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+  &:hover {
+    background: #94a3b8;
+  }
+}
