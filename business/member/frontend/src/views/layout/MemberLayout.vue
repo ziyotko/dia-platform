@@ -36,7 +36,7 @@
         </el-menu-item>
         <el-menu-item index="/member/organizations">
           <el-icon><Connection /></el-icon>
-          <span>参加的组织</span>
+          <span>加入信息</span>
         </el-menu-item>
         <el-menu-item index="/member/articles">
           <el-icon><EditPen /></el-icon>

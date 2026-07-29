@@ -183,10 +183,12 @@
           </el-col>
         </el-row>
         <el-form-item label="状态">
-          <el-select v-model="editForm.status" style="width:100%">
-            <el-option label="未缴费" value="unpaid" />
-            <el-option label="已缴费" value="paid" />
-          </el-select>
+          <el-tag v-if="editForm.status==='paid'" type="success" effect="dark" round>
+            <el-icon style="vertical-align:-2px;margin-right:3px"><CircleCheckFilled /></el-icon>已缴费
+          </el-tag>
+          <el-tag v-else type="warning" effect="dark" round>
+            <el-icon style="vertical-align:-2px;margin-right:3px"><WarningFilled /></el-icon>未缴费
+          </el-tag>
         </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="editForm.remark" type="textarea" :rows="2" placeholder="可选填写备注信息" />
