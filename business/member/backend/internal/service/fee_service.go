@@ -233,6 +233,7 @@ func (s *FeeService) IssueInvoice(id uint64, invoiceNo, invoiceFile string) erro
 	updates := map[string]interface{}{}
 	if fee.InvoiceStatus == "applied" {
 		updates["invoice_status"] = "issued"
+		updates["invoice_issued_at"] = &models.LocalTime{Time: time.Now()}
 	}
 	updates["invoice_no"] = invoiceNo
 	if invoiceFile != "" {

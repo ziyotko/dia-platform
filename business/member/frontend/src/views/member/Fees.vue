@@ -45,14 +45,11 @@
         <el-table-column label="开票单位全称" min-width="160">
           <template #default="{ row }">{{ row.invoice_company || '-' }}</template>
         </el-table-column>
-        <el-table-column label="统一社会信用代码" width="160">
-          <template #default="{ row }">{{ row.invoice_tax_id || '-' }}</template>
-        </el-table-column>
         <el-table-column label="开票金额" width="100">
           <template #default="{ row }">{{ row.invoice_amount ? '¥' + row.invoice_amount.toFixed(2) : '-' }}</template>
         </el-table-column>
-        <el-table-column label="开票联系人" min-width="140">
-          <template #default="{ row }">{{ row.invoice_contact || '-' }}</template>
+        <el-table-column label="开票时间" width="110">
+          <template #default="{ row }">{{ row.invoice_issued_at ? formatDate(row.invoice_issued_at) : '-' }}</template>
         </el-table-column>
         <el-table-column prop="invoice_remark" label="开票备注" min-width="120">
           <template #default="{ row }">{{ row.invoice_remark || '-' }}</template>
@@ -61,6 +58,7 @@
           <template #default="{ row }">
             <el-button v-if="row.status === 'unpaid'" type="primary" size="small" @click="openPayDialog(row)">缴费</el-button>
             <el-button v-else-if="row.status === 'paid' && !row.invoice_status" type="success" size="small" @click="openInvoiceDialog(row)">申请开票</el-button>
+            <el-button v-else-if="row.invoice_status === 'issued'" type="primary" size="small" @click="downloadInvoice(row)">下载发票</el-button>
             <el-tag v-else-if="row.status === 'pending'" type="warning" effect="plain" size="small">待确认</el-tag>
             <span v-else style="color:#9ca3af">-</span>
           </template>
@@ -304,6 +302,12 @@ async function submitInvoice() {
     showInvoiceDialog.value = false
     fetchData()
   } catch {} finally { invoiceSubmitting.value = false }
+}
+
+function downloadInvoice(row: any) {
+  if (row.invoice_file) {
+    window.open(row.invoice_file, '_blank')
+  }
 }
 
 function formatDate(d: string) { return d ? d.slice(0, 16) : '' }
