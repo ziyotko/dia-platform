@@ -30,16 +30,23 @@ func (s *ApplicationService) CreateApplication(memberID uint64, req CreateAppReq
 	}
 
 	// Update member status to pending review
-	db.DB.Model(&models.Member{}).Where("id = ?", memberID).
-		Updates(map[string]interface{}{
-			"status":         models.MemberStatusPendingReview,
-			"company_name":   req.CompanyName,
-			"credit_code":    req.CreditCode,
-			"legal_person":   req.LegalPerson,
-			"contact_person": req.ContactPerson,
-			"address":        req.Address,
-			"member_type":    req.MemberType,
-		})
+	// Only update fields actually provided; preserve member_type, legal_person, member_level
+	updates := map[string]interface{}{
+		"status": models.MemberStatusPendingReview,
+	}
+	if req.CompanyName != "" {
+		updates["company_name"] = req.CompanyName
+	}
+	if req.CreditCode != "" {
+		updates["credit_code"] = req.CreditCode
+	}
+	if req.ContactPerson != "" {
+		updates["contact_person"] = req.ContactPerson
+	}
+	if req.Address != "" {
+		updates["address"] = req.Address
+	}
+	db.DB.Model(&models.Member{}).Where("id = ?", memberID).Updates(updates)
 
 	return &app, nil
 }
