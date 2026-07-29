@@ -19,11 +19,11 @@
         </el-table-column>
         <el-table-column label="操作" width="280">
           <template #default="{ row }">
-            <el-button text type="primary" @click="downloadCert(row)">
+            <el-button text type="primary" :disabled="!isActiveMember" @click="isActiveMember ? downloadCert(row) : undefined">
               <el-icon><Download /></el-icon> 下载证书
             </el-button>
             <el-button
-              v-if="row.status !== 'active' && !hasActiveCert"
+              v-if="isActiveMember && row.status !== 'active' && !hasActiveCert"
               text
               type="warning"
               @click="renewCert"
@@ -43,6 +43,10 @@ import { ref, computed, onMounted } from 'vue'
 import { certificateApi } from '@/api/index'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download, Refresh } from '@element-plus/icons-vue'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+const isActiveMember = computed(() => userStore.userInfo?.status === 'active')
 
 const certificates = ref<any[]>([])
 const loading = ref(true)
@@ -61,6 +65,10 @@ async function fetchCertificates() {
 }
 
 function downloadCert(row: any) {
+  if (!isActiveMember.value) {
+    ElMessage.warning('仅正式会员可下载证书')
+    return
+  }
   if (row.file_path) {
     window.open(row.file_path, '_blank')
   } else {
@@ -69,6 +77,10 @@ function downloadCert(row: any) {
 }
 
 async function renewCert() {
+  if (!isActiveMember.value) {
+    ElMessage.warning('仅正式会员可更新证书')
+    return
+  }
   try {
     await ElMessageBox.confirm(
       '当前证书已失效，确认重新生成证书？',
