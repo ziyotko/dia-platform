@@ -72,3 +72,14 @@ func (ctrl *CertificateController) GenerateCertificate(c *gin.Context) {
 	}
 	response.SuccessWithMessage(c, "证书生成成功", cert)
 }
+
+// RenewCertificate renews the current member's certificate (expires old ones, creates new)
+func (ctrl *CertificateController) RenewCertificate(c *gin.Context) {
+	memberID := middleware.GetMemberID(c)
+	cert, err := ctrl.certService.RenewMyCertificate(memberID)
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.SuccessWithMessage(c, "证书已重新生成", cert)
+}

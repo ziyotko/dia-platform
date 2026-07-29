@@ -85,6 +85,7 @@ func Register(r *gin.Engine) {
 		// Certificates
 		member.GET("/certificates", certCtrl.GetMyCertificates)
 		member.GET("/certificates/:id", certCtrl.GetCertificate)
+		member.POST("/certificates/renew", certCtrl.RenewCertificate)
 
 		// Joined organizations
 		member.GET("/member/orgs", memberOrgCtrl.GetMyOrgs)

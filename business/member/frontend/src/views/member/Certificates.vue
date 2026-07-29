@@ -17,10 +17,18 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120">
+        <el-table-column label="操作" width="280">
           <template #default="{ row }">
             <el-button text type="primary" @click="downloadCert(row)">
               <el-icon><Download /></el-icon> 下载证书
+            </el-button>
+            <el-button
+              v-if="row.status !== 'active' && !hasActiveCert"
+              text
+              type="warning"
+              @click="renewCert"
+            >
+              <el-icon><Refresh /></el-icon> 刷新
             </el-button>
           </template>
         </el-table-column>
@@ -31,19 +39,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { certificateApi } from '@/api/index'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Download, Refresh } from '@element-plus/icons-vue'
 
 const certificates = ref<any[]>([])
 const loading = ref(true)
+const renewing = ref(false)
 
-onMounted(async () => {
+const hasActiveCert = computed(() => certificates.value.some(c => c.status === 'active'))
+
+onMounted(() => fetchCertificates())
+
+async function fetchCertificates() {
+  loading.value = true
   try {
     const res = await certificateApi.getMyCertificates()
     certificates.value = res.data || []
   } catch {} finally { loading.value = false }
-})
+}
 
 function downloadCert(row: any) {
   if (row.file_path) {
@@ -51,6 +66,20 @@ function downloadCert(row: any) {
   } else {
     ElMessage.info('证书文件暂未生成，请联系管理员')
   }
+}
+
+async function renewCert() {
+  try {
+    await ElMessageBox.confirm(
+      '当前证书已失效，确认重新生成证书？',
+      '证书刷新',
+      { type: 'warning', confirmButtonText: '确认刷新', cancelButtonText: '取消' }
+    )
+    renewing.value = true
+    await certificateApi.renewCertificate()
+    ElMessage.success('证书已重新生成')
+    await fetchCertificates()
+  } catch {} finally { renewing.value = false }
 }
 
 function formatDate(d: string) { return d ? d.slice(0, 10) : '' }

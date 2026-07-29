@@ -19,7 +19,8 @@ export const feeApi = {
 
 export const certificateApi = {
   getMyCertificates: () => request.get('/certificates'),
-  getCertificate: (id: number) => request.get(`/certificates/${id}`)
+  getCertificate: (id: number) => request.get(`/certificates/${id}`),
+  renewCertificate: () => request.post('/certificates/renew')
 }
 
 export const orgApi = {

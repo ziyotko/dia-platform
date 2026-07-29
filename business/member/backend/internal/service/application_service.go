@@ -235,7 +235,7 @@ type CreateAppRequest struct {
 }
 
 func generateCertNo(memberID uint64) string {
-	return "CEEIA-" + time.Now().Format("2006") + "-" + padLeft(memberID)
+	return "XXXXXX-" + time.Now().Format("2006") + "-" + padLeft(memberID)
 }
 
 func padLeft(id uint64) string {

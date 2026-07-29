@@ -60,7 +60,7 @@ func (s *CertificateService) GenerateCertificateForMember(memberID uint64) (*mod
 	now := time.Now()
 	cert := models.Certificate{
 		MemberID: memberID,
-		CertNo:   "CEEIA-" + now.Format("2006") + "-" + padLeftGen(memberID),
+		CertNo:   "XXXXXX-" + now.Format("2006") + "-" + padLeftGen(memberID),
 		IssuedAt: &models.LocalTime{Time: now},
 		ExpireAt: &models.LocalTime{Time: now.AddDate(1, 0, 0)},
 		Status:   "active",
@@ -69,6 +69,17 @@ func (s *CertificateService) GenerateCertificateForMember(memberID uint64) (*mod
 		return nil, err
 	}
 	return &cert, nil
+}
+
+// RenewMyCertificate marks old certificates as expired and creates a new one (member self-service)
+func (s *CertificateService) RenewMyCertificate(memberID uint64) (*models.Certificate, error) {
+	// Expire all active certificates for this member
+	db.DB.Model(&models.Certificate{}).
+		Where("member_id = ? AND status = 'active'", memberID).
+		Update("status", "expired")
+
+	// Create a new certificate
+	return s.GenerateCertificateForMember(memberID)
 }
 
 type CreateCertRequest struct {

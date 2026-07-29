@@ -34,8 +34,7 @@
         <el-table-column prop="paid_at" label="缴费时间" width="170">
           <template #default="{ row }">{{ formatDate(row.paid_at) || '-' }}</template>
         </el-table-column>
-        <el-table-column prop="transaction_id" label="交易流水号" />
-        <el-table-column prop="invoice_no" label="发票号" />
+        <el-table-column prop="invoice_no" label="票据号码" />
         <el-table-column label="操作" width="100">
           <template #default="{ row }">
             <el-button v-if="row.status === 'unpaid'" type="primary" size="small" @click="payFee(row)">缴费</el-button>
