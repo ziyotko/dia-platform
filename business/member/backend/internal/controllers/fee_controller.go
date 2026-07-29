@@ -29,11 +29,38 @@ func (ctrl *FeeController) PayFee(c *gin.Context) {
 	memberID := middleware.GetMemberID(c)
 	feeID := parseUint(c.Param("id"))
 
-	if err := ctrl.feeService.PayFee(memberID, feeID); err != nil {
+	var req struct {
+		ReceiptFile string `json:"receipt_file"`
+		PaidDate    string `json:"paid_date"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+
+	if err := ctrl.feeService.PayFee(memberID, feeID, req.ReceiptFile, req.PaidDate); err != nil {
 		response.BadRequest(c, err.Error())
 		return
 	}
-	response.SuccessWithMessage(c, "缴费成功", nil)
+	response.SuccessWithMessage(c, "缴费信息已提交，等待管理员确认", nil)
+}
+
+// ConfirmFee confirms a pending fee (admin)
+func (ctrl *FeeController) ConfirmFee(c *gin.Context) {
+	id := parseUint(c.Param("id"))
+	var req struct {
+		Amount float64 `json:"amount"`
+		Remark string  `json:"remark"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	if err := ctrl.feeService.ConfirmFee(id, req.Amount, req.Remark); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.SuccessWithMessage(c, "已确认缴费", nil)
 }
 
 func (ctrl *FeeController) CreateFee(c *gin.Context) {
@@ -48,6 +75,23 @@ func (ctrl *FeeController) CreateFee(c *gin.Context) {
 		return
 	}
 	response.SuccessWithMessage(c, "创建成功", fee)
+}
+
+func (ctrl *FeeController) ApplyInvoice(c *gin.Context) {
+	memberID := middleware.GetMemberID(c)
+	feeID := parseUint(c.Param("id"))
+
+	var req service.ApplyInvoiceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "请填写完整开票信息")
+		return
+	}
+
+	if err := ctrl.feeService.ApplyInvoice(memberID, feeID, req); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.SuccessWithMessage(c, "开票申请已提交", nil)
 }
 
 // GetMemberFeeInfo returns member's org and level info for fee creation

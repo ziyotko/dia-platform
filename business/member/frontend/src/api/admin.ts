@@ -17,6 +17,7 @@ export const adminApi = {
   getFees: (params?: any) => request.get('/admin/fees', { params }),
   createFee: (data: any) => request.post('/admin/fees', data),
   updateFee: (id: number, data: any) => request.put(`/admin/fees/${id}`, data),
+  confirmFee: (id: number, data?: any) => request.post(`/admin/fees/${id}/confirm`, data),
   deleteFee: (id: number) => request.delete(`/admin/fees/${id}`),
   getMemberFeeInfo: (id: number) => request.get(`/admin/members/${id}/fee-info`),
 

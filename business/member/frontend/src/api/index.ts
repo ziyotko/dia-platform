@@ -14,7 +14,8 @@ export const applicationApi = {
 
 export const feeApi = {
   getMyFees: (params?: any) => request.get('/fees', { params }),
-  payFee: (id: number) => request.post(`/fees/${id}/pay`)
+  payFee: (id: number, data: any) => request.post(`/fees/${id}/pay`, data),
+  applyInvoice: (id: number, data: any) => request.post(`/fees/${id}/invoice`, data)
 }
 
 export const certificateApi = {

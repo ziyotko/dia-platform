@@ -81,6 +81,7 @@ func Register(r *gin.Engine) {
 		// Fees
 		member.GET("/fees", feeCtrl.GetMyFees)
 		member.POST("/fees/:id/pay", feeCtrl.PayFee)
+		member.POST("/fees/:id/invoice", feeCtrl.ApplyInvoice)
 
 		// Certificates
 		member.GET("/certificates", certCtrl.GetMyCertificates)
@@ -129,6 +130,7 @@ func Register(r *gin.Engine) {
 		admin.GET("/admin/members/:id/fee-info", feeCtrl.GetMemberFeeInfo)
 		admin.POST("/admin/fees", feeCtrl.CreateFee)
 		admin.PUT("/admin/fees/:id", feeCtrl.UpdateFee)
+		admin.POST("/admin/fees/:id/confirm", feeCtrl.ConfirmFee)
 		admin.DELETE("/admin/fees/:id", feeCtrl.DeleteFee)
 		admin.GET("/admin/fees", feeCtrl.ListAllFees)
 

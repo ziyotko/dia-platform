@@ -31,6 +31,13 @@
           <span class="stat-value">{{ unpaidCount }}</span>
         </div>
       </div>
+      <div class="stat-card stat-card--pending">
+        <div class="stat-icon"><el-icon :size="28"><Clock /></el-icon></div>
+        <div class="stat-body">
+          <span class="stat-label">待确认</span>
+          <span class="stat-value">{{ pendingCount }}</span>
+        </div>
+      </div>
       <div class="stat-card stat-card--amount">
         <div class="stat-icon"><el-icon :size="28"><Money /></el-icon></div>
         <div class="stat-body">
@@ -48,6 +55,7 @@
         </el-select>
         <el-select v-model="filterStatus" placeholder="缴费状态" clearable style="width:140px" @change="fetchData">
           <el-option label="已缴费" value="paid" />
+          <el-option label="待确认" value="pending" />
           <el-option label="未缴费" value="unpaid" />
         </el-select>
         <span class="filter-hint">共 {{ total }} 条记录</span>
@@ -78,22 +86,38 @@
             <el-tag v-if="row.status==='paid'" type="success" effect="dark" round>
               <el-icon style="vertical-align:-2px;margin-right:3px"><CircleCheckFilled /></el-icon>已缴费
             </el-tag>
-            <el-tag v-else type="warning" effect="dark" round>
+            <el-tag v-else-if="row.status==='pending'" type="warning" effect="dark" round>
+              <el-icon style="vertical-align:-2px;margin-right:3px"><Clock /></el-icon>待确认
+            </el-tag>
+            <el-tag v-else type="info" effect="dark" round>
               <el-icon style="vertical-align:-2px;margin-right:3px"><WarningFilled /></el-icon>未缴费
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="paid_at" label="缴费时间" width="170">
+        <el-table-column prop="paid_date" label="缴费日期" width="110">
           <template #default="{row}">
-            <span class="cell-time">{{ row.paid_at?.slice(0,16).replace('T',' ') || '-' }}</span>
+            <span>{{ row.paid_date || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="280" fixed="right">
+        <el-table-column prop="paid_amount" label="实缴金额" width="110" align="right">
+          <template #default="{row}">
+            <span v-if="row.paid_amount > 0" class="cell-amount">¥{{ row.paid_amount?.toFixed(2) }}</span>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="confirmed_at" label="确认时间" width="170">
+          <template #default="{row}">
+            <span>{{ row.confirmed_at?.slice(0,16).replace('T',' ') || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="360" fixed="right">
           <template #default="{row}">
             <div class="action-btns">
-              <el-button text size="small" :icon="Edit" @click="editFee(row)">编辑</el-button>
-              <el-button v-if="row.status!=='paid'" text size="small" type="success" :icon="CircleCheck" @click="markPaid(row)">确认缴费</el-button>
-              <el-button v-if="row.status!=='paid'" text size="small" type="danger" :icon="Delete" @click="deleteFee(row)">删除</el-button>
+              <el-button v-if="row.status==='unpaid'" text size="small" :icon="Edit" @click="editFee(row)">编辑</el-button>
+              <el-button v-if="row.receipt_file" text size="small" type="primary" :icon="Download" @click="viewReceipt(row)">缴费回执</el-button>
+              <el-button v-if="row.status==='pending'" text size="small" type="success" :icon="CircleCheck" @click="confirmPay(row)">确认缴费</el-button>
+              <el-button v-if="row.status==='unpaid'" text size="small" type="success" :icon="CircleCheck" @click="markPaid(row)">确认缴费</el-button>
+              <el-button v-if="row.status==='unpaid'" text size="small" type="danger" :icon="Delete" @click="deleteFee(row)">删除</el-button>
             </div>
           </template>
         </el-table-column>
@@ -199,6 +223,32 @@
         <el-button type="primary" :icon="Check" @click="saveEdit">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 确认缴费对话框 -->
+    <el-dialog v-model="showConfirm" title="确认缴费" width="480px" :close-on-click-modal="false">
+      <div class="confirm-info" v-if="confirmTarget">
+        <div class="confirm-info-row">会员：<strong>{{ confirmTarget.member?.company_name || confirmTarget.member?.username }}</strong></div>
+        <div class="confirm-info-row">{{ confirmTarget.year }}年 · {{ confirmTarget.org_name }} · {{ confirmTarget.level_name }}</div>
+      </div>
+      <el-form label-width="100px" class="confirm-form">
+        <el-form-item label="缴费金额" required>
+          <el-input-number
+            v-model="confirmAmount"
+            :min="0"
+            :precision="2"
+            :step="100"
+            style="width:100%"
+          />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="confirmRemark" type="textarea" :rows="3" placeholder="可选填写备注信息" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showConfirm=false">取消</el-button>
+        <el-button type="primary" :loading="confirming" :icon="CircleCheck" @click="submitConfirm">确认缴费</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -206,7 +256,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { adminApi } from '@/api/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Edit, Delete, CircleCheck, CircleCheckFilled, WarningFilled, Coin, List, Money, Check } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, CircleCheck, CircleCheckFilled, WarningFilled, Coin, List, Money, Check, Clock, Download } from '@element-plus/icons-vue'
 
 const list = ref<any[]>([]); const loading = ref(true); const showCreate = ref(false)
 const page = ref(1); const size = ref(10); const total = ref(0)
@@ -219,6 +269,11 @@ const selectedMemberInfo = reactive({ orgId: 0, levelId: 0, orgName: '', levelNa
 const feeForm = reactive({ memberId: null as number | null, year: new Date().getFullYear(), amount: 2000, remark: '' })
 
 const showEdit = ref(false)
+const showConfirm = ref(false)
+const confirmTarget = ref<any>(null)
+const confirmAmount = ref(0)
+const confirmRemark = ref('')
+const confirming = ref(false)
 const editForm = reactive({ id: 0, memberId: 0, memberName: '', orgId: 0, orgName: '', levelId: 0, levelName: '', year: 0, amount: 0, status: 'unpaid', remark: '' })
 const editLevelOptions = ref<any[]>([])
 const editLevelLoading = ref(false)
@@ -227,7 +282,8 @@ const filterYear = ref<number | null>(null)
 const filterStatus = ref<string | null>(null)
 
 const paidCount = computed(() => list.value.filter(r => r.status === 'paid').length)
-const unpaidCount = computed(() => list.value.filter(r => r.status !== 'paid').length)
+const pendingCount = computed(() => list.value.filter(r => r.status === 'pending').length)
+const unpaidCount = computed(() => list.value.filter(r => r.status === 'unpaid').length)
 const totalAmount = computed(() => list.value.reduce((s, r) => s + (r.amount || 0), 0))
 
 onMounted(() => {
@@ -356,6 +412,30 @@ async function markPaid(row: any) {
     fetchData()
   } catch {}
 }
+function viewReceipt(row: any) {
+  if (row.receipt_file) {
+    window.open(row.receipt_file, '_blank')
+  }
+}
+async function confirmPay(row: any) {
+  confirmTarget.value = row
+  confirmAmount.value = row.amount || 0
+  confirmRemark.value = ''
+  showConfirm.value = true
+}
+async function submitConfirm() {
+  if (!confirmTarget.value) return
+  confirming.value = true
+  try {
+    await adminApi.confirmFee(confirmTarget.value.id, {
+      amount: confirmAmount.value,
+      remark: confirmRemark.value
+    })
+    ElMessage.success('已确认缴费')
+    showConfirm.value = false
+    fetchData()
+  } catch {} finally { confirming.value = false }
+}
 async function deleteFee(row: any) {
   try {
     await ElMessageBox.confirm(
@@ -372,8 +452,7 @@ async function deleteFee(row: any) {
 
 <style scoped lang="scss">
 .admin-fees {
-  max-width: 1400px;
-  margin: 0 auto;
+  width: 100%;
   padding: 24px 0;
 }
 
@@ -407,7 +486,7 @@ async function deleteFee(row: any) {
 // ─── Stats Cards ───
 .stats-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 16px;
   margin-bottom: 20px;
 }
@@ -435,6 +514,7 @@ async function deleteFee(row: any) {
   &--total .stat-icon { background: #eef2ff; color: #4361ee; }
   &--paid .stat-icon { background: #ecfdf5; color: #10b981; }
   &--unpaid .stat-icon { background: #fffbeb; color: #f59e0b; }
+  &--pending .stat-icon { background: #fef3c7; color: #d97706; }
   &--amount .stat-icon { background: #f0fdf4; color: #22c55e; }
 }
 
@@ -509,5 +589,20 @@ async function deleteFee(row: any) {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.confirm-info {
+  background: #f5f7fa;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #303133;
+}
+.confirm-form {
+  :deep(.el-form-item) {
+    margin-bottom: 18px;
+  }
 }
 </style>

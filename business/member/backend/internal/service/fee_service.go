@@ -5,8 +5,6 @@ import (
 	"member/internal/models"
 	"member/pkg/db"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type FeeService struct{}
@@ -27,30 +25,56 @@ func (s *FeeService) GetMyFees(memberID uint64, year int, status string) ([]mode
 	return fees, nil
 }
 
-// PayFee simulates fee payment
-func (s *FeeService) PayFee(memberID, feeID uint64) error {
+// PayFee submits payment info (receipt + date) and sets status to pending
+func (s *FeeService) PayFee(memberID, feeID uint64, receiptFile, paidDate string) error {
 	var fee models.FeeRecord
 	if err := db.DB.Where("id = ? AND member_id = ?", feeID, memberID).First(&fee).Error; err != nil {
 		return errors.New("费用记录不存在")
 	}
-	if fee.Status == models.FeeStatusPaid {
-		return errors.New("该费用已缴纳")
+	if fee.Status != models.FeeStatusUnpaid {
+		return errors.New("该费用已提交，请等待管理员确认")
+	}
+
+	updates := map[string]interface{}{
+		"status":       models.FeeStatusPending,
+		"receipt_file": receiptFile,
+		"paid_date":    paidDate,
+	}
+	if err := db.DB.Model(&fee).Updates(updates).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+// ConfirmFee confirms a pending fee (admin)
+func (s *FeeService) ConfirmFee(id uint64, amount float64, remark string) error {
+	var fee models.FeeRecord
+	if err := db.DB.First(&fee, id).Error; err != nil {
+		return errors.New("费用记录不存在")
+	}
+	if fee.Status != models.FeeStatusPending {
+		return errors.New("只有待确认的费用才能确认缴费")
 	}
 
 	now := time.Now()
-	txID := "TXN-" + uuid.New().String()[:8]
-
 	updates := map[string]interface{}{
-		"status":         models.FeeStatusPaid,
-		"paid_at":        &models.LocalTime{Time: now},
-		"transaction_id": txID,
+		"status":       models.FeeStatusPaid,
+		"paid_at":      &models.LocalTime{Time: now},
+		"confirmed_at": &models.LocalTime{Time: now},
+		"paid_amount":  amount,
+	}
+	if amount > 0 {
+		updates["paid_amount"] = amount
+	}
+	if remark != "" {
+		updates["remark"] = remark
 	}
 	if err := db.DB.Model(&fee).Updates(updates).Error; err != nil {
 		return err
 	}
 
 	// Update member status to active if pending_payment
-	db.DB.Model(&models.Member{}).Where("id = ? AND status = ?", memberID, models.MemberStatusPendingPay).
+	db.DB.Model(&models.Member{}).Where("id = ? AND status = ?", fee.MemberID, models.MemberStatusPendingPay).
 		Update("status", models.MemberStatusActive)
 
 	return nil
@@ -107,7 +131,20 @@ func (s *FeeService) UpdateFeeRecord(id uint64, status, invoiceNo string, amount
 	if levelName != "" {
 		updates["level_name"] = levelName
 	}
-	return db.DB.Model(&models.FeeRecord{}).Where("id = ?", id).Updates(updates).Error
+
+	if err := db.DB.Model(&models.FeeRecord{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+		return err
+	}
+
+	// If confirmed as paid, activate member
+	if status == models.FeeStatusPaid {
+		var fee models.FeeRecord
+		db.DB.First(&fee, id)
+		db.DB.Model(&models.Member{}).Where("id = ? AND status = ?", fee.MemberID, models.MemberStatusPendingPay).
+			Update("status", models.MemberStatusActive)
+	}
+
+	return nil
 }
 
 // DeleteFeeRecord deletes a fee record (admin, unpaid only)
@@ -158,6 +195,30 @@ type CreateFeeRequest struct {
 	LevelName string  `json:"level_name"`
 }
 
+// ApplyInvoice submits an invoice application for a paid fee record (member)
+func (s *FeeService) ApplyInvoice(memberID, feeID uint64, req ApplyInvoiceRequest) error {
+	var fee models.FeeRecord
+	if err := db.DB.Where("id = ? AND member_id = ?", feeID, memberID).First(&fee).Error; err != nil {
+		return errors.New("费用记录不存在")
+	}
+	if fee.Status != models.FeeStatusPaid {
+		return errors.New("只有已缴费的费用才能申请开票")
+	}
+	if fee.InvoiceStatus != "" {
+		return errors.New("该费用已申请开票，请勿重复申请")
+	}
+
+	updates := map[string]interface{}{
+		"invoice_status":  "applied",
+		"invoice_company": req.InvoiceCompany,
+		"invoice_tax_id":  req.InvoiceTaxID,
+		"invoice_amount":  req.InvoiceAmount,
+		"invoice_contact": req.InvoiceContact,
+		"invoice_remark":  req.InvoiceRemark,
+	}
+	return db.DB.Model(&fee).Updates(updates).Error
+}
+
 // GetMemberFeeInfo returns a member's org and level info from their approved application
 func (s *FeeService) GetMemberFeeInfo(memberID uint64) (orgID, levelID uint64, orgName, levelName string, err error) {
 	var app models.Application
@@ -183,4 +244,13 @@ func (s *FeeService) GetMemberFeeInfo(memberID uint64) (orgID, levelID uint64, o
 	}
 
 	return orgID, levelID, orgName, levelName, nil
+}
+
+// ApplyInvoiceRequest represents invoice application data submitted by member
+type ApplyInvoiceRequest struct {
+	InvoiceCompany string  `json:"invoice_company" binding:"required"`
+	InvoiceTaxID   string  `json:"invoice_tax_id" binding:"required"`
+	InvoiceAmount  float64 `json:"invoice_amount" binding:"required"`
+	InvoiceContact string  `json:"invoice_contact" binding:"required"`
+	InvoiceRemark  string  `json:"invoice_remark"`
 }
