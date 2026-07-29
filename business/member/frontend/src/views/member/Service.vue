@@ -5,12 +5,15 @@
         <el-card>
           <div class="announce-item" v-for="a in announcements" :key="a.id" @click="$router.push(`/announcements/${a.id}`)">
             <div>
-              <el-tag size="small" :type="a.is_pinned ? 'danger' : ''">{{ a.is_pinned ? '置顶' : a.type }}</el-tag>
+              <el-tag size="small" :type="a.is_pinned ? 'danger' : ''">{{ a.is_pinned ? '置顶' : typeLabel(a.type) }}</el-tag>
               <span class="title">{{ a.title }}</span>
             </div>
             <span class="time">{{ formatDate(a.published_at) }}</span>
           </div>
           <el-empty v-if="announcements.length === 0" description="暂无公告" />
+          <div class="pagination" v-if="annTotal > 0">
+            <el-pagination background layout="total, prev, pager, next" :total="annTotal" :page-size="annSize" v-model:current-page="annPage" @change="fetchAnnouncements" />
+          </div>
         </el-card>
       </el-tab-pane>
       <el-tab-pane label="会员文章" name="articles">
@@ -23,6 +26,9 @@
             <span class="time">{{ a.member?.company_name || a.member?.username }}</span>
           </div>
           <el-empty v-if="pubArticles.length === 0" description="暂无文章" />
+          <div class="pagination" v-if="artTotal > 0">
+            <el-pagination background layout="total, prev, pager, next" :total="artTotal" :page-size="artSize" v-model:current-page="artPage" @change="fetchArticles" />
+          </div>
         </el-card>
       </el-tab-pane>
     </el-tabs>
@@ -30,7 +36,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { announcementApi, articleApi } from '@/api/index'
 
 const activeTab = ref('announcements')
@@ -38,22 +44,54 @@ const announcements = ref<any[]>([])
 const pubArticles = ref<any[]>([])
 const loading = ref(true)
 
-onMounted(async () => {
-  try {
-    const [annRes, artRes] = await Promise.all([
-      announcementApi.getPublished({ page: 1, size: 50 }),
-      articleApi.listPublished({ page: 1, size: 50 })
-    ])
-    announcements.value = annRes.data?.list || []
-    pubArticles.value = artRes.data?.list || []
-  } catch {} finally { loading.value = false }
+// 公告分页
+const annPage = ref(1)
+const annSize = ref(10)
+const annTotal = ref(0)
+
+// 文章分页
+const artPage = ref(1)
+const artSize = ref(10)
+const artTotal = ref(0)
+
+onMounted(() => {
+  fetchAnnouncements()
+  fetchArticles()
 })
 
+// 切 tab 时刷新对应数据
+watch(activeTab, () => {
+  if (activeTab.value === 'announcements' && announcements.value.length === 0) fetchAnnouncements()
+  if (activeTab.value === 'articles' && pubArticles.value.length === 0) fetchArticles()
+})
+
+async function fetchAnnouncements() {
+  loading.value = true
+  try {
+    const res = await announcementApi.getPublished({ page: annPage.value, size: annSize.value })
+    announcements.value = res.data?.list || []
+    annTotal.value = res.data?.total || 0
+  } catch {} finally { loading.value = false }
+}
+
+async function fetchArticles() {
+  loading.value = true
+  try {
+    const res = await articleApi.listPublished({ page: artPage.value, size: artSize.value })
+    pubArticles.value = res.data?.list || []
+    artTotal.value = res.data?.total || 0
+  } catch {} finally { loading.value = false }
+}
+
 function formatDate(d: string) { return d ? d.slice(0, 10) : '' }
+
+const typeMap: Record<string, string> = { notice: '公告', article: '文章', policy: '政策' }
+function typeLabel(t: string) { return typeMap[t] || t }
 </script>
 
 <style scoped lang="scss">
 .service-page { max-width: 900px; margin: 0 auto; }
+.pagination { display: flex; justify-content: center; margin-top: 20px; }
 .announce-item {
   display: flex; justify-content: space-between; align-items: center;
   padding: 14px 0; border-bottom: 1px solid #f3f4f6; cursor: pointer;

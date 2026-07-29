@@ -29,7 +29,7 @@
         <el-table-column prop="created_at" label="创建时间" width="170">
           <template #default="{ row }">{{ formatDate(row.created_at) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="180">
+        <el-table-column label="操作" width="240">
           <template #default="{ row }">
             <el-button text type="primary" size="small" @click="editArticle(row)">编辑</el-button>
             <el-button text type="primary" size="small" @click="viewArticle(row)">浏览</el-button>

@@ -6,7 +6,7 @@
     </div>
 
     <el-card>
-      <el-table :data="messages" stripe>
+      <el-table :data="messages" stripe @row-click="viewDetail" style="cursor:pointer">
         <el-table-column prop="title" label="标题" min-width="180" />
         <el-table-column prop="content" label="内容" min-width="200" show-overflow-tooltip />
         <el-table-column prop="reply" label="回复" min-width="180" show-overflow-tooltip>
@@ -27,8 +27,15 @@
         </el-table-column>
       </el-table>
       <el-empty v-if="!loading && messages.length === 0" description="暂无留言" />
-      <div class="pagination" v-if="total > size">
-        <el-pagination background layout="prev, pager, next" :total="total" :page-size="size" v-model:current-page="page" @change="fetchData" />
+      <div class="pagination" v-if="total > 0">
+        <el-pagination
+          background
+          layout="total, prev, pager, next"
+          :total="total"
+          :page-size="size"
+          v-model:current-page="page"
+          @change="fetchData"
+        />
       </div>
     </el-card>
 
@@ -44,6 +51,44 @@
         <el-button type="primary" @click="createMsg">提交留言</el-button>
       </template>
     </el-dialog>
+
+    <!-- 留言详情对话框 -->
+    <el-dialog v-model="showDetail" title="留言详情" width="560px">
+      <div class="detail-body" v-if="detailItem">
+        <div class="detail-field">
+          <div class="detail-label">标题</div>
+          <div class="detail-value">{{ detailItem.title }}</div>
+        </div>
+        <div class="detail-field">
+          <div class="detail-label">内容</div>
+          <div class="detail-value detail-content">{{ detailItem.content }}</div>
+        </div>
+        <div class="detail-field">
+          <div class="detail-label">状态</div>
+          <div class="detail-value">
+            <el-tag :type="detailItem.status === 'replied' ? 'success' : detailItem.status === 'read' ? 'info' : 'warning'">
+              {{ detailItem.status === 'replied' ? '已回复' : detailItem.status === 'read' ? '已读' : '未读' }}
+            </el-tag>
+          </div>
+        </div>
+        <div class="detail-field">
+          <div class="detail-label">提交时间</div>
+          <div class="detail-value">{{ formatDate(detailItem.created_at) }}</div>
+        </div>
+        <div class="detail-divider" v-if="detailItem.reply" />
+        <div class="detail-field" v-if="detailItem.reply">
+          <div class="detail-label">回复内容</div>
+          <div class="detail-value detail-reply">{{ detailItem.reply }}</div>
+        </div>
+        <div class="detail-field" v-if="detailItem.replied_at">
+          <div class="detail-label">回复时间</div>
+          <div class="detail-value">{{ formatDate(detailItem.replied_at) }}</div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="showDetail = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -55,6 +100,8 @@ import { ElMessage } from 'element-plus'
 const messages = ref<any[]>([])
 const loading = ref(true)
 const showCreate = ref(false)
+const showDetail = ref(false)
+const detailItem = ref<any>(null)
 const page = ref(1)
 const size = ref(10)
 const total = ref(0)
@@ -82,11 +129,39 @@ async function createMsg() {
   } catch {}
 }
 
-function formatDate(d: string) { return d ? d.slice(0, 16) : '' }
+function viewDetail(row: any) {
+  detailItem.value = row
+  showDetail.value = true
+}
+
+function formatDate(d: string) { return d ? d.replace('T', ' ').slice(0, 16) : '' }
 </script>
 
 <style scoped lang="scss">
 .messages-page { max-width: 1000px; margin: 0 auto; }
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .pagination { display: flex; justify-content: center; margin-top: 24px; }
+
+.detail-body { padding: 4px 0; }
+.detail-field { margin-bottom: 20px; }
+.detail-label { font-size: 13px; color: #909399; margin-bottom: 6px; }
+.detail-value { font-size: 14px; color: #303133; line-height: 1.6; }
+.detail-content {
+  background: #f5f7fa;
+  border-radius: 8px;
+  padding: 14px 16px;
+  white-space: pre-wrap;
+}
+.detail-reply {
+  background: #f0fdf4;
+  border-radius: 8px;
+  padding: 14px 16px;
+  white-space: pre-wrap;
+  color: #16a34a;
+}
+.detail-divider {
+  height: 1px;
+  background: #ebeef5;
+  margin: 24px 0;
+}
 </style>
