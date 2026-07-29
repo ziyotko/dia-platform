@@ -4,6 +4,8 @@ import (
 	"member/internal/middleware"
 	"member/internal/service"
 	"member/pkg/response"
+	"member/pkg/utils"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -138,6 +140,43 @@ func (ctrl *FeeController) DeleteFee(c *gin.Context) {
 		return
 	}
 	response.SuccessWithMessage(c, "删除成功", nil)
+}
+
+// IssueInvoice issues an invoice (admin uploads PDF, sets invoice_no, marks as issued)
+func (ctrl *FeeController) IssueInvoice(c *gin.Context) {
+	id := parseUint(c.Param("id"))
+
+	invoiceNo := c.PostForm("invoice_no")
+	if invoiceNo == "" {
+		response.BadRequest(c, "请输入票据号码")
+		return
+	}
+
+	var invoiceFile string
+	file, err := c.FormFile("file")
+	if err == nil {
+		// Check file type
+		ext := ""
+		if idx := strings.LastIndex(file.Filename, "."); idx >= 0 {
+			ext = strings.ToLower(file.Filename[idx:])
+		}
+		if ext != ".pdf" {
+			response.BadRequest(c, "仅支持 PDF 格式")
+			return
+		}
+		path, err := utils.SaveUploadedFile(file, "invoices")
+		if err != nil {
+			response.ServerError(c, "文件上传失败")
+			return
+		}
+		invoiceFile = "/" + path
+	}
+
+	if err := ctrl.feeService.IssueInvoice(id, invoiceNo, invoiceFile); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.SuccessWithMessage(c, "已开票", nil)
 }
 
 func (ctrl *FeeController) ListAllFees(c *gin.Context) {

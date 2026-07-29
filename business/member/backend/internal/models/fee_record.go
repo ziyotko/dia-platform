@@ -36,6 +36,7 @@ type FeeRecord struct {
 	InvoiceAmount  float64 `gorm:"type:decimal(10,2);default:0" json:"invoice_amount"` // 开票金额
 	InvoiceContact string  `gorm:"size:128;default:''" json:"invoice_contact"`         // 开票联系人及电话
 	InvoiceRemark  string  `gorm:"size:500;default:''" json:"invoice_remark"`          // 开票备注
+	InvoiceFile    string  `gorm:"size:255;default:''" json:"invoice_file"`            // 发票 PDF 文件 URL
 }
 
 func (FeeRecord) TableName() string {

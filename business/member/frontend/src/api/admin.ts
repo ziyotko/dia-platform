@@ -20,6 +20,7 @@ export const adminApi = {
   confirmFee: (id: number, data?: any) => request.post(`/admin/fees/${id}/confirm`, data),
   deleteFee: (id: number) => request.delete(`/admin/fees/${id}`),
   getMemberFeeInfo: (id: number) => request.get(`/admin/members/${id}/fee-info`),
+  issueInvoice: (id: number, data: FormData) => request.post(`/admin/fees/${id}/issue-invoice`, data, { headers: { 'Content-Type': 'multipart/form-data' } }),
 
   // Certificates
   createCertificate: (data: any) => request.post('/admin/certificates', data),

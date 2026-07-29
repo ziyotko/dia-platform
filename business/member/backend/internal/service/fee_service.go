@@ -219,6 +219,28 @@ func (s *FeeService) ApplyInvoice(memberID, feeID uint64, req ApplyInvoiceReques
 	return db.DB.Model(&fee).Updates(updates).Error
 }
 
+// IssueInvoice issues an invoice for an applied fee record (admin)
+// Also supports re-uploading invoice file when already issued
+func (s *FeeService) IssueInvoice(id uint64, invoiceNo, invoiceFile string) error {
+	var fee models.FeeRecord
+	if err := db.DB.First(&fee, id).Error; err != nil {
+		return errors.New("费用记录不存在")
+	}
+	if fee.InvoiceStatus != "applied" && fee.InvoiceStatus != "issued" {
+		return errors.New("只有已申请开票或已开票的费用才能操作")
+	}
+
+	updates := map[string]interface{}{}
+	if fee.InvoiceStatus == "applied" {
+		updates["invoice_status"] = "issued"
+	}
+	updates["invoice_no"] = invoiceNo
+	if invoiceFile != "" {
+		updates["invoice_file"] = invoiceFile
+	}
+	return db.DB.Model(&fee).Updates(updates).Error
+}
+
 // GetMemberFeeInfo returns a member's org and level info from their approved application
 func (s *FeeService) GetMemberFeeInfo(memberID uint64) (orgID, levelID uint64, orgName, levelName string, err error) {
 	var app models.Application

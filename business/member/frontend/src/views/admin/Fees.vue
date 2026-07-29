@@ -110,6 +110,24 @@
             <span>{{ row.confirmed_at?.slice(0,16).replace('T',' ') || '-' }}</span>
           </template>
         </el-table-column>
+        <!-- Invoice columns -->
+        <el-table-column prop="invoice_no" label="票据号码" width="120" />
+        <el-table-column label="发票状态" width="90" align="center">
+          <template #default="{row}">
+            <el-tag v-if="!row.invoice_status" type="info" effect="plain" size="small">未申请</el-tag>
+            <el-tag v-else-if="row.invoice_status === 'applied'" type="warning" effect="plain" size="small">已申请</el-tag>
+            <el-tag v-else-if="row.invoice_status === 'issued'" type="success" effect="plain" size="small">已开票</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="开票单位" min-width="160">
+          <template #default="{row}">{{ row.invoice_company || '-' }}</template>
+        </el-table-column>
+        <el-table-column label="开票金额" width="100" align="right">
+          <template #default="{row}">{{ row.invoice_amount ? '¥' + row.invoice_amount.toFixed(2) : '-' }}</template>
+        </el-table-column>
+        <el-table-column prop="invoice_remark" label="开票备注" min-width="120">
+          <template #default="{row}">{{ row.invoice_remark || '-' }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="360" fixed="right">
           <template #default="{row}">
             <div class="action-btns">
@@ -118,6 +136,8 @@
               <el-button v-if="row.status==='pending'" text size="small" type="success" :icon="CircleCheck" @click="confirmPay(row)">确认缴费</el-button>
               <el-button v-if="row.status==='unpaid'" text size="small" type="success" :icon="CircleCheck" @click="markPaid(row)">确认缴费</el-button>
               <el-button v-if="row.status==='unpaid'" text size="small" type="danger" :icon="Delete" @click="deleteFee(row)">删除</el-button>
+              <el-button v-if="row.invoice_status==='applied'" text size="small" type="warning" :icon="Coin" @click="openIssueInvoice(row)">开票</el-button>
+              <el-button v-if="row.invoice_status==='issued'" text size="small" type="warning" :icon="Upload" @click="openIssueInvoice(row)">重新上传发票</el-button>
             </div>
           </template>
         </el-table-column>
@@ -224,6 +244,51 @@
       </template>
     </el-dialog>
 
+    <!-- 开票对话框 / 重新上传发票 -->
+    <el-dialog v-model="showInvoice" :title="invoiceTarget?.invoice_status === 'issued' ? '重新上传发票' : '开票'" width="560px" :close-on-click-modal="false">
+      <div class="confirm-info" v-if="invoiceTarget">
+        <div class="confirm-info-row">会员：<strong>{{ invoiceTarget.member?.company_name || invoiceTarget.member?.username }}</strong></div>
+        <div class="confirm-info-row">{{ invoiceTarget.year }}年 · {{ invoiceTarget.org_name }} · {{ invoiceTarget.level_name }}</div>
+        <div class="confirm-info-row" style="margin-top:8px">
+          开票单位：{{ invoiceTarget.invoice_company || '-' }}<br>
+          信用代码：{{ invoiceTarget.invoice_tax_id || '-' }}<br>
+          开票金额：¥{{ (invoiceTarget.invoice_amount || invoiceTarget.amount)?.toFixed(2) }}<br>
+          联系人：{{ invoiceTarget.invoice_contact || '-' }}<br>
+          备注：{{ invoiceTarget.invoice_remark || '-' }}
+          <template v-if="invoiceTarget.invoice_status === 'issued'">
+            <br>当前票据号码：{{ invoiceTarget.invoice_no || '-' }}
+            <br>当前发票文件：<a v-if="invoiceTarget.invoice_file" :href="invoiceTarget.invoice_file" target="_blank" style="color:#409eff">查看</a><span v-else>-</span>
+          </template>
+        </div>
+      </div>
+      <el-form label-width="100px" class="confirm-form">
+        <el-form-item label="票据号码" required>
+          <el-input v-model="invoiceNo" placeholder="请输入票据号码" />
+        </el-form-item>
+        <el-form-item label="发票文件">
+          <el-upload
+            ref="invoiceUploadRef"
+            :auto-upload="false"
+            accept=".pdf"
+            :limit="1"
+            :on-change="onInvoiceFileChange"
+            :file-list="invoiceFileList"
+          >
+            <el-button type="primary" plain>
+              <el-icon><Upload /></el-icon> 选择 PDF 文件
+            </el-button>
+            <template #tip>
+              <div class="upload-tip">仅支持 PDF 格式，如不更换文件可不选</div>
+            </template>
+          </el-upload>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showInvoice=false">取消</el-button>
+        <el-button type="warning" :loading="issuingInvoice" :icon="Coin" @click="submitIssueInvoice">{{ invoiceTarget?.invoice_status === 'issued' ? '确认更新' : '确认开票' }}</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 确认缴费对话框 -->
     <el-dialog v-model="showConfirm" title="确认缴费" width="480px" :close-on-click-modal="false">
       <div class="confirm-info" v-if="confirmTarget">
@@ -256,7 +321,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { adminApi } from '@/api/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Edit, Delete, CircleCheck, CircleCheckFilled, WarningFilled, Coin, List, Money, Check, Clock, Download } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, CircleCheck, CircleCheckFilled, WarningFilled, Coin, List, Money, Check, Clock, Download, Upload } from '@element-plus/icons-vue'
 
 const list = ref<any[]>([]); const loading = ref(true); const showCreate = ref(false)
 const page = ref(1); const size = ref(10); const total = ref(0)
@@ -274,6 +339,14 @@ const confirmTarget = ref<any>(null)
 const confirmAmount = ref(0)
 const confirmRemark = ref('')
 const confirming = ref(false)
+
+// Invoice issuing (admin)
+const showInvoice = ref(false)
+const invoiceTarget = ref<any>(null)
+const invoiceNo = ref('')
+const invoiceFileList = ref<any[]>([])
+const invoiceUploadRef = ref<any>(null)
+const issuingInvoice = ref(false)
 const editForm = reactive({ id: 0, memberId: 0, memberName: '', orgId: 0, orgName: '', levelId: 0, levelName: '', year: 0, amount: 0, status: 'unpaid', remark: '' })
 const editLevelOptions = ref<any[]>([])
 const editLevelLoading = ref(false)
@@ -436,6 +509,33 @@ async function submitConfirm() {
     fetchData()
   } catch {} finally { confirming.value = false }
 }
+// ─── Invoice issuing ───
+function openIssueInvoice(row: any) {
+  invoiceTarget.value = row
+  invoiceNo.value = row.invoice_no || ''
+  invoiceFileList.value = []
+  showInvoice.value = true
+}
+function onInvoiceFileChange(file: any) {
+  invoiceFileList.value = [file]
+}
+async function submitIssueInvoice() {
+  if (!invoiceNo.value) { ElMessage.warning('请输入票据号码'); return }
+  if (!invoiceTarget.value) return
+  issuingInvoice.value = true
+  try {
+    const fd = new FormData()
+    fd.append('invoice_no', invoiceNo.value)
+    if (invoiceFileList.value.length > 0 && invoiceFileList.value[0].raw) {
+      fd.append('file', invoiceFileList.value[0].raw)
+    }
+    await adminApi.issueInvoice(invoiceTarget.value.id, fd)
+    ElMessage.success('开票成功')
+    showInvoice.value = false
+    fetchData()
+  } catch {} finally { issuingInvoice.value = false }
+}
+
 async function deleteFee(row: any) {
   try {
     await ElMessageBox.confirm(

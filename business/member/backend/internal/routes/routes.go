@@ -133,6 +133,7 @@ func Register(r *gin.Engine) {
 		admin.POST("/admin/fees/:id/confirm", feeCtrl.ConfirmFee)
 		admin.DELETE("/admin/fees/:id", feeCtrl.DeleteFee)
 		admin.GET("/admin/fees", feeCtrl.ListAllFees)
+		admin.POST("/admin/fees/:id/issue-invoice", feeCtrl.IssueInvoice)
 
 		// Certificate management
 		admin.POST("/admin/certificates", certCtrl.CreateCertificate)
