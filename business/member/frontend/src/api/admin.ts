@@ -25,8 +25,6 @@ export const adminApi = {
   // Certificates
   createCertificate: (data: any) => request.post('/admin/certificates', data),
   updateCertificate: (id: number, data: any) => request.put(`/admin/certificates/${id}`, data),
-  generateCertificate: (memberId: number) => request.post(`/admin/certificates/generate/${memberId}`),
-
   // Certificate Templates
   getCertTemplates: () => request.get('/admin/certificate-templates'),
   getCertTemplate: (id: number) => request.get(`/admin/certificate-templates/${id}`),
