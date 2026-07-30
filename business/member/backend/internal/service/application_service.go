@@ -172,12 +172,27 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 			}
 		}
 
+		// Look up certificate template for this level; fallback to lowest level's template
+		var certTplID uint64
+		var tpl models.MemberCertificateTemplate
+		if err := db.DB.Where("level_id = ?", levelID).First(&tpl).Error; err != nil {
+			db.DB.Joins("JOIN member_levels ml ON ml.id = member_certificate_templates.level_id").
+				Order("ml.level ASC").
+				First(&tpl)
+		}
+		if tpl.ID > 0 {
+			certTplID = tpl.ID
+		}
+
 		cert := models.Certificate{
-			MemberID: app.MemberID,
-			CertNo:   generateCertNo(app.MemberID),
-			IssuedAt: &models.LocalTime{Time: now},
-			ExpireAt: &models.LocalTime{Time: time.Date(now.Year(), 12, 31, 23, 59, 59, 0, now.Location())},
-			Status:   "active",
+			MemberID:       app.MemberID,
+			CertNo:         generateCertNo(app.MemberID),
+			IssuedAt:       &models.LocalTime{Time: now},
+			ExpireAt:       &models.LocalTime{Time: time.Date(now.Year(), 12, 31, 23, 59, 59, 0, now.Location())},
+			Status:         "active",
+			LevelID:        levelID,
+			LevelName:      levelName,
+			CertTemplateID: certTplID,
 		}
 		if err := tx.Create(&cert).Error; err != nil {
 			tx.Rollback()

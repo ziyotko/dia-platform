@@ -3,10 +3,11 @@
     <div class="page-header"><h3>我的证书</h3></div>
     <el-card>
       <el-table :data="certificates" stripe>
-        <el-table-column prop="cert_no" label="证书编号" />
+        <el-table-column prop="cert_no" label="证书编号" width="200" />
         <el-table-column prop="issued_at" label="颁发日期" width="120">
           <template #default="{ row }">{{ formatDate(row.issued_at) }}</template>
         </el-table-column>
+        <el-table-column prop="level_name" label="会员级别" width="120" />
         <el-table-column prop="expire_at" label="有效期至" width="120">
           <template #default="{ row }">{{ formatDate(row.expire_at) }}</template>
         </el-table-column>
