@@ -33,6 +33,10 @@
           <el-icon class="collapse-btn" @click="toggleCollapse" :size="20">
             <Fold v-if="!collapsed" /><Expand v-else />
           </el-icon>
+          <el-breadcrumb separator="/">
+            <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">管理后台</el-breadcrumb-item>
+            <el-breadcrumb-item v-if="route.meta?.title">{{ route.meta.title }}</el-breadcrumb-item>
+          </el-breadcrumb>
         </div>
         <el-dropdown @command="handleCommand">
           <span class="user-info">

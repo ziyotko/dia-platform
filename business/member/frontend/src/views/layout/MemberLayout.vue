@@ -59,8 +59,8 @@
             <Fold v-if="!collapsed" /><Expand v-else />
           </el-icon>
           <el-breadcrumb separator="/">
-            <el-breadcrumb-item>会员中心</el-breadcrumb-item>
-            <el-breadcrumb-item>{{ route.meta.title || route.name }}</el-breadcrumb-item>
+            <el-breadcrumb-item :to="{ path: '/member/dashboard' }">会员中心</el-breadcrumb-item>
+            <el-breadcrumb-item v-if="route.meta?.title">{{ route.meta.title }}</el-breadcrumb-item>
           </el-breadcrumb>
         </div>
         <div class="topbar-right">

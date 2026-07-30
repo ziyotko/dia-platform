@@ -57,15 +57,15 @@ const router = createRouter({
       component: () => import('@/views/layout/MemberLayout.vue'),
       redirect: '/member/dashboard',
       children: [
-        { path: 'dashboard', name: 'Dashboard', component: () => import('@/views/member/Dashboard.vue') },
-        { path: 'profile', name: 'Profile', component: () => import('@/views/member/Profile.vue') },
-        { path: 'applications', name: 'Applications', component: () => import('@/views/member/Applications.vue') },
-        { path: 'fees', name: 'Fees', component: () => import('@/views/member/Fees.vue') },
-        { path: 'certificates', name: 'Certificates', component: () => import('@/views/member/Certificates.vue') },
-        { path: 'organizations', name: 'Organizations', component: () => import('@/views/member/Organizations.vue') },
-        { path: 'articles', name: 'Articles', component: () => import('@/views/member/Articles.vue') },
-        { path: 'messages', name: 'Messages', component: () => import('@/views/member/Messages.vue') },
-        { path: 'service', name: 'Service', component: () => import('@/views/member/Service.vue') }
+        { path: 'dashboard', name: 'Dashboard', meta: { title: '会员首页' }, component: () => import('@/views/member/Dashboard.vue') },
+        { path: 'profile', name: 'Profile', meta: { title: '我的资料' }, component: () => import('@/views/member/Profile.vue') },
+        { path: 'applications', name: 'Applications', meta: { title: '我的申请' }, component: () => import('@/views/member/Applications.vue') },
+        { path: 'fees', name: 'Fees', meta: { title: '会费管理' }, component: () => import('@/views/member/Fees.vue') },
+        { path: 'certificates', name: 'Certificates', meta: { title: '我的证书' }, component: () => import('@/views/member/Certificates.vue') },
+        { path: 'organizations', name: 'Organizations', meta: { title: '加入信息' }, component: () => import('@/views/member/Organizations.vue') },
+        { path: 'articles', name: 'Articles', meta: { title: '我的文章' }, component: () => import('@/views/member/Articles.vue') },
+        { path: 'messages', name: 'Messages', meta: { title: '会员留言' }, component: () => import('@/views/member/Messages.vue') },
+        { path: 'service', name: 'Service', meta: { title: '服务中心' }, component: () => import('@/views/member/Service.vue') }
       ]
     },
     {
@@ -74,17 +74,17 @@ const router = createRouter({
       redirect: '/admin/dashboard',
       meta: { admin: true },
       children: [
-        { path: 'dashboard', name: 'AdminDashboard', component: () => import('@/views/admin/Dashboard.vue') },
-        { path: 'members', name: 'AdminMembers', component: () => import('@/views/admin/Members.vue') },
-        { path: 'applications', name: 'AdminApplications', component: () => import('@/views/admin/Applications.vue') },
-        { path: 'fees', name: 'AdminFees', component: () => import('@/views/admin/Fees.vue') },
-        { path: 'certificates', name: 'AdminCertificates', component: () => import('@/views/admin/Certificates.vue') },
-        { path: 'organizations', name: 'AdminOrganizations', component: () => import('@/views/admin/Organizations.vue') },
-        { path: 'member-levels', name: 'AdminMemberLevels', component: () => import('@/views/admin/MemberLevels.vue') },
-        { path: 'fee-standards', name: 'AdminFeeStandards', component: () => import('@/views/admin/FeeStandards.vue') },
-        { path: 'messages', name: 'AdminMessages', component: () => import('@/views/admin/Messages.vue') },
-        { path: 'articles', name: 'AdminArticles', component: () => import('@/views/admin/Articles.vue') },
-        { path: 'announcements', name: 'AdminAnnouncements', component: () => import('@/views/admin/Announcements.vue') }
+        { path: 'dashboard', name: 'AdminDashboard', meta: { title: '控制台' }, component: () => import('@/views/admin/Dashboard.vue') },
+        { path: 'members', name: 'AdminMembers', meta: { title: '会员管理' }, component: () => import('@/views/admin/Members.vue') },
+        { path: 'applications', name: 'AdminApplications', meta: { title: '入会审核' }, component: () => import('@/views/admin/Applications.vue') },
+        { path: 'fees', name: 'AdminFees', meta: { title: '会费管理' }, component: () => import('@/views/admin/Fees.vue') },
+        { path: 'certificates', name: 'AdminCertificates', meta: { title: '证书管理' }, component: () => import('@/views/admin/Certificates.vue') },
+        { path: 'organizations', name: 'AdminOrganizations', meta: { title: '组织机构' }, component: () => import('@/views/admin/Organizations.vue') },
+        { path: 'member-levels', name: 'AdminMemberLevels', meta: { title: '会员等级' }, component: () => import('@/views/admin/MemberLevels.vue') },
+        { path: 'fee-standards', name: 'AdminFeeStandards', meta: { title: '会费标准' }, component: () => import('@/views/admin/FeeStandards.vue') },
+        { path: 'messages', name: 'AdminMessages', meta: { title: '会员留言' }, component: () => import('@/views/admin/Messages.vue') },
+        { path: 'articles', name: 'AdminArticles', meta: { title: '文章管理' }, component: () => import('@/views/admin/Articles.vue') },
+        { path: 'announcements', name: 'AdminAnnouncements', meta: { title: '公告管理' }, component: () => import('@/views/admin/Announcements.vue') }
       ]
     },
     {

@@ -39,39 +39,7 @@
               <span><el-icon :size="16" color="#3b82f6"><PieChart /></el-icon> 会员类型分布</span>
             </div>
           </template>
-          <div class="dist-chart">
-            <div class="dist-ring">
-              <svg width="140" height="140" viewBox="0 0 140 140">
-                <circle cx="70" cy="70" r="56" fill="none" stroke="#f1f5f9" stroke-width="14" />
-                <circle cx="70" cy="70" r="56" fill="none" stroke="#60a5fa" stroke-width="14"
-                  :stroke-dasharray="typeDist.unitPercent * 3.5186" stroke-dashoffset="0"
-                  transform="rotate(-90, 70, 70)" stroke-linecap="round" />
-                <circle cx="70" cy="70" r="56" fill="none" stroke="#fbbf24" stroke-width="14"
-                  v-if="typeDist.personalPercent > 0"
-                  :stroke-dasharray="typeDist.personalPercent * 3.5186"
-                  :stroke-dashoffset="-(typeDist.unitPercent * 3.5186)"
-                  transform="rotate(-90, 70, 70)" stroke-linecap="round" />
-              </svg>
-              <div class="ring-center">
-                <p class="ring-total">{{ typeDist.total }}</p>
-                <p class="ring-label">总会员</p>
-              </div>
-            </div>
-            <div class="dist-legend">
-              <div class="legend-item">
-                <span class="dot" style="background:#60a5fa"></span>
-                <span class="legend-label">单位会员</span>
-                <span class="legend-value">{{ typeDist.unit }}</span>
-                <span class="legend-pct">({{ typeDist.unitPercent }}%)</span>
-              </div>
-              <div class="legend-item">
-                <span class="dot" style="background:#f59e0b"></span>
-                <span class="legend-label">个人会员</span>
-                <span class="legend-value">{{ typeDist.personal }}</span>
-                <span class="legend-pct">({{ typeDist.personalPercent }}%)</span>
-              </div>
-            </div>
-          </div>
+          <div ref="typeChartRef" class="chart-container"></div>
         </el-card>
       </el-col>
 
@@ -83,21 +51,7 @@
               <span><el-icon :size="16" color="#22c55e"><DataAnalysis /></el-icon> 状态分布</span>
             </div>
           </template>
-          <div class="status-dist">
-            <div class="status-bar-item" v-for="item in statusDist" :key="item.label">
-              <div class="status-bar-header">
-                <span class="status-label">{{ item.label }}</span>
-                <span class="status-value">{{ item.value }}</span>
-              </div>
-              <el-progress
-                :percentage="item.percent"
-                :color="item.color"
-                :stroke-width="10"
-                :show-text="false"
-                class="status-progress"
-              />
-            </div>
-          </div>
+          <div ref="statusChartRef" class="chart-container"></div>
         </el-card>
       </el-col>
 
@@ -185,7 +139,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import * as echarts from 'echarts'
 import { adminApi } from '@/api/admin'
 import CountUp from '@/components/CountUp.vue'
 import {
@@ -209,19 +164,130 @@ const stats = ref([
   { icon: 'CircleClose', label: '已拒绝', value: 0, color: '#ef4444', bg: '#fee2e2' }
 ])
 
-// ===== 类型分布 =====
-const typeDist = reactive({
-  unit: 0, personal: 0, total: 0,
-  unitPercent: 0, personalPercent: 0
-})
+// ===== ECharts =====
+const typeChartRef = ref<HTMLElement>()
+const statusChartRef = ref<HTMLElement>()
+let typeChart: echarts.ECharts | null = null
+let statusChart: echarts.ECharts | null = null
 
-// ===== 状态分布 =====
-const statusDist = ref([
-  { label: '正式会员', value: 0, percent: 0, color: '#22c55e' },
-  { label: '待审核', value: 0, percent: 0, color: '#f59e0b' },
-  { label: '待缴费', value: 0, percent: 0, color: '#f97316' },
-  { label: '已拒绝', value: 0, percent: 0, color: '#ef4444' }
-])
+const typeData = reactive({ unit: 0, personal: 0 })
+
+function initCharts() {
+  if (typeChartRef.value) {
+    typeChart = echarts.init(typeChartRef.value)
+    typeChart.setOption(typeChartOption())
+  }
+  if (statusChartRef.value) {
+    statusChart = echarts.init(statusChartRef.value)
+    statusChart.setOption(statusChartOption([]))
+  }
+}
+
+function typeChartOption() {
+  const total = typeData.unit + typeData.personal
+  return {
+    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+    legend: {
+      bottom: 0,
+      left: 'center',
+      itemWidth: 10,
+      itemHeight: 10,
+      textStyle: { fontSize: 12, color: '#64748b' }
+    },
+    series: [{
+      type: 'pie',
+      radius: ['50%', '75%'],
+      avoidLabelOverlap: false,
+      padAngle: 2,
+      itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+      label: { show: false },
+      emphasis: {
+        label: { show: true, fontSize: 14, fontWeight: 'bold' },
+        itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.2)' }
+      },
+      data: [
+        { value: typeData.unit, name: '单位会员', itemStyle: { color: '#60a5fa' } },
+        { value: typeData.personal, name: '个人会员', itemStyle: { color: '#fbbf24' } }
+      ]
+    }],
+    graphic: total > 0 ? [{
+      type: 'text',
+      left: 'center',
+      top: '38%',
+      style: {
+        text: String(total),
+        textAlign: 'center',
+        fill: '#0f172a',
+        fontSize: 26,
+        fontWeight: 800
+      }
+    }, {
+      type: 'text',
+      left: 'center',
+      top: '52%',
+      style: {
+        text: '总会员',
+        textAlign: 'center',
+        fill: '#94a3b8',
+        fontSize: 12
+      }
+    }] : []
+  }
+}
+
+function statusChartOption(data: { label: string; value: number; color: string }[]) {
+  const labels = data.map(d => d.label)
+  const values = data.map(d => d.value)
+  const colors = data.map(d => d.color)
+  return {
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: 10, right: 30, top: 10, bottom: 10, containLabel: true },
+    xAxis: { type: 'value', show: false },
+    yAxis: {
+      type: 'category',
+      data: labels,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { fontSize: 12, color: '#475569' }
+    },
+    series: [{
+      type: 'bar',
+      data: values.map((v, i) => ({
+        value: v,
+        itemStyle: {
+          color: colors[i],
+          borderRadius: [0, 6, 6, 0]
+        }
+      })),
+      barWidth: 14,
+      label: {
+        show: true,
+        position: 'right',
+        fontSize: 13,
+        fontWeight: 700,
+        color: '#0f172a',
+        formatter: (p: any) => p.value > 0 ? p.value : ''
+      }
+    }]
+  }
+}
+
+function updateCharts() {
+  nextTick(() => {
+    typeChart?.setOption(typeChartOption(), true)
+    statusChart?.setOption(statusChartOption([
+      { label: '正式会员', value: stats.value[1].value, color: '#22c55e' },
+      { label: '待审核', value: stats.value[3].value - stats.value[4].value > 0 ? stats.value[3].value - stats.value[4].value : stats.value[3].value, color: '#f59e0b' },
+      { label: '待缴费', value: stats.value[4].value, color: '#f97316' },
+      { label: '已拒绝', value: stats.value[5].value, color: '#ef4444' }
+    ]), true)
+  })
+}
+
+function handleResize() {
+  typeChart?.resize()
+  statusChart?.resize()
+}
 
 // ===== 快捷操作 =====
 const quickActions = [
@@ -287,27 +353,11 @@ async function fetchData() {
       adminApi.getMembers({ member_type: 'unit', page: 1, size: 1 }).catch(() => ({ data: { total: 0 } })),
       adminApi.getMembers({ member_type: 'personal', page: 1, size: 1 }).catch(() => ({ data: { total: 0 } }))
     ])
-    const unit = unitRes.data?.total || 0
-    const personal = personalRes.data?.total || 0
-    const distTotal = Math.max(unit + personal, 1)
-    typeDist.unit = unit
-    typeDist.personal = personal
-    typeDist.total = unit + personal
-    typeDist.unitPercent = Math.round(unit / distTotal * 100)
-    typeDist.personalPercent = Math.round(personal / distTotal * 100)
+    typeData.unit = unitRes.data?.total || 0
+    typeData.personal = personalRes.data?.total || 0
 
-    // 3. 状态分布
+    // 3. 待办事项
     const pendingPayment = d.pending_payment || 0
-    const statuses = [
-      { label: '正式会员', value: active, color: '#22c55e' },
-      { label: '待审核', value: pending - pendingPayment > 0 ? pending - pendingPayment : pending, color: '#f59e0b' },
-      { label: '待缴费', value: pendingPayment, color: '#f97316' },
-      { label: '已拒绝', value: rejected, color: '#ef4444' }
-    ]
-    const maxVal = Math.max(...statuses.map(s => s.value), 1)
-    statusDist.value = statuses.map(s => ({ ...s, percent: Math.round(s.value / maxVal * 100) }))
-
-    // 4. 待办事项
     todos.value[0].count = pending - pendingPayment > 0 ? pending - pendingPayment : pending
     todos.value[1].count = pendingPayment
     todos.value[2].count = 0
@@ -320,6 +370,7 @@ async function fetchData() {
     } catch {}
 
     lastUpdate.value = now()
+    updateCharts()
   } catch (err) {
     console.error('Dashboard data fetch error:', err)
   } finally {
@@ -331,7 +382,17 @@ function refresh() {
   fetchData()
 }
 
-onMounted(fetchData)
+onMounted(() => {
+  nextTick(initCharts)
+  fetchData()
+  window.addEventListener('resize', handleResize)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize)
+  typeChart?.dispose()
+  statusChart?.dispose()
+})
 </script>
 
 <style scoped lang="scss">
@@ -450,12 +511,24 @@ onMounted(fetchData)
 // ===== Section Card =====
 .row-section {
   margin-bottom: 24px;
+  display: flex;
+  flex-wrap: wrap;
+
+  > .el-col {
+    display: flex;
+
+    > .el-card {
+      flex: 1;
+    }
+  }
 }
 
 .section-card {
   border-radius: 14px;
   border: 1px solid #f0f4f8;
   margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
 
   :deep(.el-card__header) {
     padding: 14px 20px;
@@ -479,124 +552,18 @@ onMounted(fetchData)
 
   :deep(.el-card__body) {
     padding: 20px;
-  }
-}
-
-// ===== Distribution Chart (Donut) =====
-.dist-chart {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-
-  .dist-ring {
-    position: relative;
-    width: 140px;
-    height: 140px;
-    flex-shrink: 0;
-
-    svg {
-      width: 100%;
-      height: 100%;
-    }
-
-    .ring-center {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      text-align: center;
-
-      .ring-total {
-        font-size: 26px;
-        font-weight: 800;
-        color: #0f172a;
-        line-height: 1;
-      }
-      .ring-label {
-        font-size: 11px;
-        color: #94a3b8;
-        margin-top: 4px;
-      }
-    }
-  }
-
-  .dist-legend {
     flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+  }
 
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
-      border-radius: 8px;
-      background: #f8fafc;
-      transition: background 0.2s;
-
-      &:hover { background: #f1f5f9; }
-
-      .dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        flex-shrink: 0;
-      }
-      .legend-label {
-        flex: 1;
-        font-size: 13px;
-        color: #475569;
-      }
-      .legend-value {
-        font-size: 15px;
-        font-weight: 700;
-        color: #0f172a;
-      }
-      .legend-pct {
-        font-size: 12px;
-        color: #94a3b8;
-        min-width: 40px;
-        text-align: right;
-      }
-    }
+  :deep(.el-card__header) {
+    flex-shrink: 0;
   }
 }
 
-// ===== Status Distribution =====
-.status-dist {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-
-  .status-bar-item {
-    .status-bar-header {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 6px;
-
-      .status-label {
-        font-size: 13px;
-        color: #475569;
-      }
-      .status-value {
-        font-size: 14px;
-        font-weight: 700;
-        color: #0f172a;
-      }
-    }
-
-    .status-progress {
-      :deep(.el-progress-bar__outer) {
-        background: #f1f5f9;
-        border-radius: 8px;
-      }
-      :deep(.el-progress-bar__inner) {
-        border-radius: 8px;
-        transition: width 1s ease-in-out;
-      }
-    }
-  }
+// ===== ECharts Container =====
+.chart-container {
+  width: 100%;
+  height: 220px;
 }
 
 // ===== Quick Actions =====
@@ -712,9 +679,8 @@ onMounted(fetchData)
     align-items: flex-start;
     gap: 12px;
   }
-  .dist-chart {
-    flex-direction: column;
-    align-items: center;
+  .chart-container {
+    height: 180px;
   }
 }
 </style>
