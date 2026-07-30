@@ -42,16 +42,16 @@
             <el-tag v-else-if="row.invoice_status === 'issued'" type="success" effect="plain" size="small">已开票</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="开票单位全称" min-width="160">
+        <el-table-column label="开票单位全称" min-width="100">
           <template #default="{ row }">{{ row.invoice_company || '-' }}</template>
         </el-table-column>
         <el-table-column label="开票金额" width="100">
           <template #default="{ row }">{{ row.invoice_amount ? '¥' + row.invoice_amount.toFixed(2) : '-' }}</template>
         </el-table-column>
-        <el-table-column label="开票时间" width="110">
+        <el-table-column label="开票时间" width="160">
           <template #default="{ row }">{{ row.invoice_issued_at ? formatDate(row.invoice_issued_at) : '-' }}</template>
         </el-table-column>
-        <el-table-column prop="invoice_remark" label="开票备注" min-width="120">
+        <el-table-column prop="invoice_remark" label="开票备注" min-width="100">
           <template #default="{ row }">{{ row.invoice_remark || '-' }}</template>
         </el-table-column>
         <el-table-column label="操作" width="150">
