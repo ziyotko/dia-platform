@@ -62,7 +62,7 @@ func (s *CertificateService) GenerateCertificateForMember(memberID uint64) (*mod
 		MemberID: memberID,
 		CertNo:   "XXXXXX-" + now.Format("2006") + "-" + padLeftGen(memberID),
 		IssuedAt: &models.LocalTime{Time: now},
-		ExpireAt: &models.LocalTime{Time: now.AddDate(1, 0, 0)},
+		ExpireAt: &models.LocalTime{Time: time.Date(now.Year(), 12, 31, 23, 59, 59, 0, now.Location())},
 		Status:   "active",
 	}
 	if err := db.DB.Create(&cert).Error; err != nil {

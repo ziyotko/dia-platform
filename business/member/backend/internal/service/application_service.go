@@ -176,7 +176,7 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 			MemberID: app.MemberID,
 			CertNo:   generateCertNo(app.MemberID),
 			IssuedAt: &models.LocalTime{Time: now},
-			ExpireAt: &models.LocalTime{Time: now.AddDate(1, 0, 0)},
+			ExpireAt: &models.LocalTime{Time: time.Date(now.Year(), 12, 31, 23, 59, 59, 0, now.Location())},
 			Status:   "active",
 		}
 		if err := tx.Create(&cert).Error; err != nil {
