@@ -2,7 +2,10 @@
   <div class="orgs-page" v-loading="loading">
     <div class="page-header">
       <h3>加入的总会或分会信息</h3>
-      <el-button type="primary" @click="showJoin = true">新的加入</el-button>
+      <el-tooltip v-if="!hasPaidOrg" content="暂无缴费加入的组织，无法加入新组织" placement="top">
+        <el-button type="primary" disabled>新的加入</el-button>
+      </el-tooltip>
+      <el-button v-else type="primary" @click="showJoin = true">新的加入</el-button>
     </div>
 
     <!-- 卡片列表 -->
@@ -102,6 +105,9 @@ const combinedList = computed(() => {
   const orgs = myOrgs.value.map((o: any) => ({ ...o, _type: 'org' }))
   return [...apps, ...orgs]
 })
+
+// 是否有通过缴费加入的组织
+const hasPaidOrg = computed(() => approvedApps.value.length > 0)
 
 // 已加入的组织 ID 集合（含申请批准的 + 直接加入的）
 const joinedOrgIds = computed(() => {

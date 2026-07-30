@@ -29,6 +29,12 @@ func (s *MemberOrgService) JoinOrg(memberID, orgID uint64) error {
 	if err := db.DB.Where("member_id = ? AND org_id = ?", memberID, orgID).First(&exist).Error; err == nil {
 		return errors.New("已加入该组织")
 	}
+	// Check if the member has at least one approved application (paid join)
+	var approvedCount int64
+	db.DB.Model(&models.Application{}).Where("member_id = ? AND status = ?", memberID, models.AppStatusApproved).Count(&approvedCount)
+	if approvedCount == 0 {
+		return errors.New("暂无缴费加入的组织，无法加入新组织")
+	}
 	mo := models.MemberOrganization{
 		MemberID: memberID,
 		OrgID:    orgID,

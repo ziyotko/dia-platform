@@ -178,7 +178,7 @@ func (s *FeeService) ListAllFees(page, size int, year int, status string, member
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	if err := query.Order("year DESC").Offset((page - 1) * size).Limit(size).Find(&fees).Error; err != nil {
+	if err := query.Order("created_at DESC").Offset((page - 1) * size).Limit(size).Find(&fees).Error; err != nil {
 		return nil, 0, err
 	}
 	return fees, total, nil

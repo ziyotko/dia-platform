@@ -45,6 +45,13 @@
           <span class="stat-value">¥{{ totalAmount.toFixed(2) }}</span>
         </div>
       </div>
+      <div class="stat-card stat-card--paid-amount">
+        <div class="stat-icon"><el-icon :size="28"><CircleCheckFilled /></el-icon></div>
+        <div class="stat-body">
+          <span class="stat-label">实缴总金额</span>
+          <span class="stat-value">¥{{ paidAmount.toFixed(2) }}</span>
+        </div>
+      </div>
     </div>
 
     <!-- Filter Bar -->
@@ -358,6 +365,7 @@ const paidCount = computed(() => list.value.filter(r => r.status === 'paid').len
 const pendingCount = computed(() => list.value.filter(r => r.status === 'pending').length)
 const unpaidCount = computed(() => list.value.filter(r => r.status === 'unpaid').length)
 const totalAmount = computed(() => list.value.reduce((s, r) => s + (r.amount || 0), 0))
+const paidAmount = computed(() => list.value.filter(r => r.status === 'paid').reduce((s, r) => s + ((r.paid_amount || 0)), 0))
 
 onMounted(() => {
   fetchData()
@@ -586,7 +594,7 @@ async function deleteFee(row: any) {
 // ─── Stats Cards ───
 .stats-row {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 16px;
   margin-bottom: 20px;
 }
