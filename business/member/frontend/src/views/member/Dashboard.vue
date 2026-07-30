@@ -104,8 +104,7 @@ function formatDate(d: string) { return d ? d.slice(0, 10) : '' }
 
 <style scoped lang="scss">
 .dashboard {
-  max-width: 1100px;
-  margin: 0 auto;
+ width: 100%;
 }
 .status-card {
   margin-bottom: 20px;

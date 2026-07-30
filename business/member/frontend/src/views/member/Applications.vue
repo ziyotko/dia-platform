@@ -264,7 +264,7 @@ function formatDate(d: string) { return d ? d.slice(0, 16).replace('T', ' ') : '
 </script>
 
 <style scoped lang="scss">
-.applications-page { max-width: 1000px; margin: 0 auto; }
+.applications-page { width: 100%;}
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 
 .charter-hint {

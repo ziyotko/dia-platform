@@ -205,9 +205,7 @@ function formatDate(d: string) { return d ? d.replace('T', ' ').slice(0, 16) : '
 
 <style scoped lang="scss">
 .orgs-page {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 20px 0;
+ width: 100%;
 }
 .page-header {
   display: flex;

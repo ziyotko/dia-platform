@@ -99,6 +99,6 @@ function formatDate(d: string) { return d ? d.slice(0, 10) : '' }
 </script>
 
 <style scoped lang="scss">
-.certs-page { max-width: 900px; margin: 0 auto; }
+.certs-page {  width: 100%;}
 .page-header { margin-bottom: 20px; }
 </style>

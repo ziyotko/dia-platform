@@ -138,7 +138,7 @@ function formatDate(d: string) { return d ? d.replace('T', ' ').slice(0, 16) : '
 </script>
 
 <style scoped lang="scss">
-.messages-page { max-width: 1000px; margin: 0 auto; }
+.messages-page {  width: 100%;}
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .pagination { display: flex; justify-content: center; margin-top: 24px; }
 

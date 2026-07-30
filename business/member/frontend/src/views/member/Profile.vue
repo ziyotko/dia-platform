@@ -101,5 +101,5 @@ async function changePwd() {
 </script>
 
 <style scoped lang="scss">
-.profile-page { max-width: 900px; margin: 0 auto; }
+.profile-page {  width: 100%;}
 </style>

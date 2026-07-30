@@ -213,7 +213,7 @@ function formatDate(d: string) { return d ? d.slice(0, 16) : '' }
 </script>
 
 <style scoped lang="scss">
-.articles-page { max-width: 1000px; margin: 0 auto; }
+.articles-page {  width: 100%;}
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .filter-bar { margin-bottom: 16px; }
 .cover-preview {

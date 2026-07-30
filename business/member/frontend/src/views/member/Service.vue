@@ -90,7 +90,7 @@ function typeLabel(t: string) { return typeMap[t] || t }
 </script>
 
 <style scoped lang="scss">
-.service-page { max-width: 900px; margin: 0 auto; }
+.service-page { width: 100%;}
 .pagination { display: flex; justify-content: center; margin-top: 20px; }
 .announce-item {
   display: flex; justify-content: space-between; align-items: center;
