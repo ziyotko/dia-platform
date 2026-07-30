@@ -15,6 +15,7 @@ type MemberDashboard struct {
 	ArticleCount        int64                 `json:"article_count"`
 	LatestAnnouncements []models.Announcement `json:"latest_announcements"`
 	FeeSummary          *FeeSummary           `json:"fee_summary"`
+	LatestFeeLevel      string                `json:"latest_fee_level"` // level name from newest paid fee record
 }
 
 type AppSummary struct {
@@ -77,6 +78,13 @@ func (s *DashboardService) GetMemberDashboard(memberID uint64) (*MemberDashboard
 	db.DB.Model(&models.FeeRecord{}).Where("member_id = ? AND status = ?", memberID, models.FeeStatusPaid).
 		Select("COALESCE(SUM(amount), 0)").Scan(&fs.TotalPaid)
 	dash.FeeSummary = fs
+
+	// Latest paid fee level — level name from the newest (most recent year) paid fee record
+	var latestFee models.FeeRecord
+	if err := db.DB.Where("member_id = ? AND status = ?", memberID, models.FeeStatusPaid).
+		Order("year DESC, id DESC").First(&latestFee).Error; err == nil {
+		dash.LatestFeeLevel = latestFee.LevelName
+	}
 
 	return dash, nil
 }
