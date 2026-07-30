@@ -77,6 +77,9 @@ func (s *FeeService) ConfirmFee(id uint64, amount float64, remark string) error 
 	db.DB.Model(&models.Member{}).Where("id = ? AND status = ?", fee.MemberID, models.MemberStatusPendingPay).
 		Update("status", models.MemberStatusActive)
 
+	// Update the member's active certificate with level info and template ID
+	s.updateCertificateWithLevelAndTemplate(fee.MemberID, fee.LevelID, fee.LevelName)
+
 	return nil
 }
 
@@ -136,12 +139,14 @@ func (s *FeeService) UpdateFeeRecord(id uint64, status, invoiceNo string, amount
 		return err
 	}
 
-	// If confirmed as paid, activate member
+	// If confirmed as paid, activate member and update certificate
 	if status == models.FeeStatusPaid {
 		var fee models.FeeRecord
 		db.DB.First(&fee, id)
 		db.DB.Model(&models.Member{}).Where("id = ? AND status = ?", fee.MemberID, models.MemberStatusPendingPay).
 			Update("status", models.MemberStatusActive)
+
+		s.updateCertificateWithLevelAndTemplate(fee.MemberID, fee.LevelID, fee.LevelName)
 	}
 
 	return nil
@@ -276,4 +281,32 @@ type ApplyInvoiceRequest struct {
 	InvoiceAmount  float64 `json:"invoice_amount" binding:"required"`
 	InvoiceContact string  `json:"invoice_contact" binding:"required"`
 	InvoiceRemark  string  `json:"invoice_remark"`
+}
+
+// updateCertificateWithLevelAndTemplate updates the member's active certificate with level info and template ID
+func (s *FeeService) updateCertificateWithLevelAndTemplate(memberID, levelID uint64, levelName string) {
+	// Find the active certificate for this member
+	var cert models.Certificate
+	if err := db.DB.Where("member_id = ? AND status = 'active'", memberID).First(&cert).Error; err != nil {
+		return // no active certificate found, skip
+	}
+
+	updates := map[string]interface{}{
+		"level_id":   levelID,
+		"level_name": levelName,
+	}
+
+	// Look up certificate template for this level; if not found, fall back to the lowest level's template
+	var tpl models.MemberCertificateTemplate
+	if err := db.DB.Where("level_id = ?", levelID).First(&tpl).Error; err != nil {
+		// Fallback: find template for the lowest level
+		db.DB.Joins("JOIN member_levels ml ON ml.id = member_certificate_templates.level_id").
+			Order("ml.level ASC").
+			First(&tpl)
+	}
+	if tpl.ID > 0 {
+		updates["cert_template_id"] = tpl.ID
+	}
+
+	db.DB.Model(&cert).Updates(updates)
 }
