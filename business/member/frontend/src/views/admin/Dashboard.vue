@@ -336,8 +336,7 @@ onMounted(fetchData)
 
 <style scoped lang="scss">
 .admin-dash {
-  max-width: 1400px;
-  margin: 0 auto;
+  width: 100%;
 }
 
 // ===== Page Header =====

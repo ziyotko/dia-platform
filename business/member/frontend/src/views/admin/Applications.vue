@@ -119,9 +119,7 @@ async function review(row: any, approved: boolean) {
 
 <style scoped lang="scss">
 .admin-apps {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 24px 0;
+ width: 100%;
 }
 .page-header {
   margin-bottom: 24px;

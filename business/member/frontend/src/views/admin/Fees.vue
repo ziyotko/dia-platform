@@ -560,8 +560,7 @@ async function deleteFee(row: any) {
 
 <style scoped lang="scss">
 .admin-fees {
-  width: 100%;
-  padding: 24px 0;
+ width: 100%;
 }
 
 // ─── Header ───

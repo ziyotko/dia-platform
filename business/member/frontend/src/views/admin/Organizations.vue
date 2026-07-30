@@ -247,9 +247,7 @@ async function delChild(data: any) {
 
 <style scoped lang="scss">
 .admin-orgs {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 24px 0;
+ width: 100%;
 }
 .page-header {
   display: flex;

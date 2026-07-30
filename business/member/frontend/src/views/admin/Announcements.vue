@@ -60,9 +60,7 @@ async function delAnn(row: any) {
 
 <style scoped lang="scss">
 .admin-anns {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 24px 0;
+ width: 100%;
 }
 .page-header {
   display: flex;

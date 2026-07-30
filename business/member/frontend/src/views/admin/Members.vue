@@ -78,9 +78,7 @@ async function delMember(row: any) {
 
 <style scoped lang="scss">
 .admin-members {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 24px 0;
+ width: 100%;
 }
 .page-header {
   display: flex;

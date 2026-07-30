@@ -252,9 +252,7 @@ async function deleteRow(level: any, row: FeeItem) {
 
 <style scoped lang="scss">
 .admin-fee-standards {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 24px 0;
+ width: 100%;
 }
 
 .page-header {

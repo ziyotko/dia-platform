@@ -190,9 +190,7 @@ async function deleteTemplate(row: any) {
 
 <style scoped lang="scss">
 .admin-certs {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 24px 0;
+   width: 100%;
 }
 .page-header {
   display: flex;
