@@ -11,20 +11,19 @@
         <div class="hero-info">
           <div class="hero-top">
             <h2 class="hero-greeting">{{ greeting }}，{{ displayName }}</h2>
-            <el-tag :type="statusType" size="large" effect="dark" class="status-tag">
-              <el-icon style="margin-right:4px"><VideoPause /></el-icon>
-              {{ statusText }}
-            </el-tag>
+            <div class="level-badge" v-if="memberLevelLabel && memberLevelLabel !== '暂无'">
+              <el-icon><Medal /></el-icon>
+              <span>{{ memberLevelLabel }}</span>
+            </div>
           </div>
           <div class="hero-meta">
+            <el-tag :type="statusType" size="small" effect="light" class="status-tag-mini">
+              <el-icon style="margin-right:3px;vertical-align:-1px"><VideoPause /></el-icon>
+              {{ statusText }}
+            </el-tag>
             <span class="meta-item">
               <el-icon><User /></el-icon>
               {{ memberTypeLabel }}
-            </span>
-            <span class="meta-divider"></span>
-            <span class="meta-item">
-              <el-icon><Medal /></el-icon>
-              {{ memberLevelLabel }}
             </span>
             <span class="meta-divider"></span>
             <span class="meta-item">
@@ -35,19 +34,19 @@
           <div class="hero-actions">
             <el-button
               v-if="dash.member.status === 'registering'"
-              type="primary" size="default"
+              type="primary" size="small"
               @click="$router.push({ name: 'Applications' })"
             >
               <el-icon><Edit /></el-icon> 继续完善资料
             </el-button>
             <el-button
               v-if="dash.member.status === 'pending_payment'"
-              type="warning" size="default"
+              type="warning" size="small"
               @click="$router.push({ name: 'Fees' })"
             >
               <el-icon><Coin /></el-icon> 立即缴费
             </el-button>
-            <el-button size="default" plain @click="$router.push({ name: 'Profile' })">
+            <el-button size="small" plain @click="$router.push({ name: 'Profile' })">
               <el-icon><User /></el-icon> 编辑资料
             </el-button>
           </div>
@@ -357,44 +356,34 @@ $shadow-hover: 0 4px 16px rgba(0,0,0,0.08);
 }
 
 // ════════════════════════════════════════
-// Hero Banner
+// Hero Banner — light pastel theme
 // ════════════════════════════════════════
 .hero-card {
   margin-bottom: 20px;
-  border: none !important;
+  border: 1px solid $border !important;
   border-radius: $radius-lg !important;
-  background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 50%, #3b82f6 100%) !important;
+  background: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 100%) !important;
   overflow: hidden;
   position: relative;
 
   &::before {
     content: '';
     position: absolute;
-    top: -50%;
-    right: -20%;
-    width: 400px;
-    height: 400px;
-    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
-    border-radius: 50%;
-  }
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: -30%;
-    left: 10%;
+    top: -40%;
+    right: -10%;
     width: 300px;
     height: 300px;
-    background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(59,130,246,0.06) 0%, transparent 70%);
     border-radius: 50%;
   }
 
-  :deep(.el-card__body) { padding: 28px 32px; }
+  :deep(.el-card__body) { padding: 24px 28px; }
 }
 
 .hero-inner {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 20px;
   position: relative;
   z-index: 1;
 }
@@ -404,21 +393,20 @@ $shadow-hover: 0 4px 16px rgba(0,0,0,0.08);
 }
 
 .avatar-circle {
-  width: 72px;
-  height: 72px;
+  width: 68px;
+  height: 68px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 3px solid rgba(255,255,255,0.6);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  border: 3px solid rgba(255,255,255,0.9);
+  box-shadow: 0 4px 14px rgba(59,130,246,0.15);
 }
 
 .avatar-text {
-  font-size: 30px;
+  font-size: 28px;
   font-weight: 700;
   color: #fff;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
 .hero-info {
@@ -429,30 +417,45 @@ $shadow-hover: 0 4px 16px rgba(0,0,0,0.08);
 .hero-top {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 10px;
+  gap: 10px;
+  margin-bottom: 8px;
   flex-wrap: wrap;
 }
 
 .hero-greeting {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
-  color: #fff;
+  color: $text;
   white-space: nowrap;
 }
 
-.status-tag {
-  border: none !important;
+// Level badge — prominent display for member level
+.level-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 12px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  border: 1px solid #93c5fd;
+  color: #1e40af;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.5px;
+  white-space: nowrap;
+
+  .el-icon { font-size: 15px; }
 }
 
 .hero-meta {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 10px;
+  margin-bottom: 12px;
   flex-wrap: wrap;
+}
+
+.status-tag-mini {
+  font-weight: 500;
 }
 
 .meta-item {
@@ -460,47 +463,54 @@ $shadow-hover: 0 4px 16px rgba(0,0,0,0.08);
   align-items: center;
   gap: 4px;
   font-size: 13px;
-  color: rgba(255,255,255,0.8);
-  .el-icon { font-size: 14px; }
+  color: $text-secondary;
+  .el-icon { font-size: 14px; color: $primary; }
 }
 
 .meta-divider {
   width: 1px;
   height: 14px;
-  background: rgba(255,255,255,0.3);
+  background: $border;
 }
 
 .hero-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 
   .el-button {
-    border: none !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
     transition: all 0.25s;
     &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+      transform: translateY(-1px);
+      box-shadow: $shadow-hover;
     }
   }
 
   .el-button--primary {
-    background: linear-gradient(135deg, #60a5fa, #3b82f6) !important;
-    color: #fff !important;
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe) !important;
+    border: 1px solid #93c5fd !important;
+    color: #1e40af !important;
+    &:hover {
+      background: linear-gradient(135deg, #bfdbfe, #93c5fd) !important;
+    }
   }
 
   .el-button--warning {
-    background: linear-gradient(135deg, #fbbf24, #f59e0b) !important;
-    color: #fff !important;
+    background: linear-gradient(135deg, #fef3c7, #fde68a) !important;
+    border: 1px solid #fcd34d !important;
+    color: #92400e !important;
+    &:hover {
+      background: linear-gradient(135deg, #fde68a, #fcd34d) !important;
+    }
   }
 
   .el-button.is-plain {
-    background: rgba(255,255,255,0.15) !important;
-    color: #fff !important;
-    backdrop-filter: blur(4px);
+    background: #fff !important;
+    border: 1px solid $border !important;
+    color: $text-secondary !important;
     &:hover {
-      background: rgba(255,255,255,0.25) !important;
+      color: $primary !important;
+      border-color: $primary !important;
     }
   }
 }
@@ -887,9 +897,10 @@ $shadow-hover: 0 4px 16px rgba(0,0,0,0.08);
   .hero-top { justify-content: center; }
   .hero-meta { justify-content: center; }
   .hero-actions { justify-content: center; }
-  .avatar-circle { width: 60px; height: 60px; }
-  .avatar-text { font-size: 24px; }
-  .hero-greeting { font-size: 18px; }
+  .avatar-circle { width: 56px; height: 56px; }
+  .avatar-text { font-size: 22px; }
+  .hero-greeting { font-size: 17px; }
+  .level-badge { font-size: 12px; padding: 2px 10px; }
   .announce-item { flex-direction: column; align-items: flex-start; gap: 6px; }
   .announce-right { margin-left: 0; width: 100%; justify-content: flex-end; }
 }
