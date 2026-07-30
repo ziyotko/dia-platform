@@ -2,6 +2,8 @@ package service
 
 import (
 	"errors"
+	"time"
+
 	"member/internal/models"
 	"member/pkg/db"
 )
@@ -38,6 +40,7 @@ func (s *MemberOrgService) JoinOrg(memberID, orgID uint64) error {
 	mo := models.MemberOrganization{
 		MemberID: memberID,
 		OrgID:    orgID,
+		JoinedAt: time.Now(),
 	}
 	return db.DB.Create(&mo).Error
 }

@@ -25,7 +25,7 @@
               >
                 {{ item._type === 'application' ? '缴费加入' : '主动加入' }}
               </el-tag>
-              <span class="meta-time">{{ formatDate(item.created_at) }}</span>
+              <span class="meta-time">{{ formatDate(item._type === 'org' ? item.joined_at : item.created_at) }}</span>
             </div>
           </div>
           <div class="card-right">
