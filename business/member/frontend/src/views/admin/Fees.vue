@@ -141,7 +141,7 @@
               <el-button v-if="row.status==='unpaid'" text size="small" :icon="Edit" @click="editFee(row)">编辑</el-button>
               <el-button v-if="row.receipt_file" text size="small" type="primary" :icon="Download" @click="viewReceipt(row)">缴费回执</el-button>
               <el-button v-if="row.status==='pending'" text size="small" type="success" :icon="CircleCheck" @click="confirmPay(row)">确认缴费</el-button>
-              <el-button v-if="row.status==='unpaid'" text size="small" type="success" :icon="CircleCheck" @click="markPaid(row)">确认缴费</el-button>
+              <el-button v-if="row.status==='unpaid'" text size="small" type="success" :icon="CircleCheck" @click="markPaid(row)">免缴确认</el-button>
               <el-button v-if="row.status==='unpaid'" text size="small" type="danger" :icon="Delete" @click="deleteFee(row)">删除</el-button>
               <el-button v-if="row.invoice_status==='applied'" text size="small" type="warning" :icon="Coin" @click="openIssueInvoice(row)">开票</el-button>
               <el-button v-if="row.invoice_status==='issued'" text size="small" type="warning" :icon="Upload" @click="openIssueInvoice(row)">重新上传发票</el-button>

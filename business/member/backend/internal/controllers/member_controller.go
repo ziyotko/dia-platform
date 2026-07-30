@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"time"
+
 	"member/internal/models"
 	"member/internal/service"
 	"member/pkg/db"
@@ -91,16 +93,24 @@ func (ctrl *MemberController) DeleteMember(c *gin.Context) {
 
 // GetMemberStats returns member statistics (admin)
 func (ctrl *MemberController) GetMemberStats(c *gin.Context) {
-	var total, active, pending, rejected int64
+	var total, active, pending, rejected, pendingPayment, todayNew int64
+
+	now := time.Now()
+	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+
 	db.DB.Model(&models.Member{}).Count(&total)
 	db.DB.Model(&models.Member{}).Where("status = ?", "active").Count(&active)
 	db.DB.Model(&models.Member{}).Where("status IN ?", []string{"pending_review", "pending_cert", "pending_payment", "registering"}).Count(&pending)
 	db.DB.Model(&models.Member{}).Where("status = ?", "rejected").Count(&rejected)
+	db.DB.Model(&models.Member{}).Where("status = ?", "pending_payment").Count(&pendingPayment)
+	db.DB.Model(&models.Member{}).Where("created_at >= ?", todayStart).Count(&todayNew)
 
 	response.Success(c, gin.H{
-		"total":    total,
-		"active":   active,
-		"pending":  pending,
-		"rejected": rejected,
+		"total":           total,
+		"active":          active,
+		"pending":         pending,
+		"rejected":        rejected,
+		"pending_payment": pendingPayment,
+		"today_new":       todayNew,
 	})
 }
