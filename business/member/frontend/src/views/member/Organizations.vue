@@ -72,6 +72,28 @@
           <el-icon><Check /></el-icon>
           <span>已选择：<strong>{{ selectedOrg.name }}</strong></span>
         </div>
+
+        <!-- 会员级别选择 -->
+        <div v-if="selectedOrg && !selectedOrg.disabled && filteredLevels.length" class="level-section">
+          <div class="level-section-title">选择会员级别</div>
+          <el-radio-group v-model="selectedLevelId" class="level-radio-group">
+            <el-radio
+              v-for="item in filteredLevels"
+              :key="item.level_id"
+              :value="item.level_id"
+              class="level-radio"
+            >
+              <div class="level-radio-content">
+                <span class="level-name">{{ item.level?.name }}</span>
+                <el-tag v-if="item.level?.level === currentLevelNum" size="small" type="warning" effect="plain">同级</el-tag>
+                <el-tag v-else size="small" type="info" effect="plain">低级</el-tag>
+              </div>
+            </el-radio>
+          </el-radio-group>
+          <div v-if="!filteredLevels.length && availableLevels.length" class="level-empty-tip">
+            该组织暂无适合您当前级别的选项
+          </div>
+        </div>
       </div>
 
       <template #footer>
@@ -117,33 +139,116 @@ const joinedOrgIds = computed(() => {
   return ids
 })
 
-// 在组织树节点上标记 disabled，已加入的组织不可选
+// 计算树中每个节点的深度（用于层级过滤）
+function computeDepthMap(nodes: any[], depth: number = 0, map: Map<number, number> = new Map()): Map<number, number> {
+  for (const n of nodes) {
+    map.set(n.id, depth)
+    if (n.children) computeDepthMap(n.children, depth + 1, map)
+  }
+  return map
+}
+
+// 在组织树节点上标记 disabled
+// 已加入的组织不可选；比已加入组织更高层级的不可选
 const processedOrgTree = computed(() => {
+  const depthMap = computeDepthMap(orgTree.value)
+
+  // 已加入组织的深度集合
+  const joinedDepths = new Set<number>()
+  joinedOrgIds.value.forEach((id: number) => {
+    const d = depthMap.get(id)
+    if (d !== undefined) joinedDepths.add(d)
+  })
+
+  // 已加入组织的最小深度（最顶层），低于此层级的组织不可加入
+  const minDepth = joinedDepths.size > 0 ? Math.min(...Array.from(joinedDepths)) : -1
+
   function markDisabled(nodes: any[]): any[] {
-    return nodes.map(n => ({
-      ...n,
-      disabled: joinedOrgIds.value.has(n.id),
-      children: n.children ? markDisabled(n.children) : n.children
-    }))
+    return nodes.map(n => {
+      const isJoined = joinedOrgIds.value.has(n.id)
+      const nodeDepth = depthMap.get(n.id) ?? 0
+      const disabled = isJoined || (minDepth >= 0 && nodeDepth < minDepth)
+      return {
+        ...n,
+        disabled,
+        children: n.children ? markDisabled(n.children) : n.children
+      }
+    })
   }
   return markDisabled(orgTree.value)
 })
 
+// 所有会员级别列表（从 API 获取）
+const allLevels = ref<any[]>([])
+
+// 当前会员级别的数值
+const currentLevelNum = computed(() => {
+  // 先从已加入组织的 level_id 推断
+  for (const org of myOrgs.value) {
+    if (org.level_id > 0) {
+      const found = allLevels.value.find((l: any) => l.id === org.level_id)
+      if (found) return found.level
+    }
+  }
+  // 再尝试从 memberLevel 名称匹配
+  if (memberLevel.value) {
+    const found = allLevels.value.find((l: any) => l.name === memberLevel.value)
+    if (found) return found.level
+  }
+  return -1 // 未找到则不过滤
+})
+
+// 所选组织的可用级别
+const availableLevels = computed(() => {
+  if (!selectedOrg.value || selectedOrg.value.disabled) return []
+  return selectedOrg.value.levels || []
+})
+
+// 过滤后的级别（同级+低级，优先同级）
+const filteredLevels = computed(() => {
+  const levels = availableLevels.value
+  if (currentLevelNum.value < 0) return levels
+  // 同级别
+  const same = levels.filter((l: any) => l.level?.level === currentLevelNum.value)
+  // 低级别
+  const lower = levels.filter((l: any) => l.level?.level < currentLevelNum.value)
+  return [...same, ...lower]
+})
+
+// 默认选中第一个可用级别（优先同级）
+const selectedLevelId = ref<number>(0)
+
+// 选择组织时自动设置默认级别
+watch(selectedOrg, (org) => {
+  if (org && !org.disabled) {
+    const levels = filteredLevels.value
+    if (levels.length > 0) {
+      selectedLevelId.value = levels[0].level_id
+    } else {
+      selectedLevelId.value = 0
+    }
+  } else {
+    selectedLevelId.value = 0
+  }
+})
+
 // 是否允许确认加入
-const canJoin = computed(() => !!selectedOrg.value && !selectedOrg.value.disabled)
+const canJoin = computed(() => !!selectedOrg.value && !selectedOrg.value.disabled && selectedLevelId.value > 0)
 
 onMounted(async () => {
   try {
     const currentYear = new Date().getFullYear()
-    const [myRes, treeRes, appRes, feeRes] = await Promise.all([
+    const [myRes, treeRes, appRes, feeRes, levelRes] = await Promise.all([
       orgApi.getMyOrgs(),
       orgApi.getTree(),
       applicationApi.getMyApplications(),
-      feeApi.getMyFees({ year: currentYear })
+      feeApi.getMyFees({ year: currentYear }),
+      orgApi.getMemberLevels()
     ])
     myOrgs.value = myRes.data || []
     orgTree.value = treeRes.data || []
     approvedApps.value = (appRes.data || []).filter((a: any) => a.status === 'approved')
+    allLevels.value = levelRes.data || []
     const fees: any[] = feeRes.data || []
     // 优先显示已缴费级别，没有则显示未缴费级别
     const paid = fees.find((f: any) => f.status === 'paid')
@@ -180,7 +285,7 @@ function handleCancel() {
 async function joinOrg() {
   if (!selectedOrg.value) return
   try {
-    await orgApi.joinOrg(selectedOrg.value.id)
+    await orgApi.joinOrg(selectedOrg.value.id, selectedLevelId.value)
     ElMessage.success('加入成功')
     showJoin.value = false
     searchQuery.value = ''
@@ -327,5 +432,39 @@ function formatDate(d: string) { return d ? d.replace('T', ' ').slice(0, 16) : '
   align-items: center;
   gap: 8px;
   font-size: 14px;
+}
+
+/* ── 级别选择 ── */
+.level-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #ebeef5;
+}
+.level-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 10px;
+}
+.level-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.level-radio {
+  margin-right: 0;
+}
+.level-radio-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.level-name {
+  font-size: 14px;
+}
+.level-empty-tip {
+  font-size: 13px;
+  color: #909399;
+  padding: 8px 0;
 }
 </style>

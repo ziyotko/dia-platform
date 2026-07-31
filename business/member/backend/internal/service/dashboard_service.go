@@ -1,6 +1,8 @@
 package service
 
 import (
+	"sort"
+
 	"member/internal/models"
 	"member/pkg/db"
 )
@@ -15,7 +17,18 @@ type MemberDashboard struct {
 	ArticleCount        int64                 `json:"article_count"`
 	LatestAnnouncements []models.Announcement `json:"latest_announcements"`
 	FeeSummary          *FeeSummary           `json:"fee_summary"`
-	LatestFeeLevel      string                `json:"latest_fee_level"` // level name from newest paid fee record
+	LatestFeeLevel      string                `json:"latest_fee_level"`
+	Organizations       []DashboardOrgInfo    `json:"organizations"`
+}
+
+// DashboardOrgInfo holds org display info for the dashboard
+type DashboardOrgInfo struct {
+	ID         uint64 `json:"id"`
+	OrgID      uint64 `json:"org_id"`
+	OrgName    string `json:"org_name"`
+	LevelName  string `json:"level_name"`
+	JoinedAt   string `json:"joined_at"`
+	IsFeeBased bool   `json:"is_fee_based"` // true if from approved application (paid join)
 }
 
 type AppSummary struct {
@@ -85,6 +98,54 @@ func (s *DashboardService) GetMemberDashboard(memberID uint64) (*MemberDashboard
 		Order("year DESC, id DESC").First(&latestFee).Error; err == nil {
 		dash.LatestFeeLevel = latestFee.LevelName
 	}
+
+	// Organizations — query all from member_user_orgs, mark fee-based if has approved application
+	var orgInfos []DashboardOrgInfo
+
+	// Collect approved application org IDs for fee-based determination
+	approvedOrgIDs := make(map[uint64]bool)
+	var approvedApps []models.Application
+	db.DB.Where("member_id = ? AND status = ?", memberID, models.AppStatusApproved).Find(&approvedApps)
+	for _, a := range approvedApps {
+		approvedOrgIDs[a.OrgID] = true
+	}
+
+	// Query all org memberships from member_user_orgs
+	var memberOrgs []models.MemberOrganization
+	db.DB.Where("member_id = ?", memberID).Preload("Org").Find(&memberOrgs)
+	for _, mo := range memberOrgs {
+		if mo.Org.ID == 0 {
+			continue
+		}
+		// Resolve level name from LevelID
+		levelName := ""
+		if mo.LevelID > 0 {
+			var lvl models.MemberLevel
+			if err := db.DB.First(&lvl, mo.LevelID).Error; err == nil {
+				levelName = lvl.Name
+			}
+		} else if approvedOrgIDs[mo.OrgID] {
+			levelName = latestFee.LevelName
+		}
+		orgInfos = append(orgInfos, DashboardOrgInfo{
+			ID:         mo.ID,
+			OrgID:      mo.OrgID,
+			OrgName:    mo.Org.Name,
+			LevelName:  levelName,
+			JoinedAt:   mo.JoinedAt.Local().Format("2006-01-02"),
+			IsFeeBased: approvedOrgIDs[mo.OrgID],
+		})
+	}
+
+	// Sort: fee-based first, then direct joins
+	sort.SliceStable(orgInfos, func(i, j int) bool {
+		if orgInfos[i].IsFeeBased != orgInfos[j].IsFeeBased {
+			return orgInfos[i].IsFeeBased && !orgInfos[j].IsFeeBased
+		}
+		return false
+	})
+
+	dash.Organizations = orgInfos
 
 	return dash, nil
 }

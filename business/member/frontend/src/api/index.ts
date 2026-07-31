@@ -27,8 +27,9 @@ export const certificateApi = {
 export const orgApi = {
   getTree: () => request.get('/organizations/tree'),
   getMyOrgs: () => request.get('/member/orgs'),
-  joinOrg: (orgId: number) => request.post('/member/orgs', { org_id: orgId }),
-  leaveOrg: (id: number) => request.delete(`/member/orgs/${id}`)
+  joinOrg: (orgId: number, levelId?: number) => request.post('/member/orgs', { org_id: orgId, level_id: levelId || 0 }),
+  leaveOrg: (id: number) => request.delete(`/member/orgs/${id}`),
+  getMemberLevels: () => request.get('/member-levels')
 }
 
 export const messageApi = {

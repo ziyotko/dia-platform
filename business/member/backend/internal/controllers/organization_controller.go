@@ -115,13 +115,14 @@ func (ctrl *MemberOrgController) GetMyOrgs(c *gin.Context) {
 func (ctrl *MemberOrgController) JoinOrg(c *gin.Context) {
 	memberID := getMemberID(c)
 	var req struct {
-		OrgID uint64 `json:"org_id" binding:"required"`
+		OrgID   uint64 `json:"org_id" binding:"required"`
+		LevelID uint64 `json:"level_id"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "参数错误")
 		return
 	}
-	if err := ctrl.memberOrgService.JoinOrg(memberID, req.OrgID); err != nil {
+	if err := ctrl.memberOrgService.JoinOrg(memberID, req.OrgID, req.LevelID); err != nil {
 		response.BadRequest(c, err.Error())
 		return
 	}

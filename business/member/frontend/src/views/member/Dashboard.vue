@@ -15,6 +15,12 @@
               <el-icon><Medal /></el-icon>
               <span>{{ memberLevelLabel }}</span>
             </div>
+            <template v-for="org in dash?.organizations" :key="org.id">
+              <div class="org-badge" :class="org.is_fee_based ? 'org-badge-fee' : 'org-badge-join'">
+                <span class="org-badge-name">{{ org.org_name }}</span>
+                <el-tag v-if="org.level_name" size="small" effect="plain" class="org-badge-level">{{ org.level_name }}</el-tag>
+              </div>
+            </template>
           </div>
           <div class="hero-meta">
             <el-tag :type="statusType" size="small" effect="light" class="status-tag-mini">
@@ -890,6 +896,41 @@ $shadow-hover: 0 4px 16px rgba(0,0,0,0.08);
 // ════════════════════════════════════════
 // Responsive
 // ════════════════════════════════════════
+// ════════════════════════════════════════
+// Organization Badges (in hero-top)
+// ════════════════════════════════════════
+.org-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.org-badge-fee {
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  color: #166534;
+}
+.org-badge-join {
+  background: #e0f2fe;
+  border: 1px solid #7dd3fc;
+  color: #1e40af;
+}
+.org-badge-name {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.org-badge-level {
+  font-size: 11px !important;
+  height: 18px !important;
+  line-height: 18px !important;
+  padding: 0 5px !important;
+}
+
 @media (max-width: 768px) {
   .hero-card :deep(.el-card__body) { padding: 20px 16px; }
   .hero-inner { flex-direction: column; text-align: center; }
@@ -902,5 +943,9 @@ $shadow-hover: 0 4px 16px rgba(0,0,0,0.08);
   .level-badge { font-size: 12px; padding: 2px 10px; }
   .announce-item { flex-direction: column; align-items: flex-start; gap: 6px; }
   .announce-right { margin-left: 0; width: 100%; justify-content: flex-end; }
+
+  .org-badge-name {
+    max-width: 70px;
+  }
 }
 </style>

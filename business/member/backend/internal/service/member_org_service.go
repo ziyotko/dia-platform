@@ -20,7 +20,7 @@ func (s *MemberOrgService) GetMyOrgs(memberID uint64) ([]models.MemberOrganizati
 }
 
 // JoinOrg joins an organization
-func (s *MemberOrgService) JoinOrg(memberID, orgID uint64) error {
+func (s *MemberOrgService) JoinOrg(memberID, orgID, levelID uint64) error {
 	// Check if org exists
 	var org models.Organization
 	if err := db.DB.First(&org, orgID).Error; err != nil {
@@ -37,9 +37,17 @@ func (s *MemberOrgService) JoinOrg(memberID, orgID uint64) error {
 	if approvedCount == 0 {
 		return errors.New("暂无缴费加入的组织，无法加入新组织")
 	}
+	// If levelID is provided, verify it belongs to this org
+	if levelID > 0 {
+		var orgLevel models.MemberOrgLevel
+		if err := db.DB.Where("org_id = ? AND level_id = ?", orgID, levelID).First(&orgLevel).Error; err != nil {
+			return errors.New("该组织不支持所选会员级别")
+		}
+	}
 	mo := models.MemberOrganization{
 		MemberID: memberID,
 		OrgID:    orgID,
+		LevelID:  levelID,
 		JoinedAt: time.Now(),
 	}
 	return db.DB.Create(&mo).Error
