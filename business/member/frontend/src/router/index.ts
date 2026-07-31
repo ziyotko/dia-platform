@@ -84,7 +84,8 @@ const router = createRouter({
         { path: 'fee-standards', name: 'AdminFeeStandards', meta: { title: '会费标准' }, component: () => import('@/views/admin/FeeStandards.vue') },
         { path: 'messages', name: 'AdminMessages', meta: { title: '会员留言' }, component: () => import('@/views/admin/Messages.vue') },
         { path: 'articles', name: 'AdminArticles', meta: { title: '文章管理' }, component: () => import('@/views/admin/Articles.vue') },
-        { path: 'announcements', name: 'AdminAnnouncements', meta: { title: '公告管理' }, component: () => import('@/views/admin/Announcements.vue') }
+        { path: 'announcements', name: 'AdminAnnouncements', meta: { title: '公告管理' }, component: () => import('@/views/admin/Announcements.vue') },
+        { path: 'system-config', name: 'AdminSystemConfig', meta: { title: '系统管理' }, component: () => import('@/views/admin/SystemConfig.vue') }
       ]
     },
     {

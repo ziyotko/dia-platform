@@ -9,6 +9,7 @@
         "npx vue-tsc": true,
         "npx vite": true,
         "Test-Path": true,
-        "npm uninstall": true
+        "npm uninstall": true,
+        "npx tsc": true
     }
 }

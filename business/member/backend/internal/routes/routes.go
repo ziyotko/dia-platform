@@ -25,6 +25,7 @@ func Register(r *gin.Engine) {
 	announceCtrl := controllers.AnnouncementController{}
 	dashCtrl := controllers.DashboardController{}
 	certTplCtrl := controllers.CertificateTemplateController{}
+	sysConfigCtrl := controllers.SystemConfigController{}
 
 	// === Public routes (no auth) ===
 	public := r.Group(prefix)
@@ -184,5 +185,11 @@ func Register(r *gin.Engine) {
 		admin.PUT("/admin/announcements/:id", announceCtrl.UpdateAnnouncement)
 		admin.DELETE("/admin/announcements/:id", announceCtrl.DeleteAnnouncement)
 		admin.GET("/admin/announcements", announceCtrl.ListAllAnnouncements)
+
+		// System config management
+		admin.GET("/admin/system-configs", sysConfigCtrl.List)
+		admin.POST("/admin/system-configs", sysConfigCtrl.Create)
+		admin.PUT("/admin/system-configs/:id", sysConfigCtrl.Update)
+		admin.DELETE("/admin/system-configs/:id", sysConfigCtrl.Delete)
 	}
 }

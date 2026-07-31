@@ -69,5 +69,11 @@ export const adminApi = {
   getFeeStandardsByLevel: (levelId: number) => request.get(`/admin/fee-standards/levels/${levelId}`),
   upsertFeeStandard: (data: { level_id: number; year: number; amount: number }) => request.post('/admin/fee-standards', data),
   batchUpsertFeeStandard: (data: { level_id: number; items: { year: number; amount: number }[] }) => request.post('/admin/fee-standards/batch', data),
-  deleteFeeStandard: (id: number) => request.delete(`/admin/fee-standards/${id}`)
+  deleteFeeStandard: (id: number) => request.delete(`/admin/fee-standards/${id}`),
+
+  // System Configs
+  getSystemConfigs: () => request.get('/admin/system-configs'),
+  createSystemConfig: (data: { key: string; value: string; description?: string }) => request.post('/admin/system-configs', data),
+  updateSystemConfig: (id: number, data: { key?: string; value?: string; description?: string }) => request.put(`/admin/system-configs/${id}`, data),
+  deleteSystemConfig: (id: number) => request.delete(`/admin/system-configs/${id}`)
 }
