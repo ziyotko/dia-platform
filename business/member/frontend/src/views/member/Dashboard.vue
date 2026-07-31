@@ -11,10 +11,7 @@
         <div class="hero-info">
           <div class="hero-top">
             <h2 class="hero-greeting">{{ greeting }}，{{ displayName }}</h2>
-            <div class="level-badge" v-if="memberLevelLabel && memberLevelLabel !== '暂无'">
-              <el-icon><Medal /></el-icon>
-              <span>{{ memberLevelLabel }}</span>
-            </div>
+            <!-- 机构徽章统一显示：机构名称 + 级别标签，避免重复展示 -->
             <template v-for="org in dash?.organizations" :key="org.id">
               <div class="org-badge" :class="org.is_fee_based ? 'org-badge-fee' : 'org-badge-join'">
                 <span class="org-badge-name">{{ org.org_name }}</span>
@@ -275,20 +272,6 @@ const memberTypeLabel = computed(() => {
   return t === 'unit' ? '单位会员' : t === 'personal' ? '个人会员' : t || '未知'
 })
 
-const memberLevelLabel = computed(() => {
-  const dashData = dash.value
-  if (!dashData) return ''
-
-  // 1) Latest paid fee record's level name (from FeeRecord.LevelName)
-  if (dashData.latest_fee_level) return dashData.latest_fee_level
-
-  // 2) Member's explicit member_level field (raw value, e.g. from admin settings)
-  if (dashData.member?.member_level) return dashData.member.member_level
-
-  // 3) No level info found
-  return '暂无'
-})
-
 // ── Quick Actions ──
 const quickActions = [
   { name: 'Applications', icon: 'DocumentChecked', label: '我的申请', bg: '#e8f4fd', color: '#3b82f6' },
@@ -432,23 +415,6 @@ $shadow-hover: 0 4px 16px rgba(0,0,0,0.08);
   font-weight: 700;
   color: $text;
   white-space: nowrap;
-}
-
-// Level badge — prominent display for member level
-.level-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 12px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
-  border: 1px solid #93c5fd;
-  color: #1e40af;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-
-  .el-icon { font-size: 15px; }
 }
 
 .hero-meta {
@@ -940,7 +906,6 @@ $shadow-hover: 0 4px 16px rgba(0,0,0,0.08);
   .avatar-circle { width: 56px; height: 56px; }
   .avatar-text { font-size: 22px; }
   .hero-greeting { font-size: 17px; }
-  .level-badge { font-size: 12px; padding: 2px 10px; }
   .announce-item { flex-direction: column; align-items: flex-start; gap: 6px; }
   .announce-right { margin-left: 0; width: 100%; justify-content: flex-end; }
 

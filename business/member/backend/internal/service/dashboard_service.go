@@ -102,19 +102,35 @@ func (s *DashboardService) GetMemberDashboard(memberID uint64) (*MemberDashboard
 	// Organizations — query all from member_user_orgs, mark fee-based if has approved application
 	var orgInfos []DashboardOrgInfo
 
-	// Collect approved application org IDs for fee-based determination
+	// Collect approved applications (fee-based joins)
 	approvedOrgIDs := make(map[uint64]bool)
 	var approvedApps []models.Application
-	db.DB.Where("member_id = ? AND status = ?", memberID, models.AppStatusApproved).Find(&approvedApps)
+	db.DB.Where("member_id = ? AND status = ?", memberID, models.AppStatusApproved).
+		Preload("Org").Find(&approvedApps)
 	for _, a := range approvedApps {
+		if a.Org.ID == 0 {
+			continue
+		}
 		approvedOrgIDs[a.OrgID] = true
+		orgInfos = append(orgInfos, DashboardOrgInfo{
+			ID:         a.ID,
+			OrgID:      a.OrgID,
+			OrgName:    a.Org.Name,
+			LevelName:  latestFee.LevelName,
+			JoinedAt:   a.CreatedAt.Local().Format("2006-01-02"),
+			IsFeeBased: true,
+		})
 	}
 
-	// Query all org memberships from member_user_orgs
+	// Query all org memberships from member_user_orgs (direct joins)
 	var memberOrgs []models.MemberOrganization
 	db.DB.Where("member_id = ?", memberID).Preload("Org").Find(&memberOrgs)
 	for _, mo := range memberOrgs {
 		if mo.Org.ID == 0 {
+			continue
+		}
+		// Skip orgs already added via approved application (avoid duplicates)
+		if approvedOrgIDs[mo.OrgID] {
 			continue
 		}
 		// Resolve level name from LevelID
@@ -124,8 +140,6 @@ func (s *DashboardService) GetMemberDashboard(memberID uint64) (*MemberDashboard
 			if err := db.DB.First(&lvl, mo.LevelID).Error; err == nil {
 				levelName = lvl.Name
 			}
-		} else if approvedOrgIDs[mo.OrgID] {
-			levelName = latestFee.LevelName
 		}
 		orgInfos = append(orgInfos, DashboardOrgInfo{
 			ID:         mo.ID,
@@ -133,7 +147,7 @@ func (s *DashboardService) GetMemberDashboard(memberID uint64) (*MemberDashboard
 			OrgName:    mo.Org.Name,
 			LevelName:  levelName,
 			JoinedAt:   mo.JoinedAt.Local().Format("2006-01-02"),
-			IsFeeBased: approvedOrgIDs[mo.OrgID],
+			IsFeeBased: false,
 		})
 	}
 
