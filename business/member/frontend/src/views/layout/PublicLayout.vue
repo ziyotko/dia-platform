@@ -19,8 +19,12 @@
       <router-view />
     </main>
     <footer class="public-footer">
-      <p>© 2024 xxxxxx 版权所有</p>
-      <p>地址：北京市 电话：</p>
+      <p v-if="siteStore.copyright_name">版权所有：{{ siteStore.copyright_name }}</p>
+      <p v-if="siteStore.icp_no || siteStore.beian_no">
+        <span v-if="siteStore.icp_no">ICP备案号：{{ siteStore.icp_no }}</span>
+        <span v-if="siteStore.icp_no && siteStore.beian_no" class="footer-sep">　</span>
+        <span v-if="siteStore.beian_no">网安备案号：{{ siteStore.beian_no }}</span>
+      </p>
     </footer>
   </div>
 </template>
@@ -85,5 +89,8 @@ const siteStore = useSiteStore()
   color: #9ca3af;
   font-size: 13px;
   line-height: 1.8;
+  .footer-sep {
+    margin: 0 8px;
+  }
 }
 </style>

@@ -37,11 +37,11 @@ func createAdmin() {
 		Username:    "admin",
 		Password:    string(hashed),
 		Mobile:      "13800000000",
-		Email:       "admin@ceeia.com",
+		Email:       "admin@test.com",
 		MemberType:  models.MemberTypeUnit,
 		Status:      models.MemberStatusActive,
 		IsAdmin:     true,
-		CompanyName: "中国电器工业协会",
+		CompanyName: "XXX协会",
 	}
 	db.DB.Create(&admin)
 }
@@ -64,16 +64,8 @@ func createDefaultOrgs() {
 
 	// Children: branches + representatives under the single root
 	children := []models.Organization{
-		{Name: "变压器分会", ParentID: root.ID, Type: "branch", Sort: 1},
-		{Name: "高压开关分会", ParentID: root.ID, Type: "branch", Sort: 2},
-		{Name: "电线电缆分会", ParentID: root.ID, Type: "branch", Sort: 3},
-		{Name: "电机分会", ParentID: root.ID, Type: "branch", Sort: 4},
-		{Name: "新能源电器分会", ParentID: root.ID, Type: "branch", Sort: 5},
-		{Name: "绝缘材料分会", ParentID: root.ID, Type: "branch", Sort: 6},
-		{Name: "电力电子分会", ParentID: root.ID, Type: "branch", Sort: 7},
-		{Name: "华北代表处", ParentID: root.ID, Type: "representative", Sort: 8},
-		{Name: "华东代表处", ParentID: root.ID, Type: "representative", Sort: 9},
-		{Name: "华南代表处", ParentID: root.ID, Type: "representative", Sort: 10},
+		{Name: "分会", ParentID: root.ID, Type: "branch", Sort: 1},
+		{Name: "代表处", ParentID: root.ID, Type: "representative", Sort: 10},
 	}
 	db.DB.Create(&children)
 }
@@ -108,18 +100,19 @@ func createSystemConfig() {
 		{Key: "bank_name", Value: "中国工商银行北京分行", Description: "开户银行"},
 		{Key: "bank_account", Value: "02000041092001234567", Description: "银行账号"},
 		{Key: "bank_account_name", Value: "中国电器工业协会", Description: "账户名称"},
-		{Key: "fee_amount", Value: "2000", Description: "年会费标准（元）"},
 		{Key: "contact_phone", Value: "010-68166500", Description: "联系电话"},
 		{Key: "contact_email", Value: "member@ceeia.com", Description: "联系邮箱"},
+		{Key: "copyright_name", Value: "中国电器工业协会", Description: "版权所有者"},
 		{Key: "icp_no", Value: "京ICP备09041796号-1", Description: "ICP备案号"},
+		{Key: "beian_no", Value: "京公网安备11010502000000号", Description: "网安备案号"},
 	}
 	db.DB.Create(&configs)
 
 	// Create a sample announcement
 	now := time.Now()
 	announcement := models.Announcement{
-		Title:       "欢迎使用中国电器工业协会会员系统",
-		Content:     "尊敬的会员单位：\n\n欢迎使用中国电器工业协会会员系统。本系统为您提供入会申请、会费管理、证书下载、在线留言等一站式会员服务。\n\n如有任何疑问，请致电010-68166500。",
+		Title:       "欢迎使用协会会员系统",
+		Content:     "尊敬的会员单位：\n\n欢迎使用协会会员系统。本系统为您提供入会申请、会费管理、证书下载、在线留言等一站式会员服务。\n\n如有任何疑问，请致电010-XXXXXXX。",
 		Type:        "notice",
 		IsPinned:    true,
 		PublishedAt: &models.LocalTime{Time: now},

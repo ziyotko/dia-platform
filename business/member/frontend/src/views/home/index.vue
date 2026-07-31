@@ -3,7 +3,6 @@
     <section class="hero">
       <div class="hero-content">
         <h1>{{ siteStore.site_name }}</h1>
-        <p class="subtitle">会员服务系统</p>
         <p class="desc">数字化会员服务 · 数字化管理 · 数字化增值服务</p>
         <div class="hero-actions">
           <el-button type="primary" size="large" @click="$router.push('/register')">入会申请</el-button>

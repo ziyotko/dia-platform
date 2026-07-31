@@ -311,6 +311,15 @@ func (s *AuthService) GetSiteConfig() map[string]string {
 	if result["fee_amount"] == "" {
 		result["fee_amount"] = "2000"
 	}
+	if result["copyright_name"] == "" {
+		result["copyright_name"] = "中国电器工业协会"
+	}
+	if result["icp_no"] == "" {
+		result["icp_no"] = "京ICP备09041796号-1"
+	}
+	if result["beian_no"] == "" {
+		result["beian_no"] = "京公网安备11010502000000号"
+	}
 	return result
 }
 
