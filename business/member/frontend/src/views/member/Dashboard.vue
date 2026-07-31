@@ -37,7 +37,7 @@
               type="primary" size="small"
               @click="$router.push({ name: 'Applications' })"
             >
-              <el-icon><Edit /></el-icon> 继续完善资料
+              <el-icon><Edit /></el-icon> 申请入会
             </el-button>
             <el-button
               v-if="dash.member.status === 'pending_payment'"
@@ -224,8 +224,8 @@ const loading = ref(true)
 
 // ── Status ──
 const statusMap: Record<string, { text: string; type: string }> = {
-  registering: { text: '注册中', type: 'info' },
-  pending_review: { text: '待审核', type: 'warning' },
+  registering: { text: '注册会员', type: 'info' },
+  pending_review: { text: '入会待审核', type: 'warning' },
   pending_cert: { text: '待证书生成', type: 'warning' },
   pending_payment: { text: '待缴费', type: 'danger' },
   active: { text: '正式会员', type: 'success' },

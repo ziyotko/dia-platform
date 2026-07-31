@@ -2,7 +2,7 @@
   <div class="applications-page" v-loading="loading">
     <div class="page-header">
       <h3>我的申请</h3>
-      <el-button type="primary" @click="showCreate = true" v-if="!hasPending">发起入会申请</el-button>
+      <el-button type="primary" @click="handleCreateApp" v-if="!hasPending">发起入会申请</el-button>
     </div>
 
     <!-- Application List -->
@@ -125,12 +125,14 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { applicationApi, orgApi } from '@/api/index'
 import { authApi } from '@/api/auth'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 
+const router = useRouter()
 const userStore = useUserStore()
 const applications = ref<any[]>([])
 const orgs = ref<any[]>([])
@@ -190,6 +192,21 @@ function flattenOrgs(nodes: any[]): any[] {
   let r: any[] = []
   for (const n of nodes) { r.push(n); if (n.children) r = r.concat(flattenOrgs(n.children)) }
   return r
+}
+
+async function handleCreateApp() {
+  try {
+    const res = await authApi.getProfile()
+    const profile = res.data
+    if (profile.member_type === 'unit' && !profile.cert_file) {
+      ElMessage.warning('请先上传组织机构代码证，补全会员信息后再发起申请')
+      router.push('/member/profile')
+      return
+    }
+    showCreate.value = true
+  } catch {
+    ElMessage.error('获取会员信息失败，请重试')
+  }
 }
 
 async function withdrawApp(row: any) {

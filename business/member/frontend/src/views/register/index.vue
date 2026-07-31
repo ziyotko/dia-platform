@@ -238,8 +238,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
 import { authApi } from '@/api/auth'
 import { ElMessage } from 'element-plus'
 import {
@@ -249,6 +250,7 @@ import {
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
+const userStore = useUserStore()
 const step = ref(0)
 const submitting = ref(false)
 const uploading = ref(false)
@@ -373,12 +375,21 @@ async function handleSubmit() {
     }
 
     const res = await authApi.register(registerData)
+
+    // 先清空本地缓存登录信息
+    localStorage.clear()
+    sessionStorage.clear()
+
+    // 再自动登录系统
     const { token } = res.data
     if (token) {
-      localStorage.setItem('member-token', token)
+      userStore.setToken(token)
+      userStore.userInfo = res.data.member
     }
 
     ElMessage.success(form1.memberType === 'unit' ? '入会申请提交成功！' : '注册成功！')
+    // 等待 store 状态更新完成再跳转
+    await nextTick()
     router.push('/member/dashboard')
   } catch {
     loadCaptcha()

@@ -25,12 +25,23 @@
             <el-form-item label="单位地址"><el-input v-model="form.address" /></el-form-item>
             <el-form-item label="网站"><el-input v-model="form.website" /></el-form-item>
             <el-form-item label="组织机构证" v-if="form.member_type === 'unit'">
-              <template v-if="form.cert_file">
-                <el-link :href="fileUrl(form.cert_file)" target="_blank" type="primary" :underline="false">
-                  <el-icon style="margin-right:4px"><Download /></el-icon>查看证照
-                </el-link>
-              </template>
-              <span v-else style="color:#9ca3af">未上传</span>
+              <div class="cert-file-row">
+                <template v-if="form.cert_file">
+                  <el-link :href="fileUrl(form.cert_file)" target="_blank" type="primary" :underline="false">
+                    <el-icon style="margin-right:4px"><Download /></el-icon>下载证照
+                  </el-link>
+                  <el-button size="small" style="margin-left:8px" @click="triggerUpload">
+                    <el-icon><Upload /></el-icon>重新上传
+                  </el-button>
+                </template>
+                <template v-else>
+                  <el-button size="small" type="primary" @click="triggerUpload">
+                    <el-icon><Upload /></el-icon>上传组织机构证
+                  </el-button>
+                </template>
+                <input ref="fileInputRef" type="file" accept=".jpg,.jpeg,.png,.pdf" style="display:none" @change="handleCertUpload" />
+                <span v-if="uploading" style="margin-left:8px;color:#409eff">上传中...</span>
+              </div>
             </el-form-item>
           </el-col>
         </el-row>
@@ -61,13 +72,15 @@
 import { ref, reactive, onMounted } from 'vue'
 import { authApi } from '@/api/auth'
 import { ElMessage } from 'element-plus'
-import { Download } from '@element-plus/icons-vue'
+import { Download, Upload } from '@element-plus/icons-vue'
 
 const form = reactive<any>({})
 const loading = ref(true)
 const saving = ref(false)
 const showPwdDialog = ref(false)
 const pwdForm = reactive({ oldPassword: '', newPassword: '' })
+const uploading = ref(false)
+const fileInputRef = ref<HTMLInputElement>()
 
 onMounted(async () => {
   try {
@@ -82,6 +95,38 @@ async function saveProfile() {
     await authApi.updateProfile(form)
     ElMessage.success('保存成功')
   } catch {} finally { saving.value = false }
+}
+
+function triggerUpload() {
+  fileInputRef.value?.click()
+}
+
+async function handleCertUpload(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  const maxSize = 10 * 1024 * 1024 // 10MB
+  if (file.size > maxSize) {
+    ElMessage.error('文件大小不能超过10MB')
+    input.value = ''
+    return
+  }
+
+  uploading.value = true
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('dir', 'certs')
+    const res = await authApi.upload(formData)
+    form.cert_file = res.data.url
+    ElMessage.success('证照上传成功，请点击保存修改以确认')
+  } catch {
+    ElMessage.error('上传失败，请重试')
+  } finally {
+    uploading.value = false
+    input.value = ''
+  }
 }
 
 function fileUrl(path: string) {

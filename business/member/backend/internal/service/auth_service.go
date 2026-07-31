@@ -165,6 +165,7 @@ func (s *AuthService) UpdateProfile(memberID uint64, req UpdateProfileRequest) e
 		"address":        req.Address,
 		"website":        req.Website,
 		"description":    req.Description,
+		"cert_file":      req.CertFile,
 	}
 	return db.DB.Model(&models.Member{}).Where("id = ?", memberID).Updates(updates).Error
 }
@@ -274,6 +275,7 @@ type UpdateProfileRequest struct {
 	Address       string `json:"address"`
 	Website       string `json:"website"`
 	Description   string `json:"description"`
+	CertFile      string `json:"cert_file"`
 }
 
 type ChangePasswordRequest struct {
