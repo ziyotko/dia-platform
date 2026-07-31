@@ -100,7 +100,7 @@ func (ctrl *MemberController) GetMemberStats(c *gin.Context) {
 
 	db.DB.Model(&models.Member{}).Count(&total)
 	db.DB.Model(&models.Member{}).Where("status = ?", "active").Count(&active)
-	db.DB.Model(&models.Member{}).Where("status IN ?", []string{"pending_review", "pending_cert", "pending_payment", "registering"}).Count(&pending)
+	db.DB.Model(&models.Member{}).Where("status IN ?", []string{"pending_review", "pending_payment", "registering"}).Count(&pending)
 	db.DB.Model(&models.Member{}).Where("status = ?", "rejected").Count(&rejected)
 	db.DB.Model(&models.Member{}).Where("status = ?", "pending_payment").Count(&pendingPayment)
 	db.DB.Model(&models.Member{}).Where("created_at >= ?", todayStart).Count(&todayNew)

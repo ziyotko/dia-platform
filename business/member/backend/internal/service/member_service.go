@@ -52,7 +52,6 @@ func (s *MemberService) UpdateMemberStatus(id uint64, status string) error {
 	validStatuses := map[string]bool{
 		models.MemberStatusRegistering:   true,
 		models.MemberStatusPendingReview: true,
-		models.MemberStatusPendingCert:   true,
 		models.MemberStatusPendingPay:    true,
 		models.MemberStatusActive:        true,
 		models.MemberStatusRejected:      true,

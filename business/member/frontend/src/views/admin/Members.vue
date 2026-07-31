@@ -45,7 +45,7 @@ const keyword = ref(''); const filterStatus = ref('')
 
 const statusMap: Record<string, { l: string; t: string }> = {
   registering: { l: '注册中', t: 'info' }, pending_review: { l: '待审核', t: 'warning' },
-  pending_cert: { l: '待证书', t: 'warning' }, pending_payment: { l: '待缴费', t: 'danger' },
+  pending_payment: { l: '待缴费', t: 'danger' },
   active: { l: '正式会员', t: 'success' }, rejected: { l: '已拒绝', t: 'danger' }
 }
 function statusLabel(s: string) { return statusMap[s]?.l || s }
@@ -62,7 +62,7 @@ async function fetchData() {
 function search() { page.value = 1; fetchData() }
 
 async function changeStatus(row: any) {
-  const statuses = ['active', 'pending_review', 'pending_cert', 'pending_payment', 'rejected', 'registering', 'expired']
+  const statuses = ['active', 'pending_review', 'pending_payment', 'rejected', 'registering', 'expired']
   try {
     const { value } = await ElMessageBox.prompt('输入新状态: ' + statuses.join(', '), '修改状态', { inputValue: row.status })
     if (value) { await adminApi.updateMemberStatus(row.id, value); ElMessage.success('已更新'); fetchData() }

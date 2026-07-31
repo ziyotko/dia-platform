@@ -4,7 +4,6 @@ package models
 const (
 	MemberStatusRegistering   = "registering"     // 注册中
 	MemberStatusPendingReview = "pending_review"  // 待审核
-	MemberStatusPendingCert   = "pending_cert"    // 待证书生成
 	MemberStatusPendingPay    = "pending_payment" // 待缴费
 	MemberStatusActive        = "active"          // 正式会员
 	MemberStatusRejected      = "rejected"        // 已拒绝

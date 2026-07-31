@@ -316,7 +316,6 @@ function formatTime(t?: string) {
 const statusMap: Record<string, { l: string; t: string }> = {
   registering: { l: '注册中', t: 'info' },
   pending_review: { l: '待审核', t: 'warning' },
-  pending_cert: { l: '待证书', t: 'warning' },
   pending_payment: { l: '待缴费', t: 'danger' },
   active: { l: '正式会员', t: 'success' },
   rejected: { l: '已拒绝', t: 'danger' }

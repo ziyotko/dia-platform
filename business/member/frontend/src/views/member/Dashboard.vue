@@ -226,7 +226,6 @@ const loading = ref(true)
 const statusMap: Record<string, { text: string; type: string }> = {
   registering: { text: '注册会员', type: 'info' },
   pending_review: { text: '入会待审核', type: 'warning' },
-  pending_cert: { text: '待证书生成', type: 'warning' },
   pending_payment: { text: '待缴费', type: 'danger' },
   active: { text: '正式会员', type: 'success' },
   rejected: { text: '已拒绝', type: 'danger' },
