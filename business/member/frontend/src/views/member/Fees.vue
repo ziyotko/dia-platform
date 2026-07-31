@@ -11,7 +11,7 @@
       <!-- Bank Info -->
       <el-alert type="info" :closable="false" show-icon class="bank-info" v-if="siteInfo">
         <template #title>
-          <span>协会账户信息：{{ siteInfo.bank_name }} | 账号：{{ siteInfo.bank_account }} | 户名：{{ siteInfo.bank_account_name }}，汇款的时候，备注栏注明“XX 年度会费‌”及‌单位名称</span>
+          <span>协会账户信息：{{ siteInfo.bank_name }} | 账号：{{ siteInfo.bank_account }} | 户名：{{ siteInfo.bank_account_name }}，请先联系相关单位确定最终的会员级别和缴费金额，再行汇款，汇款的时候，备注栏注明“XX 年度会费‌”及‌单位名称</span>
         </template>
       </el-alert>
 
@@ -181,7 +181,7 @@ onMounted(async () => {
     fees.value = feeRes.data || []
     Object.assign(siteInfo, siteRes.data)
     const currentYear = new Date().getFullYear()
-    for (let y = currentYear; y >= currentYear - 5; y--) years.value.push(y)
+    for (let y = currentYear + 3; y >= currentYear - 5; y--) years.value.push(y)
   } catch {} finally { loading.value = false }
 })
 

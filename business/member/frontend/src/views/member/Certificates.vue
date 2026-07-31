@@ -2,23 +2,23 @@
   <div class="certs-page" v-loading="loading">
     <div class="page-header"><h3>我的证书</h3></div>
     <el-card>
-      <el-table :data="certificates" stripe>
-        <el-table-column prop="cert_no" label="证书编号" width="200" />
-        <el-table-column prop="issued_at" label="颁发日期" width="120">
+      <el-table :data="certificates" stripe style="width:100%">
+        <el-table-column prop="cert_no" label="证书编号" min-width="160" />
+        <el-table-column prop="issued_at" label="颁发日期" min-width="110">
           <template #default="{ row }">{{ formatDate(row.issued_at) }}</template>
         </el-table-column>
-        <el-table-column prop="level_name" label="会员级别" width="120" />
-        <el-table-column prop="expire_at" label="有效期至" width="120">
+        <el-table-column prop="level_name" label="会员级别" min-width="110" />
+        <el-table-column prop="expire_at" label="有效期至" min-width="110">
           <template #default="{ row }">{{ formatDate(row.expire_at) }}</template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
+        <el-table-column prop="status" label="状态" min-width="90">
           <template #default="{ row }">
             <el-tag :type="row.status === 'active' ? 'success' : 'info'">
               {{ row.status === 'active' ? '有效' : '已过期' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="280">
+        <el-table-column label="操作" min-width="260">
           <template #default="{ row }">
             <el-button text type="primary" :disabled="!isActiveMember" @click="isActiveMember ? downloadCert(row) : undefined">
               <el-icon><Download /></el-icon> 下载证书
