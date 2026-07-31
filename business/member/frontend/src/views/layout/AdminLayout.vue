@@ -3,7 +3,7 @@
     <el-aside :width="collapsed ? '80px' : '200px'" class="sidebar">
       <div class="sidebar-header" @click="$router.push('/admin/dashboard')">
         <el-icon :size="24" color="#3b82f6"><Setting /></el-icon>
-        <span v-show="!collapsed" class="title">会员管理后台</span>
+        <span v-show="!collapsed" class="title">{{ siteStore.site_name }}</span>
       </div>
       <el-menu
         router
@@ -37,7 +37,7 @@
             <Fold v-if="!collapsed" /><Expand v-else />
           </el-icon>
           <el-breadcrumb separator="/">
-            <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">管理后台</el-breadcrumb-item>
+            <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">{{ siteStore.site_name }}</el-breadcrumb-item>
             <el-breadcrumb-item v-if="route.meta?.title">{{ route.meta.title }}</el-breadcrumb-item>
           </el-breadcrumb>
         </div>
@@ -63,11 +63,13 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useSiteStore } from '@/stores/site'
 import { UserFilled, Fold, Expand, Coin } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const siteStore = useSiteStore()
 const collapsed = ref(false)
 
 function toggleCollapse() {
@@ -97,7 +99,7 @@ function handleCommand(cmd: string) {
     padding: 20px;
     cursor: pointer;
     border-bottom: 1px solid #f5f5f5;
-    .title { font-size: 16px; font-weight: 600; color: #1f2937; white-space: nowrap; }
+    .title { flex: 1; min-width: 0; font-size: 16px; font-weight: 600; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   }
 
   :deep(.el-menu) {

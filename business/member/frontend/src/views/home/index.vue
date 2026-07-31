@@ -2,7 +2,7 @@
   <div class="home-page">
     <section class="hero">
       <div class="hero-content">
-        <h1>XXXXXXXXXXXX协会</h1>
+        <h1>{{ siteStore.site_name }}</h1>
         <p class="subtitle">会员服务系统</p>
         <p class="desc">数字化会员服务 · 数字化管理 · 数字化增值服务</p>
         <div class="hero-actions">
@@ -44,6 +44,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { announcementApi } from '@/api/index'
+import { useSiteStore } from '@/stores/site'
+
+const siteStore = useSiteStore()
 
 const features = [
   { icon: 'DocumentChecked', title: '在线入会', desc: '在线填写资料、提交申请、追踪审核进度', color: '#1a6fb5' },

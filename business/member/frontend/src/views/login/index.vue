@@ -4,8 +4,7 @@
       <div class="login-left">
         <div class="login-brand">
           <el-icon size="72" color="#fff"><OfficeBuilding /></el-icon>
-          <h1>XXXXXXXXXXXXXXXXX</h1>
-          <p>会员服务系统</p>
+          <h1>{{ siteStore.site_name }}</h1>
         </div>
         <div class="login-features">
           <div class="feature-item">
@@ -88,17 +87,18 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useSiteStore } from '@/stores/site'
 import { authApi } from '@/api/auth'
 import { ElMessage } from 'element-plus'
 import { User, Lock, Grid, Check } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const userStore = useUserStore()
+const siteStore = useSiteStore()
 const loading = ref(false)
 const captchaImage = ref('')
 const captchaId = ref('')
 const formRef = ref()
-const siteInfo = ref<any>({})
 
 const form = reactive({
   username: '',
@@ -112,12 +112,8 @@ const rules = {
   captchaCode: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
 }
 
-onMounted(async () => {
+onMounted(() => {
   loadCaptcha()
-  try {
-    const res = await authApi.getSiteInfo()
-    siteInfo.value = res.data || {}
-  } catch {}
 })
 
 async function loadCaptcha() {

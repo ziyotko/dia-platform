@@ -4,7 +4,7 @@
       <div class="header-inner">
         <div class="logo" @click="$router.push('/')">
           <el-icon :size="28"><OfficeBuilding /></el-icon>
-          <span class="logo-text">会员系统首页</span>
+          <span class="logo-text">{{ siteStore.site_name }}</span>
         </div>
         <nav class="nav-links">
           <router-link to="/announcements">公告动态</router-link>
@@ -26,6 +26,9 @@
 </template>
 
 <script setup lang="ts">
+import { useSiteStore } from '@/stores/site'
+
+const siteStore = useSiteStore()
 </script>
 
 <style scoped lang="scss">

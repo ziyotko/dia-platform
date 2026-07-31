@@ -3,7 +3,7 @@
     <el-aside :width="collapsed ? '64px' : '220px'" class="sidebar">
       <div class="sidebar-header" @click="$router.push('/member/dashboard')">
         <el-icon :size="24"><OfficeBuilding /></el-icon>
-        <span v-show="!collapsed" class="title">会员中心</span>
+        <span v-show="!collapsed" class="title">{{ siteStore.site_name }}</span>
       </div>
       <el-menu
         :default-active="route.path"
@@ -59,7 +59,7 @@
             <Fold v-if="!collapsed" /><Expand v-else />
           </el-icon>
           <el-breadcrumb separator="/">
-            <el-breadcrumb-item :to="{ path: '/member/dashboard' }">会员中心</el-breadcrumb-item>
+            <el-breadcrumb-item :to="{ path: '/member/dashboard' }">{{ siteStore.site_name }}</el-breadcrumb-item>
             <el-breadcrumb-item v-if="route.meta?.title">{{ route.meta.title }}</el-breadcrumb-item>
           </el-breadcrumb>
         </div>
@@ -91,12 +91,14 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
+import { useSiteStore } from '@/stores/site'
 import { ElMessage } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const appStore = useAppStore()
+const siteStore = useSiteStore()
 const collapsed = computed(() => appStore.collapsed)
 
 function handleCommand(cmd: string) {
@@ -123,7 +125,7 @@ function handleCommand(cmd: string) {
     padding: 20px;
     color: #1f2937;
     cursor: pointer;
-    .title { font-size: 16px; font-weight: 600; white-space: nowrap; }
+    .title { flex: 1; min-width: 0; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   }
 }
 .topbar {
