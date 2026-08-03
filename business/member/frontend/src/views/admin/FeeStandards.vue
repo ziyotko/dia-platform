@@ -275,9 +275,10 @@ async function deleteRow(level: any, row: FeeItem) {
 }
 
 .level-cards {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
+  align-items: start;
 }
 
 .level-card {

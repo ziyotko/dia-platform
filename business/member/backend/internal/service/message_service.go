@@ -75,6 +75,11 @@ func (s *MessageService) ReplyMessage(id uint64, reply string) error {
 	}).Error
 }
 
+// DeleteMessage deletes a message (admin)
+func (s *MessageService) DeleteMessage(id uint64) error {
+	return db.DB.Delete(&models.MemberMessage{}, id).Error
+}
+
 type CreateMessageRequest struct {
 	Title   string `json:"title" binding:"required"`
 	Content string `json:"content" binding:"required"`

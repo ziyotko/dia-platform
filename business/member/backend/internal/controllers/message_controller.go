@@ -88,3 +88,12 @@ func (ctrl *MessageController) ReplyMessage(c *gin.Context) {
 	}
 	response.SuccessWithMessage(c, "回复成功", nil)
 }
+
+func (ctrl *MessageController) DeleteMessage(c *gin.Context) {
+	id := parseUint(c.Param("id"))
+	if err := ctrl.msgService.DeleteMessage(id); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.SuccessWithMessage(c, "删除成功", nil)
+}

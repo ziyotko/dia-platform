@@ -50,15 +50,12 @@ export const adminApi = {
   // Messages
   getMessages: (params?: any) => request.get('/admin/messages', { params }),
   replyMessage: (id: number, reply: string) => request.put(`/admin/messages/${id}/reply`, { reply }),
-
-  // Articles
-  createCategory: (data: any) => request.post('/admin/article-categories', data),
+	deleteMessage: (id: number) => request.delete(`/admin/messages/${id}`),
   updateCategory: (id: number, data: any) => request.put(`/admin/article-categories/${id}`, data),
   deleteCategory: (id: number) => request.delete(`/admin/article-categories/${id}`),
   getArticles: (params?: any) => request.get('/admin/articles', { params }),
   reviewArticle: (id: number, data: any) => request.put(`/admin/articles/${id}/review`, data),
-
-  // Announcements
+	deleteArticle: (id: number) => request.delete(`/admin/articles/${id}`),
   createAnnouncement: (data: any) => request.post('/admin/announcements', data),
   updateAnnouncement: (id: number, data: any) => request.put(`/admin/announcements/${id}`, data),
   deleteAnnouncement: (id: number) => request.delete(`/admin/announcements/${id}`),

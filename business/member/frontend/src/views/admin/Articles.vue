@@ -8,16 +8,18 @@
             <el-link type="primary" :underline="false" @click="viewArticle(row)">{{ row.title }}</el-link>
           </template>
         </el-table-column>
+        <el-table-column label="来源单位/个人" width="240" show-overflow-tooltip><template #default="{row}">{{ sourceLabel(row.member) }}</template></el-table-column>
         <el-table-column prop="member.username" label="作者" width="100" />
         <el-table-column prop="category.name" label="分类" width="100" />
         <el-table-column prop="status" label="状态" width="100"><template #default="{row}"><el-tag :type="row.status==='pending'?'warning':row.status==='published'?'success':'info'">{{ statusLabel(row.status) }}</el-tag></template></el-table-column>
         <el-table-column prop="created_at" label="时间" width="160"><template #default="{row}">{{ row.created_at?.slice(0,16).replace('T',' ') }}</template></el-table-column>
-        <el-table-column label="操作" width="180" v-if="list.length"><template #default="{row}">
+        <el-table-column label="操作" width="220" v-if="list.length"><template #default="{row}">
           <template v-if="row.status==='pending'">
             <el-button size="small" type="success" @click="review(row, true)">通过</el-button>
             <el-button size="small" type="danger" @click="review(row, false)">拒绝</el-button>
           </template>
-          <span v-else style="color:#9ca3af">-</span>
+          <span v-else style="color:#9ca3af"></span>
+          <el-button size="small" type="danger" plain @click="deleteRow(row)">删除</el-button>
         </template></el-table-column>
       </el-table>
       <div class="pagination"><el-pagination background layout="prev, pager, next" :total="total" :page-size="size" v-model:current-page="page" @change="fetchData" /></div>
@@ -47,6 +49,11 @@ const showView = ref(false); const viewed = ref<any>(null)
 
 const sm: Record<string,string> = { draft:'草稿', pending:'待审核', published:'已发布', rejected:'已拒绝' }
 function statusLabel(s: string) { return sm[s] || s }
+function sourceLabel(member: any) {
+  if (!member) return '-'
+  if (member.member_type === 'unit') return member.company_name || member.username || '-'
+  return member.name || member.username || '-'
+}
 function viewArticle(row: any) { viewed.value = row; showView.value = true }
 
 onMounted(() => fetchData())
@@ -59,6 +66,20 @@ async function review(row: any, approved: boolean) {
     const comment = approved ? '' : (await ElMessageBox.prompt('拒绝理由', '拒绝')).value || ''
     await adminApi.reviewArticle(row.id, { approved, comment })
     ElMessage.success(approved ? '已发布' : '已拒绝'); fetchData()
+  } catch {}
+}
+async function deleteRow(row: any) {
+  try {
+    await ElMessageBox.confirm(
+      `确认删除文章「${row.title}」？删除后不可恢复。`,
+      '删除确认',
+      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消', confirmButtonClass: 'el-button--danger' }
+    )
+  } catch { return }
+  try {
+    await adminApi.deleteArticle(row.id)
+    ElMessage.success('已删除')
+    fetchData()
   } catch {}
 }
 </script>

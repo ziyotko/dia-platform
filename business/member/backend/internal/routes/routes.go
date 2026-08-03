@@ -172,6 +172,7 @@ func Register(r *gin.Engine) {
 		// Message management
 		admin.GET("/admin/messages", msgCtrl.ListAllMessages)
 		admin.PUT("/admin/messages/:id/reply", msgCtrl.ReplyMessage)
+		admin.DELETE("/admin/messages/:id", msgCtrl.DeleteMessage)
 
 		// Article management
 		admin.POST("/admin/article-categories", articleCtrl.CreateCategory)
@@ -179,6 +180,7 @@ func Register(r *gin.Engine) {
 		admin.DELETE("/admin/article-categories/:id", articleCtrl.DeleteCategory)
 		admin.GET("/admin/articles", articleCtrl.ListAllArticles)
 		admin.PUT("/admin/articles/:id/review", articleCtrl.ReviewArticle)
+		admin.DELETE("/admin/articles/:id", articleCtrl.AdminDeleteArticle)
 
 		// Announcement management
 		admin.POST("/admin/announcements", announceCtrl.CreateAnnouncement)

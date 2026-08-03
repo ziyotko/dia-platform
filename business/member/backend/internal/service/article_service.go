@@ -54,6 +54,11 @@ func (s *ArticleService) DeleteArticle(memberID, articleID uint64) error {
 	return db.DB.Where("id = ? AND member_id = ?", articleID, memberID).Delete(&models.Article{}).Error
 }
 
+// AdminDeleteArticle deletes any article (admin)
+func (s *ArticleService) AdminDeleteArticle(id uint64) error {
+	return db.DB.Delete(&models.Article{}, id).Error
+}
+
 // GetArticle returns an article by ID
 func (s *ArticleService) GetArticle(id uint64) (*models.Article, error) {
 	var article models.Article

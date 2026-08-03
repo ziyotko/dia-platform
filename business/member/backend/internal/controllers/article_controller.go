@@ -204,3 +204,12 @@ func (ctrl *ArticleController) ListAllArticles(c *gin.Context) {
 		"size":  size,
 	})
 }
+
+func (ctrl *ArticleController) AdminDeleteArticle(c *gin.Context) {
+	id := parseUint(c.Param("id"))
+	if err := ctrl.articleService.AdminDeleteArticle(id); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.SuccessWithMessage(c, "删除成功", nil)
+}

@@ -8,7 +8,10 @@
         <el-table-column prop="content" label="内容" show-overflow-tooltip />
         <el-table-column prop="reply" label="回复"><template #default="{row}"><span :style="{color:row.reply?'#22c55e':'#9ca3af'}">{{ row.reply || '未回复' }}</span></template></el-table-column>
         <el-table-column prop="created_at" label="时间" width="160"><template #default="{row}">{{ row.created_at?.replace('T', ' ').slice(0,16) }}</template></el-table-column>
-        <el-table-column label="操作" width="100"><template #default="{row}"><el-button v-if="!row.reply" text size="small" type="primary" @click="openReply(row)">回复</el-button></template></el-table-column>
+        <el-table-column label="操作" width="150"><template #default="{row}">
+          <el-button v-if="!row.reply" text size="small" type="primary" @click="openReply(row)">回复</el-button>
+          <el-button text size="small" type="danger" @click="deleteRow(row)">删除</el-button>
+        </template></el-table-column>
       </el-table>
 
       <!-- 回复对话框 -->
@@ -62,6 +65,20 @@ async function submitReply() {
     await adminApi.replyMessage(replyTarget.value.id, replyText.value.trim())
     ElMessage.success('已回复')
     replyVisible.value = false
+    fetchData()
+  } catch {}
+}
+async function deleteRow(row: any) {
+  try {
+    await ElMessageBox.confirm(
+      `确认删除会员「${row.member?.username || '-'}」的留言「${row.title}」？删除后不可恢复。`,
+      '删除确认',
+      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消', confirmButtonClass: 'el-button--danger' }
+    )
+  } catch { return }
+  try {
+    await adminApi.deleteMessage(row.id)
+    ElMessage.success('已删除')
     fetchData()
   } catch {}
 }
