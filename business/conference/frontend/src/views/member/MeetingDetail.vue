@@ -4,7 +4,7 @@
       <div v-if="meeting.id">
         <el-tag :type="meeting.type==='online'?'success':meeting.type==='offline'?'':'warning'">{{ meeting.type==='online'?'线上会议':meeting.type==='offline'?'线下会议':'混合会议' }}</el-tag>
         <h1 style="margin:12px 0">{{ meeting.title }}</h1>
-        <p><strong>时间：</strong>{{ meeting.startTime?.slice(0,16) }} ~ {{ meeting.endTime?.slice(0,16) }}</p>
+        <p><strong>时间：</strong>{{ formatTime(meeting.startTime) }} ~ {{ formatTime(meeting.endTime) }}</p>
         <p v-if="meeting.location"><strong>地点：</strong>{{ meeting.location }}</p>
         <p><strong>名额：</strong>{{ meeting.capacity || '不限' }}人 | <strong>费用：</strong>{{ meeting.fee > 0 ? `¥${meeting.fee}` : '免费' }}</p>
 
@@ -21,7 +21,7 @@
 
     <el-card style="margin-top:16px"><h3>会议议程</h3>
       <el-timeline v-if="meeting.agendas?.length">
-        <el-timeline-item v-for="agenda in meeting.agendas" :key="agenda.id" :timestamp="agenda.startTime?.slice(0,16)">
+        <el-timeline-item v-for="agenda in meeting.agendas" :key="agenda.id" :timestamp="formatTime(agenda.startTime)">
           <strong>{{ agenda.title }}</strong><br/><span>{{ agenda.speaker }}</span>
         </el-timeline-item>
       </el-timeline>
@@ -50,6 +50,8 @@ const meeting = ref<any>({})
 const registered = ref(false)
 const regStatus = ref('')
 const regId = ref(0)
+
+function formatTime(t: string) { return (t || '').replace('T', ' ').slice(0, 16) }
 
 onMounted(async () => {
   const id = Number(route.params.id)

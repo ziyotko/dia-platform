@@ -9,7 +9,10 @@
         <el-table-column prop="title" label="会议名称" />
         <el-table-column label="类型" width="80"><template #default="{row}"><el-tag size="small">{{ row.type==='online'?'线上':row.type==='offline'?'线下':'混合' }}</el-tag></template></el-table-column>
         <el-table-column label="状态" width="80"><template #default="{row}"><el-tag :type="statusType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag></template></el-table-column>
-        <el-table-column label="时间" width="160"><template #default="{row}">{{ row.startTime?.slice(0,16) }}</template></el-table-column>
+        <el-table-column label="时间" width="360"><template #default="{row}">
+          <template v-if="row.startTime && row.endTime">{{ formatTime(row.startTime) }} ~ {{ formatTime(row.endTime) }}</template>
+          <template v-else>{{ row.startTime ? formatTime(row.startTime) : '-' }}</template>
+        </template></el-table-column>
         <el-table-column label="操作" width="240"><template #default="{row}">
           <el-button size="small" @click="$router.push(`/admin/meetings/${row.id}`)">详情</el-button>
           <el-button size="small" @click="$router.push(`/admin/meetings/${row.id}/edit`)">编辑</el-button>
@@ -31,6 +34,7 @@ const list = ref<any[]>([]); const page = ref(1); const size = 10; const total =
 
 function statusType(s: string) { const m: any = { draft:'info', open:'success', closed:'warning', archived:'info' }; return m[s] || 'info' }
 function statusLabel(s: string) { const m: any = { draft:'草稿', open:'进行中', closed:'已关闭', archived:'已归档' }; return m[s] || s }
+function formatTime(t: string) { return (t || '').replace('T', ' ').slice(0, 16) }
 
 async function load() {
   try { const res = await adminApi.getMeetings({ page: page.value, pageSize: size, keyword: keyword.value }); list.value = res.data?.list || []; total.value = res.data?.total || 0 } catch (e) {}
