@@ -29,6 +29,21 @@ func (ctrl *AuthController) GetCaptcha(c *gin.Context) {
 	})
 }
 
+// CheckExists checks whether a username/mobile/email is already registered
+func (ctrl *AuthController) CheckExists(c *gin.Context) {
+	var req service.CheckExistsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "参数错误")
+		return
+	}
+	exists, err := ctrl.authService.CheckExists(req.Field, req.Value)
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+	response.Success(c, gin.H{"exists": exists})
+}
+
 // Register handles member registration
 func (ctrl *AuthController) Register(c *gin.Context) {
 	var req service.RegisterRequest

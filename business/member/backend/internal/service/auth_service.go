@@ -83,6 +83,22 @@ func (s *AuthService) Register(req RegisterRequest) (*LoginResponse, error) {
 	}, nil
 }
 
+// CheckExists checks if the given field value is already in use
+func (s *AuthService) CheckExists(field, value string) (bool, error) {
+	var count int64
+	query := db.DB.Model(&models.Member{})
+	switch field {
+	case "username", "mobile", "email":
+		query = query.Where(field+" = ?", value)
+	default:
+		return false, errors.New("不支持的字段")
+	}
+	if err := query.Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 // Login authenticates a member
 func (s *AuthService) Login(req LoginRequest) (*LoginResponse, error) {
 	// Verify captcha
@@ -225,6 +241,11 @@ func (s *AuthService) ResetPassword(token, newPwd string) error {
 }
 
 // --- Request/Response types ---
+
+type CheckExistsRequest struct {
+	Field string `json:"field" binding:"required,oneof=username mobile email"`
+	Value string `json:"value" binding:"required"`
+}
 
 type RegisterRequest struct {
 	Username      string `json:"username" binding:"required"`

@@ -3,6 +3,7 @@ import request from '@/utils/request'
 export const authApi = {
   getCaptcha: () => request.get('/captcha'),
   register: (data: any) => request.post('/auth/register', data),
+  checkExists: (data: any) => request.post('/auth/check-exists', data),
   login: (data: any) => request.post('/auth/login', data),
   getProfile: () => request.get('/member/profile'),
   updateProfile: (data: any) => request.put('/member/profile', data),

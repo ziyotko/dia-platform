@@ -33,6 +33,7 @@ func Register(r *gin.Engine) {
 		// Auth
 		public.GET("/captcha", authCtrl.GetCaptcha)
 		public.POST("/auth/register", authCtrl.Register)
+		public.POST("/auth/check-exists", authCtrl.CheckExists)
 		public.POST("/auth/login", authCtrl.Login)
 		public.POST("/auth/send-reset-email", authCtrl.RequestPasswordReset)
 		public.POST("/auth/reset-password", authCtrl.ResetPassword)

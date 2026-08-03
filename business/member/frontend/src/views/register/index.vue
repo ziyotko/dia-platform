@@ -34,21 +34,21 @@
         <el-form v-if="step === 0" key="step0" ref="form1Ref" :model="form1" :rules="rules1" size="large" label-width="0" class="register-form">
           <div class="form-section-title">账户信息</div>
           <el-form-item prop="username">
-            <el-input v-model="form1.username" placeholder="请输入用户名" :prefix-icon="User" />
+            <el-input v-model="form1.username" maxlength="20" placeholder="请输入用户名" :prefix-icon="User" />
           </el-form-item>
           <el-form-item prop="password">
-            <el-input v-model="form1.password" type="password" placeholder="密码（至少6位）" show-password :prefix-icon="Lock" />
+            <el-input v-model="form1.password" type="password" maxlength="20" placeholder="密码（至少8位）" show-password :prefix-icon="Lock" />
           </el-form-item>
           <el-form-item prop="confirmPwd">
-            <el-input v-model="form1.confirmPwd" type="password" placeholder="再次输入密码" show-password :prefix-icon="Lock" />
+            <el-input v-model="form1.confirmPwd" type="password" maxlength="20" placeholder="再次输入密码" show-password :prefix-icon="Lock" />
           </el-form-item>
 
           <div class="form-section-title">联系方式</div>
           <el-form-item prop="mobile">
-            <el-input v-model="form1.mobile" placeholder="请输入手机号" :prefix-icon="Phone" />
+            <el-input v-model="form1.mobile" maxlength="11" placeholder="请输入手机号" :prefix-icon="Phone" />
           </el-form-item>
           <el-form-item prop="email">
-            <el-input v-model="form1.email" placeholder="请输入邮箱" :prefix-icon="Message" />
+            <el-input v-model="form1.email" maxlength="40" placeholder="请输入邮箱" :prefix-icon="Message" />
           </el-form-item>
 
           <div class="form-section-title">会员类型</div>
@@ -83,7 +83,7 @@
             <el-input v-model="form2.companyName" placeholder="请输入单位全称" :prefix-icon="OfficeBuilding" />
           </el-form-item>
           <el-form-item prop="creditCode">
-            <el-input v-model="form2.creditCode" placeholder="统一社会信用代码" :prefix-icon="Document" />
+            <el-input v-model="form2.creditCode" maxlength="18" placeholder="统一社会信用代码" :prefix-icon="Document" />
           </el-form-item>
           <el-form-item prop="legalPerson">
             <el-input v-model="form2.legalPerson" placeholder="法定代表人姓名" :prefix-icon="User" />
@@ -273,21 +273,133 @@ const captchaForm = reactive({ code: '' })
 const captchaRules = { code: [{ required: true, message: '请输入验证码' }] }
 
 const validatePass = (_rule: any, value: string, callback: any) => {
-  if (value !== form1.password) callback(new Error('两次密码不一致'))
+  if (!value) callback(new Error('请再次输入密码'))
+  else if (value !== form1.password) callback(new Error('两次密码不一致'))
   else callback()
 }
 
+// 防抖：避免输入过程中频繁请求后端查重
+function debounce<A extends any[]>(fn: (...args: A) => void, delay = 400) {
+  let timer: ReturnType<typeof setTimeout> | null = null
+  return (...args: A) => {
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(() => fn(...args), delay)
+  }
+}
+
+// 密码复杂度：至少8位，且包含大小写字母、数字、特殊字符
+const validatePassword = (_rule: any, value: string, callback: any) => {
+  if (!value) return callback(new Error('请输入密码'))
+  if (value.length > 20) return callback(new Error('密码不能超过20位'))
+  if (value.length < 8) return callback(new Error('密码至少8位'))
+  const checks: Array<[RegExp, string]> = [
+    [/[a-z]/, '密码需包含小写字母'],
+    [/[A-Z]/, '密码需包含大写字母'],
+    [/[0-9]/, '密码需包含数字'],
+    [/[^A-Za-z0-9]/, '密码需包含特殊字符']
+  ]
+  for (const [re, msg] of checks) {
+    if (!re.test(value)) return callback(new Error(msg))
+  }
+  callback()
+}
+
+// 用户名：只能小写字母、数字、-、_，且查重
+const checkUsernameAvailable = debounce(async (value: string, callback: any) => {
+  if (!value) return callback()
+  try {
+    const res = await authApi.checkExists({ field: 'username', value })
+    if (res.data.exists) callback(new Error('该用户名已被注册'))
+    else callback()
+  } catch {
+    callback()
+  }
+})
+
+const validateUsername = (_rule: any, value: string, callback: any) => {
+  if (!value) return callback(new Error('请输入用户名'))
+  if (value.length > 20) return callback(new Error('用户名不能超过20位'))
+  if (!/^[a-z0-9_-]+$/.test(value)) {
+    return callback(new Error('用户名只能包含小写字母、数字、- 和 _'))
+  }
+  checkUsernameAvailable(value, callback)
+}
+
+// 手机号：校验合法性并查重
+const checkMobileAvailable = debounce(async (value: string, callback: any) => {
+  if (!value) return callback()
+  try {
+    const res = await authApi.checkExists({ field: 'mobile', value })
+    if (res.data.exists) callback(new Error('该手机号已注册'))
+    else callback()
+  } catch {
+    callback()
+  }
+})
+
+const validateMobile = (_rule: any, value: string, callback: any) => {
+  if (!value) return callback(new Error('请输入手机号'))
+  if (value.length > 11) return callback(new Error('手机号不能超过11位'))
+  if (!/^1[3-9]\d{9}$/.test(value)) {
+    return callback(new Error('请输入合法的手机号'))
+  }
+  checkMobileAvailable(value, callback)
+}
+
+// 邮箱：校验合法性并查重
+const checkEmailAvailable = debounce(async (value: string, callback: any) => {
+  if (!value) return callback()
+  try {
+    const res = await authApi.checkExists({ field: 'email', value })
+    if (res.data.exists) callback(new Error('该邮箱已注册'))
+    else callback()
+  } catch {
+    callback()
+  }
+})
+
+const validateEmail = (_rule: any, value: string, callback: any) => {
+  if (!value) return callback(new Error('请输入邮箱'))
+  if (value.length > 40) return callback(new Error('邮箱不能超过40位'))
+  if (!/^[\w.+-]+@[\w-]+(\.[\w-]+)+$/.test(value)) {
+    return callback(new Error('邮箱格式不正确'))
+  }
+  checkEmailAvailable(value, callback)
+}
+
 const rules1 = {
-  username: [{ required: true, message: '请输入用户名' }],
-  password: [{ required: true, min: 6, message: '密码至少6位' }],
+  username: [{ validator: validateUsername, trigger: 'blur' }],
+  password: [{ validator: validatePassword, trigger: 'blur' }],
   confirmPwd: [{ required: true, validator: validatePass, trigger: 'blur' }],
-  mobile: [{ required: true, message: '请输入手机号' }],
-  email: [{ type: 'email', message: '邮箱格式不正确', required: false }]
+  mobile: [{ validator: validateMobile, trigger: 'blur' }],
+  email: [{ validator: validateEmail, trigger: 'blur' }]
+}
+
+// 统一社会信用代码合法性校验（GB 32100-2015：18位，含校验码算法）
+const validateCreditCode = (_rule: any, value: string, callback: any) => {
+  if (!value) return callback(new Error('请输入统一社会信用代码'))
+  const code = value.trim().toUpperCase()
+  // 字符集：数字0-9 + 大写字母（去掉 I、O、S、V、Z）
+  const charSet = '0123456789ABCDEFGHJKLMNPQRTUWXY'
+  // 前17位的加权因子
+  const weights = [1, 3, 9, 27, 19, 26, 16, 17, 20, 29, 25, 13, 8, 24, 10, 30, 28]
+  if (!/^[0-9A-HJ-NPQRTUWXY]{2}[0-9]{6}[0-9A-HJ-NPQRTUWXY]{10}$/.test(code)) {
+    return callback(new Error('统一社会信用代码格式不正确'))
+  }
+  let sum = 0
+  for (let i = 0; i < 17; i++) {
+    sum += charSet.indexOf(code[i]) * weights[i]
+  }
+  const check = (31 - (sum % 31)) % 31
+  if (charSet[check] !== code[17]) {
+    return callback(new Error('统一社会信用代码校验不通过'))
+  }
+  callback()
 }
 
 const rules2 = {
   companyName: [{ required: true, message: '请输入单位名称' }],
-  creditCode: [{ required: true, message: '请输入统一社会信用代码' }],
+  creditCode: [{ validator: validateCreditCode, trigger: 'blur' }],
   legalPerson: [{ required: true, message: '请输入法定代表人姓名' }]
 }
 
@@ -340,7 +452,7 @@ async function nextStep() {
   if (step.value === 0) {
     const valid = await form1Ref.value?.validate().catch(() => false)
     if (!valid) return
-    step.value = form1.memberType === 'personal' ? 1 : 1
+    step.value = form1.memberType === 'personal' ? 2 : 1
   } else if (step.value === 1 && form1.memberType === 'unit') {
     const valid = await form2Ref.value?.validate().catch(() => false)
     if (!valid) return
