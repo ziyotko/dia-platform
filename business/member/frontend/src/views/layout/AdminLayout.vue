@@ -3,7 +3,7 @@
     <el-aside :width="collapsed ? '80px' : '200px'" class="sidebar">
       <div class="sidebar-header" @click="$router.push('/admin/dashboard')">
         <el-icon :size="24" color="#3b82f6"><Setting /></el-icon>
-        <span v-show="!collapsed" class="title">{{ siteStore.site_name }}</span>
+        <span v-show="!collapsed" class="title">管理后台</span>
       </div>
       <el-menu
         router
@@ -14,7 +14,7 @@
         text-color="#4b5563"
         active-text-color="#3b82f6"
       >
-        <el-menu-item index="/admin/dashboard"><el-icon><DataAnalysis /></el-icon><span>控制台</span></el-menu-item>
+        <el-menu-item index="/admin/dashboard"><el-icon><DataAnalysis /></el-icon><span>管理首页</span></el-menu-item>
                 <div class="menu-divider" />
         <el-menu-item index="/admin/members"><el-icon><UserFilled /></el-icon><span>会员管理</span></el-menu-item>
         <el-menu-item index="/admin/applications"><el-icon><DocumentChecked /></el-icon><span>入会审核</span></el-menu-item>

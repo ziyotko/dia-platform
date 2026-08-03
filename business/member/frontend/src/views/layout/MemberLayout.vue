@@ -1,9 +1,9 @@
 <template>
   <el-container class="member-layout">
-    <el-aside :width="collapsed ? '64px' : '220px'" class="sidebar">
+    <el-aside :width="collapsed ? '64px' : '160px'" class="sidebar">
       <div class="sidebar-header" @click="$router.push('/member/dashboard')">
         <el-icon :size="24"><OfficeBuilding /></el-icon>
-        <span v-show="!collapsed" class="title">{{ siteStore.site_name }}</span>
+        <span v-show="!collapsed" class="title">会员中心</span>
       </div>
       <el-menu
         :default-active="route.path"
