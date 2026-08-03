@@ -74,7 +74,7 @@ const router = createRouter({
       redirect: '/admin/dashboard',
       meta: { admin: true },
       children: [
-        { path: 'dashboard', name: 'AdminDashboard', meta: { title: '控制台' }, component: () => import('@/views/admin/Dashboard.vue') },
+        { path: 'dashboard', name: 'AdminDashboard', meta: { title: '管理首页' }, component: () => import('@/views/admin/Dashboard.vue') },
         { path: 'members', name: 'AdminMembers', meta: { title: '会员管理' }, component: () => import('@/views/admin/Members.vue') },
         { path: 'applications', name: 'AdminApplications', meta: { title: '入会审核' }, component: () => import('@/views/admin/Applications.vue') },
         { path: 'fees', name: 'AdminFees', meta: { title: '会费管理' }, component: () => import('@/views/admin/Fees.vue') },

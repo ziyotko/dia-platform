@@ -1,8 +1,8 @@
 <template>
   <el-container class="admin-layout">
-    <el-aside :width="collapsed ? '80px' : '200px'" class="sidebar">
+    <el-aside :width="collapsed ? '64px' : '160px'" class="sidebar">
       <div class="sidebar-header" @click="$router.push('/admin/dashboard')">
-        <el-icon :size="24" color="#3b82f6"><Setting /></el-icon>
+        <el-icon :size="24" color="#409eff"><Setting /></el-icon>
         <span v-show="!collapsed" class="title">管理后台</span>
       </div>
       <el-menu
@@ -10,9 +10,9 @@
         :collapse="collapsed"
         :collapse-transition="false"
         :default-active="route.path"
-        background-color="#fff"
+        background-color="#f8fafc"
         text-color="#4b5563"
-        active-text-color="#3b82f6"
+        active-text-color="#409eff"
       >
         <el-menu-item index="/admin/dashboard"><el-icon><DataAnalysis /></el-icon><span>管理首页</span></el-menu-item>
                 <div class="menu-divider" />
@@ -86,37 +86,18 @@ function handleCommand(cmd: string) {
 .admin-layout { height: 100vh; }
 
 .sidebar {
-  background: #fff;
-  border-right: 1px solid #f0f0f0;
+  background: #f8fafc;
+  border-right: 1px solid #e5e7eb;
   overflow: hidden;
-  box-shadow: 2px 0 8px rgba(0,0,0,0.02);
   transition: width 0.3s;
-
   .sidebar-header {
     display: flex;
     align-items: center;
     gap: 10px;
     padding: 20px;
+    color: #1f2937;
     cursor: pointer;
-    border-bottom: 1px solid #f5f5f5;
-    .title { flex: 1; min-width: 0; font-size: 16px; font-weight: 600; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  }
-
-  :deep(.el-menu) {
-    border-right: none;
-    .el-menu-item {
-      margin: 2px 8px;
-      border-radius: 8px;
-      white-space: nowrap;
-      &:hover { background: #f0f7ff; }
-      &.is-active { background: #e8f4fd; font-weight: 600; }
-    }
-  }
-
-  .menu-divider {
-    height: 1px;
-    margin: 10px 16px;
-    background: #f0f0f0;
+    .title { flex: 1; min-width: 0; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   }
 }
 
@@ -125,25 +106,19 @@ function handleCommand(cmd: string) {
   justify-content: space-between;
   align-items: center;
   background: #fff;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid #e5e7eb;
   padding: 0 24px;
   height: 56px;
-
-  .topbar-left {
+  .topbar-left { display: flex; align-items: center; gap: 16px; }
+  .collapse-btn { cursor: pointer; &:hover { color: #1a6fb5; } }
+  .user-info {
     display: flex;
     align-items: center;
-  }
-
-  .collapse-btn {
+    gap: 8px;
     cursor: pointer;
-    color: #6b7280;
-    transition: color 0.2s;
-    &:hover { color: #3b82f6; }
+    .username { font-size: 14px; color: #374151; }
   }
-
-  .user-info { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 }
-
 .main-content {
   background: #f8fafc;
   padding: 24px;
