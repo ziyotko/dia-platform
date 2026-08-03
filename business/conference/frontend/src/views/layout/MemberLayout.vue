@@ -1,0 +1,65 @@
+<template>
+  <el-container style="height:100vh">
+    <el-aside :width="collapsed ? '64px' : '220px'" class="sidebar">
+      <div class="logo-area" @click="$router.push('/member/dashboard')">
+        <span v-if="!collapsed">会议系统</span>
+        <span v-else>会</span>
+      </div>
+      <el-menu :default-active="route.path" router :collapse="collapsed" background-color="#1f2937" text-color="#9ca3af" active-text-color="#fff">
+        <el-menu-item index="/member/dashboard"><el-icon><DataAnalysis /></el-icon><span>会员中心</span></el-menu-item>
+        <el-menu-item index="/member/meetings"><el-icon><Calendar /></el-icon><span>会议列表</span></el-menu-item>
+        <el-menu-item index="/member/registrations"><el-icon><Tickets /></el-icon><span>我的报名</span></el-menu-item>
+        <el-menu-item index="/member/orders"><el-icon><Wallet /></el-icon><span>我的订单</span></el-menu-item>
+        <el-menu-item index="/member/votes"><el-icon><Checked /></el-icon><span>投票表决</span></el-menu-item>
+        <el-menu-item index="/member/surveys"><el-icon><Document /></el-icon><span>问卷调研</span></el-menu-item>
+        <el-menu-item index="/member/credits"><el-icon><Star /></el-icon><span>学分中心</span></el-menu-item>
+        <el-menu-item index="/member/notifications"><el-icon><Bell /></el-icon><span>通知中心</span></el-menu-item>
+        <el-menu-item index="/member/profile"><el-icon><User /></el-icon><span>个人资料</span></el-menu-item>
+      </el-menu>
+    </el-aside>
+    <el-container>
+      <el-header class="topbar">
+        <div class="topbar-left">
+          <el-icon class="collapse-btn" @click="toggleCollapse"><Fold /></el-icon>
+        </div>
+        <div class="topbar-right">
+          <el-badge :value="1" class="badge">
+            <el-icon :size="20"><Bell /></el-icon>
+          </el-badge>
+          <el-dropdown>
+            <span class="user-info">{{ userStore.userInfo?.realName || '用户' }} <el-icon><ArrowDown /></el-icon></span>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item @click="$router.push('/member/profile')">个人资料</el-dropdown-item>
+                <el-dropdown-item divided @click="userStore.logout()">退出登录</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
+      </el-header>
+      <el-main class="main-content"><router-view /></el-main>
+    </el-container>
+  </el-container>
+</template>
+
+<script setup lang="ts">
+import { useRoute } from 'vue-router'
+import { useUserStore } from '@/stores/user'
+import { useAppStore } from '@/stores/app'
+
+const route = useRoute()
+const userStore = useUserStore()
+const appStore = useAppStore()
+const { collapsed, toggleCollapse } = appStore
+</script>
+
+<style scoped>
+.sidebar { background: #1f2937; overflow: hidden; transition: width .3s; }
+.logo-area { height: 60px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; cursor: pointer; border-bottom: 1px solid #374151; }
+.topbar { background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.08); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; }
+.collapse-btn { font-size: 20px; cursor: pointer; }
+.topbar-right { display: flex; align-items: center; gap: 20px; }
+.badge { cursor: pointer; }
+.user-info { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.main-content { padding: 20px; background: #f3f4f6; }
+</style>
