@@ -12,9 +12,14 @@
     <el-card>
       <el-table :data="list" stripe>
         <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column prop="member.company_name" label="申请单位" />
+        <el-table-column label="申请单位/个人">
+          <template #default="{row}">{{ row.member?.member_type === 'personal' ? (row.member?.name || '-') : (row.member?.company_name || '-') }}</template>
+        </el-table-column>
         <el-table-column prop="member.username" label="用户名" />
-        <el-table-column prop="org.name" label="申请分会" />
+        <el-table-column prop="org.name" label="申请总会/分会" />
+        <el-table-column label="类别" width="90">
+          <template #default="{row}">{{ row.member?.member_type === 'personal' ? '个人会员' : '单位会员' }}</template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{row}"><el-tag :type="row.status==='pending_review'?'warning':row.status==='approved'?'success':'danger'">{{ statusLabel(row.status) }}</el-tag></template>
         </el-table-column>
@@ -36,17 +41,17 @@
     <!-- Member Detail Dialog -->
     <el-dialog v-model="showMemberDetail" title="申请单位信息" width="640px">
       <el-descriptions :column="1" border v-if="currentMember">
-        <el-descriptions-item label="单位名称">{{ currentMember.company_name || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="单位名称/姓名">{{ currentMember.member_type === 'personal' ? (currentMember.name || '-') : (currentMember.company_name || '-') }}</el-descriptions-item>
+        <template v-if="currentMember.member_type === 'unit'">
         <el-descriptions-item label="统一社会信用代码">
           {{ currentMember.credit_code || '-' }}
           <el-link v-if="currentMember.cert_file" :href="fileUrl(currentMember.cert_file)" target="_blank" type="primary" :underline="false" style="margin-left:12px">下载证照</el-link>
         </el-descriptions-item>
         <el-descriptions-item label="法定代表人">{{ currentMember.legal_person || '-' }}</el-descriptions-item>
         <el-descriptions-item label="联系人">{{ currentMember.contact_person || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="联系电话">{{ currentMember.mobile || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="邮箱">{{ currentMember.email || '-' }}</el-descriptions-item>
         <el-descriptions-item label="单位地址">{{ currentMember.address || '-' }}</el-descriptions-item>
         <el-descriptions-item label="网站">{{ currentMember.website || '-' }}</el-descriptions-item>
+        </template>
         <el-descriptions-item label="会员类型">{{ currentMember.member_type === 'personal' ? '个人会员' : '单位会员' }}</el-descriptions-item>
         <el-descriptions-item label="入会申请书">
           <el-link v-if="currentRow?.signed_file" :href="fileUrl(currentRow.signed_file)" target="_blank" type="primary" :underline="false">下载申请书</el-link>

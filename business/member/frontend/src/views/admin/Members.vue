@@ -12,18 +12,19 @@
       </div>
     </div>
     <el-card>
-      <el-table :data="list" stripe>
-        <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column prop="username" label="用户名" />
-        <el-table-column prop="company_name" label="公司名称" />
-        <el-table-column prop="mobile" label="手机号" width="130" />
-        <el-table-column prop="member_type" label="类型" width="90"><template #default="{row}">{{ row.member_type === 'unit' ? '单位' : '个人' }}</template></el-table-column>
-        <el-table-column prop="status" label="状态" width="100">
+      <el-table :data="list" stripe style="width: 100%">
+        <el-table-column prop="id" label="ID" min-width="70" />
+        <el-table-column prop="username" label="用户名" min-width="120"/>
+        <el-table-column label="公司名称/姓名" min-width="200">
+          <template #default="{row}">{{ row.member_type === 'unit' ? row.company_name : row.name }}</template>
+        </el-table-column>
+        <el-table-column prop="mobile" label="手机号" min-width="140" />
+        <el-table-column prop="member_type" label="类型" min-width="100"><template #default="{row}">{{ row.member_type === 'unit' ? '单位' : '个人' }}</template></el-table-column>
+        <el-table-column prop="status" label="状态" min-width="120">
           <template #default="{row}"><el-tag :type="statusTag(row.status)">{{ statusLabel(row.status) }}</el-tag></template>
         </el-table-column>
-        <el-table-column label="操作" width="160">
+        <el-table-column label="操作" min-width="90">
           <template #default="{row}">
-            <el-button text size="small" type="primary" @click="changeStatus(row)">状态</el-button>
             <el-button text size="small" type="danger" @click="delMember(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -61,13 +62,6 @@ async function fetchData() {
 }
 function search() { page.value = 1; fetchData() }
 
-async function changeStatus(row: any) {
-  const statuses = ['active', 'pending_review', 'pending_payment', 'rejected', 'registering', 'expired']
-  try {
-    const { value } = await ElMessageBox.prompt('输入新状态: ' + statuses.join(', '), '修改状态', { inputValue: row.status })
-    if (value) { await adminApi.updateMemberStatus(row.id, value); ElMessage.success('已更新'); fetchData() }
-  } catch {}
-}
 async function delMember(row: any) {
   try {
     await ElMessageBox.confirm('确认删除该会员？', '警告', { type: 'warning' })

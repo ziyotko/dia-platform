@@ -39,6 +39,10 @@ type Member struct {
 	Description   string `gorm:"type:text" json:"description"`
 	CertFile      string `gorm:"size:255" json:"cert_file"`
 
+	// Personal info (for personal members)
+	Name   string `gorm:"size:64" json:"name"`
+	IDCard string `gorm:"size:32" json:"id_card"`
+
 	LoginFailCount int        `gorm:"default:0" json:"-"`
 	LockedUntil    *LocalTime `gorm:"type:datetime" json:"-"`
 }

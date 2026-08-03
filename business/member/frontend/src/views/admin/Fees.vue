@@ -65,6 +65,10 @@
           <el-option label="待确认" value="pending" />
           <el-option label="未缴费" value="unpaid" />
         </el-select>
+        <el-select v-model="filterType" placeholder="会员类型" clearable style="width:140px" @change="fetchData">
+          <el-option label="单位会员" value="unit" />
+          <el-option label="个人会员" value="personal" />
+        </el-select>
         <span class="filter-hint">共 {{ total }} 条记录</span>
       </div>
     </el-card>
@@ -76,7 +80,12 @@
         <el-table-column prop="member.username" label="会员信息" min-width="200">
           <template #default="{row}">
             <div class="cell-member">
-              <span v-if="row.member?.company_name" class="member-unit">{{ row.member.company_name }}</span>
+              <span v-if="row.member?.member_type === 'personal'" class="member-unit member-unit--personal">
+                <el-icon class="member-type-icon"><User /></el-icon>
+                {{ row.member?.name || row.member?.username }}
+              </span>
+              <span v-else-if="row.member?.company_name" class="member-unit">{{ row.member.company_name }}</span>
+              <span v-else class="member-unit">{{ row.member?.username || '-' }}</span>
             </div>
           </template>
         </el-table-column>
@@ -328,7 +337,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { adminApi } from '@/api/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Edit, Delete, CircleCheck, CircleCheckFilled, WarningFilled, Coin, List, Money, Check, Clock, Download, Upload } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, CircleCheck, CircleCheckFilled, WarningFilled, Coin, List, Money, Check, Clock, Download, Upload, User } from '@element-plus/icons-vue'
 
 const list = ref<any[]>([]); const loading = ref(true); const showCreate = ref(false)
 const page = ref(1); const size = ref(10); const total = ref(0)
@@ -360,6 +369,7 @@ const editLevelLoading = ref(false)
 
 const filterYear = ref<number | null>(null)
 const filterStatus = ref<string | null>(null)
+const filterType = ref<string | null>(null)
 
 const paidCount = computed(() => list.value.filter(r => r.status === 'paid').length)
 const pendingCount = computed(() => list.value.filter(r => r.status === 'pending').length)
@@ -378,6 +388,7 @@ async function fetchData() {
     const params: any = { page: page.value, size: size.value }
     if (filterYear.value) params.year = filterYear.value
     if (filterStatus.value) params.status = filterStatus.value
+    if (filterType.value) params.member_type = filterType.value
     const r = await adminApi.getFees(params)
     list.value = r.data?.list || []
     total.value = r.data?.total || 0
@@ -657,9 +668,16 @@ async function deleteFee(row: any) {
     line-height: 1.4;
   }
   .member-unit {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     font-size: 12px;
     color: #94a3b8;
     line-height: 1.3;
+    .member-type-icon {
+      color: #f59e0b;
+      font-size: 14px;
+    }
   }
 }
 .cell-amount {

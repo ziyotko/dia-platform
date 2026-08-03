@@ -184,13 +184,14 @@ func (ctrl *FeeController) ListAllFees(c *gin.Context) {
 	size := parseIntDefault(c.Query("size"), 10)
 	year := parseIntDefault(c.Query("year"), 0)
 	status := c.Query("status")
+	memberType := c.Query("member_type")
 	memberIDStr := c.Query("member_id")
 	var memberID uint64
 	if memberIDStr != "" {
 		memberID = parseUint(memberIDStr)
 	}
 
-	fees, total, err := ctrl.feeService.ListAllFees(page, size, year, status, memberID)
+	fees, total, err := ctrl.feeService.ListAllFees(page, size, year, status, memberID, memberType)
 	if err != nil {
 		response.ServerError(c, err.Error())
 		return

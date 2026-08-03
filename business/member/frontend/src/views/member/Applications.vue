@@ -48,10 +48,12 @@
             </el-link>
           </div>
         </el-form-item>
+        <template v-if="memberType === 'unit'">
         <el-form-item label="单位名称"><el-input v-model="appForm.companyName" /></el-form-item>
         <el-form-item label="信用代码"><el-input v-model="appForm.creditCode" /></el-form-item>
         <el-form-item label="联系人"><el-input v-model="appForm.contactPerson" /></el-form-item>
         <el-form-item label="单位地址"><el-input v-model="appForm.address" /></el-form-item>
+        </template>
       </el-form>
 
       <!-- Step 2: Confirm & Download -->
@@ -59,10 +61,12 @@
         <el-alert title="请确认填写信息是否正确" type="info" show-icon :closable="false" style="margin-bottom:20px" />
         <el-descriptions :column="1" border size="small">
           <el-descriptions-item label="申请入会">{{ selectedOrgName }}</el-descriptions-item>
+          <template v-if="memberType === 'unit'">
           <el-descriptions-item label="单位名称">{{ appForm.companyName || '未填写' }}</el-descriptions-item>
           <el-descriptions-item label="信用代码">{{ appForm.creditCode || '未填写' }}</el-descriptions-item>
           <el-descriptions-item label="联系人">{{ appForm.contactPerson || '未填写' }}</el-descriptions-item>
           <el-descriptions-item label="单位地址">{{ appForm.address || '未填写' }}</el-descriptions-item>
+          </template>
         </el-descriptions>
         <div class="download-area">
           <p class="step-tip">确认信息无误后，请下载入会申请表</p>
@@ -141,6 +145,7 @@ const showCreate = ref(false)
 const submitting = ref(false)
 const createStep = ref(0)
 const uploadedFile = ref<{ name: string; url: string } | null>(null)
+const memberType = ref('unit')
 
 const appForm = reactive({ orgId: null as number | null, companyName: '', creditCode: '', contactPerson: '', address: '' })
 
@@ -150,6 +155,7 @@ watch(showCreate, async (val) => {
     try {
       const res = await authApi.getProfile()
       if (res.data) {
+        memberType.value = res.data.member_type || 'unit'
         appForm.companyName = res.data.company_name || ''
         appForm.creditCode = res.data.credit_code || ''
         appForm.contactPerson = res.data.contact_person || ''
@@ -200,6 +206,11 @@ async function handleCreateApp() {
     const profile = res.data
     if (profile.member_type === 'unit' && !profile.cert_file) {
       ElMessage.warning('请先上传组织机构代码证，补全会员信息后再发起申请')
+      router.push('/member/profile')
+      return
+    }
+    if (profile.member_type !== 'unit' && (!profile.name || !profile.id_card)) {
+      ElMessage.warning('请先补充完整的姓名和身份证号，补全会员信息后再发起申请')
       router.push('/member/profile')
       return
     }

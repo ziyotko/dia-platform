@@ -18,13 +18,14 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
+            <template v-if="form.member_type === 'unit'">
             <el-form-item label="单位名称"><el-input v-model="form.company_name" /></el-form-item>
             <el-form-item label="信用代码"><el-input v-model="form.credit_code" /></el-form-item>
             <el-form-item label="法定代表人"><el-input v-model="form.legal_person" /></el-form-item>
             <el-form-item label="联系人"><el-input v-model="form.contact_person" /></el-form-item>
             <el-form-item label="单位地址"><el-input v-model="form.address" /></el-form-item>
             <el-form-item label="网站"><el-input v-model="form.website" /></el-form-item>
-            <el-form-item label="组织机构证" v-if="form.member_type === 'unit'">
+            <el-form-item label="组织机构证">
               <div class="cert-file-row">
                 <template v-if="form.cert_file">
                   <el-link :href="fileUrl(form.cert_file)" target="_blank" type="primary" :underline="false">
@@ -43,6 +44,11 @@
                 <span v-if="uploading" style="margin-left:8px;color:#409eff">上传中...</span>
               </div>
             </el-form-item>
+            </template>
+            <template v-else>
+              <el-form-item label="姓名"><el-input v-model="form.name" /></el-form-item>
+              <el-form-item label="身份证号"><el-input v-model="form.id_card" /></el-form-item>
+            </template>
           </el-col>
         </el-row>
         <el-form-item label="简介">

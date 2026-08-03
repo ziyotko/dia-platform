@@ -158,6 +158,8 @@ func (s *AuthService) UpdateProfile(memberID uint64, req UpdateProfileRequest) e
 	updates := map[string]interface{}{
 		"mobile":         req.Mobile,
 		"email":          req.Email,
+		"name":           req.Name,
+		"id_card":        req.IDCard,
 		"company_name":   req.CompanyName,
 		"credit_code":    req.CreditCode,
 		"legal_person":   req.LegalPerson,
@@ -268,6 +270,8 @@ type MemberInfo struct {
 type UpdateProfileRequest struct {
 	Mobile        string `json:"mobile"`
 	Email         string `json:"email"`
+	Name          string `json:"name"`
+	IDCard        string `json:"id_card"`
 	CompanyName   string `json:"company_name"`
 	CreditCode    string `json:"credit_code"`
 	LegalPerson   string `json:"legal_person"`

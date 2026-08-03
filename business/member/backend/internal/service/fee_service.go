@@ -165,7 +165,7 @@ func (s *FeeService) DeleteFeeRecord(id uint64) error {
 }
 
 // ListAllFees lists all fee records (admin)
-func (s *FeeService) ListAllFees(page, size int, year int, status string, memberID uint64) ([]models.FeeRecord, int64, error) {
+func (s *FeeService) ListAllFees(page, size int, year int, status string, memberID uint64, memberType string) ([]models.FeeRecord, int64, error) {
 	var fees []models.FeeRecord
 	var total int64
 
@@ -178,6 +178,9 @@ func (s *FeeService) ListAllFees(page, size int, year int, status string, member
 	}
 	if memberID > 0 {
 		query = query.Where("member_id = ?", memberID)
+	}
+	if memberType != "" {
+		query = query.Where("member_id IN (SELECT id FROM member_users WHERE member_type = ?)", memberType)
 	}
 
 	if err := query.Count(&total).Error; err != nil {
