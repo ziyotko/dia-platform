@@ -17,7 +17,7 @@ type ArchiveController struct {
 // --- Admin endpoints ---
 
 func (ctrl *ArchiveController) Archive(c *gin.Context) {
-	meetingID := parseUint(c.Param("meetingId"))
+	meetingID := parseUint(c.Param("id"))
 	adminID := middleware.GetAdminID(c)
 
 	archive, err := ctrl.service.ArchiveMeeting(meetingID, adminID)

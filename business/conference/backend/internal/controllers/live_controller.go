@@ -18,7 +18,7 @@ type LiveController struct {
 // --- Admin endpoints ---
 
 func (ctrl *LiveController) StartLive(c *gin.Context) {
-	meetingID := parseUint(c.Param("meetingId"))
+	meetingID := parseUint(c.Param("id"))
 	config, err := ctrl.service.StartLive(meetingID)
 	if err != nil {
 		response.Fail(c, err.Error())
@@ -28,7 +28,7 @@ func (ctrl *LiveController) StartLive(c *gin.Context) {
 }
 
 func (ctrl *LiveController) StopLive(c *gin.Context) {
-	meetingID := parseUint(c.Param("meetingId"))
+	meetingID := parseUint(c.Param("id"))
 	if err := ctrl.service.StopLive(meetingID); err != nil {
 		response.Fail(c, err.Error())
 		return
@@ -37,7 +37,7 @@ func (ctrl *LiveController) StopLive(c *gin.Context) {
 }
 
 func (ctrl *LiveController) GetLiveConfig(c *gin.Context) {
-	meetingID := parseUint(c.Param("meetingId"))
+	meetingID := parseUint(c.Param("id"))
 	config, err := ctrl.service.GetLiveConfig(meetingID)
 	if err != nil {
 		response.Fail(c, err.Error())
@@ -47,7 +47,7 @@ func (ctrl *LiveController) GetLiveConfig(c *gin.Context) {
 }
 
 func (ctrl *LiveController) UploadVod(c *gin.Context) {
-	meetingID := parseUint(c.Param("meetingId"))
+	meetingID := parseUint(c.Param("id"))
 	var req struct {
 		VideoURL     string `json:"videoUrl" binding:"required"`
 		ReplayExpiry string `json:"replayExpiry"`
@@ -72,7 +72,7 @@ func (ctrl *LiveController) UploadVod(c *gin.Context) {
 }
 
 func (ctrl *LiveController) SetReplayStatus(c *gin.Context) {
-	meetingID := parseUint(c.Param("meetingId"))
+	meetingID := parseUint(c.Param("id"))
 	var req struct {
 		AllowReplay bool `json:"allowReplay"`
 	}
@@ -103,7 +103,7 @@ func (ctrl *LiveController) GetViewingLogs(c *gin.Context) {
 // --- Member endpoints ---
 
 func (ctrl *LiveController) GetPlayURL(c *gin.Context) {
-	meetingID := parseUint(c.Param("meetingId"))
+	meetingID := parseUint(c.Param("id"))
 	userID := middleware.GetUserID(c)
 
 	url, err := ctrl.service.GetPlayURL(meetingID, userID)
@@ -115,7 +115,7 @@ func (ctrl *LiveController) GetPlayURL(c *gin.Context) {
 }
 
 func (ctrl *LiveController) SendMessage(c *gin.Context) {
-	meetingID := parseUint(c.Param("meetingId"))
+	meetingID := parseUint(c.Param("id"))
 	userID := middleware.GetUserID(c)
 	var req struct {
 		Content string `json:"content" binding:"required"`
@@ -132,7 +132,7 @@ func (ctrl *LiveController) SendMessage(c *gin.Context) {
 }
 
 func (ctrl *LiveController) GetMessages(c *gin.Context) {
-	meetingID := parseUint(c.Param("meetingId"))
+	meetingID := parseUint(c.Param("id"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
 	msgs, err := ctrl.service.GetLiveMessages(meetingID, limit)
 	if err != nil {
@@ -143,7 +143,7 @@ func (ctrl *LiveController) GetMessages(c *gin.Context) {
 }
 
 func (ctrl *LiveController) StartViewing(c *gin.Context) {
-	meetingID := parseUint(c.Param("meetingId"))
+	meetingID := parseUint(c.Param("id"))
 	userID := middleware.GetUserID(c)
 	viewType := c.DefaultQuery("type", "live")
 

@@ -18,7 +18,7 @@ type FinanceController struct {
 // --- Member endpoints ---
 
 func (ctrl *FinanceController) CreateOrder(c *gin.Context) {
-	meetingID := parseUint(c.Param("meetingId"))
+	meetingID := parseUint(c.Param("id"))
 	userID := middleware.GetUserID(c)
 
 	order, err := ctrl.service.CreateOrder(meetingID, userID)

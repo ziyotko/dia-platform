@@ -17,7 +17,7 @@ type CreditController struct {
 // --- Admin endpoints ---
 
 func (ctrl *CreditController) SetMeetingCredits(c *gin.Context) {
-	meetingID := parseUint(c.Param("meetingId"))
+	meetingID := parseUint(c.Param("id"))
 	var req struct {
 		Credits float64 `json:"credits"`
 	}

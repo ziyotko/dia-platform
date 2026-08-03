@@ -17,7 +17,7 @@ type RegistrationController struct {
 // --- Member endpoints ---
 
 func (ctrl *RegistrationController) Register(c *gin.Context) {
-	meetingID := parseUint(c.Param("meetingId"))
+	meetingID := parseUint(c.Param("id"))
 	userID := middleware.GetUserID(c)
 
 	reg, err := ctrl.service.Register(meetingID, userID)
@@ -54,7 +54,7 @@ func (ctrl *RegistrationController) MyRegistrations(c *gin.Context) {
 }
 
 func (ctrl *RegistrationController) MyRegistrationStatus(c *gin.Context) {
-	meetingID := parseUint(c.Param("meetingId"))
+	meetingID := parseUint(c.Param("id"))
 	userID := middleware.GetUserID(c)
 
 	reg, err := ctrl.service.GetMyRegistration(meetingID, userID)

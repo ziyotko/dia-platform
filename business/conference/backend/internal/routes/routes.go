@@ -56,16 +56,16 @@ func Register(r *gin.Engine) {
 		memberAuth.GET("/meetings/:id", meetingCtrl.GetDetail)
 
 		// Registrations
-		memberAuth.POST("/meetings/:meetingId/register", regCtrl.Register)
-		memberAuth.GET("/meetings/:meetingId/registration", regCtrl.MyRegistrationStatus)
+		memberAuth.POST("/meetings/:id/register", regCtrl.Register)
+		memberAuth.GET("/meetings/:id/registration", regCtrl.MyRegistrationStatus)
 		memberAuth.GET("/registrations", regCtrl.MyRegistrations)
 		memberAuth.DELETE("/registrations/:id", regCtrl.Cancel)
 
 		// Sign-in
-		memberAuth.GET("/meetings/:meetingId/sign-in/status", signInCtrl.GetStatus)
-		memberAuth.POST("/meetings/:meetingId/sign-in/qrcode", signInCtrl.GenerateQRCode)
-		memberAuth.POST("/meetings/:meetingId/sign-in/online", signInCtrl.SignInOnline)
-		memberAuth.POST("/meetings/:meetingId/sign-out", signInCtrl.SignOut)
+		memberAuth.GET("/meetings/:id/sign-in/status", signInCtrl.GetStatus)
+		memberAuth.POST("/meetings/:id/sign-in/qrcode", signInCtrl.GenerateQRCode)
+		memberAuth.POST("/meetings/:id/sign-in/online", signInCtrl.SignInOnline)
+		memberAuth.POST("/meetings/:id/sign-out", signInCtrl.SignOut)
 
 		// Vote
 		memberAuth.GET("/votes", voteCtrl.ListAvailable)
@@ -73,7 +73,7 @@ func Register(r *gin.Engine) {
 		memberAuth.POST("/votes/:id/cast", voteCtrl.CastVote)
 
 		// Finance
-		memberAuth.POST("/meetings/:meetingId/orders", financeCtrl.CreateOrder)
+		memberAuth.POST("/meetings/:id/orders", financeCtrl.CreateOrder)
 		memberAuth.POST("/orders/:id/pay", financeCtrl.PayOrder)
 		memberAuth.POST("/orders/:id/refund", financeCtrl.ApplyRefund)
 		memberAuth.GET("/orders", financeCtrl.MyOrders)
@@ -81,10 +81,10 @@ func Register(r *gin.Engine) {
 		memberAuth.GET("/orders/:id/invoice", financeCtrl.GetInvoice)
 
 		// Live
-		memberAuth.GET("/meetings/:meetingId/live/url", liveCtrl.GetPlayURL)
-		memberAuth.GET("/meetings/:meetingId/live/messages", liveCtrl.GetMessages)
-		memberAuth.POST("/meetings/:meetingId/live/messages", liveCtrl.SendMessage)
-		memberAuth.POST("/meetings/:meetingId/live/viewing", liveCtrl.StartViewing)
+		memberAuth.GET("/meetings/:id/live/url", liveCtrl.GetPlayURL)
+		memberAuth.GET("/meetings/:id/live/messages", liveCtrl.GetMessages)
+		memberAuth.POST("/meetings/:id/live/messages", liveCtrl.SendMessage)
+		memberAuth.POST("/meetings/:id/live/viewing", liveCtrl.StartViewing)
 
 		// Survey
 		memberAuth.GET("/surveys", surveyCtrl.ListAvailable)
@@ -135,7 +135,7 @@ func Register(r *gin.Engine) {
 		// Sign-in
 		adminAuth.GET("/sign-ins", signInCtrl.List)
 		adminAuth.POST("/sign-ins/qrcode", signInCtrl.SignInByQR)
-		adminAuth.GET("/meetings/:meetingId/sign-in/stats", signInCtrl.GetStats)
+		adminAuth.GET("/meetings/:id/sign-in/stats", signInCtrl.GetStats)
 
 		// Vote
 		adminAuth.POST("/votes", voteCtrl.Create)
@@ -152,11 +152,11 @@ func Register(r *gin.Engine) {
 		adminAuth.GET("/ledger", financeCtrl.GetLedger)
 
 		// Live
-		adminAuth.POST("/meetings/:meetingId/live/start", liveCtrl.StartLive)
-		adminAuth.POST("/meetings/:meetingId/live/stop", liveCtrl.StopLive)
-		adminAuth.GET("/meetings/:meetingId/live/config", liveCtrl.GetLiveConfig)
-		adminAuth.POST("/meetings/:meetingId/vod/upload", liveCtrl.UploadVod)
-		adminAuth.PUT("/meetings/:meetingId/vod/replay", liveCtrl.SetReplayStatus)
+		adminAuth.POST("/meetings/:id/live/start", liveCtrl.StartLive)
+		adminAuth.POST("/meetings/:id/live/stop", liveCtrl.StopLive)
+		adminAuth.GET("/meetings/:id/live/config", liveCtrl.GetLiveConfig)
+		adminAuth.POST("/meetings/:id/vod/upload", liveCtrl.UploadVod)
+		adminAuth.PUT("/meetings/:id/vod/replay", liveCtrl.SetReplayStatus)
 		adminAuth.GET("/viewing-logs", liveCtrl.GetViewingLogs)
 
 		// Survey
@@ -169,13 +169,13 @@ func Register(r *gin.Engine) {
 		adminAuth.GET("/surveys/:id/answers", surveyCtrl.GetAnswerDetails)
 
 		// Credit
-		adminAuth.POST("/meetings/:meetingId/credits", creditCtrl.SetMeetingCredits)
+		adminAuth.POST("/meetings/:id/credits", creditCtrl.SetMeetingCredits)
 		adminAuth.POST("/credits/manual", creditCtrl.ManualAdjust)
 		adminAuth.GET("/credits", creditCtrl.ListRecords)
 		adminAuth.GET("/credits/stats", creditCtrl.GetStats)
 
 		// Archive
-		adminAuth.POST("/meetings/:meetingId/archive", archiveCtrl.Archive)
+		adminAuth.POST("/meetings/:id/archive", archiveCtrl.Archive)
 		adminAuth.GET("/archives", archiveCtrl.List)
 		adminAuth.GET("/archives/:id", archiveCtrl.GetByID)
 		adminAuth.POST("/archives/:id/materials", archiveCtrl.AddMaterial)

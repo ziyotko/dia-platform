@@ -17,7 +17,7 @@ type SignInController struct {
 // --- Member endpoints ---
 
 func (ctrl *SignInController) GenerateQRCode(c *gin.Context) {
-	meetingID := parseUint(c.Param("meetingId"))
+	meetingID := parseUint(c.Param("id"))
 	userID := middleware.GetUserID(c)
 	regID := parseUint(c.Query("registrationId"))
 
@@ -30,7 +30,7 @@ func (ctrl *SignInController) GenerateQRCode(c *gin.Context) {
 }
 
 func (ctrl *SignInController) GetStatus(c *gin.Context) {
-	meetingID := parseUint(c.Param("meetingId"))
+	meetingID := parseUint(c.Param("id"))
 	userID := middleware.GetUserID(c)
 
 	status, err := ctrl.service.GetUserSignInStatus(meetingID, userID)
@@ -42,7 +42,7 @@ func (ctrl *SignInController) GetStatus(c *gin.Context) {
 }
 
 func (ctrl *SignInController) SignInOnline(c *gin.Context) {
-	meetingID := parseUint(c.Param("meetingId"))
+	meetingID := parseUint(c.Param("id"))
 	userID := middleware.GetUserID(c)
 
 	if err := ctrl.service.SignInOnline(meetingID, userID); err != nil {
@@ -53,7 +53,7 @@ func (ctrl *SignInController) SignInOnline(c *gin.Context) {
 }
 
 func (ctrl *SignInController) SignOut(c *gin.Context) {
-	meetingID := parseUint(c.Param("meetingId"))
+	meetingID := parseUint(c.Param("id"))
 	userID := middleware.GetUserID(c)
 
 	if err := ctrl.service.SignOut(meetingID, userID); err != nil {
@@ -81,7 +81,7 @@ func (ctrl *SignInController) SignInByQR(c *gin.Context) {
 }
 
 func (ctrl *SignInController) GetStats(c *gin.Context) {
-	meetingID := parseUint(c.Param("meetingId"))
+	meetingID := parseUint(c.Param("id"))
 	stats, err := ctrl.service.GetSignInStats(meetingID)
 	if err != nil {
 		response.Fail(c, err.Error())

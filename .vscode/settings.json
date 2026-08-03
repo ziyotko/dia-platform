@@ -10,6 +10,8 @@
         "npx vite": true,
         "Test-Path": true,
         "npm uninstall": true,
-        "npx tsc": true
+        "npx tsc": true,
+        "ForEach-Object": true,
+        "Set-Content": true
     }
 }
