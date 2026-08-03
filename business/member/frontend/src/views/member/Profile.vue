@@ -37,7 +37,7 @@
                 </template>
                 <template v-else>
                   <el-button size="small" type="primary" @click="triggerUpload">
-                    <el-icon><Upload /></el-icon>上传组织机构证
+                    <el-icon><Upload /></el-icon>上传组织机构代码证
                   </el-button>
                 </template>
                 <input ref="fileInputRef" type="file" accept=".jpg,.jpeg,.png,.pdf" style="display:none" @change="handleCertUpload" />
