@@ -2,12 +2,12 @@
   <div class="profile-page" v-loading="loading">
     <el-card>
       <template #header><span>我的资料</span></template>
-      <el-form :model="form" label-width="100px" size="large">
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px" size="large">
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="用户名"><el-input v-model="form.username" disabled /></el-form-item>
-            <el-form-item label="手机号"><el-input v-model="form.mobile" /></el-form-item>
-            <el-form-item label="邮箱"><el-input v-model="form.email" /></el-form-item>
+            <el-form-item label="手机号" prop="mobile"><el-input v-model="form.mobile" maxlength="11" /></el-form-item>
+            <el-form-item label="邮箱" prop="email"><el-input v-model="form.email" maxlength="40" /></el-form-item>
             <el-form-item label="会员类型">
               <el-tag>{{ form.member_type === 'unit' ? '单位会员' : '个人会员' }}</el-tag>
             </el-form-item>
@@ -20,7 +20,7 @@
           <el-col :span="12">
             <template v-if="form.member_type === 'unit'">
             <el-form-item label="单位名称"><el-input v-model="form.company_name" /></el-form-item>
-            <el-form-item label="信用代码"><el-input v-model="form.credit_code" /></el-form-item>
+            <el-form-item label="组织机构代码证"><el-input v-model="form.credit_code" /></el-form-item>
             <el-form-item label="法定代表人"><el-input v-model="form.legal_person" /></el-form-item>
             <el-form-item label="联系人"><el-input v-model="form.contact_person" /></el-form-item>
             <el-form-item label="单位地址"><el-input v-model="form.address" /></el-form-item>
@@ -47,7 +47,7 @@
             </template>
             <template v-else>
               <el-form-item label="姓名"><el-input v-model="form.name" /></el-form-item>
-              <el-form-item label="身份证号"><el-input v-model="form.id_card" /></el-form-item>
+              <el-form-item label="身份证号" prop="id_card"><el-input v-model="form.id_card" maxlength="18" /></el-form-item>
             </template>
           </el-col>
         </el-row>
@@ -81,6 +81,8 @@ import { ElMessage } from 'element-plus'
 import { Download, Upload } from '@element-plus/icons-vue'
 
 const form = reactive<any>({})
+const original = reactive<any>({})
+const formRef = ref()
 const loading = ref(true)
 const saving = ref(false)
 const showPwdDialog = ref(false)
@@ -88,17 +90,104 @@ const pwdForm = reactive({ oldPassword: '', newPassword: '' })
 const uploading = ref(false)
 const fileInputRef = ref<HTMLInputElement>()
 
+// 防抖：避免输入过程中频繁请求后端查重
+function debounce<A extends any[]>(fn: (...args: A) => void, delay = 400) {
+  let timer: ReturnType<typeof setTimeout> | null = null
+  return (...args: A) => {
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(() => fn(...args), delay)
+  }
+}
+
+// 手机号：与注册一致（合法性 + 查重，未改动时跳过查重避免误报）
+const checkMobileAvailable = debounce(async (value: string, callback: any) => {
+  try {
+    const res = await authApi.checkExists({ field: 'mobile', value })
+    if (res.data.exists) callback(new Error('该手机号已被其他用户使用'))
+    else callback()
+  } catch {
+    callback()
+  }
+})
+
+const validateMobile = (_rule: any, value: string, callback: any) => {
+  if (!value) return callback(new Error('请输入手机号'))
+  if (value.length > 11) return callback(new Error('手机号不能超过11位'))
+  if (!/^1[3-9]\d{9}$/.test(value)) {
+    return callback(new Error('请输入合法的手机号'))
+  }
+  if (value === original.mobile) return callback()
+  checkMobileAvailable(value, callback)
+}
+
+// 邮箱：与注册一致（合法性 + 查重，未改动时跳过查重避免误报）
+const checkEmailAvailable = debounce(async (value: string, callback: any) => {
+  try {
+    const res = await authApi.checkExists({ field: 'email', value })
+    if (res.data.exists) callback(new Error('该邮箱已被其他用户使用'))
+    else callback()
+  } catch {
+    callback()
+  }
+})
+
+const validateEmail = (_rule: any, value: string, callback: any) => {
+  if (!value) return callback(new Error('请输入邮箱'))
+  if (value.length > 40) return callback(new Error('邮箱不能超过40位'))
+  if (!/^[\w.+-]+@[\w-]+(\.[\w-]+)+$/.test(value)) {
+    return callback(new Error('邮箱格式不正确'))
+  }
+  if (value === original.email) return callback()
+  checkEmailAvailable(value, callback)
+}
+
+// 身份证号校验（18位，出生日期 + 校验码）
+const validateIdCard = (_rule: any, value: string, callback: any) => {
+  if (!value) return callback(new Error('请输入身份证号'))
+  const id = value.trim().toUpperCase()
+  if (!/^\d{17}[\dX]$/.test(id)) {
+    return callback(new Error('身份证号应为18位，末位可为X'))
+  }
+  const year = +id.slice(6, 10)
+  const month = +id.slice(10, 12)
+  const day = +id.slice(12, 14)
+  const date = new Date(year, month - 1, day)
+  if (date.getFullYear() !== year || date.getMonth() + 1 !== month || date.getDate() !== day) {
+    return callback(new Error('身份证号出生日期不合法'))
+  }
+  const weights = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2]
+  const codes = '10X98765432'
+  let sum = 0
+  for (let i = 0; i < 17; i++) {
+    sum += +id[i] * weights[i]
+  }
+  if (codes[sum % 11] !== id[17]) {
+    return callback(new Error('身份证号校验不通过'))
+  }
+  callback()
+}
+
+const rules = {
+  mobile: [{ validator: validateMobile, trigger: 'blur' }],
+  email: [{ validator: validateEmail, trigger: 'blur' }],
+  id_card: [{ validator: validateIdCard, trigger: 'blur' }]
+}
+
 onMounted(async () => {
   try {
     const res = await authApi.getProfile()
     Object.assign(form, res.data)
+    Object.assign(original, res.data)
   } catch {} finally { loading.value = false }
 })
 
 async function saveProfile() {
+  const valid = await formRef.value?.validate().catch(() => false)
+  if (!valid) return
   saving.value = true
   try {
     await authApi.updateProfile(form)
+    Object.assign(original, form)
     ElMessage.success('保存成功')
   } catch {} finally { saving.value = false }
 }
