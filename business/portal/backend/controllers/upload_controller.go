@@ -34,6 +34,26 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 	}
 
 	dir := ctx.DefaultPostForm("dir", "")
+	// 目录白名单：仅允许已知子目录，阻断路径穿越（如 dir=../../）
+	allowedDirs := map[string]bool{
+		"": true, "article": true, "attachment": true, "video": true,
+		"covers": true, "avatars": true, "images": true,
+	}
+	if !allowedDirs[dir] {
+		ctx.JSON(http.StatusOK, utils.Error(1, "非法上传目录"))
+		return
+	}
+
+	// 文件大小限制：视频 800MB（与前端一致），其余 50MB，防止磁盘耗尽
+	maxSize := int64(50 << 20)
+	if dir == "video" {
+		maxSize = 800 << 20
+	}
+	if file.Size > maxSize {
+		ctx.JSON(http.StatusOK, utils.Error(1, "文件大小超出限制"))
+		return
+	}
+
 	allowedImageExts := map[string]bool{
 		".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".webp": true,
 	}

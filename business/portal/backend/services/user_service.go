@@ -165,9 +165,10 @@ func (s *UserService) GetUserList(page, pageSize int, username, account string, 
 	}, nil
 }
 
-func (s *UserService) CreateUser(username, account, email, password, phone string, status int, sex int, roleIds []int, orgIds []uint) error {
+func (s *UserService) CreateUser(username, account, email, password, phone string, status int, sex int, roleIds []int, orgIds []uint) (string, error) {
 	if password == "" {
-		password = "Abcd@1234"
+		// 未指定密码时生成随机强密码，由调用方展示一次，避免固定弱默认密码
+		password = utils.GenerateRandomPassword(12)
 	}
 
 	user := &models.User{
@@ -189,7 +190,7 @@ func (s *UserService) CreateUser(username, account, email, password, phone strin
 	}
 
 	if err := utils.DB.Create(user).Error; err != nil {
-		return err
+		return "", err
 	}
 
 	if len(orgIds) > 0 {
@@ -197,13 +198,13 @@ func (s *UserService) CreateUser(username, account, email, password, phone strin
 		for _, orgId := range orgIds {
 			if orgId > 0 {
 				if err := orgService.AddUserToOrganization(orgId, user.ID); err != nil {
-					return err
+					return "", err
 				}
 			}
 		}
 	}
 
-	return nil
+	return password, nil
 }
 
 func (s *UserService) CheckFieldUnique(field, value string, excludeID uint) (bool, error) {
@@ -230,9 +231,10 @@ func (s *UserService) CheckFieldUnique(field, value string, excludeID uint) (boo
 }
 
 type ImportUserResult struct {
-	SuccessCount int      `json:"successCount"`
-	FailCount    int      `json:"failCount"`
-	FailDetails  []string `json:"failDetails"`
+	SuccessCount       int               `json:"successCount"`
+	FailCount          int               `json:"failCount"`
+	FailDetails        []string          `json:"failDetails"`
+	GeneratedPasswords map[string]string `json:"generatedPasswords,omitempty"` // 账号 -> 初始随机密码
 }
 
 func (s *UserService) ImportUsers(file multipart.File, fileSize int64) (*ImportUserResult, error) {
@@ -281,12 +283,17 @@ func (s *UserService) ImportUsers(file multipart.File, fileSize int64) (*ImportU
 			continue
 		}
 
-		if err := s.CreateUser(username, account, email, "Abcd@1234", phone, 1, 0, []int{6}, nil); err != nil {
+		pwd := utils.GenerateRandomPassword(12)
+		if _, err := s.CreateUser(username, account, email, pwd, phone, 1, 0, []int{6}, nil); err != nil {
 			result.FailCount++
 			result.FailDetails = append(result.FailDetails, fmt.Sprintf("第 %d 行 (%s): %s", lineNum, account, err.Error()))
 			continue
 		}
 
+		if result.GeneratedPasswords == nil {
+			result.GeneratedPasswords = make(map[string]string)
+		}
+		result.GeneratedPasswords[account] = pwd
 		result.SuccessCount++
 	}
 

@@ -281,6 +281,21 @@ func (c *ArticleController) UpdateArticleStatus(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误"))
 		return
 	}
+
+	// 权限校验：仅作者本人或管理员可以修改文章发布状态
+	userID := ctx.GetUint("userID")
+	article, err := c.articleService.GetArticleByID(uint(id))
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "文章不存在"))
+		return
+	}
+	roleIds, _ := c.userService.GetUserRoleIds(userID)
+	isAdmin := slices.Contains(roleIds, 1)
+	if !isAdmin && strconv.FormatUint(uint64(userID), 10) != article.AuthorCode {
+		ctx.JSON(http.StatusOK, utils.Error(1, "无权操作"))
+		return
+	}
+
 	err = c.articleService.UpdateArticleStatus(uint(id), req.Status)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "更新文章状态失败"))
@@ -353,10 +368,10 @@ func (c *ArticleController) AuditArticle(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误"))
 		return
 	}
+	userID := ctx.GetUint("userID")
 	switch req.AuditStatus {
 	case 1:
-		// 提交审核
-		userID := ctx.GetUint("userID")
+		// 提交审核：仅作者本人
 		article, err := c.articleService.GetArticleByID(uint(id))
 		if err != nil {
 			ctx.JSON(http.StatusOK, utils.Error(1, "文章不存在"))
@@ -368,9 +383,20 @@ func (c *ArticleController) AuditArticle(ctx *gin.Context) {
 		}
 		err = c.articleService.StartArticleAudit(uint(id))
 	case 2:
-		// 完成审核
+		// 完成审核：仅管理员
+		roleIds, _ := c.userService.GetUserRoleIds(userID)
+		if !slices.Contains(roleIds, 1) {
+			ctx.JSON(http.StatusOK, utils.Error(1, "无权限执行该操作"))
+			return
+		}
 		err = c.articleService.CompleteArticleAudit(uint(id))
 	default:
+		// 直接设置审核状态：仅管理员
+		roleIds, _ := c.userService.GetUserRoleIds(userID)
+		if !slices.Contains(roleIds, 1) {
+			ctx.JSON(http.StatusOK, utils.Error(1, "无权限执行该操作"))
+			return
+		}
 		err = c.articleService.UpdateAuditStatus(uint(id), req.AuditStatus)
 	}
 	if err != nil {

@@ -39,6 +39,10 @@ func GenerateToken(userID uint, email string, expiresHour int) (string, error) {
 
 func ParseToken(tokenString string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (any, error) {
+		// 只接受 HS256，防止算法混淆攻击
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, jwt.ErrSignatureInvalid
+		}
 		return []byte(config.AppConfig.JWT.Secret), nil
 	})
 

@@ -121,13 +121,13 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		return
 	}
 
-	err := c.userService.CreateUser(req.Username, req.Account, req.Email, req.Password, req.Phone, req.Status, req.Sex, req.RoleIds, req.OrgIds)
+	password, err := c.userService.CreateUser(req.Username, req.Account, req.Email, req.Password, req.Phone, req.Status, req.Sex, req.RoleIds, req.OrgIds)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "创建用户失败: "+err.Error()))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, utils.Success("创建用户成功", nil))
+	ctx.JSON(http.StatusOK, utils.Success("创建用户成功", gin.H{"password": password}))
 }
 
 func (c *UserController) ImportUsers(ctx *gin.Context) {

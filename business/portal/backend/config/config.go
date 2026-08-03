@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"os"
 
 	"github.com/spf13/viper"
 )
@@ -15,11 +16,13 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Port             string `mapstructure:"port"`
-	Host             string `mapstructure:"host"`
-	ApiPrefix        string `mapstructure:"api_prefix"`
-	UploadDirPrefix  string `mapstructure:"upload_dir_prefix"`
-	MaxConcurrentIPs int    `mapstructure:"max_concurrent_ips"`
+	Port             string   `mapstructure:"port"`
+	Host             string   `mapstructure:"host"`
+	Mode             string   `mapstructure:"mode"`
+	ApiPrefix        string   `mapstructure:"api_prefix"`
+	UploadDirPrefix  string   `mapstructure:"upload_dir_prefix"`
+	MaxConcurrentIPs int      `mapstructure:"max_concurrent_ips"`
+	AllowedOrigins   []string `mapstructure:"allowed_origins"`
 }
 
 type DatabaseConfig struct {
@@ -60,6 +63,9 @@ type LogConfig struct {
 
 var AppConfig Config
 
+// 已知的弱/占位 JWT 密钥，用于启动告警
+const defaultJWTSecret = "your-256-bit-secret-key-here-must-be-at-least-32-characters"
+
 func InitConfig() {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
@@ -71,5 +77,22 @@ func InitConfig() {
 
 	if err := viper.Unmarshal(&AppConfig); err != nil {
 		log.Fatalf("Unable to decode config: %s", err)
+	}
+
+	applyEnvOverrides()
+}
+
+// applyEnvOverrides 允许通过环境变量覆盖敏感配置，避免把密钥/密码提交到仓库。
+// 生产环境务必注入：PORTAL_JWT_SECRET、PORTAL_DB_PASSWORD。
+func applyEnvOverrides() {
+	if v := os.Getenv("PORTAL_JWT_SECRET"); v != "" {
+		AppConfig.JWT.Secret = v
+	}
+	if v := os.Getenv("PORTAL_DB_PASSWORD"); v != "" {
+		AppConfig.Database.Password = v
+	}
+
+	if AppConfig.JWT.Secret == "" || AppConfig.JWT.Secret == defaultJWTSecret {
+		log.Printf("[WARN] 正在使用弱/默认 JWT 密钥！生产环境必须设置环境变量 PORTAL_JWT_SECRET。")
 	}
 }
