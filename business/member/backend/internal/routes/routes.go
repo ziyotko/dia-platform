@@ -109,6 +109,7 @@ func Register(r *gin.Engine) {
 
 		// Articles (public published)
 		member.GET("/published-articles", articleCtrl.ListArticles)
+		member.GET("/published-articles/:id", articleCtrl.GetPublishedArticle)
 	}
 
 	// === Admin routes (auth + admin role) ===

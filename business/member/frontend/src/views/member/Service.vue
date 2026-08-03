@@ -18,7 +18,7 @@
       </el-tab-pane>
       <el-tab-pane label="会员文章" name="articles">
         <el-card>
-          <div class="announce-item" v-for="a in pubArticles" :key="a.id">
+          <div class="announce-item" v-for="a in pubArticles" :key="a.id" @click="openArticle(a)">
             <div>
               <el-tag size="small">{{ a.category?.name }}</el-tag>
               <span class="title">{{ a.title }}</span>
@@ -32,6 +32,16 @@
         </el-card>
       </el-tab-pane>
     </el-tabs>
+
+    <!-- 文章详情 -->
+    <el-dialog v-model="showArticle" :title="viewedArticle?.title || '文章详情'" width="720px" top="6vh">
+      <div class="article-meta" v-if="viewedArticle">
+        <el-tag size="small">{{ viewedArticle.category?.name }}</el-tag>
+        <span>作者：{{ viewedArticle.member?.company_name || viewedArticle.member?.name || viewedArticle.member?.username }}</span>
+        <span>时间：{{ formatDate(viewedArticle.published_at) }}</span>
+      </div>
+      <div class="article-content">{{ viewedArticle?.content || '暂无内容' }}</div>
+    </el-dialog>
   </div>
 </template>
 
@@ -43,6 +53,10 @@ const activeTab = ref('announcements')
 const announcements = ref<any[]>([])
 const pubArticles = ref<any[]>([])
 const loading = ref(true)
+
+// 文章详情
+const showArticle = ref(false)
+const viewedArticle = ref<any>(null)
 
 // 公告分页
 const annPage = ref(1)
@@ -83,6 +97,14 @@ async function fetchArticles() {
   } catch {} finally { loading.value = false }
 }
 
+async function openArticle(row: any) {
+  try {
+    const res = await articleApi.getPublishedArticle(row.id)
+    viewedArticle.value = res.data || row
+    showArticle.value = true
+  } catch {}
+}
+
 function formatDate(d: string) { return d ? d.slice(0, 10) : '' }
 
 const typeMap: Record<string, string> = { notice: '公告', article: '文章', policy: '政策' }
@@ -99,4 +121,6 @@ function typeLabel(t: string) { return typeMap[t] || t }
   .title { margin-left: 10px; font-size: 14px; }
   .time { color: #9ca3af; font-size: 13px; white-space: nowrap; }
 }
+.article-meta { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; font-size: 13px; color: #6b7280; }
+.article-content { line-height: 1.8; white-space: pre-wrap; }
 </style>

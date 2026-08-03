@@ -11,7 +11,7 @@
       <div v-loading="loading">
         <div class="announce-item" v-for="a in list" :key="a.id" @click="$router.push(`/announcements/${a.id}`)">
           <div class="item-left">
-            <el-tag size="small" :type="a.is_pinned ? 'danger' : ''">{{ a.is_pinned ? '置顶' : a.type }}</el-tag>
+            <el-tag size="small" :type="a.is_pinned ? 'danger' : ''">{{ a.is_pinned ? '置顶' : typeLabel(a.type) }}</el-tag>
             <span class="title">{{ a.title }}</span>
           </div>
           <span class="time">{{ formatDate(a.published_at) }}</span>
@@ -49,6 +49,9 @@ async function fetchData() {
 
 function search() { page.value = 1; fetchData() }
 function formatDate(d: string) { return d ? d.slice(0, 10) : '' }
+
+const typeMap: Record<string, string> = { notice: '通知', article: '文章', policy: '政策' }
+function typeLabel(t: string) { return typeMap[t] || t }
 </script>
 
 <style scoped lang="scss">

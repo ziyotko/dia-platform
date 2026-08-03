@@ -45,7 +45,8 @@ export const articleApi = {
   createArticle: (data: any) => request.post('/articles', data),
   updateArticle: (id: number, data: any) => request.put(`/articles/${id}`, data),
   deleteArticle: (id: number) => request.delete(`/articles/${id}`),
-  listPublished: (params?: any) => request.get('/published-articles', { params })
+	listPublished: (params?: any) => request.get('/published-articles', { params }),
+	getPublishedArticle: (id: number) => request.get(`/published-articles/${id}`)
 }
 
 export const announcementApi = {

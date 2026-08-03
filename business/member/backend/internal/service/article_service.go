@@ -90,6 +90,16 @@ func (s *ArticleService) GetMyArticles(memberID uint64, page, size int, status s
 	return articles, total, nil
 }
 
+// GetPublishedArticle returns a single published article (public)
+func (s *ArticleService) GetPublishedArticle(id uint64) (*models.Article, error) {
+	var article models.Article
+	if err := db.DB.Preload("Member").Preload("Category").
+		Where("id = ? AND status = ?", id, models.ArticleStatusPublished).First(&article).Error; err != nil {
+		return nil, errors.New("文章不存在")
+	}
+	return &article, nil
+}
+
 // ListArticles lists published articles (public)
 func (s *ArticleService) ListArticles(page, size int, categoryID uint64, keyword string) ([]models.Article, int64, error) {
 	var articles []models.Article

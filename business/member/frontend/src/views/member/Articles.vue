@@ -75,6 +75,18 @@
         <el-button type="primary" @click="saveArticle(true)">立即提交</el-button>
       </template>
     </el-dialog>
+
+    <!-- Preview Dialog -->
+    <el-dialog v-model="showPreview" :title="viewed?.title || '文章预览'" width="800px" top="5vh">
+      <div class="preview-body" v-if="viewed">
+        <img v-if="viewed.cover_image" :src="viewed.cover_image" class="preview-cover" />
+        <div class="preview-summary" v-if="viewed.summary">{{ viewed.summary }}</div>
+        <div class="preview-content" v-html="viewed.content || '<p style=&quot;color:#9ca3af&quot;>暂无内容</p>'"></div>
+      </div>
+      <template #footer>
+        <el-button @click="showPreview = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -96,6 +108,10 @@ const filterStatus = ref('')
 const filterCat = ref<number | ''>('')
 
 const articleForm = reactive({ title: '', categoryId: null as number | null, summary: '', content: '', coverImage: '' })
+
+/* ---- Preview ---- */
+const showPreview = ref(false)
+const viewed = ref<any>(null)
 
 /* ---- wangEditor ---- */
 const editorRef = shallowRef()
@@ -174,7 +190,8 @@ async function uploadCover(file: File) {
 }
 
 function viewArticle(row: any) {
-  ElMessageBox.alert(row.content || '暂无内容', row.title, { confirmButtonText: '关闭' })
+  viewed.value = row
+  showPreview.value = true
 }
 
 async function saveArticle(submit: boolean) {
@@ -228,5 +245,34 @@ function formatDate(d: string) { return d ? d.slice(0, 16) : '' }
   width: 100%;
   border: 1px solid #dcdfe6;
   :deep(.w-e-text-container) { min-height: 350px; }
+}
+.preview-body {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.preview-cover {
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+.preview-summary {
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.7;
+  background: #f8fafc;
+  border-left: 3px solid #409eff;
+  padding: 10px 14px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+.preview-content {
+  line-height: 1.9;
+  font-size: 15px;
+  color: #303133;
+  :deep(img) { max-width: 100%; border-radius: 6px; }
+  :deep(p) { margin: 0 0 12px; }
+  :deep(blockquote) { border-left: 4px solid #dcdfe6; margin: 12px 0; padding: 8px 14px; color: #6b7280; background: #fafafa; }
 }
 </style>

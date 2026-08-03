@@ -16,11 +16,16 @@
       <div class="pagination"><el-pagination background layout="prev, pager, next" :total="total" :page-size="size" v-model:current-page="page" @change="fetchData" /></div>
     </el-card>
 
-    <el-dialog v-model="showDialog" :title="editingId?'编辑公告':'发布公告'" width="640px">
+    <el-dialog v-model="showDialog" :title="editingId?'编辑公告':'发布公告'" width="900px" top="3vh">
       <el-form :model="annForm" size="large" label-width="80px">
         <el-form-item label="标题"><el-input v-model="annForm.title" /></el-form-item>
         <el-form-item label="类型"><el-select v-model="annForm.type"><el-option label="通知" value="notice" /><el-option label="文章" value="article" /><el-option label="政策" value="policy" /></el-select></el-form-item>
-        <el-form-item label="内容"><el-input v-model="annForm.content" type="textarea" :rows="6" /></el-form-item>
+        <el-form-item label="内容">
+          <div class="editor-wrapper">
+            <Toolbar :editor="editorRef" :defaultConfig="toolbarConfig" />
+            <Editor v-model="annForm.content" :defaultConfig="editorConfig" @onCreated="handleCreated" />
+          </div>
+        </el-form-item>
         <el-form-item label="置顶"><el-switch v-model="annForm.isPinned" /></el-form-item>
       </el-form>
       <template #footer><el-button @click="showDialog=false">取消</el-button><el-button type="primary" @click="saveAnn">发布</el-button></template>
@@ -29,13 +34,31 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, shallowRef, onMounted, onBeforeUnmount } from 'vue'
+import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
+import '@wangeditor/editor/dist/css/style.css'
 import { adminApi } from '@/api/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const list = ref<any[]>([]); const loading = ref(true); const showDialog = ref(false); const editingId = ref<number|null>(null)
 const page = ref(1); const size = ref(10); const total = ref(0)
 const annForm = reactive({ title: '', content: '', type: 'notice', isPinned: false })
+
+/* ---- wangEditor ---- */
+const editorRef = shallowRef()
+const toolbarConfig = {}
+const editorConfig = { placeholder: '请输入公告内容...' }
+
+function handleCreated(editor: any) {
+  editorRef.value = editor
+}
+
+onBeforeUnmount(() => {
+  const editor = editorRef.value
+  if (editor == null) return
+  editor.destroy()
+  editorRef.value = null
+})
 
 onMounted(() => fetchData())
 async function fetchData() {
@@ -78,4 +101,9 @@ async function delAnn(row: any) {
   border-radius: 10px;
 }
 .pagination { display: flex; justify-content: center; padding: 20px 0; }
+.editor-wrapper {
+  width: 100%;
+  border: 1px solid #dcdfe6;
+  :deep(.w-e-text-container) { min-height: 300px; }
+}
 </style>

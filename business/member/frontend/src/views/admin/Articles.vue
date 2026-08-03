@@ -26,14 +26,19 @@
     </el-card>
 
     <!-- View Article Dialog -->
-    <el-dialog v-model="showView" :title="viewed?.title || '文章内容'" width="720px">
+    <el-dialog v-model="showView" :title="viewed?.title || '文章内容'" width="800px" top="5vh">
       <div class="view-meta" v-if="viewed">
         <el-tag size="small" :type="viewed.status==='pending'?'warning':viewed.status==='published'?'success':'info'">{{ statusLabel(viewed.status) }}</el-tag>
+        <span>来源：{{ sourceLabel(viewed.member) }}</span>
         <span>作者：{{ viewed.member?.username }}</span>
         <span v-if="viewed.category">分类：{{ viewed.category.name }}</span>
         <span>时间：{{ viewed.created_at?.slice(0,16).replace('T',' ') }}</span>
       </div>
-      <div class="view-content">{{ viewed?.content || '暂无内容' }}</div>
+      <div class="view-body">
+        <img v-if="viewed?.cover_image" :src="viewed.cover_image" class="view-cover" />
+        <div class="view-summary" v-if="viewed?.summary">{{ viewed.summary }}</div>
+        <div class="view-content" v-html="viewed?.content || '<p style=&quot;color:#9ca3af&quot;>暂无内容</p>'"></div>
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -62,6 +67,15 @@ async function fetchData() {
   try { const r = await adminApi.getArticles({ page: page.value, size: size.value }); list.value = r.data?.list || []; total.value = r.data?.total || 0 } catch {} finally { loading.value = false }
 }
 async function review(row: any, approved: boolean) {
+  if (approved) {
+    try {
+      await ElMessageBox.confirm(
+        `确认通过文章「${row.title}」的审核？通过后将公开发布。`,
+        '通过确认',
+        { type: 'warning', confirmButtonText: '确认通过', cancelButtonText: '取消' }
+      )
+    } catch { return }
+  }
   try {
     const comment = approved ? '' : (await ElMessageBox.prompt('拒绝理由', '拒绝')).value || ''
     await adminApi.reviewArticle(row.id, { approved, comment })
@@ -101,6 +115,34 @@ async function deleteRow(row: any) {
   border-radius: 10px;
 }
 .pagination { display: flex; justify-content: center; padding: 20px 0; }
-.view-meta { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; font-size: 13px; color: #6b7280; }
-.view-content { line-height: 1.8; white-space: pre-wrap; }
+.view-meta { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin-bottom: 16px; font-size: 13px; color: #6b7280; }
+.view-body {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.view-cover {
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+.view-summary {
+  color: #6b7280;
+  font-size: 14px;
+  line-height: 1.7;
+  background: #f8fafc;
+  border-left: 3px solid #409eff;
+  padding: 10px 14px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+.view-content {
+  line-height: 1.9;
+  font-size: 15px;
+  color: #303133;
+  :deep(img) { max-width: 100%; border-radius: 6px; }
+  :deep(p) { margin: 0 0 12px; }
+  :deep(blockquote) { border-left: 4px solid #dcdfe6; margin: 12px 0; padding: 8px 14px; color: #6b7280; background: #fafafa; }
+}
 </style>

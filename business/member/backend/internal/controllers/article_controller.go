@@ -168,6 +168,16 @@ func (ctrl *ArticleController) ListArticles(c *gin.Context) {
 	})
 }
 
+func (ctrl *ArticleController) GetPublishedArticle(c *gin.Context) {
+	id := parseUint(c.Param("id"))
+	article, err := ctrl.articleService.GetPublishedArticle(id)
+	if err != nil {
+		response.NotFound(c, err.Error())
+		return
+	}
+	response.Success(c, article)
+}
+
 // ---- Articles (Admin) ----
 
 func (ctrl *ArticleController) ReviewArticle(c *gin.Context) {
