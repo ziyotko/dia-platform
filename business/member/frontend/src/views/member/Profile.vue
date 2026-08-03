@@ -20,7 +20,7 @@
           <el-col :span="12">
             <template v-if="form.member_type === 'unit'">
             <el-form-item label="单位名称"><el-input v-model="form.company_name" /></el-form-item>
-            <el-form-item label="组织机构代码证"><el-input v-model="form.credit_code" /></el-form-item>
+            <el-form-item label="组织机构代码证" prop="credit_code"><el-input v-model="form.credit_code" maxlength="18" placeholder="统一社会信用代码" /></el-form-item>
             <el-form-item label="法定代表人"><el-input v-model="form.legal_person" /></el-form-item>
             <el-form-item label="联系人"><el-input v-model="form.contact_person" /></el-form-item>
             <el-form-item label="单位地址"><el-input v-model="form.address" /></el-form-item>
@@ -141,6 +141,28 @@ const validateEmail = (_rule: any, value: string, callback: any) => {
   checkEmailAvailable(value, callback)
 }
 
+// 统一社会信用代码合法性校验（GB 32100-2015：18位，含校验码算法），与注册页面一致
+const validateCreditCode = (_rule: any, value: string, callback: any) => {
+  if (!value) return callback(new Error('请输入统一社会信用代码'))
+  const code = value.trim().toUpperCase()
+  // 字符集：数字0-9 + 大写字母（去掉 I、O、S、V、Z）
+  const charSet = '0123456789ABCDEFGHJKLMNPQRTUWXY'
+  // 前17位的加权因子
+  const weights = [1, 3, 9, 27, 19, 26, 16, 17, 20, 29, 25, 13, 8, 24, 10, 30, 28]
+  if (!/^[0-9A-HJ-NPQRTUWXY]{2}[0-9]{6}[0-9A-HJ-NPQRTUWXY]{10}$/.test(code)) {
+    return callback(new Error('统一社会信用代码格式不正确'))
+  }
+  let sum = 0
+  for (let i = 0; i < 17; i++) {
+    sum += charSet.indexOf(code[i]) * weights[i]
+  }
+  const check = (31 - (sum % 31)) % 31
+  if (charSet[check] !== code[17]) {
+    return callback(new Error('统一社会信用代码校验不通过'))
+  }
+  callback()
+}
+
 // 身份证号校验（18位，出生日期 + 校验码）
 const validateIdCard = (_rule: any, value: string, callback: any) => {
   if (!value) return callback(new Error('请输入身份证号'))
@@ -170,7 +192,8 @@ const validateIdCard = (_rule: any, value: string, callback: any) => {
 const rules = {
   mobile: [{ validator: validateMobile, trigger: 'blur' }],
   email: [{ validator: validateEmail, trigger: 'blur' }],
-  id_card: [{ validator: validateIdCard, trigger: 'blur' }]
+  id_card: [{ validator: validateIdCard, trigger: 'blur' }],
+  credit_code: [{ validator: validateCreditCode, trigger: 'blur' }]
 }
 
 onMounted(async () => {
