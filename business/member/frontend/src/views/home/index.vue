@@ -104,7 +104,7 @@
             </div>
             <div v-loading="loadingLevels" class="level-list">
               <div class="level-item" v-for="(lv, i) in levels" :key="lv.id">
-                <div class="level-rank" :style="{ background: rankColors[i % rankColors.length] }">{{ lv.level + 1 }}</div>
+                <div class="level-rank" :style="{ background: rankColors[i % rankColors.length] }">{{ i + 1 }}</div>
                 <div class="level-info">
                   <div class="level-name">{{ lv.name }}</div>
                   <div class="level-desc">{{ lv.description || '加入协会即可享受相应等级的会员权益与服务' }}</div>
@@ -263,7 +263,7 @@ onMounted(async () => {
 async function fetchAnnouncements() {
   loadingAnn.value = true
   try {
-    const res = await announcementApi.getPublished({ page: 1, size: 8 })
+    const res = await announcementApi.getPublished({ page: 1, size: 10 })
     announcements.value = res.data.list || []
   } catch {} finally { loadingAnn.value = false }
 }

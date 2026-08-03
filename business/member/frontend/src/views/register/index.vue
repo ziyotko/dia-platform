@@ -48,7 +48,7 @@
             <el-input v-model="form1.mobile" placeholder="请输入手机号" :prefix-icon="Phone" />
           </el-form-item>
           <el-form-item prop="email">
-            <el-input v-model="form1.email" placeholder="请输入邮箱（选填）" :prefix-icon="Message" />
+            <el-input v-model="form1.email" placeholder="请输入邮箱" :prefix-icon="Message" />
           </el-form-item>
 
           <div class="form-section-title">会员类型</div>
