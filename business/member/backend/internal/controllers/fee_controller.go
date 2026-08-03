@@ -155,6 +155,10 @@ func (ctrl *FeeController) IssueInvoice(c *gin.Context) {
 	var invoiceFile string
 	file, err := c.FormFile("file")
 	if err == nil {
+		if file.Size > maxUploadSize {
+			response.BadRequest(c, "文件大小不能超过 10MB")
+			return
+		}
 		// Check file type
 		ext := ""
 		if idx := strings.LastIndex(file.Filename, "."); idx >= 0 {

@@ -110,8 +110,9 @@ func (ctrl *ArticleController) DeleteArticle(c *gin.Context) {
 }
 
 func (ctrl *ArticleController) GetArticle(c *gin.Context) {
+	memberID := middleware.GetMemberID(c)
 	id := parseUint(c.Param("id"))
-	article, err := ctrl.articleService.GetArticle(id)
+	article, err := ctrl.articleService.GetArticle(id, memberID)
 	if err != nil {
 		response.NotFound(c, err.Error())
 		return

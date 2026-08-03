@@ -208,7 +208,8 @@ func (s *AuthService) ChangePassword(memberID uint64, oldPwd, newPwd string) err
 func (s *AuthService) RequestPasswordReset(email string) error {
 	var member models.Member
 	if err := db.DB.Where("email = ?", email).First(&member).Error; err != nil {
-		return errors.New("该邮箱未注册")
+		// 无论邮箱是否注册都返回成功，防止用户枚举
+		return nil
 	}
 	token := uuid.New().String()
 	expire := time.Now().Add(1 * time.Hour)
@@ -218,7 +219,7 @@ func (s *AuthService) RequestPasswordReset(email string) error {
 		ExpireAt: &models.LocalTime{Time: expire},
 	}
 	db.DB.Create(&reset)
-	// In production, send email with token
+	// TODO: 生产环境必须真正发送邮件，这里仅持久化 token 供后续实现
 	return nil
 }
 

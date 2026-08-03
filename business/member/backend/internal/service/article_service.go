@@ -59,10 +59,10 @@ func (s *ArticleService) AdminDeleteArticle(id uint64) error {
 	return db.DB.Delete(&models.Article{}, id).Error
 }
 
-// GetArticle returns an article by ID
-func (s *ArticleService) GetArticle(id uint64) (*models.Article, error) {
+// GetArticle returns an article by ID (owner only)
+func (s *ArticleService) GetArticle(id, memberID uint64) (*models.Article, error) {
 	var article models.Article
-	if err := db.DB.Preload("Member").Preload("Category").First(&article, id).Error; err != nil {
+	if err := db.DB.Preload("Member").Preload("Category").Where("id = ? AND member_id = ?", id, memberID).First(&article).Error; err != nil {
 		return nil, errors.New("文章不存在")
 	}
 	return &article, nil

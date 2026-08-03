@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 
 	"member/internal/middleware"
 	"member/internal/service"
@@ -220,6 +222,22 @@ _______________________________________________
 	c.String(200, content)
 }
 
+// 允许上传的文件扩展名白名单
+var allowedUploadExts = map[string]bool{
+	".jpg": true, ".jpeg": true, ".png": true, ".gif": true,
+	".webp": true, ".bmp": true, ".pdf": true,
+	".doc": true, ".docx": true, ".xls": true, ".xlsx": true, ".txt": true,
+}
+
+// 允许的上传子目录白名单，防止路径穿越
+var allowedUploadDirs = map[string]bool{
+	"files": true, "avatars": true, "certificates": true, "cert": true,
+	"charter": true, "invoices": true, "images": true, "articles": true,
+	"certs": true, "covers": true, "templates": true,
+}
+
+const maxUploadSize = 10 << 20 // 10MB
+
 // UploadFile handles file upload
 func (ctrl *AuthController) UploadFile(c *gin.Context) {
 	file, err := c.FormFile("file")
@@ -228,7 +246,26 @@ func (ctrl *AuthController) UploadFile(c *gin.Context) {
 		return
 	}
 
+	// 限制文件大小，防止磁盘耗尽
+	if file.Size > maxUploadSize {
+		response.BadRequest(c, "文件大小不能超过 10MB")
+		return
+	}
+
+	// 扩展名白名单
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if !allowedUploadExts[ext] {
+		response.BadRequest(c, "不支持的文件类型")
+		return
+	}
+
+	// 子目录白名单，阻断路径穿越
 	subDir := c.DefaultPostForm("dir", "files")
+	if !allowedUploadDirs[subDir] {
+		response.BadRequest(c, "非法上传目录")
+		return
+	}
+
 	path, err := utils.SaveUploadedFile(file, subDir)
 	if err != nil {
 		response.ServerError(c, "文件上传失败")

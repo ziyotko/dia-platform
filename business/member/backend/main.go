@@ -65,6 +65,7 @@ func main() {
 	r.Use(middleware.Logger())
 	r.Use(middleware.IPLimit())
 	r.Use(gin.Recovery())
+	r.Use(middleware.SecureUploads())
 	r.SetTrustedProxies([]string{"127.0.0.1"})
 
 	// Serve uploaded files

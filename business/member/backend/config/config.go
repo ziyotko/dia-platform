@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"os"
 
 	"github.com/spf13/viper"
 )
@@ -15,12 +16,16 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Port             int    `mapstructure:"port"`
-	Mode             string `mapstructure:"mode"`
-	APIPrefix        string `mapstructure:"api_prefix"`
-	MaxConcurrentIPs int    `mapstructure:"max_concurrent_ips"`
-	UploadDirPrefix  string `mapstructure:"upload_dir_prefix"`
+	Port             int      `mapstructure:"port"`
+	Mode             string   `mapstructure:"mode"`
+	APIPrefix        string   `mapstructure:"api_prefix"`
+	MaxConcurrentIPs int      `mapstructure:"max_concurrent_ips"`
+	UploadDirPrefix  string   `mapstructure:"upload_dir_prefix"`
+	AllowedOrigins   []string `mapstructure:"allowed_origins"`
 }
+
+// 已知的弱默认密钥，用于启动时告警
+const defaultJWTSecret = "member-jwt-secret-key-2024"
 
 type MySQLConfig struct {
 	Host     string `mapstructure:"host"`
@@ -64,5 +69,28 @@ func Load(path string) {
 	Cfg = &Config{}
 	if err := viper.Unmarshal(Cfg); err != nil {
 		log.Fatalf("Failed to unmarshal config: %v", err)
+	}
+	applyEnvOverrides()
+}
+
+// applyEnvOverrides 允许通过环境变量覆盖敏感配置，避免把密钥/密码提交到仓库。
+// 生产环境务必通过环境变量注入：MEMBER_JWT_SECRET、MEMBER_DB_PASSWORD、MEMBER_MODE。
+func applyEnvOverrides() {
+	if v := os.Getenv("MEMBER_JWT_SECRET"); v != "" {
+		Cfg.JWT.Secret = v
+	}
+	if v := os.Getenv("MEMBER_DB_PASSWORD"); v != "" {
+		Cfg.MySQL.Password = v
+	}
+	if v := os.Getenv("MEMBER_MODE"); v != "" {
+		Cfg.Server.Mode = v
+	}
+
+	if Cfg.Server.Mode == "" {
+		Cfg.Server.Mode = "release"
+	}
+
+	if Cfg.JWT.Secret == "" || Cfg.JWT.Secret == defaultJWTSecret {
+		log.Printf("[WARN] 正在使用弱/默认 JWT 密钥！生产环境必须设置环境变量 MEMBER_JWT_SECRET。")
 	}
 }

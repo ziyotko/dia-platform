@@ -101,10 +101,10 @@ func (s *ApplicationService) GetMyApplications(memberID uint64) ([]models.Applic
 	return apps, nil
 }
 
-// GetApplication returns an application by ID
-func (s *ApplicationService) GetApplication(id uint64) (*models.Application, error) {
+// GetApplication returns an application by ID (owner only)
+func (s *ApplicationService) GetApplication(id, memberID uint64) (*models.Application, error) {
 	var app models.Application
-	if err := db.DB.Preload("Org").Preload("Member").First(&app, id).Error; err != nil {
+	if err := db.DB.Preload("Org").Preload("Member").Where("id = ? AND member_id = ?", id, memberID).First(&app).Error; err != nil {
 		return nil, errors.New("申请不存在")
 	}
 	return &app, nil

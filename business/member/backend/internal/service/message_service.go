@@ -38,10 +38,10 @@ func (s *MessageService) GetMyMessages(memberID uint64, page, size int) ([]model
 	return msgs, total, nil
 }
 
-// GetMessage returns a message by ID
-func (s *MessageService) GetMessage(id uint64) (*models.MemberMessage, error) {
+// GetMessage returns a message by ID (owner only)
+func (s *MessageService) GetMessage(id, memberID uint64) (*models.MemberMessage, error) {
 	var msg models.MemberMessage
-	if err := db.DB.Preload("Member").First(&msg, id).Error; err != nil {
+	if err := db.DB.Preload("Member").Where("id = ? AND member_id = ?", id, memberID).First(&msg).Error; err != nil {
 		return nil, errors.New("消息不存在")
 	}
 	return &msg, nil

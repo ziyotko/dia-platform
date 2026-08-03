@@ -46,8 +46,9 @@ func (ctrl *MessageController) GetMyMessages(c *gin.Context) {
 }
 
 func (ctrl *MessageController) GetMessage(c *gin.Context) {
+	memberID := middleware.GetMemberID(c)
 	id := parseUint(c.Param("id"))
-	msg, err := ctrl.msgService.GetMessage(id)
+	msg, err := ctrl.msgService.GetMessage(id, memberID)
 	if err != nil {
 		response.NotFound(c, err.Error())
 		return

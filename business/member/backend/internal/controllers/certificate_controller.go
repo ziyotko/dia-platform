@@ -23,8 +23,9 @@ func (ctrl *CertificateController) GetMyCertificates(c *gin.Context) {
 }
 
 func (ctrl *CertificateController) GetCertificate(c *gin.Context) {
+	memberID := middleware.GetMemberID(c)
 	id := parseUint(c.Param("id"))
-	cert, err := ctrl.certService.GetCertificate(id)
+	cert, err := ctrl.certService.GetCertificate(id, memberID)
 	if err != nil {
 		response.NotFound(c, err.Error())
 		return

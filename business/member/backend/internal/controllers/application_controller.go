@@ -69,10 +69,11 @@ func (ctrl *ApplicationController) GetMyApplications(c *gin.Context) {
 	response.Success(c, apps)
 }
 
-// GetApplication returns an application detail
+// GetApplication returns an application detail (owner only)
 func (ctrl *ApplicationController) GetApplication(c *gin.Context) {
+	memberID := middleware.GetMemberID(c)
 	id := parseUint(c.Param("id"))
-	app, err := ctrl.appService.GetApplication(id)
+	app, err := ctrl.appService.GetApplication(id, memberID)
 	if err != nil {
 		response.NotFound(c, err.Error())
 		return

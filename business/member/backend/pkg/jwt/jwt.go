@@ -36,6 +36,10 @@ func GenerateToken(memberID uint64, username string, isAdmin bool) (string, erro
 func ParseToken(tokenString string) (*MemberClaims, error) {
 	cfg := config.Cfg.JWT
 	token, err := jwtlib.ParseWithClaims(tokenString, &MemberClaims{}, func(t *jwtlib.Token) (interface{}, error) {
+		// 只接受 HS256，防止算法混淆攻击
+		if _, ok := t.Method.(*jwtlib.SigningMethodHMAC); !ok {
+			return nil, jwtlib.ErrSignatureInvalid
+		}
 		return []byte(cfg.Secret), nil
 	})
 	if err != nil {

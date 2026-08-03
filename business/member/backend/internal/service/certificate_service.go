@@ -18,10 +18,10 @@ func (s *CertificateService) GetMyCertificates(memberID uint64) ([]models.Certif
 	return certs, nil
 }
 
-// GetCertificate returns a certificate by ID
-func (s *CertificateService) GetCertificate(id uint64) (*models.Certificate, error) {
+// GetCertificate returns a certificate by ID (owner only)
+func (s *CertificateService) GetCertificate(id, memberID uint64) (*models.Certificate, error) {
 	var cert models.Certificate
-	if err := db.DB.Preload("Member").First(&cert, id).Error; err != nil {
+	if err := db.DB.Preload("Member").Where("id = ? AND member_id = ?", id, memberID).First(&cert).Error; err != nil {
 		return nil, errors.New("证书不存在")
 	}
 	return &cert, nil
