@@ -13,6 +13,14 @@
         "npx tsc": true,
         "ForEach-Object": true,
         "Set-Content": true,
-        ".\\node_modules\\.bin\\vue-tsc.cmd": true
+        ".\\node_modules\\.bin\\vue-tsc.cmd": true,
+        "/^node -p \"require\\('\\./node_modules/typescript/package\\.json'\\)\\.version\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^cd D:\\\\Projects\\\\dia-platform\\\\business\\\\portal\\\\frontend; node -p \"require\\('\\./node_modules/typescript/package\\.json'\\)\\.version\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
     }
 }
