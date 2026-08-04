@@ -21,6 +21,7 @@
         "/^cd D:\\\\Projects\\\\dia-platform\\\\business\\\\portal\\\\frontend; node -p \"require\\('\\./node_modules/typescript/package\\.json'\\)\\.version\"$/": {
             "approve": true,
             "matchCommandLine": true
-        }
+        },
+        "npx eslint": true
     }
 }
