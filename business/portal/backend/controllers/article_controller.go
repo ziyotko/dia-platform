@@ -134,6 +134,94 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 	}))
 }
 
+// PublicSearchArticles 开放搜索（无需认证）：按查询条件搜索已发布文章，返回 article 表数据但不含 content 字段
+func (c *ArticleController) PublicSearchArticles(ctx *gin.Context) {
+	title := ctx.Query("title")
+	categoryIDStr := ctx.Query("categoryId")
+	tagIDStr := ctx.Query("tagId")
+	typeStr := ctx.Query("type")
+	author := ctx.Query("author")
+	source := ctx.Query("source")
+
+	categoryID := 0
+	if categoryIDStr != "" {
+		if id, err := strconv.Atoi(categoryIDStr); err == nil {
+			categoryID = id
+		}
+	}
+	tagID := 0
+	if tagIDStr != "" {
+		if id, err := strconv.Atoi(tagIDStr); err == nil {
+			tagID = id
+		}
+	}
+	articleType := 0
+	if typeStr != "" {
+		if t, err := strconv.Atoi(typeStr); err == nil {
+			articleType = t
+		}
+	}
+	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
+	if page < 1 {
+		page = 1
+	}
+	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("pageSize", "10"))
+	if pageSize < 1 {
+		pageSize = 10
+	}
+
+	articles, total, err := c.articleService.SearchPublishedArticles(title, categoryID, tagID, articleType, author, source, page, pageSize)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "搜索文章失败"))
+		return
+	}
+
+	var list []gin.H
+	for _, a := range articles {
+		categoryIds := make([]uint, 0, len(a.Categories))
+		for _, c := range a.Categories {
+			categoryIds = append(categoryIds, c.ID)
+		}
+		tagIds := make([]uint, 0, len(a.Tags))
+		for _, t := range a.Tags {
+			tagIds = append(tagIds, t.ID)
+		}
+		columnIds := make([]uint, 0, len(a.Columns))
+		for _, c := range a.Columns {
+			columnIds = append(columnIds, c.ID)
+		}
+		list = append(list, gin.H{
+			"id":           a.ID,
+			"title":        a.Title,
+			"type":         a.Type,
+			"summary":      a.Summary,
+			"status":       a.Status,
+			"isTop":        a.IsTop,
+			"isBold":       a.IsBold,
+			"defaultColor": a.DefaultColor,
+			"cover":        a.Cover,
+			"author":       a.Author,
+			"authorCode":   a.AuthorCode,
+			"source":       a.Source,
+			"publishTime":  formatLocalTime(a.PublishTime),
+			"url":          a.URL,
+			"columnCount":  len(a.Columns),
+			"categoryIds":  categoryIds,
+			"tagIds":       tagIds,
+			"columnIds":    columnIds,
+			"createTime":   a.CreatedAt.Format("2006-01-02 15:04:05"),
+			"updatedAt":    a.UpdatedAt.Format("2006-01-02 15:04:05"),
+		})
+	}
+
+	ctx.JSON(http.StatusOK, utils.Success("搜索成功", gin.H{
+		"list":     list,
+		"total":    total,
+		"page":     page,
+		"pageSize": pageSize,
+	}))
+}
+
 func (c *ArticleController) GetArticleByID(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)

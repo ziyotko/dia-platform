@@ -69,6 +69,57 @@ func (s *ArticleService) GetArticles(title string, categoryID int, tagID int, st
 	return articles, total, err
 }
 
+// SearchPublishedArticles 开放搜索（无需认证）：仅返回已发布文章（status=1）
+// 支持标题模糊搜索及分类/标签/类型/作者/来源过滤，带分页；不返回 content 字段
+func (s *ArticleService) SearchPublishedArticles(title string, categoryID int, tagID int, articleType int, author string, source string, page int, pageSize int) ([]models.Article, int64, error) {
+	query := utils.DB.Model(&models.Article{}).Where("status = ?", 1)
+	if title != "" {
+		query = query.Where("MATCH(title) AGAINST (? IN BOOLEAN MODE) OR title LIKE ?", title, "%"+title+"%")
+	}
+	if categoryID > 0 {
+		query = query.Where("article.id IN (SELECT article_id FROM article_category WHERE category_id = ?)", categoryID)
+	}
+	if tagID > 0 {
+		query = query.Where("article.id IN (SELECT article_id FROM article_tag WHERE tag_id = ?)", tagID)
+	}
+	if articleType > 0 {
+		query = query.Where("type = ?", articleType)
+	}
+	if author != "" {
+		query = query.Where("MATCH(author) AGAINST (? IN BOOLEAN MODE) OR author LIKE ?", author, "%"+author+"%")
+	}
+	if source != "" {
+		query = query.Where("MATCH(source) AGAINST (? IN BOOLEAN MODE) OR source LIKE ?", source, "%"+source+"%")
+	}
+
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * pageSize
+	var ids []uint
+	if err := query.Select("article.id").
+		Order("article.is_top DESC, article.created_at DESC").
+		Limit(pageSize).Offset(offset).
+		Scan(&ids).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if len(ids) == 0 {
+		return []models.Article{}, total, nil
+	}
+
+	var articles []models.Article
+	// 公开搜索不返回正文：Omit Content 避免加载 longtext 大字段
+	err := utils.DB.Omit("Content").
+		Where("id IN ?", ids).
+		Order("is_top DESC, created_at DESC").
+		Preload("Categories").Preload("Tags").Preload("Columns").
+		Find(&articles).Error
+	return articles, total, err
+}
+
 func (s *ArticleService) GetArticleByID(id uint) (*models.Article, error) {
 	var article models.Article
 	err := utils.DB.Preload("Categories").Preload("Tags").Preload("Columns").Preload("Attachments").First(&article, id).Error

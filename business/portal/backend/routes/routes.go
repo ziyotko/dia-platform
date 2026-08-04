@@ -44,6 +44,9 @@ func SetupRoutes(router *gin.Engine) {
 		public.POST("/login", authController.Login)
 		public.GET("/site-info", settingsController.GetPublicSiteInfo)
 
+		//开放文章搜索（无需认证，仅返回已发布文章，不含正文）
+		public.GET("/search/articles", articleController.PublicSearchArticles)
+
 		//站点分析接口
 		public.POST("/visit", visitController.RecordVisit)
 		public.POST("/like", likeController.RecordLike)

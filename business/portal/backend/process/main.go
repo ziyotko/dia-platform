@@ -299,7 +299,7 @@ func mapArchiveToArticle(a CmsArchives) models.Article {
 		Title:       a.Title,
 		Type:        1,
 		Summary:     a.Des,
-		Content:     pathToURL(a.Content),
+		Content:     a.Content,
 		Status:      1,
 		AuditStatus: 2,
 		Cover:       pathToURL(a.Thumbnail),
