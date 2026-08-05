@@ -161,11 +161,9 @@
           <el-table :data="columnPagedList" v-loading="loading" border stripe>
             <el-table-column type="index" width="60" align="center" />
             <el-table-column prop="id" label="ID" width="80" align="center" />
-            <el-table-column prop="name" label="名称" min-width="160" />
-            <el-table-column prop="code" label="编码" min-width="120" />
-            <el-table-column prop="template" label="模板名称" min-width="60" show-overflow-tooltip />
+            <el-table-column prop="name" label="栏目名称" min-width="160" />
+            <el-table-column prop="template" label="模板名称" min-width="120" show-overflow-tooltip />
             <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
-            <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
             <el-table-column prop="createTime" label="创建时间" width="170" />
             <el-table-column prop="updatedAt" label="更新时间" width="170" />
             <el-table-column label="操作" width="180" align="center" fixed="right">
@@ -343,6 +341,7 @@ import {
   User
 } from '@element-plus/icons-vue'
 import { getArticleColumnPublishes } from '@/api/article'
+import { getColumnPublishes } from '@/api/column'
 import { getStaticPages } from '@/api/static_page'
 import { getStaticLogList, clearStaticLogs } from '@/api/static_log'
 
@@ -480,8 +479,8 @@ const fetchPageList = async () => {
       const res: any = await getStaticPages({ pageType: 'home' })
       homeList.value = res.data || []
     } else if (activeTab.value === 'column') {
-      const res: any = await getStaticPages({ pageType: 'column' })
-      columnList.value = res.data || []
+      const res: any = await getColumnPublishes()
+      columnList.value = res.data?.list || []
     } else if (activeTab.value === 'detail') {
       const res: any = await getArticleColumnPublishes({
         page: queryForm.page,

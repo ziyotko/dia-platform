@@ -19,6 +19,10 @@ export function getColumns(params?: { pageId?: number; parentId?: number }) {
   return request.get('/columns', { params })
 }
 
+export function getColumnPublishes() {
+  return request.get('/columns/publishes')
+}
+
 export function createColumn(data: ColumnForm) {
   return request.post('/columns', data)
 }

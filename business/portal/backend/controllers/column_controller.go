@@ -45,6 +45,18 @@ func (c *ColumnController) GetColumns(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("获取栏目列表成功", columns))
 }
 
+// GetColumnPublishes 获取栏目发布（静态化）列表
+func (c *ColumnController) GetColumnPublishes(ctx *gin.Context) {
+	columns, err := c.columnService.GetColumnPublishes()
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取栏目发布列表失败"))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("获取栏目发布列表成功", gin.H{
+		"list": columns,
+	}))
+}
+
 func (c *ColumnController) CreateColumn(ctx *gin.Context) {
 	var req models.Column
 	if err := ctx.ShouldBindJSON(&req); err != nil {

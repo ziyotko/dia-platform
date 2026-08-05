@@ -95,6 +95,7 @@ func SetupRoutes(router *gin.Engine) {
 		member.GET("/tags/all", tagController.GetAllTags)
 		member.GET("/tags/stats", tagController.GetTagArticleStats)
 		member.GET("/columns", columnController.GetColumns)
+		member.GET("/columns/publishes", columnController.GetColumnPublishes)
 		member.GET("/pages", pageController.GetPages)
 		member.GET("/static-pages", staticPageController.GetStaticPages)
 		member.GET("/workflows", workflowController.GetWorkflows)
