@@ -607,6 +607,7 @@ watch(() => selectedPage.value, () => {
 watch(() => columnForm.name, (val) => {
   if (val) {
     columnForm.code = toPinyinCode(val)
+    columnForm.routePath = `/${toPinyinCode(val)}`
   }
 })
 
