@@ -10,14 +10,18 @@ import (
 	"server/utils"
 )
 
-// 管理员角色 ID（与前端 userStore.userInfo.roleIds.includes(1) 保持一致）
-const AdminRoleID = 1
+// 管理员角色 ID（与前端 userStore.userInfo.roleIds.includes(1/2) 保持一致）
+// 1=超级管理员，2=管理员
+const (
+	AdminRoleID  = 1
+	AdminRoleID2 = 2
+)
 
 // HasAdminRole 判断逗号分隔的角色 ID 字符串中是否包含管理员角色。
 func HasAdminRole(roleIdsStr string) bool {
 	for _, part := range strings.Split(roleIdsStr, ",") {
 		id, err := strconv.Atoi(strings.TrimSpace(part))
-		if err == nil && id == AdminRoleID {
+		if err == nil && (id == AdminRoleID || id == AdminRoleID2) {
 			return true
 		}
 	}

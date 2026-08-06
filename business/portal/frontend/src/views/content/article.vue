@@ -895,7 +895,7 @@ import { uploadFile } from '@/api/upload'
 
 const userStore = useUserStore()
 const currentUserId = computed(() => userStore.userInfo?.id || 0)
-const isAdmin = computed(() => userStore.userInfo?.roleIds?.includes(1) || false)
+const isAdmin = computed(() => userStore.userInfo?.roleIds?.includes(1) || userStore.userInfo?.roleIds?.includes(2) || false)
 
 const loading = ref(false)
 const dialogVisible = ref(false)

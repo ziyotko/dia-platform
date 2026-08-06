@@ -181,7 +181,7 @@ const iconPickerVisible = ref(false)
 const iconSearch = ref('')
 
 const userStore = useUserStore()
-const isSuperAdmin = computed(() => userStore.userInfo?.roleIds?.includes(1) || false)
+const isSuperAdmin = computed(() => userStore.userInfo?.roleIds?.includes(1) || userStore.userInfo?.roleIds?.includes(2) || false)
 
 const iconNames = Object.keys(ElementPlusIconsVue)
 
