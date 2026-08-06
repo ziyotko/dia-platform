@@ -599,6 +599,15 @@
           <span>来源：{{ previewData.source }}</span>
           <span>时间：{{ previewData.createTime }}</span>
         </div>
+        <div class="preview-cover" v-if="previewData.cover">
+          <el-image
+            :src="previewData.cover"
+            fit="cover"
+            style="width: 100%; max-height: 360px"
+            :preview-src-list="[previewData.cover]"
+            class="preview-cover-image"
+          />
+        </div>
         <div class="preview-summary" v-if="previewData.summary">
           <strong>摘要：</strong>{{ previewData.summary }}
         </div>
@@ -1951,6 +1960,7 @@ const previewData = reactive({
   summary: '',
   content: '',
   url: '',
+  cover: '',
   attachments: [] as any[]
 })
 
@@ -1963,6 +1973,7 @@ const handlePreview = (row: any) => {
     summary: row.summary || '',
     content: row.content || '',
     url: row.url || '',
+    cover: row.cover || '',
     attachments: row.attachments || []
   })
   previewVisible.value = true
@@ -2412,6 +2423,18 @@ onMounted(() => {
 
     span {
       margin-right: 16px;
+    }
+  }
+
+  .preview-cover {
+    margin-bottom: 16px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #e6f2ff;
+
+    .preview-cover-image {
+      display: block;
+      width: 100%;
     }
   }
 
