@@ -22,6 +22,20 @@
             "approve": true,
             "matchCommandLine": true
         },
-        "npx eslint": true
+        "npx eslint": true,
+        "/^node -e \"const fn=\\(html\\)=>\\{if\\(!html\\|\\|!html\\.includes\\('<img'\\)\\)return html\\|\\|'';return html\\.replace\\(/<img\\\\b\\(\\?!\\[\\^>\\]\\*\\\\breferrerpolicy=\\)\\[\\^>\\]\\*>/gi,\\(t\\)=>t\\.replace\\(/\\^<img\\\\b/i,'<img referrerpolicy=\\\\\"no-referrer\\\\\"'\\)\\)\\}; console\\.log\\(fn\\('<p>hi</p><img src=\\\\\"https://inews\\.gtimg\\.com/x\\\\\" data-href=\\\\\"y\\\\\" data-w-e-i=\\\\\"1\\\\\" style=\\\\\"max-width:100%;\\\\\"><p>bye</p>'\\)\\); console\\.log\\('---'\\); console\\.log\\(fn\\('<img src=\\\\\"a\\\\\" referrerpolicy=\\\\\"no-referrer\\\\\"><img src=\\\\\"b\\\\\">'\\)\\);\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^node _no_ref_test\\.mjs$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "Push-Location": true,
+        "Pop-Location": true,
+        "/^Push-Location \"D:\\\\Projects\\\\dia-platform\\\\business\\\\portal\\\\frontend\"; node _no_ref_test2\\.mjs; Pop-Location$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
     }
 }

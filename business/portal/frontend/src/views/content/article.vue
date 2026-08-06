@@ -1273,6 +1273,14 @@ const handleEditorChange = () => {
   }
 }
 
+// 为文章内容中的外链图片添加 referrerpolicy="no-referrer"，绕过图床防盗链（如腾讯 gtimg.com 等）
+const noReferrerContent = (html: string): string => {
+  if (!html || !/<img\b/i.test(html)) return html || ''
+  return html.replace(/<img\b(?![^>]*\breferrerpolicy=)[^>]*>/gi, (tag) =>
+    tag.replace(/^<img\b/i, '<img referrerpolicy="no-referrer"')
+  )
+}
+
 const skipRTFGroup = (rtf: string, start: number): number => {
   let i = start
   if (rtf[i] !== '{') return i
@@ -1971,7 +1979,7 @@ const handlePreview = (row: any) => {
     source: row.source || '',
     createTime: row.createTime,
     summary: row.summary || '',
-    content: row.content || '',
+    content: noReferrerContent(row.content || ''),
     url: row.url || '',
     cover: row.cover || '',
     attachments: row.attachments || []
@@ -1990,7 +1998,7 @@ const handleSubmit = async () => {
       categoryIds: form.categoryIds,
       tagIds: form.tagIds,
       summary: form.summary,
-      content: form.content,
+      content: noReferrerContent(form.content),
       status: form.status,
       auditStatus: form.auditStatus,
       isTop: form.isTop,
@@ -2245,7 +2253,7 @@ const handleSubmitData = async () => {
       categoryIds: dataForm.categoryIds,
       tagIds: dataForm.tagIds,
       summary: dataForm.yearMonth,
-      content: dataForm.content,
+      content: noReferrerContent(dataForm.content),
       status: 0,
       auditStatus: 0,
       isTop: 0,
