@@ -335,7 +335,7 @@ func pathToURL(path string) string {
 			return path
 		}
 		if path != "" {
-			path = "/uploads" + path
+			path = "/caamm/uploads" + path
 		}
 	}
 	return path
