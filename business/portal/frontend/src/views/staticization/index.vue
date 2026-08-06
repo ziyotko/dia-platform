@@ -10,7 +10,7 @@
           <el-switch v-model="form.homeGray" active-text="开启" inactive-text="关闭" />
         </el-form-item>
 
-        <el-form-item label="首页自动静态化时间">
+        <el-form-item label="设置首页固定静态化时间">
           <div class="time-row">
             <el-switch v-model="form.homeStaticTimeEnabled" />
             <el-time-picker
@@ -24,7 +24,7 @@
           </div>
         </el-form-item>
 
-        <el-form-item label="栏目页自动静态化时间">
+        <el-form-item label="设置栏目页固定静态化时间">
           <div class="time-row">
             <el-switch v-model="form.columnStaticTimeEnabled" />
             <el-time-picker
@@ -38,7 +38,7 @@
           </div>
         </el-form-item>
 
-        <el-form-item label="专题页自动静态化时间">
+        <el-form-item label="设置专题页固定静态化时间">
           <div class="time-row">
             <el-switch v-model="form.specialStaticTimeEnabled" />
             <el-time-picker
@@ -52,7 +52,7 @@
           </div>
         </el-form-item>
 
-        <el-form-item label="详情页自动静态化时间">
+        <el-form-item label="设置详情页固定静态化时间">
           <div class="time-row">
             <el-switch v-model="form.detailStaticTimeEnabled" />
             <el-time-picker
