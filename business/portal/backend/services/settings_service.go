@@ -55,7 +55,11 @@ func (s *SettingsService) GetSettings() (*models.Setting, error) {
 	return &settings, nil
 }
 
-func (s *SettingsService) UpdateSettings(settings *models.Setting) error {
+// UpdateSettings 只更新 fields 中指定的字段，避免请求中未携带的字段（零值）覆盖表中其他设置项
+func (s *SettingsService) UpdateSettings(settings *models.Setting, fields ...string) error {
+	if len(fields) == 0 {
+		return nil
+	}
 	var existing models.Setting
 	result := utils.DB.First(&existing)
 	if result.Error != nil {
@@ -65,5 +69,5 @@ func (s *SettingsService) UpdateSettings(settings *models.Setting) error {
 		return result.Error
 	}
 	settings.ID = existing.ID
-	return utils.DB.Model(&existing).Select("*").Omit("created_at", "deleted_at").Updates(settings).Error
+	return utils.DB.Model(&existing).Select(fields).Updates(settings).Error
 }
