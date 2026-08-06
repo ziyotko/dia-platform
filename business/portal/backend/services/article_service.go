@@ -14,7 +14,7 @@ import (
 
 type ArticleService struct{}
 
-func (s *ArticleService) buildArticleListQuery(title string, categoryID int, tagID int, status int, auditStatus int, articleType int, author string, source string) *gorm.DB {
+func (s *ArticleService) buildArticleListQuery(title string, categoryID int, tagID int, columnID int, status int, auditStatus int, articleType int, author string, source string) *gorm.DB {
 	query := utils.DB.Model(&models.Article{})
 	if title != "" {
 		query = query.Where("MATCH(title) AGAINST (? IN BOOLEAN MODE) OR title LIKE ?", title, "%"+title+"%")
@@ -24,6 +24,9 @@ func (s *ArticleService) buildArticleListQuery(title string, categoryID int, tag
 	}
 	if tagID > 0 {
 		query = query.Where("article.id IN (SELECT article_id FROM article_tag WHERE tag_id = ?)", tagID)
+	}
+	if columnID > 0 {
+		query = query.Where("article.id IN (SELECT article_id FROM article_column WHERE column_id = ?)", columnID)
 	}
 	if status >= 0 {
 		query = query.Where("status = ?", status)
@@ -43,15 +46,15 @@ func (s *ArticleService) buildArticleListQuery(title string, categoryID int, tag
 	return query
 }
 
-func (s *ArticleService) GetArticles(title string, categoryID int, tagID int, status int, auditStatus int, articleType int, author string, source string, page int, pageSize int) ([]models.Article, int64, error) {
+func (s *ArticleService) GetArticles(title string, categoryID int, tagID int, columnID int, status int, auditStatus int, articleType int, author string, source string, page int, pageSize int) ([]models.Article, int64, error) {
 	var total int64
-	countQuery := s.buildArticleListQuery(title, categoryID, tagID, status, auditStatus, articleType, author, source)
+	countQuery := s.buildArticleListQuery(title, categoryID, tagID, columnID, status, auditStatus, articleType, author, source)
 	if err := countQuery.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	offset := (page - 1) * pageSize
-	idQuery := s.buildArticleListQuery(title, categoryID, tagID, status, auditStatus, articleType, author, source)
+	idQuery := s.buildArticleListQuery(title, categoryID, tagID, columnID, status, auditStatus, articleType, author, source)
 	var ids []uint
 	if err := idQuery.Select("article.id").Order("article.is_top DESC, article.created_at DESC").Limit(pageSize).Offset(offset).Scan(&ids).Error; err != nil {
 		return nil, 0, err

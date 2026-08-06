@@ -46,7 +46,7 @@ var oldColumn = []string{"%重点工作%", "%首页-轮播%", "%行业要闻%", 
 	"%协会工作-轮播图%", "%协会动态%", "%分支机构动态%", "%国际合作%", "%展会信息%", "%协调合作%",
 	"%国内数据%", "%国外数据%", "%产销%", "%进出口%"}
 var newColumn = []string{"首页头条", "首页轮播", "首页行业要闻", "首页协会活动", "首页通知公告", "首页协会文件", "首页行业发展", "首页智能网联", "首页品牌服务", "首页展会信息", "首页标准法规", "首页企业新闻", "首页国际合作", "首页行业政策", "首页法律法规",
-	"协会概况简介", "协会概况章程", "协会概况组织", "协会概况职责", "协会概况荣誉", "协会概况轮值会长", "协会概况副会长", "协会概况常务理事", "协会概况理事", "协会概况会员代表", "协会概况普通会员", "协会概况协会领导",
+	"协会概况简介", "协会概况章程", "协会概况组织", "协会概况职责", "协会概况荣誉", "协会概况轮值会长", "协会概况副会长", "协会概况常务理事", "协会概况理事", "协会概况会员代表", "协会概况普通会员", "协会概况领导团队",
 	"协会工作头条", "协会工作协会动态", "协会工作分支机构动态", "协会工作国际合作", "协会工作展会信息", "协会工作行业发展",
 	"统计数据国内数据", "统计数据国外数据", "统计数据产销", "统计数据进出口"}
 
@@ -299,7 +299,7 @@ func mapArchiveToArticle(a CmsArchives) models.Article {
 		Title:       a.Title,
 		Type:        1,
 		Summary:     a.Des,
-		Content:     a.Content,
+		Content:     pathToContent(a.Content),
 		Status:      1,
 		AuditStatus: 2,
 		Cover:       pathToURL(a.Thumbnail),
@@ -314,9 +314,19 @@ func mapArchiveToArticle(a CmsArchives) models.Article {
 	}
 }
 
+func pathToContent(path string) string {
+	if strings.Contains(path, "/uploads") {
+		path = "/caamm/uploads" + path
+	}
+	if strings.Contains(path, "http://file.caam.org.cn/") {
+		path = strings.ReplaceAll(path, "http://file.caam.org.cn/", "/caamm/uploads")
+	}
+	return path
+}
+
 func pathToURL(path string) string {
 	if strings.Contains(path, "http://file.caam.org.cn/") {
-		path = strings.ReplaceAll(path, "http://file.caam.org.cn/", "/uploads")
+		path = strings.ReplaceAll(path, "http://file.caam.org.cn/", "/caamm/uploads")
 	} else {
 		if strings.Contains(path, "http://") {
 			return path

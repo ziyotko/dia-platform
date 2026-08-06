@@ -5,6 +5,17 @@
         <el-form-item label="文章标题">
           <el-input v-model="queryForm.title" placeholder="请输入文章标题" clearable />
         </el-form-item>
+        <el-form-item label="发布栏目">
+          <el-cascader
+            v-model="queryForm.columnPath"
+            :options="columnCascaderOptions"
+            :props="{ expandTrigger: 'hover' }"
+            placeholder="请选择页面/栏目/子栏目"
+            clearable
+            filterable
+            style="width: 280px"
+          />
+        </el-form-item>
         <el-form-item label="文章分类">
           <el-select v-model="queryForm.categoryId" placeholder="全部分类" clearable style="width: 140px">
             <el-option
@@ -1002,7 +1013,8 @@ const queryForm = reactive({
   auditStatus: undefined as number | undefined,
   type: undefined as number | undefined,
   author: '',
-  source: ''
+  source: '',
+  columnPath: [] as number[]
 })
 
 const form = reactive({
@@ -1148,6 +1160,28 @@ const fetchColumns = async () => {
     // ignore
   }
 }
+
+// 栏目级联选项：页面 → 栏目 → 子栏目
+const columnCascaderOptions = computed(() => {
+  return pageList.value.map((page: any) => {
+    const cols = columnList.value.filter((col: any) => col.pageId === page.id)
+    const rootCols = cols.filter((col: any) => !col.parentId || col.parentId === 0)
+    return {
+      value: page.id,
+      label: page.name,
+      children: rootCols.map((rootCol: any) => {
+        const children = cols.filter((col: any) => col.parentId === rootCol.id)
+        return {
+          value: rootCol.id,
+          label: rootCol.name,
+          children: children.length
+            ? children.map((child: any) => ({ value: child.id, label: child.name }))
+            : undefined
+        }
+      })
+    }
+  })
+})
 
 // 编辑器
 const editorRef = shallowRef<IDomEditor>()
@@ -1441,6 +1475,9 @@ const fetchData = async () => {
     if (queryForm.title) params.title = queryForm.title
     if (queryForm.categoryId !== undefined) params.categoryId = queryForm.categoryId
     if (queryForm.tagId !== undefined) params.tagId = queryForm.tagId
+    if (queryForm.columnPath && queryForm.columnPath.length > 0) {
+      params.columnId = queryForm.columnPath[queryForm.columnPath.length - 1]
+    }
     if (queryForm.status !== undefined) params.status = queryForm.status
     if (queryForm.auditStatus !== undefined) params.auditStatus = queryForm.auditStatus
     if (queryForm.type !== undefined) params.type = queryForm.type
@@ -1488,6 +1525,7 @@ const resetQuery = () => {
   queryForm.type = undefined
   queryForm.author = ''
   queryForm.source = ''
+  queryForm.columnPath = []
   queryForm.page = 1
   fetchData()
 }
@@ -2247,6 +2285,8 @@ onMounted(() => {
   fetchData().then(() => checkAutoAudit())
   fetchCategories()
   fetchTags()
+  fetchPages()
+  fetchColumns()
 })
 </script>
 
