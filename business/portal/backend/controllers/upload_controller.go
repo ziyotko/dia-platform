@@ -37,7 +37,7 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 	// 目录白名单：仅允许已知子目录，阻断路径穿越（如 dir=../../）
 	allowedDirs := map[string]bool{
 		"": true, "article": true, "attachment": true, "video": true,
-		"covers": true, "avatars": true, "images": true,
+		"covers": true, "avatars": true, "images": true, "setting": true,
 	}
 	if !allowedDirs[dir] {
 		ctx.JSON(http.StatusOK, utils.Error(1, "非法上传目录"))
