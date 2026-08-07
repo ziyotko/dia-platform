@@ -5,14 +5,14 @@
    ========================================================= */
 
 :root {
-  /* 主色（Element Plus 变量） */
-  --el-color-primary: #409eff;
-  --el-color-primary-light-3: #79bbff;
-  --el-color-primary-light-5: #a0cfff;
-  --el-color-primary-light-7: #c6e2ff;
-  --el-color-primary-light-8: #d9ecff;
-  --el-color-primary-light-9: #ecf5ff;
-  --el-color-primary-dark-2: #337ecc;
+  /* 主色（Element Plus 变量）- 品牌色 #002FA7 */
+  --el-color-primary: #002fa7;
+  --el-color-primary-light-3: #4d6dc1;
+  --el-color-primary-light-5: #8097d3;
+  --el-color-primary-light-7: #b3c1e5;
+  --el-color-primary-light-8: #ccd5ed;
+  --el-color-primary-light-9: #e6eaf6;
+  --el-color-primary-dark-2: #002686;
 
   /* 圆角 */
   --el-border-radius-base: 8px;
@@ -89,7 +89,7 @@ body {
 }
 
 .el-button--primary {
-  box-shadow: 0 2px 6px rgba(64, 158, 255, 0.25);
+  box-shadow: 0 2px 6px rgba(0, 47, 167, 0.25);
 }
 
 .el-button--primary:active {
@@ -244,6 +244,57 @@ body {
 /* ============================ 选项卡 / 步骤 ============================ */
 .el-tabs__item {
   font-weight: 500;
+}
+
+/* ============================ 图标 ============================ */
+/* 所有 <el-icon> 默认统一使用主题色（品牌色 #002FA7） */
+.el-icon {
+  --color: var(--el-color-primary);
+}
+
+/* 交互/状态组件内部的图标保持组件自身的文字颜色，避免被主题色覆盖 */
+.el-button .el-icon,
+.el-button-group .el-icon,
+.el-link .el-icon,
+.el-dropdown .el-icon,
+.el-dropdown-menu .el-icon,
+.el-input__wrapper .el-icon,
+.el-select .el-icon,
+.el-cascader .el-icon,
+.el-date-editor .el-icon,
+.el-input-number .el-icon,
+.el-color-picker .el-icon,
+.el-pagination .el-icon,
+.el-tag .el-icon,
+.el-rate .el-icon,
+.el-radio .el-icon,
+.el-checkbox .el-icon,
+.el-switch .el-icon,
+.el-tree .el-icon,
+.el-table .el-icon,
+.el-tabs .el-icon,
+.el-message .el-icon,
+.el-message-box .el-icon,
+.el-notification .el-icon,
+.el-alert .el-icon,
+.el-loading-spinner .el-icon,
+.el-empty .el-icon,
+.el-result .el-icon,
+.el-backtop .el-icon,
+.el-step .el-icon,
+.el-slider .el-icon,
+.el-progress .el-icon,
+.el-collapse .el-icon,
+.el-timeline .el-icon,
+.el-carousel .el-icon,
+.el-breadcrumb .el-icon,
+.el-form-item .el-icon,
+.el-upload .el-icon,
+.el-page-header .el-icon,
+.el-dialog .el-dialog__headerbtn .el-icon,
+.el-drawer .el-drawer__close-btn .el-icon,
+.el-popper .el-icon {
+  --color: inherit;
 }
 
 /* ============================ 滚动条 ============================ */

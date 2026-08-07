@@ -159,20 +159,20 @@ const updateChart = () => {
         barWidth: '60%',
         itemStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#409eff' },
-            { offset: 1, color: '#79bbff' }
+            { offset: 0, color: '#002fa7' },
+            { offset: 1, color: '#4d6dc1' }
           ]),
           borderRadius: [6, 6, 0, 0]
         },
         emphasis: {
           itemStyle: {
-            color: '#66b1ff'
+            color: '#4d6dc1'
           }
         },
         label: {
           show: true,
           position: 'top',
-          color: '#409eff',
+          color: '#002fa7',
           fontWeight: 600
         }
       }

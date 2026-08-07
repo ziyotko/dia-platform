@@ -91,30 +91,6 @@
             </el-form-item>
           </el-form>
         </el-tab-pane>
-
-        <el-tab-pane label="主题设置" name="theme">
-          <el-form label-width="120px" class="settings-form">
-            <el-form-item label="主题色">
-              <el-color-picker v-model="themeColor" show-alpha />
-            </el-form-item>
-            <el-form-item label="侧边栏风格">
-              <el-radio-group v-model="sidebarStyle">
-                <el-radio-button value="light">浅色</el-radio-button>
-                <el-radio-button value="dark">深色</el-radio-button>
-              </el-radio-group>
-            </el-form-item>
-            <el-form-item label="开启标签页">
-              <el-switch v-model="tagsView" />
-            </el-form-item>
-            <el-form-item label="开启面包屑">
-              <el-switch v-model="breadcrumb" />
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" :loading="loading" @click="handleSaveTheme">保存设置</el-button>
-              <el-button @click="handleResetTheme">恢复默认</el-button>
-            </el-form-item>
-          </el-form>
-        </el-tab-pane>
       </el-tabs>
     </el-card>
   </div>
@@ -136,7 +112,6 @@ const userStore = useUserStore()
 const router = useRouter()
 const activeTab = ref('basic')
 const loading = ref(false)
-
 const resolveLogoUrl = (url: string) => {
   if (!url) return ''
   if (url.startsWith('http')) return url
@@ -202,11 +177,6 @@ const emailForm = reactive({
   ssl: true
 })
 
-const themeColor = ref('#409eff')
-const sidebarStyle = ref('light')
-const tagsView = ref(true)
-const breadcrumb = ref(true)
-
 const loadSettings = async () => {
   try {
     const res: any = await getSettings()
@@ -233,17 +203,6 @@ const loadSettings = async () => {
     emailForm.fromName = data.fromName || ''
     emailForm.password = data.emailPassword || ''
     emailForm.ssl = data.ssl ?? true
-    themeColor.value = data.themeColor || '#409eff'
-    sidebarStyle.value = data.sidebarStyle || 'light'
-    tagsView.value = data.tagsView ?? true
-    breadcrumb.value = data.breadcrumb ?? true
-
-    appStore.setThemeSettings({
-      themeColor: themeColor.value,
-      sidebarStyle: sidebarStyle.value as 'light' | 'dark',
-      tagsView: tagsView.value,
-      breadcrumb: breadcrumb.value
-    })
   } catch {
     ElMessage.error('获取设置失败')
   }
@@ -268,11 +227,7 @@ const doSave = async (data: Partial<Settings>) => {
       fromEmail: emailForm.fromEmail,
       fromName: emailForm.fromName,
       emailPassword: emailForm.password,
-      ssl: emailForm.ssl,
-      themeColor: themeColor.value,
-      sidebarStyle: sidebarStyle.value,
-      tagsView: tagsView.value,
-      breadcrumb: breadcrumb.value
+      ssl: emailForm.ssl
     }
 
     Object.entries(data).forEach(([key, value]) => {
@@ -331,40 +286,6 @@ const handleTestEmail = () => {
   ElMessage.success('邮件连接测试成功')
 }
 
-const handleSaveTheme = () => {
-  doSave({
-    themeColor: themeColor.value,
-    sidebarStyle: sidebarStyle.value,
-    tagsView: tagsView.value,
-    breadcrumb: breadcrumb.value
-  })
-  appStore.setThemeSettings({
-    themeColor: themeColor.value,
-    sidebarStyle: sidebarStyle.value as 'light' | 'dark',
-    tagsView: tagsView.value,
-    breadcrumb: breadcrumb.value
-  })
-}
-
-const handleResetTheme = () => {
-  themeColor.value = '#409eff'
-  sidebarStyle.value = 'light'
-  tagsView.value = true
-  breadcrumb.value = true
-  doSave({
-    themeColor: themeColor.value,
-    sidebarStyle: sidebarStyle.value,
-    tagsView: tagsView.value,
-    breadcrumb: breadcrumb.value
-  })
-  appStore.setThemeSettings({
-    themeColor: themeColor.value,
-    sidebarStyle: sidebarStyle.value as 'light' | 'dark',
-    tagsView: tagsView.value,
-    breadcrumb: breadcrumb.value
-  })
-}
-
 watch(() => appStore.refreshKey, () => {
   loadSettings()
 })
@@ -393,7 +314,7 @@ onMounted(() => {
 
   .logo-uploader {
     :deep(.el-upload) {
-      border: 1px dashed #d9ecff;
+      border: 1px dashed #ccd5ed;
       border-radius: 6px;
       cursor: pointer;
       position: relative;
@@ -401,7 +322,7 @@ onMounted(() => {
       transition: var(--el-transition-duration-fast);
 
       &:hover {
-        border-color: #409eff;
+        border-color: var(--el-color-primary);
       }
     }
 

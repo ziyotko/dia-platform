@@ -4,7 +4,7 @@
       <div class="login-left">
         <div class="login-brand">
           <img v-if="siteInfo.logo" :src="resolveLogoUrl(siteInfo.logo)" alt="logo" class="login-logo" />
-          <el-icon v-else size="72" color="#409eff"><Platform /></el-icon>
+          <el-icon v-else size="72" color="#002fa7"><Platform /></el-icon>
           <h1>{{ siteInfo.siteName }}</h1>
           <p>统一内容管理平台</p>
         </div>
@@ -220,7 +220,7 @@ onMounted(() => {
     position: absolute;
     width: 640px;
     height: 640px;
-    background: radial-gradient(circle, rgba(64, 158, 255, 0.12) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(0, 47, 167, 0.12) 0%, transparent 70%);
     top: -180px;
     right: -120px;
   }
@@ -230,7 +230,7 @@ onMounted(() => {
     position: absolute;
     width: 520px;
     height: 520px;
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.1) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(0, 47, 167, 0.1) 0%, transparent 70%);
     bottom: -140px;
     left: -120px;
   }
@@ -250,7 +250,7 @@ onMounted(() => {
 .login-left {
   position: relative;
   width: 440px;
-  background: linear-gradient(160deg, #2f7fe0 0%, #1e5fb4 55%, #16395f 100%);
+  background: linear-gradient(160deg, #1746d3 0%, #0b2f9e 50%, #001e6b 100%);
   padding: 56px 44px;
   display: flex;
   flex-direction: column;
@@ -301,6 +301,7 @@ onMounted(() => {
     border-radius: 16px;
     background: rgba(255, 255, 255, 0.15);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    color: #fff;
   }
 
   h1 {
@@ -338,6 +339,7 @@ onMounted(() => {
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
+      color: #fff;
     }
   }
 }
@@ -422,14 +424,14 @@ onMounted(() => {
   font-size: 16px;
   font-weight: 600;
   border-radius: 10px;
-  background: linear-gradient(135deg, #409eff 0%, #2f7fe0 100%);
+  background: linear-gradient(135deg, #1746d3 0%, #002fa7 100%);
   border: none;
-  box-shadow: 0 6px 16px rgba(64, 158, 255, 0.35);
+  box-shadow: 0 6px 16px rgba(0, 47, 167, 0.35);
   letter-spacing: 4px;
 
   &:hover {
-    background: linear-gradient(135deg, #66b1ff 0%, #409eff 100%);
-    box-shadow: 0 8px 20px rgba(64, 158, 255, 0.4);
+    background: linear-gradient(135deg, #4d6dc1 0%, #002fa7 100%);
+    box-shadow: 0 8px 20px rgba(0, 47, 167, 0.4);
   }
 }
 

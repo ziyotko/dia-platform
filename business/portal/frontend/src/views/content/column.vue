@@ -488,7 +488,7 @@ const pageTypeList = computed(() => [
     label: '栏目页',
     description: '文章栏目聚合页',
     bgColor: '#e6f2ff',
-    color: '#409eff'
+    color: '#002fa7'
   },
   {
     value: 'detail',
@@ -888,17 +888,17 @@ onMounted(() => {
 
       &:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(64, 158, 255, 0.12);
-        border-color: #409eff;
+        box-shadow: 0 8px 24px rgba(0, 47, 167, 0.12);
+        border-color: #002fa7;
       }
 
       &.active {
-        border-color: #409eff;
+        border-color: #002fa7;
         background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
-        box-shadow: 0 4px 16px rgba(64, 158, 255, 0.15);
+        box-shadow: 0 4px 16px rgba(0, 47, 167, 0.15);
 
         .type-arrow {
-          color: #409eff;
+          color: #002fa7;
           transform: translateX(4px);
         }
       }
@@ -971,7 +971,7 @@ onMounted(() => {
         .page-name {
           font-size: 16px;
           font-weight: 600;
-          color: #409eff;
+          color: #002fa7;
         }
 
         .breadcrumb-sep {

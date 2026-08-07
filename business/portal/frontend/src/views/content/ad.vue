@@ -576,7 +576,7 @@ onMounted(() => {
         justify-content: center;
         color: #8c939d;
         &:hover {
-          border-color: #409eff;
+          border-color: #002fa7;
         }
         .uploader-icon {
           font-size: 28px;

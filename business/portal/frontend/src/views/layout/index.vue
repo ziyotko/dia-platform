@@ -7,7 +7,7 @@
     >
       <div class="logo">
         <div class="logo-icon-wrap">
-          <el-icon size="24" :color="appStore.themeColor"><Platform /></el-icon>
+          <el-icon size="24" :color="appStore.themeColor"><Connection /></el-icon>
         </div>
         <span v-if="!appStore.sidebarCollapsed" class="logo-text">统一管理后台</span>
       </div>
@@ -91,7 +91,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox, ElSubMenu, ElMenuItem, ElIcon } from 'element-plus'
 import * as Icons from '@element-plus/icons-vue'
 import {
-  Platform,
+  Connection,
   Fold,
   Expand,
   FullScreen,
@@ -167,12 +167,6 @@ const loadSettings = async () => {
     const res: any = await getSettings()
     const data = res.data as Settings
     if (data) {
-      appStore.setThemeSettings({
-        themeColor: data.themeColor || '#409eff',
-        sidebarStyle: (data.sidebarStyle || 'light') as 'light' | 'dark',
-        tagsView: data.tagsView ?? true,
-        breadcrumb: data.breadcrumb ?? true
-      })
       appStore.setSecuritySettings({
         minPasswordLength: data.minPasswordLength ?? 8
       })
@@ -249,8 +243,8 @@ const handleCommand = (command: string) => {
       border-bottom-color: #0f3460;
 
       .logo-icon-wrap {
-        background: linear-gradient(135deg, rgba(64, 158, 255, 0.25) 0%, rgba(64, 158, 255, 0.15) 100%);
-        box-shadow: 0 2px 8px rgba(64, 158, 255, 0.25);
+        background: linear-gradient(135deg, rgba(0, 47, 167, 0.25) 0%, rgba(0, 47, 167, 0.15) 100%);
+        box-shadow: 0 2px 8px rgba(0, 47, 167, 0.25);
       }
 
       .logo-text {
@@ -271,7 +265,7 @@ const handleCommand = (command: string) => {
         }
 
         &.is-active {
-          background: rgba(64, 158, 255, 0.2) !important;
+          background: rgba(0, 47, 167, 0.2) !important;
           color: var(--el-color-primary);
         }
       }
@@ -307,7 +301,7 @@ const handleCommand = (command: string) => {
     justify-content: center;
     border-radius: 12px;
     background: linear-gradient(135deg, var(--el-color-primary-light-8) 0%, var(--el-color-primary-light-9) 100%);
-    box-shadow: 0 4px 10px rgba(64, 158, 255, 0.2);
+    box-shadow: 0 4px 10px rgba(0, 47, 167, 0.2);
     transition: transform 0.3s;
 
     :deep(.el-icon) {
@@ -326,7 +320,7 @@ const handleCommand = (command: string) => {
     white-space: nowrap;
     transition: color 0.3s, opacity 0.2s;
     letter-spacing: 0.5px;
-    background: linear-gradient(90deg, #1d2739 0%, #409eff 100%);
+    background: linear-gradient(90deg, #1d2739 0%, #002fa7 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -351,11 +345,11 @@ const handleCommand = (command: string) => {
     transition: background 0.3s, color 0.3s;
 
     &:hover {
-      background: rgba(64, 158, 255, 0.06) !important;
+      background: rgba(0, 47, 167, 0.06) !important;
     }
 
     &.is-active {
-      background: linear-gradient(90deg, rgba(64, 158, 255, 0.14) 0%, rgba(64, 158, 255, 0.06) 100%) !important;
+      background: linear-gradient(90deg, rgba(0, 47, 167, 0.14) 0%, rgba(0, 47, 167, 0.06) 100%) !important;
       color: var(--el-color-primary);
       font-weight: 600;
 
@@ -381,7 +375,7 @@ const handleCommand = (command: string) => {
     transition: background 0.3s, color 0.3s;
 
     &:hover {
-      background: rgba(64, 158, 255, 0.06) !important;
+      background: rgba(0, 47, 167, 0.06) !important;
     }
   }
 

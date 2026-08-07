@@ -268,12 +268,12 @@ const updateChart = () => {
       smooth: true,
       symbol: 'circle',
       symbolSize: 8,
-      itemStyle: { color: '#409eff' },
-      lineStyle: { width: 3, color: '#409eff' },
+      itemStyle: { color: '#002fa7' },
+      lineStyle: { width: 3, color: '#002fa7' },
       areaStyle: {
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(64, 158, 255, 0.3)' },
-          { offset: 1, color: 'rgba(64, 158, 255, 0.05)' }
+          { offset: 0, color: 'rgba(0, 47, 167, 0.3)' },
+          { offset: 1, color: 'rgba(0, 47, 167, 0.05)' }
         ])
       }
     }]
@@ -339,12 +339,12 @@ const updateArticleChart = () => {
       smooth: true,
       symbol: 'circle',
       symbolSize: 8,
-      itemStyle: { color: '#409eff' },
-      lineStyle: { width: 3, color: '#409eff' },
+      itemStyle: { color: '#002fa7' },
+      lineStyle: { width: 3, color: '#002fa7' },
       areaStyle: {
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(64, 158, 255, 0.3)' },
-          { offset: 1, color: 'rgba(64, 158, 255, 0.05)' }
+          { offset: 0, color: 'rgba(0, 47, 167, 0.3)' },
+          { offset: 1, color: 'rgba(0, 47, 167, 0.05)' }
         ])
       }
     }]

@@ -367,7 +367,7 @@ onMounted(() => {
         .stat-num {
           font-size: 20px;
           font-weight: 700;
-          color: #409eff;
+          color: #002fa7;
         }
 
         .stat-label {
@@ -390,7 +390,7 @@ onMounted(() => {
         font-size: 14px;
 
         .el-icon {
-          color: #409eff;
+          color: #002fa7;
         }
       }
     }

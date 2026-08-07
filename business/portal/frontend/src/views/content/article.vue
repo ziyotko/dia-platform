@@ -2355,7 +2355,7 @@ onMounted(() => {
       color: #2c3e50;
       margin-bottom: 16px;
       padding-left: 10px;
-      border-left: 4px solid #409eff;
+      border-left: 4px solid #002fa7;
     }
   }
 
@@ -2462,7 +2462,7 @@ onMounted(() => {
     color: #666;
 
     a {
-      color: #409eff;
+      color: #002fa7;
       text-decoration: none;
       word-break: break-all;
 
@@ -2514,7 +2514,7 @@ onMounted(() => {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      color: #409eff;
+      color: #002fa7;
       text-decoration: none;
       font-size: 14px;
 
@@ -2555,7 +2555,7 @@ onMounted(() => {
   transition: box-shadow 0.2s;
 
   &:hover {
-    box-shadow: 0 4px 12px rgba(64, 158, 255, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 47, 167, 0.1);
   }
 }
 
@@ -2572,7 +2572,7 @@ onMounted(() => {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: #409eff;
+  background: #002fa7;
   color: #fff;
   font-size: 13px;
   font-weight: 600;
@@ -2580,7 +2580,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 6px rgba(64, 158, 255, 0.25);
+  box-shadow: 0 2px 6px rgba(0, 47, 167, 0.25);
 }
 
 .audit-flow-column-name {
@@ -2796,9 +2796,9 @@ onMounted(() => {
     gap: 8px;
     padding: 10px 14px;
     background: #f0f9ff;
-    border: 1px solid #d9ecff;
+    border: 1px solid #ccd5ed;
     border-radius: 8px;
-    color: #409eff;
+    color: #002fa7;
     font-size: 13px;
     margin-bottom: 16px;
   }
@@ -2829,7 +2829,7 @@ onMounted(() => {
     background: #fff;
 
     .el-icon {
-      color: #409eff;
+      color: #002fa7;
       font-size: 18px;
     }
 
@@ -2869,14 +2869,14 @@ onMounted(() => {
     transition: all 0.2s;
 
     &:hover {
-      border-color: #a0cfff;
-      box-shadow: 0 2px 8px rgba(64, 158, 255, 0.08);
+      border-color: #8097d3;
+      box-shadow: 0 2px 8px rgba(0, 47, 167, 0.08);
     }
 
     &.active {
-      border-color: #409eff;
+      border-color: #002fa7;
       background: #f0f9ff;
-      box-shadow: 0 2px 8px rgba(64, 158, 255, 0.12);
+      box-shadow: 0 2px 8px rgba(0, 47, 167, 0.12);
     }
 
     .page-item-name {
@@ -2897,7 +2897,7 @@ onMounted(() => {
       right: 10px;
       top: 50%;
       transform: translateY(-50%);
-      color: #409eff;
+      color: #002fa7;
       font-size: 16px;
     }
   }
@@ -2917,14 +2917,14 @@ onMounted(() => {
     transition: all 0.2s;
 
     &:hover {
-      border-color: #a0cfff;
-      box-shadow: 0 2px 8px rgba(64, 158, 255, 0.08);
+      border-color: #8097d3;
+      box-shadow: 0 2px 8px rgba(0, 47, 167, 0.08);
     }
 
     &.checked {
-      border-color: #409eff;
+      border-color: #002fa7;
       background: #f0f9ff;
-      box-shadow: 0 2px 8px rgba(64, 158, 255, 0.12);
+      box-shadow: 0 2px 8px rgba(0, 47, 167, 0.12);
     }
 
     &.is-child {

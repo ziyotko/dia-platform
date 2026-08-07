@@ -44,7 +44,7 @@ const chartData = ref<any[]>([])
 const totalCount = ref(0)
 
 const colors = [
-  '#409eff',
+  '#002fa7',
   '#67c23a',
   '#e6a23c',
   '#f56c6c',
@@ -223,7 +223,7 @@ onUnmounted(() => {
         font-weight: normal;
 
         strong {
-          color: #409eff;
+          color: #002fa7;
           font-size: 18px;
         }
       }
@@ -297,7 +297,7 @@ onUnmounted(() => {
 
       .legend-percent {
         font-size: 13px;
-        color: #409eff;
+        color: #002fa7;
         font-weight: 600;
         white-space: nowrap;
         width: 52px;

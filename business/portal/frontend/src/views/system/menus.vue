@@ -358,13 +358,13 @@ onMounted(() => {
     border: 1px solid transparent;
 
     &:hover {
-      background: #f5f9ff;
-      border-color: #d9ecff;
+      background: #f5f7fb;
+      border-color: #ccd5ed;
     }
 
     &.active {
-      background: rgba(64, 158, 255, 0.12);
-      border-color: #409eff;
+      background: rgba(0, 47, 167, 0.12);
+      border-color: #002fa7;
     }
 
     .icon-name {

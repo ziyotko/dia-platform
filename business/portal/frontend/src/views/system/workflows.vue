@@ -211,7 +211,7 @@
             </div>
           </div>
           <div v-if="index < nodeList.length - 1" class="node-arrow">
-            <el-icon size="18" color="#409eff"><Bottom /></el-icon>
+            <el-icon size="18" color="#002fa7"><Bottom /></el-icon>
           </div>
         </div>
       </div>
@@ -569,7 +569,7 @@ onMounted(() => {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #409eff, #66b1ff);
+  background: linear-gradient(135deg, #002fa7, #1746d3);
   color: #fff;
   font-size: 13px;
   font-weight: 600;
@@ -577,7 +577,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   margin-bottom: 8px;
-  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.25);
+  box-shadow: 0 2px 8px rgba(0, 47, 167, 0.25);
 }
 
 .node-card {
@@ -591,8 +591,8 @@ onMounted(() => {
   transition: all 0.2s ease;
 
   &:hover {
-    border-color: #409eff;
-    box-shadow: 0 4px 16px rgba(64, 158, 255, 0.12);
+    border-color: #002fa7;
+    box-shadow: 0 4px 16px rgba(0, 47, 167, 0.12);
   }
 }
 

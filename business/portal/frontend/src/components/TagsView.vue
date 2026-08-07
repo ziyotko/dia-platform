@@ -95,10 +95,10 @@ watch(() => route.path, addView, { immediate: true })
 
     &.active {
       color: var(--el-color-primary);
-      background: var(--el-color-primary-light-9, #ecf5ff);
-      border-color: var(--el-color-primary-light-7, #c6e2ff);
+      background: var(--el-color-primary-light-9, #e6eaf6);
+      border-color: var(--el-color-primary-light-7, #b3c1e5);
       font-weight: 600;
-      box-shadow: 0 2px 6px rgba(64, 158, 255, 0.15);
+      box-shadow: 0 2px 6px rgba(0, 47, 167, 0.15);
     }
 
     .close-icon {

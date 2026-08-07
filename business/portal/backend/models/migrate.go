@@ -86,6 +86,17 @@ func MigrateDropUserNickname() {
 	_ = utils.DB.Migrator().DropColumn(&User{}, "nickname")
 }
 
+// MigrateDropSettingThemeColumns 删除 setting 表中已废弃的主题配置列（主题设置功能已移除）
+func MigrateDropSettingThemeColumns() {
+	if utils.DB == nil {
+		return
+	}
+	_ = utils.DB.Migrator().DropColumn(&Setting{}, "theme_color")
+	_ = utils.DB.Migrator().DropColumn(&Setting{}, "sidebar_style")
+	_ = utils.DB.Migrator().DropColumn(&Setting{}, "tags_view")
+	_ = utils.DB.Migrator().DropColumn(&Setting{}, "breadcrumb")
+}
+
 // MigrateIndexes 创建 GORM AutoMigrate 不便表达或列顺序需要控制的辅助索引
 func MigrateIndexes() {
 	if utils.DB == nil {

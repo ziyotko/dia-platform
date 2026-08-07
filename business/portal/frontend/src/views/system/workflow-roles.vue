@@ -430,7 +430,7 @@ onMounted(() => {
         display: flex;
         align-items: center;
         justify-content: center;
-        background: #409eff;
+        background: #002fa7;
         color: #fff;
         border-radius: 50%;
         font-size: 18px;
@@ -454,7 +454,7 @@ onMounted(() => {
       width: 340px;
       height: 460px;
       border-radius: 12px;
-      box-shadow: 0 2px 12px rgba(64, 158, 255, 0.08);
+      box-shadow: 0 2px 12px rgba(0, 47, 167, 0.08);
       border: 1px solid #e4e7ed;
 
       .el-transfer-panel__header {

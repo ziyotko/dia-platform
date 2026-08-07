@@ -97,7 +97,7 @@ const fetchData = async () => {
 }
 
 const defaultColors = [
-  '#409eff', '#67c23a', '#e6a23c', '#f56c6c',
+  '#002fa7', '#67c23a', '#e6a23c', '#f56c6c',
   '#a855f7', '#6366f1', '#14b8a6', '#f472b6',
   '#8b5cf6', '#22c55e', '#0ea5e9', '#ef4444',
   '#3b82f6', '#10b981', '#f59e0b', '#ec4899'

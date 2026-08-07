@@ -19,10 +19,7 @@ export interface Settings {
   fromName: string
   emailPassword: string
   ssl: boolean
-  themeColor: string
-  sidebarStyle: string
-  tagsView: boolean
-  breadcrumb: boolean
+  staticPath: string
   homeGray: boolean
   homeStaticTimeEnabled: boolean
   homeStaticTime: string

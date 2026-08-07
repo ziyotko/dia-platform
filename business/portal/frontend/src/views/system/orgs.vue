@@ -49,7 +49,7 @@
       >
         <el-table-column prop="name" label="机构名称" min-width="200">
           <template #default="{ row }">
-            <el-icon style="margin-right: 6px; color: #409eff;"><OfficeBuilding /></el-icon>
+            <el-icon style="margin-right: 6px; color: #002fa7;"><OfficeBuilding /></el-icon>
             <span>{{ row.name }}</span>
           </template>
         </el-table-column>
@@ -198,7 +198,7 @@
                 >
                   <span style="display: flex; align-items: center; justify-content: space-between;">
                     <span>{{ user.username }} ({{ user.account }})</span>
-                    <el-icon v-if="form.managerCode === String(user.id)" color="#409eff"><Check /></el-icon>
+                    <el-icon v-if="form.managerCode === String(user.id)" color="#002fa7"><Check /></el-icon>
                   </span>
                 </el-option>
               </el-select>
@@ -291,7 +291,7 @@
             >
               <span style="display: flex; align-items: center; justify-content: space-between;">
                 <span>{{ user.username }} ({{ user.account }})</span>
-                <el-icon v-if="deptForm.leaderCode === user.account" color="#409eff"><Check /></el-icon>
+                <el-icon v-if="deptForm.leaderCode === user.account" color="#002fa7"><Check /></el-icon>
               </span>
             </el-option>
           </el-select>

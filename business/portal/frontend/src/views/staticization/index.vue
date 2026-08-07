@@ -6,6 +6,14 @@
       </template>
 
       <el-form :model="form" label-width="180px" class="settings-form">
+        <el-form-item label="静态化路径">
+          <el-input
+            v-model="form.staticPath"
+            placeholder="请输入静态化输出路径，如 D:/static"
+            clearable
+          />
+        </el-form-item>
+
         <el-form-item label="首页整体变灰">
           <el-switch v-model="form.homeGray" active-text="开启" inactive-text="关闭" />
         </el-form-item>
@@ -83,6 +91,7 @@ import type { Settings } from '@/api/settings'
 const loading = ref(false)
 
 const form = reactive({
+  staticPath: '',
   homeGray: false,
   homeStaticTimeEnabled: false,
   homeStaticTime: '',
@@ -98,6 +107,7 @@ const loadSettings = async () => {
   try {
     const res: any = await getSettings()
     const data = res.data as Settings
+    form.staticPath = data.staticPath || ''
     form.homeGray = data.homeGray ?? false
     form.homeStaticTimeEnabled = data.homeStaticTimeEnabled ?? false
     form.homeStaticTime = data.homeStaticTime || ''
@@ -116,6 +126,7 @@ const handleSave = async () => {
   loading.value = true
   try {
     await updateSettings({
+      staticPath: form.staticPath,
       homeGray: form.homeGray,
       homeStaticTimeEnabled: form.homeStaticTimeEnabled,
       homeStaticTime: form.homeStaticTimeEnabled ? form.homeStaticTime : '',

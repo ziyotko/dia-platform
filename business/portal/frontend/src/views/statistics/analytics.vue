@@ -92,7 +92,7 @@ const periodText = computed(() => {
 const seriesMeta = [
   { name: '点赞量', color: '#f56c6c', key: 'like' },
   { name: '分享量', color: '#e6a23c', key: 'share' },
-  { name: '浏览量', color: '#409eff', key: 'visit' }
+  { name: '浏览量', color: '#002fa7', key: 'visit' }
 ]
 
 const fetchData = async () => {

@@ -3,16 +3,19 @@ import { ref } from 'vue'
 
 export type SidebarStyle = 'light' | 'dark'
 
-const storedTheme = localStorage.getItem('app-theme')
-const parsedTheme = storedTheme
-  ? (() => {
-      try {
-        return JSON.parse(storedTheme)
-      } catch {
-        return null
-      }
-    })()
-  : null
+// 品牌主题色（固定，不再支持后台配置）
+const BRAND_THEME_COLOR = '#002fa7'
+
+// 按 Element Plus 算法混合两种颜色（weight 为 color2 占比 0~1）
+const mixColor = (color1: string, color2: string, weight: number): string => {
+  const c1 = parseInt(color1.slice(1), 16)
+  const c2 = parseInt(color2.slice(1), 16)
+  const mix = (v1: number, v2: number) => Math.round(v1 * (1 - weight) + v2 * weight)
+  const r = mix((c1 >> 16) & 255, (c2 >> 16) & 255)
+  const g = mix((c1 >> 8) & 255, (c2 >> 8) & 255)
+  const b = mix(c1 & 255, c2 & 255)
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')
+}
 
 const storedSecurity = localStorage.getItem('app-security')
 const parsedSecurity = storedSecurity
@@ -29,10 +32,10 @@ const storedCollapsed = localStorage.getItem('sidebar-collapsed')
 
 export const useAppStore = defineStore('app', () => {
   const sidebarCollapsed = ref(storedCollapsed === 'true')
-  const themeColor = ref(parsedTheme?.themeColor || '#409eff')
-  const sidebarStyle = ref<SidebarStyle>(parsedTheme?.sidebarStyle || 'light')
-  const tagsView = ref(parsedTheme?.tagsView ?? true)
-  const breadcrumb = ref(parsedTheme?.breadcrumb ?? true)
+  const themeColor = ref(BRAND_THEME_COLOR)
+  const sidebarStyle = ref<SidebarStyle>('light')
+  const tagsView = ref(true)
+  const breadcrumb = ref(true)
   const minPasswordLength = ref(parsedSecurity?.minPasswordLength ?? 8)
 
   function toggleSidebar() {
@@ -48,32 +51,16 @@ export const useAppStore = defineStore('app', () => {
 
   function applyTheme() {
     const root = document.documentElement
-    root.style.setProperty('--el-color-primary', themeColor.value)
-    root.style.setProperty('--primary-color', themeColor.value)
-  }
-
-  function setThemeSettings(settings: {
-    themeColor?: string
-    sidebarStyle?: SidebarStyle
-    tagsView?: boolean
-    breadcrumb?: boolean
-  }) {
-    if (settings.themeColor !== undefined) themeColor.value = settings.themeColor
-    if (settings.sidebarStyle !== undefined) sidebarStyle.value = settings.sidebarStyle
-    if (settings.tagsView !== undefined) tagsView.value = settings.tagsView
-    if (settings.breadcrumb !== undefined) breadcrumb.value = settings.breadcrumb
-
-    localStorage.setItem(
-      'app-theme',
-      JSON.stringify({
-        themeColor: themeColor.value,
-        sidebarStyle: sidebarStyle.value,
-        tagsView: tagsView.value,
-        breadcrumb: breadcrumb.value
-      })
-    )
-
-    applyTheme()
+    const primary = themeColor.value
+    root.style.setProperty('--el-color-primary', primary)
+    root.style.setProperty('--primary-color', primary)
+    // 同步 Element Plus 全套色阶，保证按钮/图标/聚焦态/浅色背景统一跟随主题色
+    root.style.setProperty('--el-color-primary-light-3', mixColor(primary, '#ffffff', 0.3))
+    root.style.setProperty('--el-color-primary-light-5', mixColor(primary, '#ffffff', 0.5))
+    root.style.setProperty('--el-color-primary-light-7', mixColor(primary, '#ffffff', 0.7))
+    root.style.setProperty('--el-color-primary-light-8', mixColor(primary, '#ffffff', 0.8))
+    root.style.setProperty('--el-color-primary-light-9', mixColor(primary, '#ffffff', 0.9))
+    root.style.setProperty('--el-color-primary-dark-2', mixColor(primary, '#000000', 0.2))
   }
 
   function setSecuritySettings(settings: {
@@ -102,7 +89,6 @@ export const useAppStore = defineStore('app', () => {
     toggleSidebar,
     triggerRefresh,
     applyTheme,
-    setThemeSettings,
     setSecuritySettings
   }
 })
