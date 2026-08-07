@@ -8,7 +8,7 @@
         :class="{ active: activePageType === type.value }"
         @click="handleTypeChange(type.value)"
       >
-        <div class="type-icon" :style="{ backgroundColor: type.bgColor, color: type.color }">
+        <div class="type-icon">
           <el-icon :size="28">
             <HomeFilled v-if="type.value === 'home'" />
             <List v-else-if="type.value === 'column'" />
@@ -479,30 +479,22 @@ const pageTypeList = computed(() => [
   {
     value: 'home',
     label: '首页',
-    description: '网站门户页',
-    bgColor: '#e6f7ef',
-    color: '#52c41a'
+    description: '网站门户页'
   },
   {
     value: 'column',
     label: '栏目页',
-    description: '文章栏目聚合页',
-    bgColor: '#e6f2ff',
-    color: '#002fa7'
+    description: '文章栏目聚合页'
   },
   {
     value: 'detail',
     label: '详情页',
-    description: '内容详情展示页',
-    bgColor: '#fff7e6',
-    color: '#fa8c16'
+    description: '内容详情展示页'
   },
   {
     value: 'special',
     label: '专题页',
-    description: '专题活动展示页',
-    bgColor: '#f0e6ff',
-    color: '#722ed1'
+    description: '专题活动展示页'
   }
 ])
 
@@ -911,6 +903,9 @@ onMounted(() => {
         height: 56px;
         border-radius: 12px;
         flex-shrink: 0;
+        /* 背景与图标统一为品牌蓝 */
+        background-color: #e6f2ff;
+        color: #002fa7;
       }
 
       .type-info {

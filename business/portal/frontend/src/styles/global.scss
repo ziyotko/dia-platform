@@ -219,6 +219,26 @@ body {
   padding: 8px 12px;
 }
 
+/* ============================ 下拉选择 ============================ */
+/* 下拉选项：选中项统一使用品牌主色 */
+.el-select-dropdown__item.selected,
+.el-select-dropdown__item.is-selected {
+  color: var(--el-color-primary);
+  font-weight: 600;
+}
+
+/* 下拉框：已选中值统一使用品牌主色（含禁用态，避免置灰） */
+.el-select__selected-item:not(.el-select__placeholder) {
+  color: var(--el-color-primary);
+  font-weight: 500;
+}
+
+.el-select__wrapper.is-disabled .el-select__selected-item:not(.el-select__placeholder) {
+  color: var(--el-color-primary);
+  -webkit-text-fill-color: var(--el-color-primary);
+  font-weight: 500;
+}
+
 /* ============================ 分页 ============================ */
 .el-pagination {
   --el-pagination-button-bg-color: #fff;
