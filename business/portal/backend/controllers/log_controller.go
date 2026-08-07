@@ -143,13 +143,13 @@ func (c *LogController) GetLoginLogs(ctx *gin.Context) {
 }
 
 func (c *LogController) ClearLogs(ctx *gin.Context) {
-	err := c.logService.ClearLogs()
+	count, err := c.logService.ClearLogs()
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "清空日志失败"))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, utils.Success("清空日志成功", nil))
+	ctx.JSON(http.StatusOK, utils.Success("清空日志成功", gin.H{"count": count}))
 }
 
 func (c *LogController) ClearLoginLogs(ctx *gin.Context) {

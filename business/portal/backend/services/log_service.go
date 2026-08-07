@@ -1,6 +1,8 @@
 package services
 
 import (
+	"time"
+
 	"server/models"
 	"server/utils"
 )
@@ -45,8 +47,11 @@ func (s *LogService) GetLogList(page, pageSize int, username, logType string, st
 	}, nil
 }
 
-func (s *LogService) ClearLogs() error {
-	return utils.DB.Where("1 = 1").Unscoped().Delete(&models.OperationLog{}).Error
+// ClearLogs 仅清空半年前的日志，系统必须保留最近半年的日志。返回删除条数。
+func (s *LogService) ClearLogs() (int64, error) {
+	cutoff := time.Now().AddDate(0, -6, 0)
+	result := utils.DB.Where("created_at < ?", cutoff).Unscoped().Delete(&models.OperationLog{})
+	return result.RowsAffected, result.Error
 }
 
 func (s *LogService) CreateLog(log *models.OperationLog) error {

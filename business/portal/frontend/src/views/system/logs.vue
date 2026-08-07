@@ -188,15 +188,30 @@ const fetchData = async () => {
 }
 
 const handleClear = () => {
-  ElMessageBox.confirm('确定要清空所有操作日志吗？此操作不可恢复！', '警告', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
+  // 半年前的日期（保留近半年，即清空该日期之前的日志）
+  const now = new Date()
+  const cutoff = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate())
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const cutoffStr = `${cutoff.getFullYear()}-${pad(cutoff.getMonth() + 1)}-${pad(cutoff.getDate())}`
+
+  ElMessageBox.confirm(
+    `仅能清空 ${cutoffStr}（半年前）之前的日志，系统将保留 ${cutoffStr} 至今的最近半年日志。确定继续吗？此操作不可恢复！`,
+    '警告',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(async () => {
     try {
       const res: any = await clearLogs()
       if (res.code === 0 || res.code === 200) {
-        ElMessage.success('日志已清空')
+        const count = res.data?.count ?? 0
+        ElMessage.success(
+          count > 0
+            ? `已清空 ${count} 条 ${cutoffStr} 之前的日志，近半年日志已保留`
+            : `暂无 ${cutoffStr} 之前的日志可清空，近半年日志已保留`
+        )
         fetchData()
       }
     } catch (error) {
