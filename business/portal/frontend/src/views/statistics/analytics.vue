@@ -4,7 +4,7 @@
       <el-col :xs="24" :sm="12" :md="8">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <div class="stat-icon" style="background: rgba(245, 108, 108, 0.1); color: #f56c6c;">
+            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
               <el-icon size="28"><Star /></el-icon>
             </div>
             <div class="stat-info">
@@ -17,7 +17,7 @@
       <el-col :xs="24" :sm="12" :md="8">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <div class="stat-icon" style="background: rgba(230, 162, 60, 0.1); color: #e6a23c;">
+            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
               <el-icon size="28"><Share /></el-icon>
             </div>
             <div class="stat-info">
@@ -30,7 +30,7 @@
       <el-col :xs="24" :sm="12" :md="8">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <div class="stat-icon" style="background: rgba(64, 158, 255, 0.1); color: #409eff;">
+            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
               <el-icon size="28"><View /></el-icon>
             </div>
             <div class="stat-info">

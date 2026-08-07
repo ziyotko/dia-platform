@@ -42,6 +42,11 @@
           <breadcrumb v-if="appStore.breadcrumb" />
         </div>
         <div class="header-right">
+          <el-tooltip content="待审核事项" placement="bottom">
+            <el-icon class="header-icon has-dot" size="36" @click="$router.push('/pending-audits')">
+              <Bell />
+            </el-icon>
+          </el-tooltip>
           <el-tooltip content="全屏" placement="bottom">
             <el-icon class="header-icon" size="36" @click="toggleFullScreen">
               <FullScreen />
@@ -90,6 +95,7 @@ import {
   Fold,
   Expand,
   FullScreen,
+  Bell,
   ArrowDown,
   SwitchButton,
   User,
@@ -224,12 +230,13 @@ const handleCommand = (command: string) => {
 <style scoped lang="scss">
 .layout-container {
   min-height: 100vh;
-  background: #f5f9ff;
+  background: var(--app-bg);
 }
 
 .sidebar {
-  background: linear-gradient(180deg, #f0f7ff 0%, #e6f2ff 100%);
-  border-right: 1px solid #d9ecff;
+  background: #fff;
+  border-right: 1px solid var(--app-border);
+  box-shadow: 2px 0 12px rgba(16, 24, 40, 0.04);
   transition: width 0.3s, background 0.3s;
   display: flex;
   flex-direction: column;
@@ -249,6 +256,7 @@ const handleCommand = (command: string) => {
       .logo-text {
         background: linear-gradient(90deg, #ffffff 0%, #bfcbd9 100%);
         -webkit-background-clip: text;
+        background-clip: text;
         -webkit-text-fill-color: transparent;
       }
     }
@@ -286,35 +294,41 @@ const handleCommand = (command: string) => {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  border-bottom: 1px solid #d9ecff;
+  border-bottom: 1px solid var(--app-border);
   padding: 0 16px;
   transition: border-color 0.3s;
 
   .logo-icon-wrap {
-    width: 36px;
-    height: 36px;
+    flex-shrink: 0;
+    width: 38px;
+    height: 38px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 10px;
+    border-radius: 12px;
     background: linear-gradient(135deg, var(--el-color-primary-light-8) 0%, var(--el-color-primary-light-9) 100%);
-    box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
+    box-shadow: 0 4px 10px rgba(64, 158, 255, 0.2);
     transition: transform 0.3s;
 
+    :deep(.el-icon) {
+      color: var(--el-color-primary);
+    }
+
     &:hover {
-      transform: scale(1.05);
+      transform: scale(1.06);
     }
   }
 
   .logo-text {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 700;
-    color: #2c3e50;
+    color: var(--app-text-primary);
     white-space: nowrap;
-    transition: color 0.3s;
-    letter-spacing: 1px;
-    background: linear-gradient(90deg, #2c3e50 0%, #4a6582 100%);
+    transition: color 0.3s, opacity 0.2s;
+    letter-spacing: 0.5px;
+    background: linear-gradient(90deg, #1d2739 0%, #409eff 100%);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
   }
 }
@@ -326,30 +340,55 @@ const handleCommand = (command: string) => {
 .sidebar-menu {
   border-right: none;
   background: transparent !important;
+  padding: 8px 0;
 
   :deep(.el-menu-item) {
+    position: relative;
     margin: 4px 12px;
-    border-radius: 8px;
+    height: 44px;
+    line-height: 44px;
+    border-radius: 10px;
     transition: background 0.3s, color 0.3s;
 
     &:hover {
-      background: rgba(64, 158, 255, 0.08) !important;
+      background: rgba(64, 158, 255, 0.06) !important;
     }
 
     &.is-active {
-      background: rgba(64, 158, 255, 0.12) !important;
+      background: linear-gradient(90deg, rgba(64, 158, 255, 0.14) 0%, rgba(64, 158, 255, 0.06) 100%) !important;
+      color: var(--el-color-primary);
       font-weight: 600;
+
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 3px;
+        height: 20px;
+        border-radius: 2px;
+        background: var(--el-color-primary);
+      }
     }
   }
 
   :deep(.el-sub-menu__title) {
     margin: 4px 12px;
-    border-radius: 8px;
+    height: 44px;
+    line-height: 44px;
+    border-radius: 10px;
     transition: background 0.3s, color 0.3s;
 
     &:hover {
-      background: rgba(64, 158, 255, 0.08) !important;
+      background: rgba(64, 158, 255, 0.06) !important;
     }
+  }
+
+  :deep(.el-menu--inline .el-menu-item) {
+    margin-left: 24px;
+    margin-right: 16px;
+    min-width: 0;
   }
 
   &.el-menu--collapse {
@@ -363,12 +402,17 @@ const handleCommand = (command: string) => {
 
 .header {
   height: 64px;
-  background: #fff;
-  border-bottom: 1px solid #d9ecff;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--app-border);
+  box-shadow: 0 1px 4px rgba(16, 24, 40, 0.04);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .header-left {
@@ -379,52 +423,66 @@ const handleCommand = (command: string) => {
 
 .collapse-btn {
   cursor: pointer;
-  color: #606266;
+  color: var(--app-text-secondary);
   padding: 6px;
-  border-radius: 4px;
+  border-radius: 8px;
   transition: all 0.3s;
 
   &:hover {
-    background: #f5f9ff;
-    color: #409eff;
+    background: #f5f7fb;
+    color: var(--el-color-primary);
   }
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 8px;
 }
 
 .header-icon {
+  position: relative;
   cursor: pointer;
-  color: #606266;
-  padding: 6px;
-  border-radius: 4px;
+  color: var(--app-text-secondary);
+  padding: 8px;
+  border-radius: 10px;
   transition: all 0.3s;
 
   &:hover {
-    background: #f5f9ff;
-    color: #409eff;
+    background: #f5f7fb;
+    color: var(--el-color-primary);
+  }
+
+  &.has-dot::after {
+    content: '';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #f56c6c;
+    border: 2px solid #fff;
   }
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 8px;
+  padding: 5px 10px;
+  border-radius: 10px;
   transition: all 0.3s;
 
   &:hover {
-    background: #f5f9ff;
+    background: #f5f7fb;
   }
 
   .username {
     font-size: 14px;
-    color: #2c3e50;
+    font-weight: 500;
+    color: var(--app-text-primary);
     max-width: 100px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -434,7 +492,7 @@ const handleCommand = (command: string) => {
 
 .main-content {
   padding: 20px;
-  background: #f5f9ff;
+  background: var(--app-bg);
 }
 
 .fade-enter-active,

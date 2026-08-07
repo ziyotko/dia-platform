@@ -1,60 +1,60 @@
 <template>
   <div class="dashboard">
     <el-row :gutter="20" class="stat-cards">
-      <el-col :xs="24" :sm="12" :md="4">
-        <el-card class="stat-card" shadow="hover">
-          <div class="stat-content">
-            <div class="stat-icon" style="background: rgba(230, 162, 60, 0.1); color: #e6a23c;">
-              <el-icon size="28"><View /></el-icon>
-            </div>
+      <el-col :xs="24" :sm="12" :md="6" :lg="4">
+        <el-card class="stat-card" shadow="never">
+          <div class="stat-body">
             <div class="stat-info">
-              <div class="stat-value">{{ stats.todayVisit.toLocaleString() }}</div>
               <div class="stat-label">今日访问量</div>
+              <div class="stat-value">{{ stats.todayVisit.toLocaleString() }}</div>
+            </div>
+            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
+              <el-icon :size="26"><View /></el-icon>
             </div>
           </div>
         </el-card>
       </el-col>
-      <el-col :xs="24" :sm="12" :md="4">
-        <el-card class="stat-card" shadow="hover">
-          <div class="stat-content">
-            <div class="stat-icon" style="background: rgba(103, 194, 58, 0.1); color: #67c23a;">
-              <el-icon size="28"><DocumentChecked /></el-icon>
-            </div>
+      <el-col :xs="24" :sm="12" :md="6" :lg="4">
+        <el-card class="stat-card" shadow="never">
+          <div class="stat-body">
             <div class="stat-info">
-              <div class="stat-value">{{ stats.articleCount.toLocaleString() }}</div>
               <div class="stat-label">文章总数</div>
+              <div class="stat-value">{{ stats.articleCount.toLocaleString() }}</div>
+            </div>
+            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
+              <el-icon :size="26"><DocumentChecked /></el-icon>
             </div>
           </div>
         </el-card>
       </el-col>
-      <el-col :xs="24" :sm="12" :md="4">
-        <el-card class="stat-card" shadow="hover">
-          <div class="stat-content">
-            <div class="stat-icon" style="background: rgba(245, 108, 108, 0.1); color: #f56c6c;">
-              <el-icon size="28"><Document /></el-icon>
-            </div>
+      <el-col :xs="24" :sm="12" :md="6" :lg="4">
+        <el-card class="stat-card" shadow="never">
+          <div class="stat-body">
             <div class="stat-info">
-              <div class="stat-value">{{ stats.todayStaticCount.toLocaleString() }}</div>
               <div class="stat-label">我的草稿文章</div>
+              <div class="stat-value">{{ stats.todayStaticCount.toLocaleString() }}</div>
+            </div>
+            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
+              <el-icon :size="26"><Document /></el-icon>
             </div>
           </div>
         </el-card>
       </el-col>
-      <el-col :xs="24" :sm="12" :md="4">
-        <el-card class="stat-card" shadow="hover">
-          <div class="stat-content">
-            <div class="stat-icon" style="background: rgba(99, 102, 241, 0.1); color: #6366f1;">
-              <el-icon size="28"><EditPen /></el-icon>
-            </div>
+      <el-col :xs="24" :sm="12" :md="6" :lg="4">
+        <el-card class="stat-card" shadow="never">
+          <div class="stat-body">
             <div class="stat-info">
-              <div class="stat-value">{{ stats.myArticleCount.toLocaleString() }}</div>
               <div class="stat-label">我的已发布文章</div>
+              <div class="stat-value">{{ stats.myArticleCount.toLocaleString() }}</div>
+            </div>
+            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
+              <el-icon :size="26"><EditPen /></el-icon>
             </div>
           </div>
         </el-card>
       </el-col>
       <el-col :xs="24" :lg="8">
-        <el-card shadow="hover">
+        <el-card shadow="never">
           <div class="quick-links">
             <div v-for="(item, index) in quickLinks" :key="index" class="quick-item" @click="$router.push(item.path)">
               <div class="quick-icon" :style="{ background: item.bg, color: item.color }">
@@ -339,12 +339,12 @@ const updateArticleChart = () => {
       smooth: true,
       symbol: 'circle',
       symbolSize: 8,
-      itemStyle: { color: '#67c23a' },
-      lineStyle: { width: 3, color: '#67c23a' },
+      itemStyle: { color: '#409eff' },
+      lineStyle: { width: 3, color: '#409eff' },
       areaStyle: {
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(103, 194, 58, 0.3)' },
-          { offset: 1, color: 'rgba(103, 194, 58, 0.05)' }
+          { offset: 0, color: 'rgba(64, 158, 255, 0.3)' },
+          { offset: 1, color: 'rgba(64, 158, 255, 0.05)' }
         ])
       }
     }]
@@ -392,11 +392,11 @@ onUnmounted(() => {
 
 
 const quickLinks = [
-  { name: '用户管理', icon: 'User', path: '/system/users', bg: 'rgba(64, 158, 255, 0.1)', color: '#409eff' },
-  { name: '内容发布', icon: 'EditPen', path: '/content/article', bg: 'rgba(103, 194, 58, 0.1)', color: '#67c23a' },
-  { name: '广告管理', icon: 'Promotion', path: '/content/ad', bg: 'rgba(230, 162, 60, 0.1)', color: '#e6a23c' },
-  { name: '静态化管理', icon: 'DocumentChecked', path: '/content/static', bg: 'rgba(168, 85, 247, 0.1)', color: '#a855f7' },
-  { name: '系统设置', icon: 'Setting', path: '/settings', bg: 'rgba(245, 108, 108, 0.1)', color: '#f56c6c' }
+  { name: '用户管理', icon: 'User', path: '/system/users', bg: 'var(--el-color-primary-light-9)', color: 'var(--el-color-primary)' },
+  { name: '内容发布', icon: 'EditPen', path: '/content/article', bg: 'var(--el-color-primary-light-9)', color: 'var(--el-color-primary)' },
+  { name: '广告管理', icon: 'Promotion', path: '/content/ad', bg: 'var(--el-color-primary-light-9)', color: 'var(--el-color-primary)' },
+  { name: '静态化管理', icon: 'DocumentChecked', path: '/content/static', bg: 'var(--el-color-primary-light-9)', color: 'var(--el-color-primary)' },
+  { name: '系统设置', icon: 'Setting', path: '/settings', bg: 'var(--el-color-primary-light-9)', color: 'var(--el-color-primary)' }
 ]
 
 
@@ -409,40 +409,45 @@ const quickLinks = [
   }
 
   .stat-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
+    transition: transform 0.3s, box-shadow 0.3s;
+
+    &:hover {
+      transform: translateY(-3px);
+    }
 
     :deep(.el-card__body) {
       padding: 20px;
     }
   }
 
-  .stat-content {
+  .stat-body {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 16px;
   }
 
   .stat-icon {
-    width: 56px;
-    height: 56px;
-    border-radius: 12px;
+    flex-shrink: 0;
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
   .stat-value {
-    font-size: 24px;
+    font-size: 26px;
     font-weight: 700;
-    color: #2c3e50;
+    color: var(--app-text-primary);
     line-height: 1.2;
   }
 
   .stat-label {
     font-size: 13px;
-    color: #909399;
-    margin-top: 4px;
+    color: var(--app-text-secondary);
+    margin-bottom: 6px;
   }
 
   .table-container {
@@ -456,8 +461,7 @@ const quickLinks = [
 
   .chart-card,
   .notice-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
+    border-radius: var(--app-card-radius);
   }
 
   .card-header {
@@ -465,7 +469,7 @@ const quickLinks = [
     align-items: center;
     justify-content: space-between;
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--app-text-primary);
   }
 
   .chart-container {
@@ -489,12 +493,12 @@ const quickLinks = [
       align-items: center;
       gap: 12px;
       padding: 12px 0;
-      border-bottom: 1px solid #f0f7ff;
+      border-bottom: 1px solid #f0f2f7;
       cursor: pointer;
       transition: background 0.2s;
 
       &:hover {
-        background: #f5f9ff;
+        background: #f5f7fb;
       }
 
       &:last-child {
@@ -519,8 +523,7 @@ const quickLinks = [
 
   .dashboard-bottom {
     .el-card {
-      border-radius: 12px;
-      border: 1px solid #e6f2ff;
+      border-radius: var(--app-card-radius);
     }
 
     .login-log-table {
@@ -544,7 +547,7 @@ const quickLinks = [
       transition: all 0.3s;
 
       &:hover {
-        background: #f5f9ff;
+        background: #f5f7fb;
         transform: translateY(-2px);
       }
 

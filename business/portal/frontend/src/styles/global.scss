@@ -1,0 +1,282 @@
+/* =========================================================
+   Portal 全局设计系统（Mifty Dashboard 风格）
+   通过覆盖 Element Plus CSS 变量 + 通用组件样式，
+   让所有页面统一获得现代、清爽的视觉风格。
+   ========================================================= */
+
+:root {
+  /* 主色（Element Plus 变量） */
+  --el-color-primary: #409eff;
+  --el-color-primary-light-3: #79bbff;
+  --el-color-primary-light-5: #a0cfff;
+  --el-color-primary-light-7: #c6e2ff;
+  --el-color-primary-light-8: #d9ecff;
+  --el-color-primary-light-9: #ecf5ff;
+  --el-color-primary-dark-2: #337ecc;
+
+  /* 圆角 */
+  --el-border-radius-base: 8px;
+  --el-border-radius-small: 6px;
+  --el-border-radius-round: 20px;
+
+  /* 字体 */
+  --el-font-family: 'Inter', 'Helvetica Neue', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
+
+  /* 阴影 */
+  --el-box-shadow-light: 0 1px 2px rgba(16, 24, 40, 0.04),
+    0 1px 3px rgba(16, 24, 40, 0.06);
+  --el-box-shadow: 0 6px 24px rgba(16, 24, 40, 0.08);
+  --el-box-shadow-dark: 0 6px 24px rgba(16, 24, 40, 0.12);
+
+  /* 自定义设计令牌 */
+  --app-bg: #f5f7fb;
+  --app-card-bg: #ffffff;
+  --app-border: #eef1f6;
+  --app-text-primary: #1d2739;
+  --app-text-secondary: #667085;
+  --app-text-muted: #98a2b3;
+  --app-card-radius: 14px;
+  --app-card-shadow: 0 1px 2px rgba(16, 24, 40, 0.04),
+    0 1px 3px rgba(16, 24, 40, 0.06);
+  --app-card-shadow-hover: 0 8px 24px rgba(16, 24, 40, 0.09);
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  background: var(--app-bg);
+  color: var(--app-text-primary);
+  font-family: var(--el-font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================ 卡片 ============================ */
+.el-card {
+  --el-card-border-color: var(--app-border);
+  border-radius: var(--app-card-radius);
+  border: 1px solid var(--app-border);
+  box-shadow: var(--app-card-shadow) !important;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.el-card.is-hover-shadow:hover,
+.el-card--always-shadow {
+  box-shadow: var(--app-card-shadow-hover) !important;
+}
+
+.el-card__header {
+  padding: 16px 20px;
+  font-weight: 600;
+  color: var(--app-text-primary);
+  border-bottom: 1px solid #f0f2f7;
+}
+
+.el-card__body {
+  padding: 20px;
+}
+
+/* ============================ 按钮 ============================ */
+.el-button {
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.25s ease;
+}
+
+.el-button--primary {
+  box-shadow: 0 2px 6px rgba(64, 158, 255, 0.25);
+}
+
+.el-button--primary:active {
+  box-shadow: none;
+}
+
+.el-button--primary.is-plain,
+.el-button--primary.is-link {
+  box-shadow: none;
+}
+
+/* ============================ 输入框 / 选择器 ============================ */
+.el-input__wrapper {
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px #e3e8f0 inset !important;
+  transition: box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.el-input__wrapper:hover {
+  box-shadow: 0 0 0 1px #cdd5e1 inset !important;
+}
+
+.el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px var(--el-color-primary) inset !important;
+}
+
+.el-select__wrapper {
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px #e3e8f0 inset !important;
+}
+
+.el-select__wrapper.is-focused {
+  box-shadow: 0 0 0 1px var(--el-color-primary) inset !important;
+}
+
+.el-textarea__inner {
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px #e3e8f0 inset !important;
+}
+
+.el-textarea__inner:focus {
+  box-shadow: 0 0 0 1px var(--el-color-primary) inset !important;
+}
+
+/* ============================ 表格 ============================ */
+.el-table {
+  --el-table-border-color: var(--app-border);
+  --el-table-header-bg-color: #f8fafd;
+  --el-table-header-text-color: #667085;
+  --el-table-row-hover-bg-color: #f5f9ff;
+  --el-table-text-color: #344054;
+  --el-table-bg-color: transparent;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.el-table th.el-table__cell {
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.3px;
+}
+
+.el-table .cell {
+  line-height: 1.6;
+}
+
+/* ============================ 标签 ============================ */
+.el-tag {
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+/* ============================ 弹窗 ============================ */
+.el-dialog {
+  border-radius: 16px;
+  box-shadow: var(--el-box-shadow-dark) !important;
+}
+
+.el-dialog__header {
+  padding: 20px 24px;
+  margin-right: 0;
+  border-bottom: 1px solid #f0f2f7;
+}
+
+.el-dialog__title {
+  font-weight: 600;
+}
+
+.el-dialog__body {
+  padding: 20px 24px;
+}
+
+.el-dialog__footer {
+  padding: 12px 24px 20px;
+}
+
+.el-message-box {
+  border-radius: 16px;
+  box-shadow: var(--el-box-shadow-dark) !important;
+}
+
+.el-message {
+  border-radius: 10px;
+  box-shadow: var(--el-box-shadow) !important;
+}
+
+.el-drawer {
+  border-radius: 16px 0 0 16px;
+}
+
+/* ============================ 表单 ============================ */
+.el-form-item__label {
+  font-weight: 500;
+  color: #344054;
+}
+
+/* ============================ 下拉菜单 ============================ */
+.el-dropdown-menu {
+  border-radius: 10px;
+  padding: 6px;
+  box-shadow: var(--el-box-shadow) !important;
+}
+
+.el-dropdown-menu__item {
+  border-radius: 6px;
+  margin: 2px 4px;
+  padding: 8px 12px;
+}
+
+/* ============================ 分页 ============================ */
+.el-pagination {
+  --el-pagination-button-bg-color: #fff;
+}
+
+.el-pagination .el-pager li {
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.el-pagination .btn-prev,
+.el-pagination .btn-next {
+  border-radius: 6px;
+}
+
+/* ============================ 提示气泡 ============================ */
+.el-popover.el-popper,
+.el-tooltip__popper,
+.el-popper.is-light {
+  border-radius: 10px;
+}
+
+/* ============================ 选项卡 / 步骤 ============================ */
+.el-tabs__item {
+  font-weight: 500;
+}
+
+/* ============================ 滚动条 ============================ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d6dce6;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #b9c2d0;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ============================ 通用工具类 ============================ */
+.app-page {
+  animation: app-fade-in 0.3s ease;
+}
+
+@keyframes app-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

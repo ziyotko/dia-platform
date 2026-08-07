@@ -36,6 +36,8 @@
         "/^Push-Location \"D:\\\\Projects\\\\dia-platform\\\\business\\\\portal\\\\frontend\"; node _no_ref_test2\\.mjs; Pop-Location$/": {
             "approve": true,
             "matchCommandLine": true
-        }
+        },
+        ".\\node_modules\\.bin\\vite.cmd": true,
+        "Test-NetConnection": true
     }
 }

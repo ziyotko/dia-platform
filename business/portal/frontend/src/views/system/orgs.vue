@@ -74,7 +74,7 @@
               >
                 <template #default="{ data }">
                   <span class="dept-node">
-                    <el-icon size="12" color="#67c23a"><OfficeBuilding /></el-icon>
+                    <el-icon size="12" color="var(--el-color-primary)"><OfficeBuilding /></el-icon>
                     <span>{{ data.name }}</span>
                   </span>
                 </template>

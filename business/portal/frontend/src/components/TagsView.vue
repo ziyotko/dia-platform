@@ -71,7 +71,7 @@ watch(() => route.path, addView, { immediate: true })
   gap: 8px;
   padding: 8px 20px;
   background: #fff;
-  border-bottom: 1px solid #d9ecff;
+  border-bottom: 1px solid var(--app-border);
   overflow-x: auto;
 
   .tags-view-item {
@@ -79,17 +79,18 @@ watch(() => route.path, addView, { immediate: true })
     align-items: center;
     gap: 6px;
     padding: 4px 12px;
-    border-radius: 4px;
+    border-radius: 8px;
     font-size: 13px;
-    color: #606266;
-    background: #f5f9ff;
-    border: 1px solid #d9ecff;
+    color: var(--app-text-secondary);
+    background: #f5f7fb;
+    border: 1px solid #eef1f6;
     cursor: pointer;
     white-space: nowrap;
-    transition: all 0.3s;
+    transition: all 0.25s;
 
     &:hover {
       color: var(--el-color-primary);
+      border-color: var(--el-color-primary-light-7);
     }
 
     &.active {
@@ -97,6 +98,7 @@ watch(() => route.path, addView, { immediate: true })
       background: var(--el-color-primary-light-9, #ecf5ff);
       border-color: var(--el-color-primary-light-7, #c6e2ff);
       font-weight: 600;
+      box-shadow: 0 2px 6px rgba(64, 158, 255, 0.15);
     }
 
     .close-icon {
