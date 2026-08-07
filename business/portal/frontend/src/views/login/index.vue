@@ -6,7 +6,7 @@
           <img v-if="siteInfo.logo" :src="resolveLogoUrl(siteInfo.logo)" alt="logo" class="login-logo" />
           <el-icon v-else size="72" color="#002fa7"><Platform /></el-icon>
           <h1>{{ siteInfo.siteName }}</h1>
-          <p>统一内容管理平台</p>
+          <p>统一管理平台</p>
         </div>
         <div class="login-features">
            <div class="feature-item">
@@ -290,7 +290,7 @@ onMounted(() => {
     height: 72px;
     object-fit: contain;
     border-radius: 16px;
-    background: rgba(255, 255, 255, 0.15);
+    background: #ffffff;
     padding: 10px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
   }
