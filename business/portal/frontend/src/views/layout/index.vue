@@ -9,7 +9,7 @@
         <div class="logo-icon-wrap">
           <el-icon size="24" :color="appStore.themeColor"><Platform /></el-icon>
         </div>
-        <span class="logo-text">门户管理后台</span>
+        <span v-if="!appStore.sidebarCollapsed" class="logo-text">统一管理后台</span>
       </div>
       <el-scrollbar class="menu-scrollbar">
         <el-menu
