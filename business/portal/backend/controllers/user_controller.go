@@ -38,6 +38,30 @@ func NewUserController() *UserController {
 	}
 }
 
+// canAssignRoles 判断操作者能否为他人分配目标角色。
+// 角色序号越小角色越高，操作者只能分配不高于自身最高角色的角色（目标角色序号 >= 操作者最高角色序号）。
+func (c *UserController) canAssignRoles(operatorID uint, targetRoleIds []int) bool {
+	operatorRoles, err := c.userService.GetUserRoleIds(operatorID)
+	if err != nil {
+		return false
+	}
+	if len(operatorRoles) == 0 || len(targetRoleIds) == 0 {
+		return true
+	}
+	minRoleID := operatorRoles[0]
+	for _, id := range operatorRoles {
+		if id < minRoleID {
+			minRoleID = id
+		}
+	}
+	for _, id := range targetRoleIds {
+		if id < minRoleID {
+			return false
+		}
+	}
+	return true
+}
+
 func (c *UserController) GetUsers(ctx *gin.Context) {
 	page, _ := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(ctx.DefaultQuery("pageSize", "10"))
@@ -121,6 +145,11 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 		return
 	}
 
+	if !c.canAssignRoles(ctx.GetUint("userID"), req.RoleIds) {
+		ctx.JSON(http.StatusOK, utils.Error(1, "不能分配高于当前用户最高角色的角色"))
+		return
+	}
+
 	password, err := c.userService.CreateUser(req.Username, req.Account, req.Email, req.Password, req.Phone, req.Status, req.Sex, req.RoleIds, req.OrgIds)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "创建用户失败: "+err.Error()))
@@ -175,6 +204,11 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		return
+	}
+
+	if !c.canAssignRoles(ctx.GetUint("userID"), req.RoleIds) {
+		ctx.JSON(http.StatusOK, utils.Error(1, "不能分配高于当前用户最高角色的角色"))
 		return
 	}
 

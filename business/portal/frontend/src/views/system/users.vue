@@ -140,7 +140,7 @@
         <el-form-item label="角色" prop="roleIds">
           <el-select v-model="form.roleIds" multiple placeholder="请选择角色" style="width: 100%" :disabled="isReadonly">
             <el-option
-              v-for="role in roleOptions"
+              v-for="role in assignableRoles"
               :key="role.id"
               :label="role.name"
               :value="role.id"
@@ -195,7 +195,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Search,
@@ -208,6 +208,7 @@ import {
 import { getUserList, createUser, updateUser, deleteUser, updateUserStatus, importUsers, checkUserUnique } from '@/api/user'
 import { getAllRoles } from '@/api/role'
 import { getOrgList, type OrgItem } from '@/api/org'
+import { useUserStore } from '@/stores/user'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -282,6 +283,21 @@ const formRules = {
 const tableData = ref<any[]>([])
 const roleOptions = ref<any[]>([])
 const orgOptions = ref<OrgItem[]>([])
+
+const userStore = useUserStore()
+
+// 当前登录用户可分配的最高角色序号（角色序号越小角色越高，取当前用户角色中序号最小的）
+const currentMinRoleId = computed(() => {
+  const roleIds = userStore.userInfo?.roleIds || []
+  if (roleIds.length === 0) return 0
+  return Math.min(...roleIds)
+})
+
+// 仅显示不高于当前登录用户最高角色的角色（序号 >= 当前用户最高角色序号）
+const assignableRoles = computed(() => {
+  const min = currentMinRoleId.value
+  return roleOptions.value.filter((role: any) => Number(role.id) >= min)
+})
 
 const fetchOrgs = async () => {
   try {
@@ -392,6 +408,10 @@ const handleStatusChange = async (row: any, val: number) => {
 const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
+  if (form.roleIds.some((id) => id < currentMinRoleId.value)) {
+    ElMessage.warning('不能设置高于当前登录用户最高角色的角色')
+    return
+  }
   submitLoading.value = true
   try {
     if (form.id) {
