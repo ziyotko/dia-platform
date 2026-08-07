@@ -38,6 +38,8 @@
             "matchCommandLine": true
         },
         ".\\node_modules\\.bin\\vite.cmd": true,
-        "Test-NetConnection": true
+        "Test-NetConnection": true,
+        "Get-NetTCPConnection": true,
+        "Get-CimInstance": true
     }
 }

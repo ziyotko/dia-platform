@@ -8,12 +8,12 @@ export function getLoginLogs() {
   return request.get('/dashboard/login-logs')
 }
 
-export function getVisitTrend(period: string) {
-  return request.get('/dashboard/visit-trend', { params: { period } })
+export function getVisitTrend(period: string, year?: number) {
+  return request.get('/dashboard/visit-trend', { params: { period, year } })
 }
 
-export function getArticleTrend(period: string) {
-  return request.get('/dashboard/article-trend', { params: { period } })
+export function getArticleTrend(period: string, year?: number) {
+  return request.get('/dashboard/article-trend', { params: { period, year } })
 }
 
 export function getMyAuditArticles(params?: { page?: number; pageSize?: number }) {

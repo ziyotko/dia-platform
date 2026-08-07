@@ -73,11 +73,16 @@
           <template #header>
             <div class="card-header">
               <span>访问趋势</span>
-              <el-radio-group v-model="chartPeriod" size="small">
-                <el-radio-button value="week">本周</el-radio-button>
-                <el-radio-button value="month">本月</el-radio-button>
-                <el-radio-button value="year">全年</el-radio-button>
-              </el-radio-group>
+              <div class="header-controls">
+                <el-select v-model="visitYear" size="small" class="year-select">
+                  <el-option v-for="y in yearOptions" :key="y" :label="`${y}年`" :value="y" />
+                </el-select>
+                <el-radio-group v-model="chartPeriod" size="small">
+                  <el-radio-button value="week" :disabled="!isVisitCurrentYear">本周</el-radio-button>
+                  <el-radio-button value="month" :disabled="!isVisitCurrentYear">本月</el-radio-button>
+                  <el-radio-button value="year">全年</el-radio-button>
+                </el-radio-group>
+              </div>
             </div>
           </template>
           <div ref="chartRef" class="chart-container"></div>
@@ -114,11 +119,16 @@
           <template #header>
             <div class="card-header">
               <span>发布趋势</span>
-              <el-radio-group v-model="articleChartPeriod" size="small">
-                <el-radio-button value="week">本周</el-radio-button>
-                <el-radio-button value="month">本月</el-radio-button>
-                <el-radio-button value="year">全年</el-radio-button>
-              </el-radio-group>
+              <div class="header-controls">
+                <el-select v-model="articleYear" size="small" class="year-select">
+                  <el-option v-for="y in yearOptions" :key="y" :label="`${y}年`" :value="y" />
+                </el-select>
+                <el-radio-group v-model="articleChartPeriod" size="small">
+                  <el-radio-button value="week" :disabled="!isArticleCurrentYear">本周</el-radio-button>
+                  <el-radio-button value="month" :disabled="!isArticleCurrentYear">本月</el-radio-button>
+                  <el-radio-button value="year">全年</el-radio-button>
+                </el-radio-group>
+              </div>
             </div>
           </template>
           <div ref="articleChartRef" class="chart-container"></div>
@@ -156,7 +166,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive, watch, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, reactive, watch, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import type { ECharts } from 'echarts'
@@ -240,6 +250,19 @@ onMounted(() => {
 })
 
 const chartPeriod = ref('week')
+const currentYear = new Date().getFullYear()
+const yearOptions = computed(() => {
+  const years: number[] = []
+  for (let y = currentYear; y >= currentYear - 4; y--) {
+    years.push(y)
+  }
+  return years
+})
+
+const visitYear = ref(currentYear)
+const lastVisitPeriod = ref('week')
+const isVisitCurrentYear = computed(() => visitYear.value === currentYear)
+
 const visitData = ref<{ label: string; value: number }[]>([
   { label: '周一', value: 45 },
   { label: '周二', value: 62 },
@@ -289,7 +312,7 @@ const initChart = () => {
 
 const fetchVisitTrend = async () => {
   try {
-    const res: any = await getVisitTrend(chartPeriod.value)
+    const res: any = await getVisitTrend(chartPeriod.value, visitYear.value)
     if (res && Array.isArray(res.data) && res.data.length > 0) {
       visitData.value = res.data.map((item: any) => ({
         label: item.label,
@@ -306,11 +329,34 @@ watch(chartPeriod, () => {
   fetchVisitTrend()
 })
 
+watch(visitYear, (newYear) => {
+  if (newYear !== currentYear) {
+    // 查看往年：本周/本月不适用，强制全年
+    if (chartPeriod.value !== 'year') {
+      lastVisitPeriod.value = chartPeriod.value
+      chartPeriod.value = 'year'
+    } else {
+      fetchVisitTrend()
+    }
+  } else {
+    // 切回今年：恢复之前的周期
+    if (chartPeriod.value !== lastVisitPeriod.value) {
+      chartPeriod.value = lastVisitPeriod.value
+    } else {
+      fetchVisitTrend()
+    }
+  }
+})
+
 watch(visitData, () => {
   updateChart()
 }, { deep: true })
 
 const articleChartPeriod = ref('week')
+const articleYear = ref(currentYear)
+const lastArticlePeriod = ref('week')
+const isArticleCurrentYear = computed(() => articleYear.value === currentYear)
+
 const articleVisitData = ref<{ label: string; value: number }[]>([
   { label: '周一', value: 0 },
   { label: '周二', value: 0 },
@@ -360,7 +406,7 @@ const initArticleChart = () => {
 
 const fetchArticleTrend = async () => {
   try {
-    const res: any = await getArticleTrend(articleChartPeriod.value)
+    const res: any = await getArticleTrend(articleChartPeriod.value, articleYear.value)
     if (res && Array.isArray(res.data) && res.data.length > 0) {
       articleVisitData.value = res.data.map((item: any) => ({
         label: item.label,
@@ -375,6 +421,25 @@ const fetchArticleTrend = async () => {
 
 watch(articleChartPeriod, () => {
   fetchArticleTrend()
+})
+
+watch(articleYear, (newYear) => {
+  if (newYear !== currentYear) {
+    // 查看往年：本周/本月不适用，强制全年
+    if (articleChartPeriod.value !== 'year') {
+      lastArticlePeriod.value = articleChartPeriod.value
+      articleChartPeriod.value = 'year'
+    } else {
+      fetchArticleTrend()
+    }
+  } else {
+    // 切回今年：恢复之前的周期
+    if (articleChartPeriod.value !== lastArticlePeriod.value) {
+      articleChartPeriod.value = lastArticlePeriod.value
+    } else {
+      fetchArticleTrend()
+    }
+  }
 })
 
 watch(articleVisitData, () => {
@@ -468,8 +533,19 @@ const quickLinks = [
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 12px;
     font-weight: 600;
     color: var(--app-text-primary);
+  }
+
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .year-select {
+    width: 100px;
   }
 
   .chart-container {

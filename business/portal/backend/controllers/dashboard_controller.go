@@ -74,6 +74,14 @@ func (c *DashboardController) GetVisitTrend(ctx *gin.Context) {
 	period := ctx.Query("period")
 	now := time.Now()
 
+	// 支持按年份查看全年趋势，默认当前年
+	year := now.Year()
+	if yStr := ctx.Query("year"); yStr != "" {
+		if y, err := strconv.Atoi(yStr); err == nil && y >= 2000 && y <= 9999 {
+			year = y
+		}
+	}
+
 	var result []TrendItem
 
 	switch period {
@@ -122,7 +130,7 @@ func (c *DashboardController) GetVisitTrend(ctx *gin.Context) {
 		}
 
 	case "year":
-		startOfYear := time.Date(now.Year(), 1, 1, 0, 0, 0, 0, now.Location())
+		startOfYear := time.Date(year, 1, 1, 0, 0, 0, 0, now.Location())
 		endOfYear := startOfYear.AddDate(1, 0, 0)
 
 		var visits []models.VisitAnalytics
@@ -136,7 +144,7 @@ func (c *DashboardController) GetVisitTrend(ctx *gin.Context) {
 
 		months := []string{"1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"}
 		for i := 1; i <= 12; i++ {
-			monthStr := time.Date(now.Year(), time.Month(i), 1, 0, 0, 0, 0, now.Location()).Format("2006-01")
+			monthStr := time.Date(year, time.Month(i), 1, 0, 0, 0, 0, now.Location()).Format("2006-01")
 			result = append(result, TrendItem{Label: months[i-1], Value: countMap[monthStr]})
 		}
 
@@ -151,6 +159,14 @@ func (c *DashboardController) GetVisitTrend(ctx *gin.Context) {
 func (c *DashboardController) GetArticleTrend(ctx *gin.Context) {
 	period := ctx.Query("period")
 	now := time.Now()
+
+	// 支持按年份查看全年趋势，默认当前年
+	year := now.Year()
+	if yStr := ctx.Query("year"); yStr != "" {
+		if y, err := strconv.Atoi(yStr); err == nil && y >= 2000 && y <= 9999 {
+			year = y
+		}
+	}
 
 	var result []TrendItem
 
@@ -186,14 +202,14 @@ func (c *DashboardController) GetArticleTrend(ctx *gin.Context) {
 		}
 
 	case "year":
-		startOfYear := time.Date(now.Year(), 1, 1, 0, 0, 0, 0, now.Location())
+		startOfYear := time.Date(year, 1, 1, 0, 0, 0, 0, now.Location())
 		endOfYear := startOfYear.AddDate(1, 0, 0)
 
 		countMap := getPublishedArticleCountMap(startOfYear, endOfYear, "2006-01")
 
 		months := []string{"1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"}
 		for i := 1; i <= 12; i++ {
-			monthStr := time.Date(now.Year(), time.Month(i), 1, 0, 0, 0, 0, now.Location()).Format("2006-01")
+			monthStr := time.Date(year, time.Month(i), 1, 0, 0, 0, 0, now.Location()).Format("2006-01")
 			result = append(result, TrendItem{Label: months[i-1], Value: countMap[monthStr]})
 		}
 
