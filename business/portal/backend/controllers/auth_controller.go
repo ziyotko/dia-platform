@@ -101,8 +101,18 @@ func (c *AuthController) Login(ctx *gin.Context) {
 	loginLog.Status = 1
 	utils.DB.Create(loginLog)
 
+	// 登录返回的 user 仅暴露前端所需字段，roleIds 统一为数字数组（原 models.User.RoleIds 是逗号分隔字符串）
+	userRoles, err := c.userService.GetUserRoleIds(user.ID)
+	if err != nil {
+		userRoles = []int{}
+	}
 	ctx.JSON(200, utils.Success("登录成功", gin.H{
-		"user":    user,
+		"user": gin.H{
+			"id":       user.ID,
+			"username": user.Username,
+			"avatar":   user.Avatar,
+			"roleIds":  userRoles,
+		},
 		"token":   token,
 		"signKey": signKey,
 	}))

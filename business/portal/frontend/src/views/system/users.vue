@@ -288,7 +288,13 @@ const userStore = useUserStore()
 
 // 当前登录用户可分配的最高角色序号（角色序号越小角色越高，取当前用户角色中序号最小的）
 const currentMinRoleId = computed(() => {
-  const roleIds = userStore.userInfo?.roleIds || []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const raw: any = userStore.userInfo?.roleIds
+  const roleIds = Array.isArray(raw)
+    ? raw.map(Number).filter((n) => !Number.isNaN(n))
+    : typeof raw === 'string' && raw.trim()
+      ? raw.split(',').map((s) => Number(s.trim())).filter((n) => !Number.isNaN(n))
+      : []
   if (roleIds.length === 0) return 0
   return Math.min(...roleIds)
 })

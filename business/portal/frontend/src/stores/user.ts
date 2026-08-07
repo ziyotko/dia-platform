@@ -11,6 +11,20 @@ export interface UserInfo {
 
 const USER_INFO_KEY = 'user_info'
 
+// 兼容 roleIds 可能为逗号分隔字符串（如 "4,5,2"）或数字数组的两种情况，统一转为 number[]
+function normalizeRoleIds(roleIds: any): number[] {
+  if (Array.isArray(roleIds)) {
+    return roleIds.map((id) => Number(id)).filter((n) => !Number.isNaN(n))
+  }
+  if (typeof roleIds === 'string' && roleIds.trim() !== '') {
+    return roleIds
+      .split(',')
+      .map((s) => Number(s.trim()))
+      .filter((n) => !Number.isNaN(n))
+  }
+  return []
+}
+
 function getStoredUserInfo(): UserInfo | null {
   const stored = localStorage.getItem(USER_INFO_KEY)
   if (!stored) return null
@@ -20,6 +34,7 @@ function getStoredUserInfo(): UserInfo | null {
     if (data.ID !== undefined && data.id === undefined) {
       data.id = data.ID
     }
+    data.roleIds = normalizeRoleIds(data.roleIds)
     return data as UserInfo
   } catch {
     return null
@@ -48,8 +63,8 @@ export const useUserStore = defineStore('user', () => {
   }
 
   function setUserInfo(info: UserInfo) {
-    userInfo.value = info
-    localStorage.setItem(USER_INFO_KEY, JSON.stringify(info))
+    userInfo.value = { ...info, roleIds: normalizeRoleIds(info.roleIds) }
+    localStorage.setItem(USER_INFO_KEY, JSON.stringify(userInfo.value))
   }
 
   /**
