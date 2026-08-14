@@ -23,6 +23,11 @@ func main() {
 		utils.DB.AutoMigrate(m)
 	}
 
+	// 初始化系统默认角色（超级管理员/普通管理员/内容审核/内容作者），缺失时自动创建
+	models.SeedDefaultRoles()
+	// 初始化系统默认用户（与默认角色一一对应，初始密码 1qaz@WSX），缺失时自动创建
+	models.SeedDefaultUsers()
+
 	// 生产环境使用 release 模式，避免输出敏感调试信息
 	gin.SetMode(config.AppConfig.Server.Mode)
 	if config.AppConfig.Server.Mode == "" {

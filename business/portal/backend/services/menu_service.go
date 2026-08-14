@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"slices"
 	"sort"
 
 	"server/models"
@@ -51,6 +52,11 @@ func (s *MenuService) GetUserMenus(userID uint) ([]models.Menu, error) {
 	err = utils.DB.Where("status = ?", 1).Order("sort ASC, id ASC").Find(&allMenus).Error
 	if err != nil {
 		return nil, err
+	}
+
+	// 超级管理员（角色 ID=1）拥有一切权限，直接返回全部启用菜单
+	if slices.Contains(roleIds, 1) {
+		return buildMenuTree(allMenus, 0), nil
 	}
 
 	menuMap := make(map[uint]models.Menu)

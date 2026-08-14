@@ -357,7 +357,13 @@ func (s *UserService) UpdateUser(id uint, username, account, email, password, ph
 	return nil
 }
 
+// 内置超级管理员用户 ID（与前端 users.vue 及 models/seed.go 保持一致），不可删除、不可禁用
+const builtinSuperAdminUserID uint = 1
+
 func (s *UserService) DeleteUser(id uint) error {
+	if id == builtinSuperAdminUserID {
+		return errors.New("内置超级管理员不可删除")
+	}
 	orgService := OrganizationService{}
 	if err := orgService.RemoveUserFromAllOrganizations(id); err != nil {
 		return err
@@ -366,6 +372,9 @@ func (s *UserService) DeleteUser(id uint) error {
 }
 
 func (s *UserService) UpdateUserStatus(id uint, status int) error {
+	if id == builtinSuperAdminUserID && status != 1 {
+		return errors.New("内置超级管理员不可禁用")
+	}
 	return utils.DB.Model(&models.User{}).Where("id = ?", id).Update("status", status).Error
 }
 

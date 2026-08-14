@@ -44,10 +44,10 @@
             <el-button link type="primary" @click="handlePermission(row)">
               <el-icon><Key /></el-icon>权限
             </el-button>
-            <el-button v-if="row.id !== 1 && row.id !== 2" link type="primary" @click="handleEdit(row)">
+            <el-button v-if="!protectedRoleIds.includes(row.id)" link type="primary" @click="handleEdit(row)">
               <el-icon><Edit /></el-icon>编辑
             </el-button>
-            <el-button v-if="row.id !== 1 && row.id !== 2" link type="danger" @click="handleDelete(row)">
+            <el-button v-if="!protectedRoleIds.includes(row.id)" link type="danger" @click="handleDelete(row)">
               <el-icon><Delete /></el-icon>删除
             </el-button>
           </template>
@@ -143,6 +143,9 @@ import {
   getRolePermissions,
   updateRolePermissions
 } from '@/api/role'
+
+// 系统内置默认角色 ID（超级管理员/普通管理员/内容审核/内容作者），禁止编辑、删除及修改权限
+const protectedRoleIds = [1, 2, 3, 4]
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -266,7 +269,7 @@ const handleDelete = (row: any) => {
 
 const handlePermission = async (row: any) => {
   currentRoleId.value = row.id
-  isPermissionReadonly.value = row.id === 1 || row.id === 2
+  isPermissionReadonly.value = protectedRoleIds.includes(row.id)
   permissionVisible.value = true
   try {
     const [menuRes, permRes]: any[] = await Promise.all([
