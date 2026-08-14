@@ -22,7 +22,6 @@ func main() {
 	for _, m := range models.AllModels() {
 		utils.DB.AutoMigrate(m)
 	}
-	models.MigrateIndexes()
 
 	// 生产环境使用 release 模式，避免输出敏感调试信息
 	gin.SetMode(config.AppConfig.Server.Mode)
