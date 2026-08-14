@@ -8,21 +8,18 @@ import (
 )
 
 type Ad struct {
-	ID        uint           `gorm:"primarykey" json:"id"`
-	CreatedAt time.Time      `json:"createTime"`
-	UpdatedAt time.Time      `json:"updatedAt"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt"`
-	Name      string         `gorm:"size:200;not null" json:"name"`
-	PageID    uint           `gorm:"not null;index" json:"pageId"`
-	ColumnID  uint           `gorm:"default:0;index" json:"columnId"`
-	Image     string         `gorm:"size:500" json:"image"`
-	Link      string         `gorm:"size:500" json:"link"`
-	Sort      int            `gorm:"default:0" json:"sort"`
-	Status     int           `gorm:"default:1;index" json:"status"`
-	StartTime  *time.Time     `json:"startTime"`
-	EndTime    *time.Time     `json:"endTime"`
-	Author     string         `gorm:"size:100" json:"author"`
-	AuthorCode string         `gorm:"size:100" json:"authorCode"`
+	gorm.Model
+	Name       string     `gorm:"size:200;not null" json:"name"`
+	PageID     uint       `gorm:"not null;index" json:"pageId"`
+	ColumnID   uint       `gorm:"default:0;index" json:"columnId"`
+	Image      string     `gorm:"size:500" json:"image"`
+	Link       string     `gorm:"size:500" json:"link"`
+	Sort       int        `gorm:"default:0" json:"sort"`
+	Status     int        `gorm:"default:1;index" json:"status"`
+	StartTime  *time.Time `json:"startTime"`
+	EndTime    *time.Time `json:"endTime"`
+	Author     string     `gorm:"size:100" json:"author"`
+	AuthorCode string     `gorm:"size:100" json:"authorCode"`
 }
 
 func (a Ad) MarshalJSON() ([]byte, error) {

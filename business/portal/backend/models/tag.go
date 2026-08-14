@@ -2,19 +2,15 @@ package models
 
 import (
 	"encoding/json"
-	"time"
 
 	"gorm.io/gorm"
 )
 
 type Tag struct {
-	ID        uint           `gorm:"primarykey" json:"id"`
-	CreatedAt time.Time      `json:"createTime"`
-	UpdatedAt time.Time      `json:"updatedAt"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"deletedAt"`
-	Name      string         `gorm:"size:100;not null" json:"name"`
-	Color     string         `gorm:"size:20;default:'rgb(64,158,255)'" json:"color"`
-	Status    int            `gorm:"default:1;index" json:"status"`
+	gorm.Model
+	Name   string `gorm:"size:100;not null" json:"name"`
+	Color  string `gorm:"size:20;default:'rgb(64,158,255)'" json:"color"`
+	Status int    `gorm:"default:1;index" json:"status"`
 }
 
 func (t Tag) MarshalJSON() ([]byte, error) {
