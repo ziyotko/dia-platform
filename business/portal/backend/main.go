@@ -27,6 +27,8 @@ func main() {
 	models.SeedDefaultRoles()
 	// 初始化系统默认用户（与默认角色一一对应，初始密码 1qaz@WSX），缺失时自动创建
 	models.SeedDefaultUsers()
+	// 初始化系统默认菜单（管理首页/内容管理/数据统计/基础配置/系统配置），缺失时自动创建
+	models.SeedDefaultMenus()
 
 	// 生产环境使用 release 模式，避免输出敏感调试信息
 	gin.SetMode(config.AppConfig.Server.Mode)

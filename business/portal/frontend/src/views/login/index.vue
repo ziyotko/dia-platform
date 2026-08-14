@@ -34,7 +34,7 @@
       <div class="login-right">
         <div class="login-form-wrapper">
           <h2>欢迎回来</h2>
-          <p class="login-subtitle">登录门户一体化统一管理后台</p>
+          <p class="login-subtitle">登录一体化统一管理后台</p>
           <el-form
             ref="formRef"
             :model="form"
