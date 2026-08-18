@@ -43,7 +43,7 @@
         </div>
         <div class="header-right">
           <el-tooltip content="待审核事项" placement="bottom">
-            <el-icon class="header-icon has-dot" size="36" @click="$router.push('/pending-audits')">
+            <el-icon class="header-icon has-dot" size="36" @click="$router.push('/content/pending-audits')">
               <Bell />
             </el-icon>
           </el-tooltip>
