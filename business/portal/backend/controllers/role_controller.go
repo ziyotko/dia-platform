@@ -13,11 +13,13 @@ import (
 
 type RoleController struct {
 	roleService *services.RoleService
+	userService *services.UserService
 }
 
 func NewRoleController() *RoleController {
 	return &RoleController{
 		roleService: &services.RoleService{},
+		userService: &services.UserService{},
 	}
 }
 
@@ -140,6 +142,29 @@ func (c *RoleController) UpdateRolePermissions(ctx *gin.Context) {
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "角色ID无效"))
+		return
+	}
+
+	// 超级管理员（角色1）的权限永远不允许修改
+	if id == 1 {
+		ctx.JSON(http.StatusOK, utils.Error(1, "超级管理员角色的权限不允许修改"))
+		return
+	}
+
+	// 权限约束：当前用户只能修改角色序号 >= 自身最小角色序号的角色的权限（角色序号越小角色越高）
+	operatorRoles, err := c.userService.GetUserRoleIds(ctx.GetUint("userID"))
+	if err != nil || len(operatorRoles) == 0 {
+		ctx.JSON(http.StatusOK, utils.Error(1, "无权修改该角色的权限"))
+		return
+	}
+	minRoleID := operatorRoles[0]
+	for _, rid := range operatorRoles {
+		if rid < minRoleID {
+			minRoleID = rid
+		}
+	}
+	if uint(id) < uint(minRoleID) {
+		ctx.JSON(http.StatusOK, utils.Error(1, "无权修改该角色的权限"))
 		return
 	}
 

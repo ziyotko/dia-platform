@@ -42,7 +42,7 @@
         <el-table-column label="操作" width="220" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handlePermission(row)">
-              <el-icon><Key /></el-icon>权限
+              <el-icon><Key /></el-icon>{{ row.id === 1 || Number(row.id) < currentMinRoleId ? '查看' : '权限' }}
             </el-button>
             <el-button v-if="!protectedRoleIds.includes(row.id)" link type="primary" @click="handleEdit(row)">
               <el-icon><Edit /></el-icon>编辑
@@ -124,7 +124,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Search,
@@ -143,9 +143,24 @@ import {
   getRolePermissions,
   updateRolePermissions
 } from '@/api/role'
+import { useUserStore } from '@/stores/user'
 
-// 系统内置默认角色 ID（超级管理员/普通管理员/内容审核/内容作者），禁止编辑、删除及修改权限
+// 系统内置默认角色 ID（超级管理员/普通管理员/内容审核/内容作者），禁止编辑、删除（权限分配按当前用户角色动态限制）
 const protectedRoleIds = [1, 2, 3, 4]
+
+const userStore = useUserStore()
+
+// 当前登录用户角色中序号最小的角色 ID（角色序号越小角色越高，取最小者作为自身"权限下限"）
+const currentMinRoleId = computed(() => {
+  const raw: any = userStore.userInfo?.roleIds
+  const roleIds = Array.isArray(raw)
+    ? raw.map(Number).filter((n) => !Number.isNaN(n))
+    : typeof raw === 'string' && raw.trim()
+      ? raw.split(',').map((s) => Number(s.trim())).filter((n) => !Number.isNaN(n))
+      : []
+  if (roleIds.length === 0) return 0
+  return Math.min(...roleIds)
+})
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -269,7 +284,8 @@ const handleDelete = (row: any) => {
 
 const handlePermission = async (row: any) => {
   currentRoleId.value = row.id
-  isPermissionReadonly.value = protectedRoleIds.includes(row.id)
+  // 角色1（超级管理员）权限永远不可改；只能修改角色序号 >= 当前用户最小角色序号的角色的权限，否则只读查看
+  isPermissionReadonly.value = row.id === 1 || Number(row.id) < currentMinRoleId.value
   permissionVisible.value = true
   try {
     const [menuRes, permRes]: any[] = await Promise.all([
