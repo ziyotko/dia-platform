@@ -41,6 +41,8 @@ func (s *SettingsService) GetSettings() (*models.Setting, error) {
 				SpecialStaticTime:        "",
 				DetailStaticTimeEnabled:  false,
 				DetailStaticTime:         "",
+				StaticProgramAddr:        "",
+				StaticProgramTokenName:   "",
 			}
 			if err := utils.DB.Create(&settings).Error; err != nil {
 				return nil, err

@@ -6,10 +6,26 @@
       </template>
 
       <el-form :model="form" label-width="180px" class="settings-form">
-        <el-form-item label="静态化路径">
+        <el-form-item label="静态化输出路径">
           <el-input
             v-model="form.staticPath"
             placeholder="请输入静态化输出路径，如 D:/static"
+            clearable
+          />
+        </el-form-item>
+
+        <el-form-item label="静态化程序访问地址">
+          <el-input
+            v-model="form.staticProgramAddr"
+            placeholder="请输入静态化程序访问地址，如 127.0.0.1:8889"
+            clearable
+          />
+        </el-form-item>
+
+        <el-form-item label="静态化程序访问令牌名">
+          <el-input
+            v-model="form.staticProgramTokenName"
+            placeholder="请输入静态化程序访问令牌名，如 CAAM_TOKEN"
             clearable
           />
         </el-form-item>
@@ -92,6 +108,8 @@ const loading = ref(false)
 
 const form = reactive({
   staticPath: '',
+  staticProgramAddr: '',
+  staticProgramTokenName: '',
   homeGray: false,
   homeStaticTimeEnabled: false,
   homeStaticTime: '',
@@ -108,6 +126,8 @@ const loadSettings = async () => {
     const res: any = await getSettings()
     const data = res.data as Settings
     form.staticPath = data.staticPath || ''
+    form.staticProgramAddr = data.staticProgramAddr || ''
+    form.staticProgramTokenName = data.staticProgramTokenName || ''
     form.homeGray = data.homeGray ?? false
     form.homeStaticTimeEnabled = data.homeStaticTimeEnabled ?? false
     form.homeStaticTime = data.homeStaticTime || ''
@@ -127,6 +147,8 @@ const handleSave = async () => {
   try {
     await updateSettings({
       staticPath: form.staticPath,
+      staticProgramAddr: form.staticProgramAddr,
+      staticProgramTokenName: form.staticProgramTokenName,
       homeGray: form.homeGray,
       homeStaticTimeEnabled: form.homeStaticTimeEnabled,
       homeStaticTime: form.homeStaticTimeEnabled ? form.homeStaticTime : '',

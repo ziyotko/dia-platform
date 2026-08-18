@@ -32,4 +32,6 @@ type Setting struct {
 	SpecialStaticTime        string `gorm:"size:10" json:"specialStaticTime"`
 	DetailStaticTimeEnabled  bool   `gorm:"default:false" json:"detailStaticTimeEnabled"`
 	DetailStaticTime         string `gorm:"size:10" json:"detailStaticTime"`
+	StaticProgramAddr        string `gorm:"size:100" json:"staticProgramAddr"`
+	StaticProgramTokenName   string `gorm:"size:100" json:"staticProgramTokenName"`
 }

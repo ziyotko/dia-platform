@@ -29,6 +29,8 @@ export interface Settings {
   specialStaticTime: string
   detailStaticTimeEnabled: boolean
   detailStaticTime: string
+  staticProgramAddr: string
+  staticProgramTokenName: string
 }
 
 export interface SiteInfo {
