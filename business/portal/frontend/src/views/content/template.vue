@@ -158,101 +158,14 @@
       class="design-dialog"
       destroy-on-close
     >
-      <el-tabs v-model="activeDesignTab" type="border-card" @tab-change="handleDesignTabChange">
-        <el-tab-pane label="可视化布局" name="visual">
-          <div class="design-workspace">
-            <div class="component-sidebar">
-              <div class="sidebar-title">组件库</div>
-              <div class="component-list">
-                <div
-                  v-for="comp in componentLibrary"
-                  :key="comp.type"
-                  class="component-item"
-                  draggable="true"
-                  @dragstart="handleDragStart(comp)"
-                >
-                  <el-icon :size="20"><component :is="comp.icon" /></el-icon>
-                  <span class="component-name">{{ comp.label }}</span>
-                </div>
-              </div>
-            </div>
-            <div
-              class="canvas-area"
-              :class="{ dragging: isDragging }"
-              @dragover.prevent
-              @drop="handleDrop"
-              @dragenter="isDragging = true"
-              @dragleave="isDragging = false"
-            >
-              <template v-if="canvasItems.length">
-                <div
-                  v-for="(item, index) in canvasItems"
-                  :key="item.id"
-                  class="canvas-item"
-                  :class="{ active: activeCanvasIndex === index }"
-                  :style="{
-                    left: (item.x || 0) + 'px',
-                    top: (item.y || 0) + 'px',
-                    width: item.fullWidth ? 'calc(100% - 32px)' : '260px',
-                    backgroundColor: item.bgColor || '#ffffff'
-                  }"
-                  @click="activeCanvasIndex = index"
-                  @mousedown.stop="handleItemMouseDown($event, index)"
-                >
-                  <div class="item-header">
-                    <span class="item-label">{{ item.label }}</span>
-                    <div class="item-actions">
-                      <el-icon class="action-icon delete" @mousedown.stop @click.stop="removeItem(index)"><Delete /></el-icon>
-                    </div>
-                  </div>
-                  <div class="item-preview">
-                    <component :is="item.icon" :size="28" />
-                    <span>{{ item.label }} 组件</span>
-                  </div>
-                </div>
-              </template>
-              <div v-else class="canvas-placeholder">
-                <el-icon :size="48"><DocumentAdd /></el-icon>
-                <p>从左侧拖拽组件到此处进行模板设计</p>
-              </div>
-            </div>
-            <div class="property-panel" v-if="activeCanvasItem">
-              <div class="sidebar-title">属性设置</div>
-              <el-form label-width="80px" size="small">
-                <el-form-item label="组件名称">
-                  <el-input v-model="activeCanvasItem.label" disabled />
-                </el-form-item>
-                <el-form-item label="背景颜色">
-                  <el-color-picker v-model="activeCanvasItem.bgColor" show-alpha />
-                </el-form-item>
-                <el-form-item label="X 坐标">
-                  <el-input-number v-model="activeCanvasItem.x" :min="0" :step="1" style="width: 100%" />
-                </el-form-item>
-                <el-form-item label="Y 坐标">
-                  <el-input-number v-model="activeCanvasItem.y" :min="0" :step="1" style="width: 100%" />
-                </el-form-item>
-                <el-form-item label="是否全宽">
-                  <el-switch v-model="activeCanvasItem.fullWidth" />
-                </el-form-item>
-              </el-form>
-            </div>
-            <div class="property-panel" v-else>
-              <div class="sidebar-title">属性设置</div>
-              <el-empty description="请选择一个组件" :image-size="80" />
-            </div>
-          </div>
-        </el-tab-pane>
-        <el-tab-pane label="源码编辑" name="source">
-          <div class="source-editor">
-            <el-input
-              v-model="designForm.sourceCode"
-              type="textarea"
-              placeholder="请输入模板 HTML / Vue 源码..."
-              class="code-textarea"
-            />
-          </div>
-        </el-tab-pane>
-      </el-tabs>
+      <div class="source-editor">
+        <el-input
+          v-model="designForm.sourceCode"
+          type="textarea"
+          placeholder="请输入模板 HTML / Vue 源码..."
+          class="code-textarea"
+        />
+      </div>
       <template #footer>
         <el-button @click="designDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="designSubmitLoading" @click="handleDesignSave">保存设计</el-button>
@@ -323,31 +236,7 @@ import {
   RefreshRight,
   View,
   Brush,
-  DocumentAdd,
-  Monitor,
-  HomeFilled,
-  List,
-  Document,
-  Picture,
-  Grid,
-  VideoPlay,
-  ChatDotSquare,
-  Link,
-  Calendar,
-  User,
-  Location,
-  Phone,
-  Message,
-  Star,
-  Ticket,
-  Timer,
-  ShoppingCart,
-  PriceTag,
-  DataLine,
-  Bell,
-  Upload,
-  Wallet,
-  Shop
+  Monitor
 } from '@element-plus/icons-vue'
 import {
   getTemplateList,
@@ -372,19 +261,6 @@ interface TemplateItem {
   layout?: string
 }
 
-interface ComponentItem {
-  type: string
-  label: string
-  icon: any
-  id?: string
-  bgColor?: string
-  marginTop?: number
-  marginBottom?: number
-  fullWidth?: boolean
-  x?: number
-  y?: number
-}
-
 const loading = ref(false)
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
@@ -393,11 +269,6 @@ const formRef = ref()
 
 const designDialogVisible = ref(false)
 const designSubmitLoading = ref(false)
-const activeDesignTab = ref('visual')
-const isDragging = ref(false)
-const activeCanvasIndex = ref<number | null>(null)
-const canvasItems = ref<ComponentItem[]>([])
-const draggedComp = ref<ComponentItem | null>(null)
 
 const previewDialogVisible = ref(false)
 const previewRow = ref<TemplateItem | null>(null)
@@ -434,40 +305,8 @@ const designForm = reactive({
   sourceCode: ''
 })
 
-const componentLibrary: ComponentItem[] = [
-  { type: 'header', label: '顶部导航', icon: HomeFilled },
-  { type: 'banner', label: '轮播图', icon: Picture },
-  { type: 'grid', label: '宫格菜单', icon: Grid },
-  { type: 'list', label: '文章列表', icon: List },
-  { type: 'video', label: '视频区块', icon: VideoPlay },
-  { type: 'notice', label: '公告栏', icon: ChatDotSquare },
-  { type: 'link', label: '友情链接', icon: Link },
-  { type: 'calendar', label: '日历活动', icon: Calendar },
-  { type: 'footer', label: '页脚信息', icon: Document },
-  { type: 'search', label: '搜索栏', icon: Search },
-  { type: 'user', label: '用户信息', icon: User },
-  { type: 'location', label: '地图定位', icon: Location },
-  { type: 'phone', label: '电话客服', icon: Phone },
-  { type: 'message', label: '留言评论', icon: Message },
-  { type: 'star', label: '收藏评分', icon: Star },
-  { type: 'ticket', label: '优惠券', icon: Ticket },
-  { type: 'timer', label: '倒计时', icon: Timer },
-  { type: 'shopping', label: '购物车', icon: ShoppingCart },
-  { type: 'price', label: '价格标签', icon: PriceTag },
-  { type: 'chart', label: '数据图表', icon: DataLine },
-  { type: 'notification', label: '消息通知', icon: Bell },
-  { type: 'upload', label: '文件上传', icon: Upload },
-  { type: 'wallet', label: '钱包支付', icon: Wallet },
-  { type: 'shop', label: '店铺门店', icon: Shop }
-]
-
 const tableData = ref<TemplateItem[]>([])
 const total = ref(0)
-
-const activeCanvasItem = computed<ComponentItem | null>(() => {
-  if (activeCanvasIndex.value === null) return null
-  return canvasItems.value[activeCanvasIndex.value] || null
-})
 
 const previewHtml = computed(() => {
   if (!previewRow.value) return ''
@@ -699,134 +538,15 @@ const handleDesign = (row: TemplateItem) => {
   designForm.id = row.id
   designForm.name = row.name
   designForm.sourceCode = row.sourceCode || `<template>\n  <!-- ${row.name} -->\n  <div class="template-${row.code}">\n    \n  </div>\n</template>\n`
-  canvasItems.value = []
-  activeCanvasIndex.value = null
-  activeDesignTab.value = 'visual'
-
-  if (row.layout) {
-    try {
-      const parsed = JSON.parse(row.layout) as Omit<ComponentItem, 'icon'>[]
-      canvasItems.value = parsed.map((item, idx) => {
-        const lib = componentLibrary.find(c => c.type === item.type)
-        return {
-          ...item,
-          icon: lib?.icon || Document,
-          x: item.x ?? 20,
-          y: item.y ?? (idx * 140 + 20)
-        } as ComponentItem
-      })
-    } catch {
-      canvasItems.value = []
-    }
-  }
-
   designDialogVisible.value = true
-}
-
-const handleDragStart = (comp: ComponentItem) => {
-  draggedComp.value = comp
-}
-
-const handleDrop = (event: DragEvent) => {
-  isDragging.value = false
-  const canvasEl = event.currentTarget as HTMLElement
-  const rect = canvasEl.getBoundingClientRect()
-  const x = event.clientX - rect.left
-  const y = event.clientY - rect.top
-
-  if (!draggedComp.value) return
-  canvasItems.value.push({
-    ...draggedComp.value,
-    id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
-    bgColor: '#ffffff',
-    marginTop: 0,
-    marginBottom: 0,
-    fullWidth: false,
-    x: Math.round(x),
-    y: Math.round(y)
-  })
-  draggedComp.value = null
-}
-
-const dragState = {
-  index: null as number | null,
-  offsetX: 0,
-  offsetY: 0,
-  canvasRect: null as DOMRect | null
-}
-
-const handleItemMouseDown = (event: MouseEvent, index: number) => {
-  event.stopPropagation()
-  event.preventDefault()
-  const canvasEl = document.querySelector('.canvas-area') as HTMLElement
-  if (!canvasEl) return
-  const rect = canvasEl.getBoundingClientRect()
-  const item = canvasItems.value[index]
-  dragState.index = index
-  dragState.canvasRect = rect
-  dragState.offsetX = event.clientX - rect.left - (item.x || 0)
-  dragState.offsetY = event.clientY - rect.top - (item.y || 0)
-  document.addEventListener('mousemove', handleMouseMove)
-  document.addEventListener('mouseup', handleMouseUp)
-}
-
-const handleMouseMove = (event: MouseEvent) => {
-  if (dragState.index === null) return
-  const item = canvasItems.value[dragState.index]
-  if (!item || !dragState.canvasRect) return
-  item.x = Math.round(event.clientX - dragState.canvasRect.left - dragState.offsetX)
-  item.y = Math.round(event.clientY - dragState.canvasRect.top - dragState.offsetY)
-}
-
-const handleMouseUp = () => {
-  dragState.index = null
-  dragState.canvasRect = null
-  document.removeEventListener('mousemove', handleMouseMove)
-  document.removeEventListener('mouseup', handleMouseUp)
-}
-
-const removeItem = (index: number) => {
-  canvasItems.value.splice(index, 1)
-  if (activeCanvasIndex.value === index) activeCanvasIndex.value = null
-  else if (activeCanvasIndex.value !== null && activeCanvasIndex.value > index) {
-    activeCanvasIndex.value--
-  }
-}
-
-const generateSourceCode = () => {
-  const items = canvasItems.value
-  if (!items.length) {
-    return `<template>\n  <div class="template-page">\n    <!-- 请从左侧拖拽组件到画布 -->\n  </div>\n</template>\n`
-  }
-  const componentsHtml = items.map(item => {
-    return `    <!-- ${item.label} -->\n    <div class="comp-${item.type}" style="position:absolute;left:${item.x || 0}px;top:${item.y || 0}px;width:${item.fullWidth ? '100%' : '260px'};background:${item.bgColor || '#fff'};">\n      ${item.label}\n    </div>`
-  }).join('\n\n')
-  return `<template>\n  <div class="template-page" style="position:relative;width:100%;min-height:100vh;">\n${componentsHtml}\n  </div>\n</template>\n`
-}
-
-const handleDesignTabChange = (tab: string) => {
-  if (tab === 'source') {
-    designForm.sourceCode = generateSourceCode()
-  }
 }
 
 const handleDesignSave = async () => {
   designSubmitLoading.value = true
   try {
-    const layout = JSON.stringify(canvasItems.value.map(item => ({
-      type: item.type,
-      label: item.label,
-      id: item.id,
-      bgColor: item.bgColor,
-      marginTop: item.marginTop,
-      marginBottom: item.marginBottom,
-      fullWidth: item.fullWidth,
-      x: item.x,
-      y: item.y
-    })))
     await saveTemplateDesign(designForm.id!, {
       sourceCode: designForm.sourceCode,
-      layout
+      layout: ''
     })
     ElMessage.success('模板设计保存成功')
     designDialogVisible.value = false
@@ -905,183 +625,6 @@ onMounted(() => {
     justify-content: flex-end;
   }
 
-  .design-workspace {
-    display: flex;
-    gap: 20px;
-    height: calc(96vh - 210px);
-
-    .component-sidebar {
-      width: 170px;
-      flex-shrink: 0;
-      background: #f8fafc;
-      border-radius: 16px;
-      padding: 16px;
-      overflow-y: auto;
-      border: 1px solid #f1f5f9;
-
-      .sidebar-title {
-        font-size: 14px;
-        font-weight: 700;
-        color: #1f2937;
-        margin-bottom: 14px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #e2e8f0;
-      }
-
-      .component-list {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-      }
-
-      .component-item {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 12px 14px;
-        background: #ffffff;
-        border-radius: 12px;
-        border: 1px solid #e2e8f0;
-        cursor: grab;
-        transition: all 0.25s ease;
-
-        &:hover {
-          border-color: #6366f1;
-          color: #6366f1;
-          box-shadow: 0 6px 14px rgba(99, 102, 241, 0.12);
-          transform: translateY(-1px);
-        }
-
-        .component-name {
-          font-size: 13px;
-          font-weight: 500;
-        }
-      }
-    }
-
-    .canvas-area {
-      flex: 1;
-      background: #f8fafc;
-      border-radius: 24px;
-      border: 2px dashed #cbd5e1;
-      padding: 20px;
-      overflow: auto;
-      transition: all 0.3s ease;
-      position: relative;
-
-      /* PC browser canvas */
-
-      &.dragging {
-        border-color: #6366f1;
-        background: #eef2ff;
-      }
-
-      .canvas-placeholder {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        color: #94a3b8;
-        gap: 14px;
-        padding-top: 20px;
-
-        p {
-          font-size: 14px;
-          font-weight: 500;
-        }
-      }
-
-      .canvas-item {
-        position: absolute;
-        background: #ffffff;
-        border-radius: 16px;
-        border: 1px solid #e2e8f0;
-        overflow: hidden;
-        transition: box-shadow 0.3s ease, border-color 0.3s ease;
-        cursor: pointer;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
-
-        &:hover {
-          border-color: #6366f1;
-          box-shadow: 0 8px 20px rgba(99, 102, 241, 0.1);
-          transform: translateY(-2px);
-        }
-
-        &.active {
-          border-color: #6366f1;
-          box-shadow: 0 8px 24px rgba(99, 102, 241, 0.18);
-        }
-
-        .item-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 12px 16px;
-          background: #f8fafc;
-          border-bottom: 1px solid #f1f5f9;
-
-          .item-label {
-            font-size: 13px;
-            font-weight: 700;
-            color: #1f2937;
-          }
-
-          .item-actions {
-            display: flex;
-            gap: 10px;
-
-            .action-icon {
-              font-size: 14px;
-              color: #64748b;
-              cursor: pointer;
-              transition: color 0.2s;
-
-              &:hover {
-                color: #6366f1;
-              }
-
-              &.delete:hover {
-                color: #ef4444;
-              }
-            }
-          }
-        }
-
-        .item-preview {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          padding: 28px;
-          gap: 10px;
-          color: #94a3b8;
-          font-size: 13px;
-          font-weight: 500;
-        }
-      }
-    }
-
-    .property-panel {
-      width: 230px;
-      flex-shrink: 0;
-      background: #f8fafc;
-      border-radius: 16px;
-      padding: 16px;
-      overflow-y: auto;
-      border: 1px solid #f1f5f9;
-
-      .sidebar-title {
-        font-size: 14px;
-        font-weight: 700;
-        color: #1f2937;
-        margin-bottom: 14px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #e2e8f0;
-      }
-    }
-  }
-
   .source-editor {
     height: calc(96vh - 260px);
     .code-textarea {
@@ -1154,20 +697,5 @@ onMounted(() => {
 :deep(.el-dialog__footer) {
   padding: 14px 24px 18px;
   border-top: 1px solid #f1f5f9;
-}
-:deep(.el-tabs--border-card) {
-  border-radius: 16px;
-  overflow: hidden;
-  border: 1px solid #f1f5f9;
-  box-shadow: none;
-}
-:deep(.el-tabs--border-card > .el-tabs__header) {
-  background: #f8fafc;
-  border-bottom: 1px solid #f1f5f9;
-}
-:deep(.el-tabs--border-card > .el-tabs__header .el-tabs__item.is-active) {
-  background: #ffffff;
-  color: #6366f1;
-  font-weight: 700;
 }
 </style>
