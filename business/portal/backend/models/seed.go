@@ -14,28 +14,28 @@ import (
 //   - 4 = 内容作者（仅自有内容，需审核后发布）
 var defaultRoles = []Role{
 	{
-		Model:       gorm.Model{ID: 1},
+		ID:          1,
 		Name:        "超级管理员",
 		Code:        "super_admin",
 		Description: "系统最高权限角色，拥有平台全部功能模块的访问、配置与管理权限，不受任何权限范围限制。通常仅授予系统运维或平台负责人，请谨慎分配。",
 		Status:      1,
 	},
 	{
-		Model:       gorm.Model{ID: 2},
+		ID:          2,
 		Name:        "普通管理员",
 		Code:        "admin",
 		Description: "负责所辖机构/组织范围内的日常运营管理，可管理授权机构下的成员、栏目、内容与基础配置，权限限定在授权范围内，无法操作其他机构及平台级全局设置。",
 		Status:      1,
 	},
 	{
-		Model:       gorm.Model{ID: 3},
+		ID:          3,
 		Name:        "内容审核",
 		Code:        "content_reviewer",
 		Description: "专职内容审核角色，仅可对提交审核的内容进行审阅、通过或驳回操作，并可在驳回时附上审核意见；不具备内容的直接发布、编辑或删除权限，亦不可修改栏目与审核流程配置。",
 		Status:      1,
 	},
 	{
-		Model:       gorm.Model{ID: 4},
+		ID:          4,
 		Name:        "内容作者",
 		Code:        "content_author",
 		Description: "内容创作角色，可创建和编辑本人创作的内容，并可提交送审；内容须经审核通过后方可发布，不可直接发布，亦不可编辑或删除他人内容。",
