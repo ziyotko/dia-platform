@@ -1,20 +1,29 @@
 <template>
   <div class="tags-view">
-    <div
-      v-for="tag in visitedViews"
-      :key="tag.path"
-      class="tags-view-item"
-      :class="{ active: isActive(tag) }"
-      @click="handleClick(tag)"
-    >
-      {{ tag.title }}
-      <el-icon
-        v-if="tag.path !== '/dashboard'"
-        class="close-icon"
-        @click.stop="handleClose(tag)"
+    <div class="tags-list">
+      <div
+        v-for="tag in visitedViews"
+        :key="tag.path"
+        class="tags-view-item"
+        :class="{ active: isActive(tag) }"
+        @click="handleClick(tag)"
       >
-        <Close />
-      </el-icon>
+        {{ tag.title }}
+        <el-icon
+          v-if="tag.path !== '/dashboard'"
+          class="close-icon"
+          @click.stop="handleClose(tag)"
+        >
+          <Close />
+        </el-icon>
+      </div>
+    </div>
+    <div class="tags-action">
+      <el-tooltip content="关闭所有页面" placement="bottom">
+        <el-icon class="close-all-icon" @click="handleCloseAll">
+          <CircleClose />
+        </el-icon>
+      </el-tooltip>
     </div>
   </div>
 </template>
@@ -22,7 +31,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Close } from '@element-plus/icons-vue'
+import { Close, CircleClose } from '@element-plus/icons-vue'
 
 interface TagView {
   path: string
@@ -61,6 +70,13 @@ const handleClose = (tag: TagView) => {
   }
 }
 
+const handleCloseAll = () => {
+  visitedViews.value = [{ path: '/dashboard', title: '首页' }]
+  if (route.path !== '/dashboard') {
+    router.push('/dashboard')
+  }
+}
+
 watch(() => route.path, addView, { immediate: true })
 </script>
 
@@ -72,7 +88,33 @@ watch(() => route.path, addView, { immediate: true })
   padding: 8px 20px;
   background: #fff;
   border-bottom: 1px solid var(--app-border);
-  overflow-x: auto;
+
+  .tags-list {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    overflow-x: auto;
+  }
+
+  .tags-action {
+    display: flex;
+    align-items: center;
+    margin-left: 12px;
+    padding-left: 12px;
+    border-left: 1px solid #eef1f6;
+    color: #909399;
+
+    .close-all-icon {
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        color: #f56c6c;
+      }
+    }
+  }
 
   .tags-view-item {
     display: flex;
