@@ -17,6 +17,7 @@ func main() {
 	utils.InitLogger()
 	utils.InitDB()
 	utils.InitRedisCaptcha()
+	utils.InitRedisCache()
 	utils.InitRedisAnti()
 
 	for _, m := range models.AllModels() {
