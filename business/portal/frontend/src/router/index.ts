@@ -75,7 +75,8 @@ export function generateRoutes(menus: MenuItem[]): any[] {
       name: menu.name,
       meta: {
         title: menu.name,
-        icon: menu.icon
+        icon: menu.icon,
+        type: menu.type
       }
     }
 

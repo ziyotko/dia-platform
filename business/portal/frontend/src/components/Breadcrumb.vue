@@ -5,7 +5,7 @@
       <template v-for="item in route.matched.slice(0, -1)" :key="item.path">
         <el-breadcrumb-item
           v-if="item.meta?.title"
-          :to="{ path: item.path }"
+          :to="item.meta.type === 'menu' ? { path: item.path } : undefined"
         >
           {{ item.meta.title }}
         </el-breadcrumb-item>
