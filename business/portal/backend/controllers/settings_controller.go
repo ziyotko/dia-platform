@@ -83,6 +83,11 @@ func (c *SettingsController) UpdateSettings(ctx *gin.Context) {
 		return
 	}
 
+	// 设置更新后同步刷新静态化参数缓存，保证读取接口返回最新值
+	if err := c.settingsService.LoadStaticParamsToCache(); err != nil {
+		utils.Logger.Warnf("保存设置后刷新静态化参数缓存失败: %s", err)
+	}
+
 	ctx.JSON(http.StatusOK, utils.Success("保存设置成功", nil))
 }
 

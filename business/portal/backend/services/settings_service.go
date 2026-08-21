@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"errors"
 
 	"server/models"
@@ -69,4 +70,59 @@ func (s *SettingsService) UpdateSettings(settings *models.Setting, fields ...str
 	}
 	settings.ID = existing.ID
 	return utils.DB.Model(&existing).Select(fields).Updates(settings).Error
+}
+
+// StaticParams 静态化相关参数
+type StaticParams struct {
+	StaticPath             string `json:"staticPath"`             // 静态化输出路径
+	StaticProgramAddr      string `json:"staticProgramAddr"`      // 静态化程序访问地址
+	StaticProgramTokenName string `json:"staticProgramTokenName"` // 静态化程序访问令牌名
+	HomeGray               bool   `json:"homeGray"`               // 首页整体变灰
+}
+
+// StaticParamsCacheKey 静态化参数在缓存（Redis2）中的 Key
+const StaticParamsCacheKey = "db:static:params"
+
+// GetStaticParams 从数据库读取静态化相关参数
+func (s *SettingsService) GetStaticParams() (*StaticParams, error) {
+	settings, err := s.GetSettings()
+	if err != nil {
+		return nil, err
+	}
+	return &StaticParams{
+		StaticPath:             settings.StaticPath,
+		StaticProgramAddr:      settings.StaticProgramAddr,
+		StaticProgramTokenName: settings.StaticProgramTokenName,
+		HomeGray:               settings.HomeGray,
+	}, nil
+}
+
+// LoadStaticParamsToCache 从数据库读取静态化参数并写入缓存（后端启动时调用）
+func (s *SettingsService) LoadStaticParamsToCache() error {
+	params, err := s.GetStaticParams()
+	if err != nil {
+		return err
+	}
+	data, err := json.Marshal(params)
+	if err != nil {
+		return err
+	}
+	return utils.Redis2.Set(utils.Ctx, StaticParamsCacheKey, data, 0).Err()
+}
+
+// GetStaticParamsFromCache 从缓存读取静态化参数；缓存未命中或解析失败时回源数据库并刷新缓存
+func (s *SettingsService) GetStaticParamsFromCache() (*StaticParams, error) {
+	if data, err := utils.Redis2.Get(utils.Ctx, StaticParamsCacheKey).Bytes(); err == nil {
+		var params StaticParams
+		if json.Unmarshal(data, &params) == nil {
+			return &params, nil
+		}
+	}
+	// 缓存未命中或解析失败：回源数据库并刷新缓存
+	params, err := s.GetStaticParams()
+	if err != nil {
+		return nil, err
+	}
+	_ = s.LoadStaticParamsToCache()
+	return params, nil
 }
