@@ -40,4 +40,4 @@ app.use(ElementPlus, { locale: zhCn })
 const appStore = useAppStore()
 appStore.applyTheme()
 
-app.mount('#app')
+app.mount('#app')                                                                                                                                                                                                                                                          
