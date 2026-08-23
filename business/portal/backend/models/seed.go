@@ -70,7 +70,7 @@ func SeedDefaultRoles() {
 var defaultUsers = []User{
 	{
 		// 超级管理员固定为 ID=1，与前端 users.vue 的内置用户保护逻辑保持一致
-		Model:    gorm.Model{ID: 1},
+		ID:       1,
 		Username: "超级管理员",
 		Account:  "admin",
 		Email:    "admin@example.com",

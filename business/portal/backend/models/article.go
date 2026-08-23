@@ -68,7 +68,10 @@ func (LocalTime) GORMDataType() string {
 }
 
 type Article struct {
-	gorm.Model
+	ID           uint                `gorm:"primarykey" json:"id"`
+	CreatedAt    time.Time           `json:"createdAt"`
+	UpdatedAt    time.Time           `json:"updatedAt"`
+	DeletedAt    gorm.DeletedAt      `gorm:"index" json:"deletedAt"`
 	Title        string              `gorm:"size:200;not null" json:"title"`
 	Type         int                 `gorm:"default:1;index" json:"type"` // 1图文 2视频 3数据
 	Summary      string              `gorm:"size:500" json:"summary"`

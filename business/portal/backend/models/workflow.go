@@ -2,12 +2,16 @@ package models
 
 import (
 	"encoding/json"
+	"time"
 
 	"gorm.io/gorm"
 )
 
 type Workflow struct {
-	gorm.Model
+	ID          uint           `gorm:"primarykey" json:"id"`
+	CreatedAt   time.Time      `json:"createdAt"`
+	UpdatedAt   time.Time      `json:"updatedAt"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deletedAt"`
 	Name        string         `gorm:"size:200;not null" json:"name"`
 	Status      int            `gorm:"default:1;index" json:"status"` // 1启用 0禁用
 	Description string         `gorm:"size:500" json:"description"`
