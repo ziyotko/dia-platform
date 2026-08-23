@@ -144,7 +144,7 @@ func (s *ArticleService) CreateArticle(article *models.Article, tagIDs []uint, c
 		if len(categoryIDs) > 0 {
 			var categories []models.Category
 			for _, id := range categoryIDs {
-				categories = append(categories, models.Category{Model: gorm.Model{ID: id}})
+				categories = append(categories, models.Category{ID: id})
 			}
 			if err := tx.Model(article).Association("Categories").Append(&categories); err != nil {
 				return err
@@ -153,7 +153,7 @@ func (s *ArticleService) CreateArticle(article *models.Article, tagIDs []uint, c
 		if len(tagIDs) > 0 {
 			var tags []models.Tag
 			for _, id := range tagIDs {
-				tags = append(tags, models.Tag{Model: gorm.Model{ID: id}})
+				tags = append(tags, models.Tag{ID: id})
 			}
 			if err := tx.Model(article).Association("Tags").Append(&tags); err != nil {
 				return err
@@ -239,7 +239,7 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 		if len(categoryIDs) > 0 {
 			var categories []models.Category
 			for _, cid := range categoryIDs {
-				categories = append(categories, models.Category{Model: gorm.Model{ID: cid}})
+				categories = append(categories, models.Category{ID: cid})
 			}
 			if err := tx.Model(&old).Association("Categories").Replace(&categories); err != nil {
 				return err
@@ -252,7 +252,7 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 		if len(tagIDs) > 0 {
 			var tags []models.Tag
 			for _, tid := range tagIDs {
-				tags = append(tags, models.Tag{Model: gorm.Model{ID: tid}})
+				tags = append(tags, models.Tag{ID: tid})
 			}
 			if err := tx.Model(&old).Association("Tags").Replace(&tags); err != nil {
 				return err
@@ -315,7 +315,7 @@ func (s *ArticleService) SetArticleColumns(id uint, columnIDs []uint) error {
 		if len(columnIDs) > 0 {
 			var columns []models.Column
 			for _, cid := range columnIDs {
-				columns = append(columns, models.Column{Model: gorm.Model{ID: cid}})
+				columns = append(columns, models.Column{ID: cid})
 			}
 			if err := tx.Model(&article).Association("Columns").Replace(&columns); err != nil {
 				return err

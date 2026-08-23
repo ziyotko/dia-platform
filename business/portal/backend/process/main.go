@@ -307,7 +307,9 @@ func mapArchiveToArticle(a CmsArchives) models.Article {
 	}
 
 	return models.Article{
-		Model:       gorm.Model{ID: uint(a.ID), CreatedAt: createdAt, UpdatedAt: updatedAt},
+		ID:          uint(a.ID),
+		CreatedAt:   createdAt,
+		UpdatedAt:   updatedAt,
 		Title:       a.Title,
 		Type:        1,
 		Summary:     a.Des,
