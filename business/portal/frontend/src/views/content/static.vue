@@ -1,5 +1,29 @@
 <template>
   <div class="page-container">
+    <!-- 静态化服务监控 -->
+    <el-card shadow="hover" class="monitor-card">
+      <template #header>
+        <div class="card-header">
+          <span>
+            <el-icon><Monitor /></el-icon>
+            静态化服务监控
+          </span>
+          <div class="monitor-actions">
+            <el-tag :type="monitorData.online ? 'success' : 'danger'" effect="dark" class="status-tag">
+              <el-icon v-if="monitorData.online"><CircleCheck /></el-icon>
+              <el-icon v-else><CircleClose /></el-icon>
+              {{ monitorData.online ? '运行中' : '已停止' }}
+            </el-tag>
+            <span class="last-check">最后更新时间：{{ monitorData.lastCheckTime }}</span>
+            <el-button type="primary" :loading="monitorLoading" @click="fetchStaticMonitor">
+              <el-icon><Refresh /></el-icon>
+              刷新
+            </el-button>
+          </div>
+        </div>
+      </template>
+    </el-card>
+
     <!-- 统计卡片 -->
     <el-row :gutter="20" class="stat-row">
       <el-col :xs="24" :sm="12" :md="8" :lg="4">
@@ -82,91 +106,109 @@
       </el-col>
     </el-row>
 
-    <!-- 操作区域 -->
+    <!-- 批量操作 -->
     <el-card shadow="hover" class="action-card">
       <template #header>
         <div class="card-header">
           <span>批量操作</span>
-          <el-tag v-if="generating" type="warning" effect="dark">
+          <el-tag v-if="hasActiveJob" type="warning" effect="dark">
             <el-icon class="is-loading"><Loading /></el-icon>
-            正在生成中...
+            有任务正在执行中...
           </el-tag>
         </div>
       </template>
       <div class="action-list">
-        <el-button type="primary" size="large" :loading="generating" @click="handleGenerateAll">
+        <el-button type="primary" size="large" :loading="submitting === 'site'" @click="handleGenerateAll">
           <el-icon><Refresh /></el-icon>
           全站静态化
         </el-button>
-        <el-button type="success" size="large" :loading="generating" @click="handleGenerateHome">
+        <el-button type="success" size="large" :loading="submitting === 'pages'" @click="handleGenerateHome">
           <el-icon><HomeFilled /></el-icon>
           生成首页
         </el-button>
-        <el-button type="warning" size="large" :loading="generating" @click="handleGenerateColumn">
+        <el-button type="warning" size="large" :loading="submitting === 'lists'" @click="handleGenerateColumn">
           <el-icon><Menu /></el-icon>
           生成栏目页
         </el-button>
-        <el-button type="info" size="large" :loading="generating" @click="handleGenerateTopic">
+        <el-button type="info" size="large" @click="handleGenerateTopic">
           <el-icon><Collection /></el-icon>
           生成专题页
         </el-button>
-        <el-button type="danger" size="large" :loading="generating" @click="handleGenerateDetail">
+        <el-button type="danger" size="large" :loading="submitting === 'articles'" @click="handleGenerateDetail">
           <el-icon><Document /></el-icon>
           生成详情页
         </el-button>
       </div>
     </el-card>
 
-    <!-- 静态化服务监控 -->
-    <el-card shadow="hover" class="monitor-card">
+    <!-- 静态化任务 -->
+    <el-card shadow="hover" class="job-card">
       <template #header>
         <div class="card-header">
           <span>
             <el-icon><Monitor /></el-icon>
-            静态化服务监控
+            静态化任务
           </span>
           <div class="monitor-actions">
-            <span class="last-check">最后获取时间：{{ monitorData.lastCheckTime }}</span>
-            <el-button type="primary" :loading="monitorLoading" @click="fetchStaticMonitor">
+            <span class="last-check">任务状态自动轮询（每 3 秒），成功/失败/中断将自动通知</span>
+            <el-button type="primary" :loading="jobLoading" @click="refreshAllJobs(true)">
               <el-icon><Refresh /></el-icon>
               刷新
             </el-button>
           </div>
         </div>
       </template>
-      <div class="monitor-body">
-        <div class="monitor-status">
-          <el-tag :type="monitorData.online ? 'success' : 'danger'" size="large" effect="dark" class="status-tag">
-            <el-icon v-if="monitorData.online"><CircleCheck /></el-icon>
-            <el-icon v-else><CircleClose /></el-icon>
-            {{ monitorData.online ? '运行中' : '已停止' }}
-          </el-tag>
-        </div>
-        <div class="monitor-info">
-          <div class="monitor-item">
-            <span class="monitor-label">访问地址</span>
-            <code class="monitor-value code">{{ monitorData.address || '未配置' }}</code>
-          </div>
-          <div class="monitor-item">
-            <span class="monitor-label">HTTP 状态码</span>
-            <span class="monitor-value">{{ monitorData.httpStatus || '-' }}</span>
-          </div>
-          <div class="monitor-item">
-            <span class="monitor-label">状态说明</span>
-            <span class="monitor-value">{{ monitorData.message || '尚未获取' }}</span>
-          </div>
-        </div>
-      </div>
-      <el-alert
-        type="info"
-        :closable="false"
-        show-icon
-        class="monitor-tip"
-      >
-        <template #title>
-          <span>提示：如需修改静态化参数配置，请联系有权限的管理员前往「基础配置」-「静态化设置」进行操作。</span>
-        </template>
-      </el-alert>
+      <el-table :data="jobList" v-loading="jobLoading" border stripe empty-text="暂无静态化任务，点击上方按钮发起批量操作">
+        <el-table-column label="任务ID" min-width="150" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span class="job-id">{{ row.id }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="类型" width="120" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.kindType" effect="plain">{{ row.kindText }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" width="120" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.statusType" effect="dark">
+              <el-icon v-if="row.status === 'running'" class="is-loading"><Loading /></el-icon>
+              {{ row.statusText }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="进度" min-width="280">
+          <template #default="{ row }">
+            <div class="job-progress">
+              <div class="progress-stage">
+                {{ row.progress?.stage || (row.status === 'succeeded' ? '已完成' : '等待执行') }}
+              </div>
+              <el-progress
+                :percentage="row.progressPercent"
+                :status="row.progressStatus"
+                :indeterminate="row.progressIndeterminate"
+                :stroke-width="10"
+              />
+              <div class="progress-meta">
+                <span>已处理 {{ row.progress?.processed ?? 0 }} / {{ row.progress?.total ?? 0 }}</span>
+                <span>已生成文件 {{ row.progress?.generated_files ?? 0 }}</span>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="created_at" label="创建时间" width="170" />
+        <el-table-column prop="updated_at" label="更新时间" width="170" />
+        <el-table-column label="操作" width="150" align="center" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" :loading="row.refreshing" @click="refreshJob(row.id)">
+              <el-icon><Refresh /></el-icon>刷新
+            </el-button>
+            <el-button link type="info" @click="copyJobId(row.id)">
+              <el-icon><DocumentCopy /></el-icon>复制ID
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
     </el-card>
 
     <!-- Tab 切换区域 -->
@@ -373,7 +415,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed, watch } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   DocumentChecked,
@@ -392,17 +434,236 @@ import {
   CircleCheck,
   Warning,
   User,
-  Monitor
+  Monitor,
+  DocumentCopy
 } from '@element-plus/icons-vue'
 import { getArticleColumnPublishes } from '@/api/article'
 import { getColumnPublishes } from '@/api/column'
 import { getStaticPages } from '@/api/static_page'
 import { getStaticLogList, clearStaticLogs } from '@/api/static_log'
 import { getStaticMonitor } from '@/api/static_monitor'
+import { startStaticJob, getStaticJob } from '@/api/static_job'
+import type { StaticJob, StaticJobStatus } from '@/api/static_job'
+import { getSettings } from '@/api/settings'
 
 const loading = ref(false)
-const generating = ref(false)
 const activeTab = ref('home')
+
+// 批量操作参数
+const grayEnabled = ref(true) // 首页整体变灰：1 开启 / 2 关闭
+const staticPath = ref('') // 静态化输出路径（后端全局变量）
+const submitting = ref<string | null>(null) // 当前提交中的任务类型
+
+// 静态化任务列表与轮询
+const jobLoading = ref(false)
+const jobList = ref<any[]>([])
+const activeJobIds = new Set<string>()
+const POLL_INTERVAL = 3000
+let pollTimer: any = null
+
+const kindMap: Record<string, { text: string; type: string }> = {
+  site: { text: '全站静态化', type: 'primary' },
+  pages: { text: '生成首页', type: 'success' },
+  lists: { text: '生成栏目页', type: 'warning' },
+  articles: { text: '生成详情页', type: 'danger' }
+}
+
+const jobStatusMap: Record<StaticJobStatus, { text: string; type: string }> = {
+  queued: { text: '等待执行', type: 'info' },
+  running: { text: '正在执行', type: 'warning' },
+  succeeded: { text: '执行成功', type: 'success' },
+  failed: { text: '执行失败', type: 'danger' },
+  interrupted: { text: '已中断', type: 'danger' }
+}
+
+const hasActiveJob = computed(() =>
+  jobList.value.some(j => j.status === 'queued' || j.status === 'running')
+)
+
+// 将后端任务结构标准化为前端展示结构
+const normalizeJob = (job: StaticJob) => {
+  const kindInfo = kindMap[job.kind] || { text: job.kind, type: 'info' }
+  const statusInfo = jobStatusMap[job.status] || { text: job.status, type: 'info' }
+  const progress: any = job.progress || {}
+  const total = Number(progress.total) || 0
+  const processed = Number(progress.processed) || 0
+  const isActive = job.status === 'queued' || job.status === 'running'
+  const percent = job.status === 'succeeded'
+    ? 100
+    : total > 0
+      ? Math.min(99, Math.round((processed / total) * 100))
+      : isActive ? 0 : 100
+  return {
+    ...job,
+    kindText: kindInfo.text,
+    kindType: kindInfo.type,
+    statusText: statusInfo.text,
+    statusType: statusInfo.type,
+    progressPercent: percent,
+    progressStatus: job.status === 'failed' || job.status === 'interrupted'
+      ? 'exception'
+      : job.status === 'succeeded' ? 'success' : undefined,
+    progressIndeterminate: isActive && total === 0,
+    refreshing: false
+  }
+}
+
+// 读取静态化参数配置（输出路径 / 首页整体变灰）
+const loadStaticSettings = async () => {
+  try {
+    const res: any = await getSettings()
+    if (res.code === 0 || res.code === 200) {
+      const s = res.data || {}
+      staticPath.value = s.staticPath || ''
+      grayEnabled.value = !!s.homeGray
+    }
+  } catch (error) {
+    // 忽略，不影响页面其他功能
+  }
+}
+
+// 发起批量操作任务（后端透传静态化程序 202 + 任务信息）
+const runStaticJob = async (kind: 'site' | 'pages' | 'lists' | 'articles', title: string) => {
+  submitting.value = kind
+  try {
+    const res = await startStaticJob(kind, grayEnabled.value ? 1 : 2)
+    if (res.status === 202 && res.data?.ok && res.data.job) {
+      const job = normalizeJob(res.data.job)
+      const idx = jobList.value.findIndex(j => j.id === job.id)
+      if (idx >= 0) {
+        jobList.value[idx] = job
+      } else {
+        jobList.value.unshift(job)
+      }
+      if (job.status === 'queued' || job.status === 'running') {
+        activeJobIds.add(job.id)
+        startPolling()
+      }
+      ElMessage.success(`${title}任务已提交，请等待处理结果`)
+      addLog('primary', DocumentChecked, `${title}任务提交`, `任务ID: ${job.id}`, '-', '-', '-', '-')
+    } else {
+      const data: any = res.data || {}
+      const msg = data.message || data.msg || '任务提交失败'
+      ElMessage.error(`${title}失败：${msg}`)
+      addLog('danger', CircleClose, `${title}任务提交失败`, msg)
+    }
+  } catch (error: any) {
+    ElMessage.error(`${title}任务提交失败`)
+    addLog('danger', CircleClose, `${title}任务提交失败`, error?.message || '未知错误')
+  } finally {
+    submitting.value = null
+  }
+}
+
+const handleGenerateAll = () => {
+  ElMessageBox.confirm(
+    `确定要执行全站静态化吗？此操作可能需要较长时间。\n输出目录：${staticPath.value || '未配置'}`,
+    '确认操作',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(() => {
+    runStaticJob('site', '全站静态化')
+  }).catch(() => {})
+}
+
+const handleGenerateHome = () => runStaticJob('pages', '生成首页')
+const handleGenerateColumn = () => runStaticJob('lists', '生成栏目页')
+const handleGenerateDetail = () => runStaticJob('articles', '生成详情页')
+// 专题页生成功能暂未实现，点击仅提示
+const handleGenerateTopic = () => {
+  ElMessage.info('专题页生成功能暂未实现，敬请期待')
+}
+
+// 任务轮询：有活动任务时定时查询状态
+const startPolling = () => {
+  if (pollTimer) return
+  pollTimer = setInterval(() => {
+    refreshAllJobs()
+  }, POLL_INTERVAL)
+}
+
+const stopPolling = () => {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+// 刷新所有活动任务（自动轮询不显示加载遮罩，仅手动刷新时显示）
+const refreshAllJobs = async (showLoading = false) => {
+  const ids = Array.from(activeJobIds)
+  if (ids.length === 0) {
+    stopPolling()
+    return
+  }
+  if (showLoading) jobLoading.value = true
+  try {
+    await Promise.all(ids.map(id => refreshJob(id)))
+  } finally {
+    if (showLoading) jobLoading.value = false
+  }
+}
+
+// 刷新单个任务状态
+const refreshJob = async (id: string) => {
+  const row = jobList.value.find(j => j.id === id)
+  if (row) row.refreshing = true
+  try {
+    const res = await getStaticJob(id)
+    // 任务状态查询接口返回 200（仅发起任务时返回 202），此处兼容 2xx 成功码
+    if ((res.status === 200 || res.status === 202) && res.data?.ok && res.data.job) {
+      const prevStatus = row?.status
+      const updated = normalizeJob(res.data.job)
+      const idx = jobList.value.findIndex(j => j.id === id)
+      if (idx >= 0) jobList.value[idx] = updated
+
+      if (prevStatus && prevStatus !== updated.status
+        && ['succeeded', 'failed', 'interrupted'].includes(updated.status)) {
+        notifyJobDone(updated)
+      }
+
+      if (updated.status === 'queued' || updated.status === 'running') {
+        activeJobIds.add(id)
+        startPolling()
+      } else {
+        activeJobIds.delete(id)
+        if (activeJobIds.size === 0) stopPolling()
+      }
+    }
+  } catch (error) {
+    // 单个任务刷新失败忽略，等待下次轮询
+  } finally {
+    const r = jobList.value.find(j => j.id === id)
+    if (r) r.refreshing = false
+  }
+}
+
+// 任务结束通知
+const notifyJobDone = (job: any) => {
+  if (job.status === 'succeeded') {
+    ElMessage.success(`「${job.kindText}」任务执行成功`)
+    addLog('success', Check, `${job.kindText}任务完成`, `任务ID: ${job.id}`, '-', '-', '-', '-')
+    fetchPageList()
+  } else if (job.status === 'failed') {
+    ElMessage.error(`「${job.kindText}」任务执行失败`)
+    addLog('danger', CircleClose, `${job.kindText}任务失败`, `任务ID: ${job.id}`, '-', '-', '-', '-')
+  } else if (job.status === 'interrupted') {
+    ElMessage.warning(`「${job.kindText}」任务已中断`)
+    addLog('warning', Warning, `${job.kindText}任务中断`, `任务ID: ${job.id}`, '-', '-', '-', '-')
+  }
+}
+
+const copyJobId = async (id: string) => {
+  try {
+    await navigator.clipboard.writeText(id)
+    ElMessage.success('任务ID已复制')
+  } catch (error) {
+    ElMessage.error('复制任务ID失败')
+  }
+}
 
 const monitorLoading = ref(false)
 const monitorData = reactive({
@@ -616,40 +877,6 @@ const handleCurrentChange = (val: number) => {
   }
 }
 
-const simulateGenerate = async (title: string) => {
-  generating.value = true
-  try {
-    // TODO: 调用后端静态化接口
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    ElMessage.success(`${title}成功`)
-    addLog('success', Check, `${title}完成`, '操作执行成功')
-    fetchPageList()
-  } catch (error) {
-    ElMessage.error(`${title}失败`)
-    addLog('danger', CircleClose, `${title}失败`, '操作执行失败')
-  } finally {
-    generating.value = false
-  }
-}
-
-const handleGenerateAll = () => {
-  ElMessageBox.confirm('确定要执行全站静态化吗？此操作可能需要较长时间。', '确认操作', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => {
-    simulateGenerate('全站静态化')
-  }).catch(() => {})
-}
-
-const handleGenerateHome = () => simulateGenerate('首页生成')
-const handleGenerateColumn = () => simulateGenerate('栏目页生成')
-const handleGenerateDetail = () => simulateGenerate('详情页生成')
-// 专题页生成功能暂未实现，点击仅提示
-const handleGenerateTopic = () => {
-  ElMessage.info('专题页生成功能暂未实现，敬请期待')
-}
-
 const handleGenerateSingle = async (row: any) => {
   row.generating = true
   const name = row.title || row.name
@@ -700,6 +927,11 @@ const clearLogs = () => {
 onMounted(() => {
   fetchPageList()
   fetchStaticMonitor()
+  loadStaticSettings()
+})
+
+onUnmounted(() => {
+  stopPolling()
 })
 </script>
 
@@ -759,7 +991,7 @@ onMounted(() => {
       color: #2c3e50;
     }
 
-    .action-list {
+    .action-config {
       display: flex;
       flex-wrap: wrap;
       gap: 12px;
@@ -767,6 +999,57 @@ onMounted(() => {
 
       .el-button {
         min-width: 140px;
+      }
+    }
+  }
+
+  .job-card {
+    margin-bottom: 20px;
+    border-radius: 12px;
+    border: 1px solid #e6f2ff;
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+      color: #2c3e50;
+
+      .monitor-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+
+        .last-check {
+          font-size: 13px;
+          font-weight: 400;
+          color: #909399;
+        }
+      }
+    }
+
+    .job-id {
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 13px;
+      color: #409eff;
+    }
+
+    .job-progress {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 4px 0;
+
+      .progress-stage {
+        font-size: 13px;
+        color: #606266;
+      }
+
+      .progress-meta {
+        display: flex;
+        gap: 16px;
+        font-size: 12px;
+        color: #909399;
       }
     }
   }
@@ -794,55 +1077,15 @@ onMounted(() => {
         font-weight: 400;
         color: #909399;
       }
-    }
 
-    .monitor-body {
-      display: flex;
-      align-items: center;
-      gap: 32px;
-      flex-wrap: wrap;
-      padding: 8px 0;
-
-      .monitor-status {
-        .status-tag {
-          font-size: 15px;
-          padding: 8px 20px;
-        }
-      }
-
-      .monitor-info {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 24px;
-        flex: 1;
-
-        .monitor-item {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-
-          .monitor-label {
-            font-size: 13px;
-            color: #909399;
-          }
-
-          .monitor-value {
-            font-size: 14px;
-            color: #2c3e50;
-            font-weight: 500;
-
-            &.code {
-              background: #f5f7fa;
-              padding: 2px 8px;
-              border-radius: 4px;
-            }
-          }
-        }
+      .status-tag {
+        font-size: 14px;
+        padding: 6px 16px;
       }
     }
 
-    .monitor-tip {
-      margin-top: 12px;
+    :deep(.el-card__body) {
+      padding: 0;
     }
   }
 

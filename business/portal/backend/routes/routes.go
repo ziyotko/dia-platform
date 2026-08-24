@@ -36,6 +36,7 @@ func SetupRoutes(router *gin.Engine) {
 	staticLogController := controllers.NewStaticLogController()
 	staticPageController := controllers.NewStaticPageController()
 	staticMonitorController := controllers.NewStaticMonitorController()
+	staticJobController := controllers.NewStaticJobController()
 	apiPrefix := config.AppConfig.Server.ApiPrefix
 
 	public := router.Group(apiPrefix)
@@ -165,6 +166,13 @@ func SetupRoutes(router *gin.Engine) {
 		admin.GET("/static-logs", staticLogController.GetLogs)
 		admin.DELETE("/static-logs", staticLogController.ClearLogs)
 		admin.GET("/static-monitor", staticMonitorController.GetStaticMonitor)
+
+		// 静态化批量操作任务（代理转发至静态化程序，返回 202 + 任务信息）
+		admin.POST("/static/site", staticJobController.SiteStatic)
+		admin.POST("/static/pages", staticJobController.PagesStatic)
+		admin.POST("/static/lists", staticJobController.ListsStatic)
+		admin.POST("/static/articles", staticJobController.ArticlesStatic)
+		admin.GET("/static/jobs/:id", staticJobController.GetJob)
 
 		// 系统设置（写操作）
 		admin.PUT("/settings", settingsController.UpdateSettings)

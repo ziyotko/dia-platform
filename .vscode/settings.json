@@ -43,6 +43,7 @@
         "Get-CimInstance": true,
         "Get-Item": true,
         ".\\controllers\\log_controller.go": true,
-        "Get-Process": true
+        "Get-Process": true,
+        "Out-File": true
     }
 }

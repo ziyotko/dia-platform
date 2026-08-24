@@ -3,6 +3,13 @@ import CryptoJS from 'crypto-js'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 
+// 扩展 axios 请求配置：raw 模式跳过统一响应校验，原样返回整个响应（含状态码）
+declare module 'axios' {
+  export interface AxiosRequestConfig<D = any> {
+    raw?: boolean
+  }
+}
+
 const request = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   timeout: 30000,
@@ -99,6 +106,10 @@ request.interceptors.request.use(
 
 request.interceptors.response.use(
   (response) => {
+    // raw 模式：跳过统一响应校验，原样返回整个 axios 响应（含 status），由调用方自行判断
+    if ((response.config as any).raw) {
+      return response
+    }
     const res = response.data
     if (res.code !== 0 && res.code !== 200) {
       ElMessage.error(res.message || '请求失败')

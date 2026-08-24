@@ -71,6 +71,7 @@ func getModule(path string) string {
 		"login-logs":     "登录日志",
 		"static-logs":    "静态日志",
 		"static-pages":   "静态查询",
+		"static":         "静态管理",
 		"organizations":  "机构管理",
 		"uploads":        "文件上传",
 		"site-info":      "站点信息",
