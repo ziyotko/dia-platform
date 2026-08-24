@@ -102,7 +102,7 @@
           <el-icon><HomeFilled /></el-icon>
           生成首页
         </el-button>
-        <el-button type="info" size="large" :loading="generating" @click="handleGenerateColumn">
+        <el-button type="warning" size="large" :loading="generating" @click="handleGenerateColumn">
           <el-icon><Menu /></el-icon>
           生成栏目页
         </el-button>
@@ -110,7 +110,7 @@
           <el-icon><Collection /></el-icon>
           生成专题页
         </el-button>
-        <el-button type="info" size="large" :loading="generating" @click="handleGenerateDetail">
+        <el-button type="danger" size="large" :loading="generating" @click="handleGenerateDetail">
           <el-icon><Document /></el-icon>
           生成详情页
         </el-button>
@@ -645,7 +645,10 @@ const handleGenerateAll = () => {
 const handleGenerateHome = () => simulateGenerate('首页生成')
 const handleGenerateColumn = () => simulateGenerate('栏目页生成')
 const handleGenerateDetail = () => simulateGenerate('详情页生成')
-const handleGenerateTopic = () => simulateGenerate('专题页生成')
+// 专题页生成功能暂未实现，点击仅提示
+const handleGenerateTopic = () => {
+  ElMessage.info('专题页生成功能暂未实现，敬请期待')
+}
 
 const handleGenerateSingle = async (row: any) => {
   row.generating = true
