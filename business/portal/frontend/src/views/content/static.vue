@@ -555,9 +555,10 @@ const runStaticJob = async (kind: 'site' | 'pages' | 'lists' | 'articles', title
   }
 }
 
-const handleGenerateAll = () => {
+// 通用确认：每个静态化操作先弹出确认框，确认后再发起任务
+const confirmRun = (kind: 'site' | 'pages' | 'lists' | 'articles', title: string, message?: string) => {
   ElMessageBox.confirm(
-    `确定要执行全站静态化吗？此操作可能需要较长时间。\n输出目录：${staticPath.value || '未配置'}`,
+    message || `确定要执行${title}吗？`,
     '确认操作',
     {
       confirmButtonText: '确定',
@@ -565,13 +566,14 @@ const handleGenerateAll = () => {
       type: 'warning'
     }
   ).then(() => {
-    runStaticJob('site', '全站静态化')
+    runStaticJob(kind, title)
   }).catch(() => {})
 }
 
-const handleGenerateHome = () => runStaticJob('pages', '生成首页')
-const handleGenerateColumn = () => runStaticJob('lists', '生成栏目页')
-const handleGenerateDetail = () => runStaticJob('articles', '生成详情页')
+const handleGenerateAll = () => confirmRun('site', '全站静态化', '确定要执行全站静态化吗？此操作可能需要较长时间。')
+const handleGenerateHome = () => confirmRun('pages', '生成首页')
+const handleGenerateColumn = () => confirmRun('lists', '生成栏目页')
+const handleGenerateDetail = () => confirmRun('articles', '生成详情页')
 // 专题页生成功能暂未实现，点击仅提示
 const handleGenerateTopic = () => {
   ElMessage.info('专题页生成功能暂未实现，敬请期待')
