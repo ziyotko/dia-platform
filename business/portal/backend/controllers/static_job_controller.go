@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -9,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"server/models"
 	"server/services"
 	"server/utils"
 )
@@ -18,12 +21,173 @@ import (
 // 读取后端全局静态化参数（静态化输出路径/静态化程序访问地址/静态化程序访问令牌名/首页整体变灰），
 // 然后代理转发给静态化程序，并将静态化程序返回的 202 状态码与任务信息原样透传给前端。
 type StaticJobController struct {
-	settingsService *services.SettingsService
+	settingsService  *services.SettingsService
+	staticLogService *services.StaticLogService
 }
 
 func NewStaticJobController() *StaticJobController {
 	return &StaticJobController{
-		settingsService: &services.SettingsService{},
+		settingsService:  &services.SettingsService{},
+		staticLogService: &services.StaticLogService{},
+	}
+}
+
+// 静态化程序返回的任务结构（用于透传响应解析与日志记录）
+type staticProgramJob struct {
+	ID        string `json:"id"`
+	Kind      string `json:"kind"`
+	Status    string `json:"status"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+	StartedAt string `json:"started_at"`
+	Progress  struct {
+		Stage          string `json:"stage"`
+		Processed      int    `json:"processed"`
+		Total          int    `json:"total"`
+		GeneratedFiles int    `json:"generated_files"`
+	} `json:"progress"`
+}
+
+// 静态化程序返回的统一响应结构
+type staticProgramResponse struct {
+	OK  bool              `json:"ok"`
+	Job *staticProgramJob `json:"job"`
+}
+
+// 任务类型 → 中文名
+var staticKindName = map[string]string{
+	"site":     "全站静态化",
+	"pages":    "生成首页",
+	"lists":    "生成栏目页",
+	"articles": "生成详情页",
+}
+
+func staticKindText(kind string) string {
+	if name, ok := staticKindName[kind]; ok {
+		return name
+	}
+	return kind
+}
+
+// 组装任务日志完整内容（任务类型/任务ID/状态/阶段/进度/生成文件数）
+func staticJobLogMessage(job *staticProgramJob, statusText string) string {
+	parts := []string{
+		"任务类型：" + staticKindText(job.Kind),
+		"任务ID：" + job.ID,
+		"状态：" + statusText,
+	}
+	if job.Progress.Stage != "" {
+		parts = append(parts, "阶段："+job.Progress.Stage)
+	}
+	if job.Progress.Total > 0 {
+		parts = append(parts, fmt.Sprintf("已处理 %d / %d", job.Progress.Processed, job.Progress.Total))
+	}
+	if job.Progress.GeneratedFiles > 0 {
+		parts = append(parts, fmt.Sprintf("已生成文件 %d", job.Progress.GeneratedFiles))
+	}
+	return strings.Join(parts, "｜")
+}
+
+// 计算任务耗时：由 started_at / updated_at 计算，格式化为 时/分/秒
+func staticJobDuration(job *staticProgramJob) string {
+	if job.StartedAt == "" {
+		return "-"
+	}
+	start, err := time.Parse(time.RFC3339Nano, job.StartedAt)
+	if err != nil {
+		return "-"
+	}
+	end := start
+	if job.UpdatedAt != "" {
+		if t, err := time.Parse(time.RFC3339Nano, job.UpdatedAt); err == nil {
+			end = t
+		}
+	}
+	total := int64(end.Sub(start).Seconds())
+	if total < 0 {
+		total = 0
+	}
+	h, m, s := total/3600, (total%3600)/60, total%60
+	switch {
+	case h > 0:
+		return fmt.Sprintf("%d时%d分%d秒", h, m, s)
+	case m > 0:
+		return fmt.Sprintf("%d分%d秒", m, s)
+	default:
+		return fmt.Sprintf("%d秒", s)
+	}
+}
+
+// 当前操作人：优先用户名，其次账号/邮箱，默认 admin
+func (c *StaticJobController) currentOperator(ctx *gin.Context) string {
+	uid := ctx.GetUint("userID")
+	if uid > 0 {
+		var user models.User
+		if err := utils.DB.First(&user, uid).Error; err == nil {
+			if user.Username != "" {
+				return user.Username
+			}
+			if user.Account != "" {
+				return user.Account
+			}
+			if user.Email != "" {
+				return user.Email
+			}
+		}
+	}
+	return "admin"
+}
+
+// writeStaticLog 记录静态化日志（后端业务统一记录，按 任务ID+状态 自动去重）
+func (c *StaticJobController) writeStaticLog(ctx *gin.Context, status, operation, message string, job *staticProgramJob) {
+	log := &models.StaticLog{
+		Operation: operation,
+		PageName:  "-",
+		Path:      "-",
+		Duration:  staticJobDuration(job),
+		FileSize:  "-",
+		Operator:  c.currentOperator(ctx),
+		Status:    status,
+		Message:   message,
+		JobID:     job.ID,
+	}
+	if job.Progress.GeneratedFiles > 0 {
+		log.FileSize = fmt.Sprintf("%d 个文件", job.Progress.GeneratedFiles)
+	}
+	if err := c.staticLogService.CreateIfNotExists(log); err != nil {
+		utils.Logger.Warnf("记录静态化日志失败: %s", err)
+	}
+}
+
+// writeTaskSubmitLog 任务提交成功后记录静态化日志（仅 202 且响应含任务信息时记录）
+func (c *StaticJobController) writeTaskSubmitLog(ctx *gin.Context, statusCode int, body []byte, kind string) {
+	if statusCode != http.StatusAccepted {
+		return
+	}
+	var resp staticProgramResponse
+	if err := json.Unmarshal(body, &resp); err != nil || !resp.OK || resp.Job == nil {
+		return
+	}
+	c.writeStaticLog(ctx, "primary", staticKindText(kind)+"任务提交", staticJobLogMessage(resp.Job, "等待执行"), resp.Job)
+}
+
+// writeTaskDoneLog 任务进入终态后记录完成/失败/中断日志（由查询任务状态接口检测）
+func (c *StaticJobController) writeTaskDoneLog(ctx *gin.Context, statusCode int, body []byte) {
+	if statusCode != http.StatusOK {
+		return
+	}
+	var resp staticProgramResponse
+	if err := json.Unmarshal(body, &resp); err != nil || !resp.OK || resp.Job == nil {
+		return
+	}
+	job := resp.Job
+	switch job.Status {
+	case "succeeded":
+		c.writeStaticLog(ctx, "success", staticKindText(job.Kind)+"任务完成", staticJobLogMessage(job, "执行成功"), job)
+	case "failed":
+		c.writeStaticLog(ctx, "danger", staticKindText(job.Kind)+"任务失败", staticJobLogMessage(job, "执行失败"), job)
+	case "interrupted":
+		c.writeStaticLog(ctx, "warning", staticKindText(job.Kind)+"任务中断", staticJobLogMessage(job, "已中断"), job)
 	}
 }
 
@@ -87,19 +251,19 @@ func (c *StaticJobController) resolveGray(ctx *gin.Context, params *services.Sta
 	return "2"
 }
 
-// proxyToStaticProgram 代理转发请求到静态化程序，并原样透传状态码与响应体
-func (c *StaticJobController) proxyToStaticProgram(ctx *gin.Context, params *services.StaticParams, method, targetPath string, query map[string]string) {
+// proxyToStaticProgram 代理转发请求到静态化程序，返回状态码与响应体（调用方负责写回客户端并记录静态化日志）
+func (c *StaticJobController) proxyToStaticProgram(ctx *gin.Context, params *services.StaticParams, method, targetPath string, query map[string]string) (int, []byte) {
 	base := c.staticProgramBaseURL(params)
 	if base == "" {
 		ctx.JSON(http.StatusOK, utils.Error(1, "静态化程序访问地址未配置，请先在「基础配置-静态化设置」中配置"))
-		return
+		return 0, nil
 	}
 
 	target := base + targetPath
 	req, err := http.NewRequestWithContext(ctx.Request.Context(), method, target, nil)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, utils.Error(1, "构造静态化请求失败: "+err.Error()))
-		return
+		return 0, nil
 	}
 
 	// 请求头增加 Authorization: Bearer 静态化程序访问令牌
@@ -121,19 +285,19 @@ func (c *StaticJobController) proxyToStaticProgram(ctx *gin.Context, params *ser
 	if err != nil {
 		utils.Logger.Warnf("调用静态化程序失败: %s, url=%s", err, target)
 		ctx.JSON(http.StatusBadGateway, utils.Error(1, "无法连接静态化程序，请检查「静态化程序访问地址」配置及服务运行状态"))
-		return
+		return 0, nil
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		ctx.JSON(http.StatusBadGateway, utils.Error(1, "读取静态化程序响应失败: "+err.Error()))
-		return
+		return 0, nil
 	}
 
 	utils.Logger.Infof("静态化任务请求: method=%s url=%s status=%d", method, target, resp.StatusCode)
 
-	// 原样透传状态码与响应体：
+	// 透传状态码与响应体：
 	// - 发起任务（site/pages/lists/articles）成功返回 202 及任务信息，代表请求已发送，请等待处理结果
 	// - 查询任务状态（jobs/:id）返回 200 及任务状态结构
 	contentType := resp.Header.Get("Content-Type")
@@ -141,6 +305,7 @@ func (c *StaticJobController) proxyToStaticProgram(ctx *gin.Context, params *ser
 		contentType = "application/json"
 	}
 	ctx.Data(resp.StatusCode, contentType, body)
+	return resp.StatusCode, body
 }
 
 // SiteStatic 全站静态化：POST /static/site?path={输出目录}&gray={1或2}
@@ -153,10 +318,11 @@ func (c *StaticJobController) SiteStatic(ctx *gin.Context) {
 	if !ok {
 		return
 	}
-	c.proxyToStaticProgram(ctx, params, http.MethodPost, "/api/static/site", map[string]string{
+	statusCode, body := c.proxyToStaticProgram(ctx, params, http.MethodPost, "/api/static/site", map[string]string{
 		"path": path,
 		"gray": c.resolveGray(ctx, params),
 	})
+	c.writeTaskSubmitLog(ctx, statusCode, body, "site")
 }
 
 // PagesStatic 生成首页：POST /static/pages?path={输出目录}&gray={1或2}
@@ -169,10 +335,11 @@ func (c *StaticJobController) PagesStatic(ctx *gin.Context) {
 	if !ok {
 		return
 	}
-	c.proxyToStaticProgram(ctx, params, http.MethodPost, "/api/static/pages", map[string]string{
+	statusCode, body := c.proxyToStaticProgram(ctx, params, http.MethodPost, "/api/static/pages", map[string]string{
 		"path": path,
 		"gray": c.resolveGray(ctx, params),
 	})
+	c.writeTaskSubmitLog(ctx, statusCode, body, "pages")
 }
 
 // ListsStatic 生成栏目页：POST /static/lists?path={输出目录}
@@ -185,9 +352,10 @@ func (c *StaticJobController) ListsStatic(ctx *gin.Context) {
 	if !ok {
 		return
 	}
-	c.proxyToStaticProgram(ctx, params, http.MethodPost, "/api/static/lists", map[string]string{
+	statusCode, body := c.proxyToStaticProgram(ctx, params, http.MethodPost, "/api/static/lists", map[string]string{
 		"path": path,
 	})
+	c.writeTaskSubmitLog(ctx, statusCode, body, "lists")
 }
 
 // ArticlesStatic 生成详情页：POST /static/articles?path={输出目录}
@@ -200,9 +368,10 @@ func (c *StaticJobController) ArticlesStatic(ctx *gin.Context) {
 	if !ok {
 		return
 	}
-	c.proxyToStaticProgram(ctx, params, http.MethodPost, "/api/static/articles", map[string]string{
+	statusCode, body := c.proxyToStaticProgram(ctx, params, http.MethodPost, "/api/static/articles", map[string]string{
 		"path": path,
 	})
+	c.writeTaskSubmitLog(ctx, statusCode, body, "articles")
 }
 
 // GetJob 查询任务状态：GET /static/jobs/{任务ID}
@@ -217,5 +386,6 @@ func (c *StaticJobController) GetJob(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "任务ID不能为空"))
 		return
 	}
-	c.proxyToStaticProgram(ctx, params, http.MethodGet, "/api/static/jobs/"+id, nil)
+	statusCode, body := c.proxyToStaticProgram(ctx, params, http.MethodGet, "/api/static/jobs/"+id, nil)
+	c.writeTaskDoneLog(ctx, statusCode, body)
 }

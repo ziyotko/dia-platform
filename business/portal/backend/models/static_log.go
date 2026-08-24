@@ -18,5 +18,6 @@ type StaticLog struct {
 	FileSize  string         `gorm:"size:20" json:"fileSize"`
 	Operator  string         `gorm:"size:50" json:"operator"`
 	Status    string         `gorm:"size:20" json:"status"`
+	JobID     string         `gorm:"size:64;index" json:"jobId"`
 	Message   string         `gorm:"type:text" json:"message"`
 }

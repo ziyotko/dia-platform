@@ -369,7 +369,7 @@
     </el-card>
 
     <!-- 静态化日志弹窗 -->
-    <el-dialog v-model="logDialogVisible" title="静态化日志" width="720px">
+    <el-dialog v-model="logDialogVisible" title="静态化日志" width="960px">
       <div class="log-dialog-body">
         <div class="log-toolbar">
           <el-button type="danger" link @click="clearLogs">
@@ -560,17 +560,14 @@ const runStaticJob = async (kind: 'site' | 'pages' | 'lists' | 'articles', title
         startPolling()
       }
       ElMessage.success(`${title}任务已提交，请等待处理结果`)
-      addLog('primary', DocumentChecked, `${title}任务提交`, `任务ID: ${job.id}`, '-', '-', '-', '-')
     } else {
       const data: any = res.data || {}
       const msg = data.message || data.msg || '任务提交失败'
       ElMessage.error(`${title}失败：${msg}`)
-      addLog('danger', CircleClose, `${title}任务提交失败`, msg)
     }
   } catch (error: any) {
     const msg = getErrorMessage(error)
     ElMessage.error(`${title}失败：${msg}`)
-    addLog('danger', CircleClose, `${title}任务提交失败`, msg)
   } finally {
     submitting.value = null
   }
@@ -668,14 +665,11 @@ const refreshJob = async (id: string) => {
 const notifyJobDone = (job: any) => {
   if (job.status === 'succeeded') {
     ElMessage.success(`「${job.kindText}」任务执行成功`)
-    addLog('success', Check, `${job.kindText}任务完成`, `任务ID: ${job.id}`, '-', '-', '-', '-')
     fetchPageList()
   } else if (job.status === 'failed') {
     ElMessage.error(`「${job.kindText}」任务执行失败`)
-    addLog('danger', CircleClose, `${job.kindText}任务失败`, `任务ID: ${job.id}`, '-', '-', '-', '-')
   } else if (job.status === 'interrupted') {
     ElMessage.warning(`「${job.kindText}」任务已中断`)
-    addLog('warning', Warning, `${job.kindText}任务中断`, `任务ID: ${job.id}`, '-', '-', '-', '-')
   }
 }
 
@@ -919,14 +913,6 @@ const handlePreview = (row: any) => {
   window.open(row.path, '_blank')
 }
 
-const addLog = (status: string, icon: any, operation: string, message: string, pageName = '-', path = '-', duration = '-', fileSize = '-', operator = 'admin') => {
-  const statusTextMap: Record<string, string> = { success: '成功', warning: '警告', danger: '失败', primary: '信息' }
-  logList.value = [
-    { id: Date.now(), operation, status, statusText: statusTextMap[status] || status, icon, time: new Date().toLocaleString(), pageName, path, duration, fileSize, operator, message },
-    ...logList.value
-  ]
-}
-
 const clearLogs = () => {
   ElMessageBox.confirm('确定要清空所有静态化日志吗？', '确认清空', {
     confirmButtonText: '确定',
@@ -1144,7 +1130,7 @@ onUnmounted(() => {
     }
 
     .log-scroll-container {
-      max-height: 480px;
+      max-height: 560px;
       overflow-y: auto;
       padding-right: 8px;
 

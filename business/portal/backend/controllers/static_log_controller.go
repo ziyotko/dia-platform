@@ -21,15 +21,15 @@ func NewStaticLogController() *StaticLogController {
 }
 
 type StaticLogListItem struct {
-	ID        uint   `json:"id"`
-	Operation string `json:"operation"`
-	PageName  string `json:"pageName"`
-	Path      string `json:"path"`
-	Duration  string `json:"duration"`
-	FileSize  string `json:"fileSize"`
-	Operator  string `json:"operator"`
-	Status    string `json:"status"`
-	Message   string `json:"message"`
+	ID         uint   `json:"id"`
+	Operation  string `json:"operation"`
+	PageName   string `json:"pageName"`
+	Path       string `json:"path"`
+	Duration   string `json:"duration"`
+	FileSize   string `json:"fileSize"`
+	Operator   string `json:"operator"`
+	Status     string `json:"status"`
+	Message    string `json:"message"`
 	CreateTime string `json:"createTime"`
 }
 
