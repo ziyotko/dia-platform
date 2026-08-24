@@ -111,10 +111,16 @@
       <template #header>
         <div class="card-header">
           <span>批量操作</span>
-          <el-tag v-if="hasActiveJob" type="warning" effect="dark">
-            <el-icon class="is-loading"><Loading /></el-icon>
-            有任务正在执行中...
-          </el-tag>
+          <div class="header-actions">
+            <el-tag v-if="hasActiveJob" type="warning" effect="dark">
+              <el-icon class="is-loading"><Loading /></el-icon>
+              有任务正在执行中...
+            </el-tag>
+            <el-button type="info" plain @click="openLogDialog">
+              <el-icon><Document /></el-icon>
+              静态化日志
+            </el-button>
+          </div>
         </div>
       </template>
       <div class="action-list">
@@ -359,62 +365,67 @@
             />
           </div>
         </el-tab-pane>
-        <el-tab-pane label="静态化日志" name="logs">
-          <div class="tab-header-actions" style="justify-content: flex-end;">
-            <el-button type="danger" link @click="clearLogs">
-              <el-icon><Delete /></el-icon>清空日志
-            </el-button>
-          </div>
-          <div class="log-scroll-container">
-            <el-timeline v-loading="logLoading">
-              <el-timeline-item
-                v-for="log in logList"
-                :key="log.id"
-                :type="log.status"
-                :icon="log.icon"
-                :timestamp="log.time"
-              >
-                <div class="log-content">
-                  <div class="log-header">
-                    <span class="log-title">{{ log.operation }}</span>
-                    <el-tag :type="log.status" size="small">{{ log.statusText }}</el-tag>
-                  </div>
-                  <div class="log-meta">
-                    <span v-if="log.pageName" class="log-meta-item">
-                      <el-icon size="12"><Document /></el-icon> {{ log.pageName }}
-                    </span>
-                    <span v-if="log.path" class="log-meta-item">
-                      <el-icon size="12"><HomeFilled /></el-icon> {{ log.path }}
-                    </span>
-                    <span v-if="log.duration" class="log-meta-item">
-                      <el-icon size="12"><Timer /></el-icon> {{ log.duration }}
-                    </span>
-                    <span v-if="log.fileSize" class="log-meta-item">
-                      <el-icon size="12"><DocumentChecked /></el-icon> {{ log.fileSize }}
-                    </span>
-                    <span v-if="log.operator" class="log-meta-item">
-                      <el-icon size="12"><User /></el-icon> {{ log.operator }}
-                    </span>
-                  </div>
-                  <span class="log-detail">{{ log.message }}</span>
-                </div>
-              </el-timeline-item>
-            </el-timeline>
-          </div>
-          <div class="pagination">
-            <el-pagination
-              v-model:current-page="logQueryForm.page"
-              v-model:page-size="logQueryForm.pageSize"
-              :page-sizes="[10, 20, 50, 100]"
-              :total="logTotal"
-              layout="total, sizes, prev, pager, next, jumper"
-              @size-change="handleLogSizeChange"
-              @current-change="handleLogCurrentChange"
-            />
-          </div>
-        </el-tab-pane>
       </el-tabs>
     </el-card>
+
+    <!-- 静态化日志弹窗 -->
+    <el-dialog v-model="logDialogVisible" title="静态化日志" width="720px">
+      <div class="log-dialog-body">
+        <div class="log-toolbar">
+          <el-button type="danger" link @click="clearLogs">
+            <el-icon><Delete /></el-icon>清空日志
+          </el-button>
+        </div>
+        <div class="log-scroll-container" v-loading="logLoading">
+          <el-timeline v-if="logList.length">
+            <el-timeline-item
+              v-for="log in logList"
+              :key="log.id"
+              :type="log.status"
+              :icon="log.icon"
+              :timestamp="log.time"
+            >
+              <div class="log-content">
+                <div class="log-header">
+                  <span class="log-title">{{ log.operation }}</span>
+                  <el-tag :type="log.status" size="small">{{ log.statusText }}</el-tag>
+                </div>
+                <div class="log-meta">
+                  <span v-if="log.pageName" class="log-meta-item">
+                    <el-icon size="12"><Document /></el-icon> {{ log.pageName }}
+                  </span>
+                  <span v-if="log.path" class="log-meta-item">
+                    <el-icon size="12"><HomeFilled /></el-icon> {{ log.path }}
+                  </span>
+                  <span v-if="log.duration" class="log-meta-item">
+                    <el-icon size="12"><Timer /></el-icon> {{ log.duration }}
+                  </span>
+                  <span v-if="log.fileSize" class="log-meta-item">
+                    <el-icon size="12"><DocumentChecked /></el-icon> {{ log.fileSize }}
+                  </span>
+                  <span v-if="log.operator" class="log-meta-item">
+                    <el-icon size="12"><User /></el-icon> {{ log.operator }}
+                  </span>
+                </div>
+                <span class="log-detail">{{ log.message }}</span>
+              </div>
+            </el-timeline-item>
+          </el-timeline>
+          <el-empty v-else description="暂无静态化日志" :image-size="80" />
+        </div>
+        <div class="pagination">
+          <el-pagination
+            v-model:current-page="logQueryForm.page"
+            v-model:page-size="logQueryForm.pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            :total="logTotal"
+            layout="total, sizes, prev, pager, next, jumper"
+            @size-change="handleLogSizeChange"
+            @current-change="handleLogCurrentChange"
+          />
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -767,12 +778,11 @@ const pageList = ref<any[]>([
   { id: 12, name: '品牌故事专题', path: '/topic/brand', type: '专题', fileSize: '35 KB', generating: false }
 ])
 
-watch(activeTab, (val) => {
-  if (val !== 'logs') {
-    queryForm.page = 1
-  }
+watch(activeTab, () => {
+  queryForm.page = 1
 })
 
+const logDialogVisible = ref(false)
 const logList = ref<any[]>([])
 const logTotal = ref(0)
 const logLoading = ref(false)
@@ -780,6 +790,13 @@ const logQueryForm = reactive({
   page: 1,
   pageSize: 10
 })
+
+// 打开静态化日志弹窗：重置到第一页并加载
+const openLogDialog = () => {
+  logQueryForm.page = 1
+  logDialogVisible.value = true
+  fetchLogList()
+}
 
 const statusIconMap: Record<string, any> = {
   success: Check,
@@ -865,13 +882,8 @@ const fetchPageList = async () => {
 }
 
 const handleTabChange = () => {
-  if (activeTab.value === 'logs') {
-    logQueryForm.page = 1
-    fetchLogList()
-  } else {
-    queryForm.page = 1
-    fetchPageList()
-  }
+  queryForm.page = 1
+  fetchPageList()
 }
 
 const handleSizeChange = (val: number) => {
@@ -1001,6 +1013,12 @@ onUnmounted(() => {
       align-items: center;
       font-weight: 600;
       color: #2c3e50;
+
+      .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
     }
 
     .action-config {
@@ -1116,6 +1134,14 @@ onUnmounted(() => {
       display: flex;
       justify-content: flex-end;
     }
+  }
+
+  .log-dialog-body {
+    .log-toolbar {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 12px;
+    }
 
     .log-scroll-container {
       max-height: 480px;
@@ -1184,6 +1210,12 @@ onUnmounted(() => {
         font-size: 13px;
         color: #909399;
       }
+    }
+
+    .pagination {
+      margin-top: 20px;
+      display: flex;
+      justify-content: flex-end;
     }
   }
 }
