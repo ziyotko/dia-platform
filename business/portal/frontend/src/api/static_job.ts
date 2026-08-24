@@ -39,7 +39,8 @@ export async function startStaticJob(
   if (kind === 'site' || kind === 'pages') {
     params.gray = gray ?? 2
   }
-  const res: any = await request.post(`/static/${kind}`, null, { params, raw: true } as any)
+  // 注意：不传请求体（undefined），避免 axios 将 null 序列化为 "null" 导致与空请求体签名不一致
+  const res: any = await request.post(`/static/${kind}`, undefined, { params, raw: true } as any)
   return { status: res.status, data: res.data }
 }
 
