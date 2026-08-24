@@ -196,8 +196,12 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="created_at" label="创建时间" width="170" />
-        <el-table-column prop="updated_at" label="更新时间" width="170" />
+        <el-table-column label="创建时间" width="170">
+          <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
+        </el-table-column>
+        <el-table-column label="更新时间" width="170">
+          <template #default="{ row }">{{ formatTime(row.updated_at) }}</template>
+        </el-table-column>
         <el-table-column label="操作" width="150" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" :loading="row.refreshing" @click="refreshJob(row.id)">
@@ -445,6 +449,7 @@ import { getStaticMonitor } from '@/api/static_monitor'
 import { startStaticJob, getStaticJob } from '@/api/static_job'
 import type { StaticJob, StaticJobStatus } from '@/api/static_job'
 import { getSettings } from '@/api/settings'
+import { getErrorMessage } from '@/utils/request'
 
 const loading = ref(false)
 const activeTab = ref('home')
@@ -479,6 +484,10 @@ const jobStatusMap: Record<StaticJobStatus, { text: string; type: string }> = {
 const hasActiveJob = computed(() =>
   jobList.value.some(j => j.status === 'queued' || j.status === 'running')
 )
+
+// 格式化 ISO 时间字符串：去掉中间的 T，仅保留到秒（例如 2026-08-24 12:34:56）
+const formatTime = (t?: string) =>
+  t ? t.replace('T', ' ').slice(0, 19) : '-'
 
 // 将后端任务结构标准化为前端展示结构
 const normalizeJob = (job: StaticJob) => {
@@ -548,8 +557,9 @@ const runStaticJob = async (kind: 'site' | 'pages' | 'lists' | 'articles', title
       addLog('danger', CircleClose, `${title}任务提交失败`, msg)
     }
   } catch (error: any) {
-    ElMessage.error(`${title}任务提交失败`)
-    addLog('danger', CircleClose, `${title}任务提交失败`, error?.message || '未知错误')
+    const msg = getErrorMessage(error)
+    ElMessage.error(`${title}失败：${msg}`)
+    addLog('danger', CircleClose, `${title}任务提交失败`, msg)
   } finally {
     submitting.value = null
   }

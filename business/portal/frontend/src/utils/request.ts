@@ -104,6 +104,55 @@ request.interceptors.request.use(
   }
 )
 
+// 从响应体中提取业务错误信息（兼容对象 / JSON 字符串 / 纯文本）
+function extractBizMessage(data: any): string {
+  let parsed = data
+  if (typeof data === 'string') {
+    const trimmed = data.trim()
+    if (!trimmed) return ''
+    try {
+      parsed = JSON.parse(trimmed)
+    } catch {
+      return trimmed
+    }
+  }
+  if (parsed && typeof parsed === 'object') {
+    const msg =
+      parsed.message ||
+      parsed.msg ||
+      parsed.error ||
+      parsed.detail ||
+      parsed.errorMessage ||
+      parsed.errmsg
+    if (typeof msg === 'string' && msg.trim()) return msg.trim()
+  }
+  return ''
+}
+
+// 从 axios 错误中提取可读的具体错误信息，尽量展示后端返回的真实原因，而非笼统的“网络错误”
+export function getErrorMessage(error: any): string {
+  // 1. 优先取响应体中的业务错误字段（message/msg/error/纯文本等）
+  const data = error?.response?.data
+  if (data != null) {
+    const msg = extractBizMessage(data)
+    if (msg) return msg
+  }
+
+  // 2. HTTP 状态错误：补充状态文本，例如 401 Unauthorized
+  const status = error?.response?.status
+  if (status) {
+    const statusText = error?.response?.statusText
+    return statusText ? `${statusText}（${status}）` : `请求失败（HTTP ${status}）`
+  }
+
+  // 3. 请求超时 / 其他 axios 层错误
+  if (error?.code === 'ECONNABORTED') return '请求超时，请稍后重试'
+  if (error?.message && error.message !== 'Network Error') return error.message
+
+  // 4. 兜底
+  return '网络错误'
+}
+
 request.interceptors.response.use(
   (response) => {
     // raw 模式：跳过统一响应校验，原样返回整个 axios 响应（含 status），由调用方自行判断
@@ -123,7 +172,11 @@ request.interceptors.response.use(
     return res
   },
   (error) => {
-    ElMessage.error(error.response?.data?.message || '网络错误')
+    // raw 模式：错误信息由调用方自行展示，避免重复弹窗；轮询等场景也不应刷屏
+    const isRaw = !!(error?.config as any)?.raw
+    if (!isRaw) {
+      ElMessage.error(getErrorMessage(error))
+    }
     return Promise.reject(error)
   }
 )
