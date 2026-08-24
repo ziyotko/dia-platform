@@ -117,6 +117,58 @@
       </div>
     </el-card>
 
+    <!-- 静态化服务监控 -->
+    <el-card shadow="hover" class="monitor-card">
+      <template #header>
+        <div class="card-header">
+          <span>
+            <el-icon><Monitor /></el-icon>
+            静态化服务监控
+          </span>
+          <div class="monitor-actions">
+            <span class="last-check">最后获取时间：{{ monitorData.lastCheckTime }}</span>
+            <el-button type="primary" :loading="monitorLoading" @click="fetchStaticMonitor">
+              <el-icon><Refresh /></el-icon>
+              刷新
+            </el-button>
+          </div>
+        </div>
+      </template>
+      <div class="monitor-body">
+        <div class="monitor-status">
+          <el-tag :type="monitorData.online ? 'success' : 'danger'" size="large" effect="dark" class="status-tag">
+            <el-icon v-if="monitorData.online"><CircleCheck /></el-icon>
+            <el-icon v-else><CircleClose /></el-icon>
+            {{ monitorData.online ? '运行中' : '已停止' }}
+          </el-tag>
+        </div>
+        <div class="monitor-info">
+          <div class="monitor-item">
+            <span class="monitor-label">访问地址</span>
+            <code class="monitor-value code">{{ monitorData.address || '未配置' }}</code>
+          </div>
+          <div class="monitor-item">
+            <span class="monitor-label">HTTP 状态码</span>
+            <span class="monitor-value">{{ monitorData.httpStatus || '-' }}</span>
+          </div>
+          <div class="monitor-item">
+            <span class="monitor-label">状态说明</span>
+            <span class="monitor-value">{{ monitorData.message || '尚未获取' }}</span>
+          </div>
+        </div>
+      </div>
+      <el-alert
+        type="info"
+        :closable="false"
+        show-icon
+        class="monitor-tip"
+      >
+        <template #title>
+          <span>提示：如需修改静态化参数配置，请联系有权限的管理员前往「基础配置」-「静态化设置」进行操作。</span>
+        </template>
+      </el-alert>
+    </el-card>
+
     <!-- Tab 切换区域 -->
     <el-card shadow="hover" class="tab-card">
       <el-tabs v-model="activeTab" @tab-change="handleTabChange">
@@ -337,17 +389,49 @@ import {
   Loading,
   Check,
   CircleClose,
+  CircleCheck,
   Warning,
-  User
+  User,
+  Monitor
 } from '@element-plus/icons-vue'
 import { getArticleColumnPublishes } from '@/api/article'
 import { getColumnPublishes } from '@/api/column'
 import { getStaticPages } from '@/api/static_page'
 import { getStaticLogList, clearStaticLogs } from '@/api/static_log'
+import { getStaticMonitor } from '@/api/static_monitor'
 
 const loading = ref(false)
 const generating = ref(false)
 const activeTab = ref('home')
+
+const monitorLoading = ref(false)
+const monitorData = reactive({
+  online: false,
+  address: '',
+  httpStatus: 0,
+  lastCheckTime: '-',
+  message: '尚未获取'
+})
+
+const fetchStaticMonitor = async () => {
+  monitorLoading.value = true
+  try {
+    const res: any = await getStaticMonitor()
+    if (res.code === 0 || res.code === 200) {
+      monitorData.online = !!res.data?.online
+      monitorData.address = res.data?.address || ''
+      monitorData.httpStatus = res.data?.httpStatus || 0
+      monitorData.lastCheckTime = res.data?.lastCheckTime || new Date().toLocaleString()
+      monitorData.message = res.data?.message || ''
+    } else {
+      ElMessage.error(res.msg || '获取静态化服务状态失败')
+    }
+  } catch (error) {
+    ElMessage.error('获取静态化服务状态失败')
+  } finally {
+    monitorLoading.value = false
+  }
+}
 
 const statData = reactive({
   todayCount: 0,
@@ -612,6 +696,7 @@ const clearLogs = () => {
 
 onMounted(() => {
   fetchPageList()
+  fetchStaticMonitor()
 })
 </script>
 
@@ -680,6 +765,81 @@ onMounted(() => {
       .el-button {
         min-width: 140px;
       }
+    }
+  }
+
+  .monitor-card {
+    margin-bottom: 20px;
+    border-radius: 12px;
+    border: 1px solid #e6f2ff;
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+      color: #2c3e50;
+    }
+
+    .monitor-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      .last-check {
+        font-size: 13px;
+        font-weight: 400;
+        color: #909399;
+      }
+    }
+
+    .monitor-body {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      flex-wrap: wrap;
+      padding: 8px 0;
+
+      .monitor-status {
+        .status-tag {
+          font-size: 15px;
+          padding: 8px 20px;
+        }
+      }
+
+      .monitor-info {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 24px;
+        flex: 1;
+
+        .monitor-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+
+          .monitor-label {
+            font-size: 13px;
+            color: #909399;
+          }
+
+          .monitor-value {
+            font-size: 14px;
+            color: #2c3e50;
+            font-weight: 500;
+
+            &.code {
+              background: #f5f7fa;
+              padding: 2px 8px;
+              border-radius: 4px;
+            }
+          }
+        }
+      }
+    }
+
+    .monitor-tip {
+      margin-top: 12px;
     }
   }
 

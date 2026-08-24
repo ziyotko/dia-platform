@@ -35,6 +35,7 @@ func SetupRoutes(router *gin.Engine) {
 	shareController := controllers.NewShareController()
 	staticLogController := controllers.NewStaticLogController()
 	staticPageController := controllers.NewStaticPageController()
+	staticMonitorController := controllers.NewStaticMonitorController()
 	apiPrefix := config.AppConfig.Server.ApiPrefix
 
 	public := router.Group(apiPrefix)
@@ -163,6 +164,7 @@ func SetupRoutes(router *gin.Engine) {
 		admin.DELETE("/login-logs", logController.ClearLoginLogs)
 		admin.GET("/static-logs", staticLogController.GetLogs)
 		admin.DELETE("/static-logs", staticLogController.ClearLogs)
+		admin.GET("/static-monitor", staticMonitorController.GetStaticMonitor)
 
 		// 系统设置（写操作）
 		admin.PUT("/settings", settingsController.UpdateSettings)
