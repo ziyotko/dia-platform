@@ -33,7 +33,7 @@
               <el-icon size="28"><DocumentChecked /></el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-value">{{ statData.todayCount }}</div>
+              <div class="stat-value">{{ statData.todayCount }} 个文件</div>
               <div class="stat-label">今日静态化页面</div>
             </div>
           </div>
@@ -484,7 +484,7 @@ import {
 import { getArticleColumnPublishes } from '@/api/article'
 import { getColumnPublishes } from '@/api/column'
 import { getStaticPages } from '@/api/static_page'
-import { getStaticLogList, clearStaticLogs } from '@/api/static_log'
+import { getStaticLogList, clearStaticLogs, getStaticLatestTimes } from '@/api/static_log'
 import { getStaticMonitor } from '@/api/static_monitor'
 import { startStaticJob, getStaticJob } from '@/api/static_job'
 import type { StaticJob, StaticJobStatus } from '@/api/static_job'
@@ -696,6 +696,7 @@ const notifyJobDone = (job: any) => {
   if (job.status === 'succeeded') {
     ElMessage.success(`「${job.kindText}」任务执行成功`)
     fetchPageList()
+    fetchStaticStat()
   } else if (job.status === 'failed') {
     ElMessage.error(`「${job.kindText}」任务执行失败`)
   } else if (job.status === 'interrupted') {
@@ -749,6 +750,24 @@ const statData = reactive({
   topicLastTime: '-',
   detailLastTime: '-'
 })
+
+// 读取静态化日志最新成功时间及今日成功文件数，填充统计卡片
+const fetchStaticStat = async () => {
+  try {
+    const res: any = await getStaticLatestTimes()
+    if (res.code === 0 || res.code === 200) {
+      const d = res.data || {}
+      statData.todayCount = d.todayFiles || 0
+      statData.lastTime = d.site || '-'
+      statData.homeLastTime = d.home || '-'
+      statData.columnLastTime = d.column || '-'
+      statData.topicLastTime = d.topic || '-'
+      statData.detailLastTime = d.detail || '-'
+    }
+  } catch (error) {
+    // 忽略，保持默认 '-'
+  }
+}
 
 const queryForm = reactive({
   page: 1,
@@ -975,6 +994,7 @@ const clearLogs = () => {
 onMounted(() => {
   fetchPageList()
   fetchStaticMonitor()
+  fetchStaticStat()
   loadStaticSettings()
 })
 

@@ -165,6 +165,7 @@ func SetupRoutes(router *gin.Engine) {
 		admin.DELETE("/login-logs", logController.ClearLoginLogs)
 		admin.GET("/static-logs", staticLogController.GetLogs)
 		admin.DELETE("/static-logs", staticLogController.ClearLogs)
+		admin.GET("/static-logs/latest-times", staticLogController.GetLatestTimes)
 		admin.GET("/static-monitor", staticMonitorController.GetStaticMonitor)
 
 		// 静态化批量操作任务（代理转发至静态化程序，返回 202 + 任务信息）

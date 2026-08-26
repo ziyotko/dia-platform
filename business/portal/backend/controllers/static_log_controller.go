@@ -81,3 +81,14 @@ func (c *StaticLogController) ClearLogs(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, utils.Success("清空静态化日志成功", nil))
 }
+
+// GetLatestTimes 读取各类型页面最后一次静态化成功时间（全站/首页/栏目页/专题页/详情页）
+func (c *StaticLogController) GetLatestTimes(ctx *gin.Context) {
+	result, err := c.staticLogService.GetLatestSuccessTimes()
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取静态化最后成功时间失败"))
+		return
+	}
+
+	ctx.JSON(http.StatusOK, utils.Success("获取静态化最后成功时间成功", result))
+}
