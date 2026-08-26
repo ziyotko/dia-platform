@@ -176,6 +176,7 @@ func SetupRoutes(router *gin.Engine) {
 		admin.POST("/static/page", staticJobController.PageStatic)
 		admin.POST("/static/list", staticJobController.ListStatic)
 		admin.POST("/static/article", staticJobController.ArticleStatic)
+		admin.DELETE("/static/article", staticJobController.DeleteArticleStatic)
 		admin.GET("/static/jobs/:id", staticJobController.GetJob)
 
 		// 系统设置（写操作）

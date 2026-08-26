@@ -369,13 +369,16 @@
                 <el-table-column prop="source" label="来源" min-width="100" />
                 <el-table-column prop="createTime" label="创建时间" width="170" />
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
-                <el-table-column label="操作" width="280" align="center" fixed="right">
+                <el-table-column label="操作" width="340" align="center" fixed="right">
                   <template #default="{ row }">
                     <el-button link type="primary" :loading="row.generating" @click="handleGenerateSingle(row)">
                       <el-icon><Refresh /></el-icon>重新生成
                     </el-button>
                     <el-button link type="success" @click="handlePreview(row)">
                       <el-icon><View /></el-icon>预览
+                    </el-button>
+                    <el-button link type="danger" :loading="row.deleting" @click="handleDeleteArticle(row)">
+                      <el-icon><Delete /></el-icon>删除
                     </el-button>
                   </template>
                 </el-table-column>
@@ -486,7 +489,7 @@ import { getColumnPublishes } from '@/api/column'
 import { getStaticPages } from '@/api/static_page'
 import { getStaticLogList, clearStaticLogs, getStaticLatestTimes } from '@/api/static_log'
 import { getStaticMonitor } from '@/api/static_monitor'
-import { startStaticJob, getStaticJob, startStaticPage, startStaticList, startStaticArticle } from '@/api/static_job'
+import { startStaticJob, getStaticJob, startStaticPage, startStaticList, startStaticArticle, deleteStaticArticle } from '@/api/static_job'
 import type { StaticJob, StaticJobStatus } from '@/api/static_job'
 import { getSettings } from '@/api/settings'
 import { getErrorMessage } from '@/utils/request'
@@ -1000,6 +1003,40 @@ const handleGenerateSingle = async (row: any) => {
   } finally {
     row.generating = false
   }
+}
+
+// 删除详情页静态文件：调用后端代理 DELETE /static/article?id={文章ID}&path={输出目录}
+// 输出目录取自后端全局变量「静态化输出路径」，确认后执行删除并刷新列表。
+const handleDeleteArticle = (row: any) => {
+  const name = row.title || row.name || row.id
+  ElMessageBox.confirm(
+    `确定要删除文章「${name}」(ID: ${row.id}) 的静态文件吗？删除后需重新生成才能恢复。`,
+    '确认删除',
+    {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(async () => {
+    row.deleting = true
+    try {
+      const res = await deleteStaticArticle(row.id, staticPath.value)
+      const data: any = res.data || {}
+      if (res.status === 200 && data.ok) {
+        ElMessage.success(`「${name}」静态文件已删除`)
+        fetchPageList()
+        fetchStaticStat()
+      } else {
+        const msg = data.message || data.msg || '删除失败'
+        ElMessage.error(`「${name}」删除失败：${msg}`)
+      }
+    } catch (error: any) {
+      const msg = getErrorMessage(error)
+      ElMessage.error(`「${name}」删除失败：${msg}`)
+    } finally {
+      row.deleting = false
+    }
+  }).catch(() => {})
 }
 
 const handlePreview = (row: any) => {

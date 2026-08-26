@@ -494,6 +494,54 @@ func (c *StaticJobController) ArticleStatic(ctx *gin.Context) {
 	c.writePageDoneLog(ctx, statusCode, body, "生成详情页任务完成", id)
 }
 
+// writeArticleDeleteLog 删除详情页静态文件后记录静态化日志（根据响应 ok 字段记录成功/失败）
+func (c *StaticJobController) writeArticleDeleteLog(ctx *gin.Context, statusCode int, body []byte, id string) {
+	status, statusText := "danger", "删除失败"
+	var resp staticProgramPageResponse
+	if statusCode == http.StatusOK {
+		if err := json.Unmarshal(body, &resp); err == nil && resp.OK {
+			status, statusText = "success", "删除成功"
+		}
+	}
+	log := &models.StaticLog{
+		Operation: "删除详情页静态文件",
+		PageName:  id,
+		Path:      "-",
+		Duration:  "-",
+		FileSize:  "-",
+		Operator:  c.currentOperator(ctx),
+		Status:    status,
+		Message:   fmt.Sprintf("文章ID：%s｜%s", id, statusText),
+	}
+	if err := c.staticLogService.CreateIfNotExists(log); err != nil {
+		utils.Logger.Warnf("记录静态化日志失败: %s", err)
+	}
+}
+
+// DeleteArticleStatic 删除详情页静态文件：DELETE /static/article?id={文章ID}&path={输出目录}
+// 输出目录优先取请求显式传入的 path，否则读取后端全局变量（静态化输出路径），
+// 代理转发至静态化程序（自动附带 Authorization 验证令牌头），同步返回 HTTP 200 及删除结果。
+func (c *StaticJobController) DeleteArticleStatic(ctx *gin.Context) {
+	params, ok := c.resolveStaticParams(ctx)
+	if !ok {
+		return
+	}
+	id := strings.TrimSpace(ctx.Query("id"))
+	if id == "" {
+		ctx.JSON(http.StatusOK, utils.Error(1, "文章ID不能为空"))
+		return
+	}
+	path, ok := c.resolveOutputPath(ctx, params)
+	if !ok {
+		return
+	}
+	statusCode, body := c.proxyToStaticProgram(ctx, params, http.MethodDelete, "/api/static/article", map[string]string{
+		"id":   id,
+		"path": path,
+	})
+	c.writeArticleDeleteLog(ctx, statusCode, body, id)
+}
+
 // GetJob 查询任务状态：GET /static/jobs/{任务ID}
 // 返回任务状态结构：queued 等待执行 / running 正在执行 / succeeded 执行成功 / failed 执行失败 / interrupted 被取消或超时中断
 func (c *StaticJobController) GetJob(ctx *gin.Context) {
