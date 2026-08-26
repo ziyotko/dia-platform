@@ -31,7 +31,7 @@ func (s *ColumnService) GetColumnPublishes() ([]ColumnPublishItem, error) {
 	var columns []ColumnItem
 	err := utils.DB.Model(&models.Column{}).
 		Select("id, name, route_path").
-		Where("id IN (SELECT DISTINCT column_id FROM article_column_publish)").
+		Where("id IN (SELECT DISTINCT column_id FROM article_column_publish) and display_type<>7").
 		Scan(&columns).Error
 	if err != nil {
 		return nil, err

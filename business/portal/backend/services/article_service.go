@@ -889,7 +889,7 @@ func (s *ArticleService) GetArticleColumnPublishes(articleTitle string, columnID
 	var total int64
 	query := utils.DB.Model(&models.Article{}).
 		Select("article.id, article.created_at, article.updated_at, article.title, article.author, article.source").
-		Where("article.id IN (SELECT DISTINCT article_id FROM article_column_publish)").
+		Where("article.id IN (SELECT DISTINCT article_id FROM article_column_publish where column_id in (SELECT id FROM `column` where display_type<>7))").
 		Where("article.status = ?", 1).
 		Order("article.updated_at DESC")
 	if articleTitle != "" {
