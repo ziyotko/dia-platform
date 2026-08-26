@@ -17,7 +17,7 @@ import (
 )
 
 // StaticJobController 静态化批量操作任务控制器
-// 四个批量操作（全站静态化/生成首页/生成栏目页/生成详情页）均由本控制器接收请求，
+// 四个批量操作（生成全站/生成首页/生成栏目页/生成详情页）均由本控制器接收请求，
 // 读取后端全局静态化参数（静态化输出路径/静态化程序访问地址/静态化程序访问令牌名/首页整体变灰），
 // 然后代理转发给静态化程序，并将静态化程序返回的 202 状态码与任务信息原样透传给前端。
 type StaticJobController struct {
@@ -56,7 +56,7 @@ type staticProgramResponse struct {
 
 // 任务类型 → 中文名
 var staticKindName = map[string]string{
-	"site":     "全站静态化",
+	"site":     "生成全站",
 	"pages":    "生成首页",
 	"lists":    "生成栏目页",
 	"articles": "生成详情页",

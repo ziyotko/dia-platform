@@ -47,7 +47,7 @@
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ statData.lastTime }}</div>
-              <div class="stat-label">上次静态化时间</div>
+              <div class="stat-label">全站最后静态化时间</div>
             </div>
           </div>
         </el-card>
@@ -132,7 +132,7 @@
                 @click="handleGenerateAll"
               >
                 <el-icon><Refresh /></el-icon>
-                全站静态化
+                生成全站
               </el-button>
               <el-button
                 type="success"
@@ -508,7 +508,7 @@ const POLL_INTERVAL = 3000
 let pollTimer: any = null
 
 const kindMap: Record<string, { text: string; type: string }> = {
-  site: { text: '全站静态化', type: 'primary' },
+  site: { text: '生成全站', type: 'primary' },
   pages: { text: '生成首页', type: 'success' },
   lists: { text: '生成栏目页', type: 'warning' },
   articles: { text: '生成详情页', type: 'danger' }
@@ -618,7 +618,7 @@ const confirmRun = (kind: 'site' | 'pages' | 'lists' | 'articles', title: string
   }).catch(() => {})
 }
 
-const handleGenerateAll = () => confirmRun('site', '全站静态化', '确定要执行全站静态化吗？此操作可能需要较长时间。')
+const handleGenerateAll = () => confirmRun('site', '生成全站', '确定要执行生成全站吗？此操作可能需要较长时间。')
 const handleGenerateHome = () => confirmRun('pages', '生成首页')
 const handleGenerateColumn = () => confirmRun('lists', '生成栏目页')
 const handleGenerateDetail = () => confirmRun('articles', '生成详情页')
