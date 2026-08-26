@@ -263,7 +263,7 @@
                 <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
                 <el-table-column prop="createTime" label="创建时间" width="170" />
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
-                <el-table-column label="操作" width="180" align="center" fixed="right">
+                <el-table-column label="操作" width="280" align="center" fixed="right">
                   <template #default="{ row }">
                     <el-button link type="primary" :loading="row.generating" @click="handleGenerateSingle(row)">
                       <el-icon><Refresh /></el-icon>重新生成
@@ -297,7 +297,7 @@
                 <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
                 <el-table-column prop="createTime" label="创建时间" width="170" />
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
-                <el-table-column label="操作" width="180" align="center" fixed="right">
+                <el-table-column label="操作" width="280" align="center" fixed="right">
                   <template #default="{ row }">
                     <el-button link type="primary" :loading="row.generating" @click="handleGenerateSingle(row)">
                       <el-icon><Refresh /></el-icon>重新生成
@@ -333,7 +333,7 @@
                 <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
                 <el-table-column prop="createTime" label="创建时间" width="170" />
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
-                <el-table-column label="操作" width="180" align="center" fixed="right">
+                <el-table-column label="操作" width="280" align="center" fixed="right">
                   <template #default="{ row }">
                     <el-button link type="primary" :loading="row.generating" @click="handleGenerateSingle(row)">
                       <el-icon><Refresh /></el-icon>重新生成
@@ -369,7 +369,7 @@
                 <el-table-column prop="source" label="来源" min-width="100" />
                 <el-table-column prop="createTime" label="创建时间" width="170" />
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
-                <el-table-column label="操作" width="180" align="center" fixed="right">
+                <el-table-column label="操作" width="280" align="center" fixed="right">
                   <template #default="{ row }">
                     <el-button link type="primary" :loading="row.generating" @click="handleGenerateSingle(row)">
                       <el-icon><Refresh /></el-icon>重新生成
