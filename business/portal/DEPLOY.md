@@ -1,4 +1,4 @@
-# 门户系统（caam-portal）部署说明
+# 门户系统（XXXX-portal）部署说明
 
 > 分支：`release` ｜ 项目路径：`business/portal/`
 > 部署拓扑：Nginx 承载静态资源并反代后端 → Go 后端(8084) → MySQL / Redis
@@ -20,7 +20,7 @@ business/portal/
 | --- | --- |
 | Go | ≥ 1.26（`backend/go.mod`） |
 | Node.js | ≥ 18（Vite 5） |
-| MySQL | 库名 `caam_portal`，端口默认 3305 |
+| MySQL | ≥ 8.0 库名 `XXXX_portal`，端口默认 3305 修改与后端配置一致即可 | 
 | Redis | 端口 6379，使用 db 9 / 10 / 11 |
 | Nginx | 用于托管前端静态文件并反代 API |
 
@@ -34,7 +34,7 @@ business/portal/
 
 - `server.port`: 8084（对外可改，注意与 Nginx 一致）
 - `server.mode`: 生产用 `release`
-- `server.api_prefix`: `/caamm/api`（勿随意改，前端依赖）
+- `server.api_prefix`: `/xxxxx/api`（与前端一致即可，前端依赖）
 - `server.allowed_origins`: 生产环境改为实际前端域名，不要用 `*`
 - `database` / `redis`: 按实际环境修改
 
@@ -52,24 +52,24 @@ export PORTAL_JWT_SECRET='<≥32位随机密钥>'
 ```bash
 cd business/portal/backend
 # Windows 本地交叉编译 Linux 可执行文件（等价 comp.bat）
-set goos=linux && go build -o caam main.go
+set goos=linux && go build -o xxxx main.go
 # 或直接在目标机编译：
-go build -o caam main.go
+go build -o xxxx main.go
 ```
 
 ### 4. 启动
 
 ```bash
-./caam
+./xxxx
 ```
 
-- 启动自动 `AutoMigrate` 建表，并初始化默认角色 / 用户 / 菜单（默认用户初始密码见 `main.go` 中 seed 逻辑）
-- 静态资源上传目录：`./uploads`（后端以 `/caamm/uploads` 提供）
+- 启动自动 `AutoMigrate` 建表，并初始化默认角色 / 用户 / 菜单（默认用户admin，初始密码1qaz@WSX）
+- 静态资源上传目录：`./uploads`（后端以 `/xxxx/uploads` 提供）
 - 日志输出：`./logs`
 
 ### 5. 静态化（外部程序联动）
 
-- 后端通过 `POST /caamm/api/static/*` 转发到「外部静态化程序」，非本仓库代码
+- 后端通过 `POST /xxxxxx/api/static/*` 转发到「外部静态化程序」，非本仓库代码
 - 静态化程序的地址 / 令牌环境变量名 / 输出路径在后台「系统设置」中配置（存于数据库），输出站点（如 `dist/caam-home`）由外部 Web 服务器托管
 - 部署前确认该程序可达，否则静态化请求返回 502
 
@@ -89,12 +89,12 @@ npm run build        # 等价 vue-tsc && vite build
 
 ### 2. 关键配置
 
-- `.env`：`VITE_BASE_PATH=/caamm/`（部署在 `/caamm/` 子路径下）、`VITE_API_BASE_URL=/caamm/api`
+- `.env`：`VITE_BASE_PATH=/xxxxx/`（部署在 `/xxxxx/` 子路径下）、`VITE_API_BASE_URL=/xxxxx/api`
 - 若部署路径变化，修改 `VITE_BASE_PATH` 后重新构建
 
 ### 3. 部署
 
-将 `dist/` 内容复制到 Nginx 站点目录（如 `/var/www/caam-portal`）。
+将 `dist/` 内容复制到 Nginx 站点目录（如 `/var/www/xxxxx-portal`）。
 
 ---
 
@@ -105,15 +105,15 @@ server {
     listen 80;
     server_name portal.example.com;
 
-    # 管理后台静态资源（/caamm/ 下）
-    location /caamm/ {
-        root /var/www/caam-portal;   # 与 dist 对应，保证 /caamm/ 命中 index.html
-        try_files $uri $uri/ /caamm/index.html;
+    # 管理后台静态资源（/xxxxx/ 下）
+    location /xxxxx/ {
+        root /var/www/caam-portal;   # 与 dist 对应，保证 /xxxxx/ 命中 index.html
+        try_files $uri $uri/ /xxxxx/index.html;
         index index.html;
     }
 
     # 后端 API
-    location /caamm/api/ {
+    location /xxxxx/api/ {
         proxy_pass http://127.0.0.1:8084;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -121,7 +121,7 @@ server {
     }
 
     # 上传文件
-    location /caamm/uploads/ {
+    location /xxxxx/uploads/ {
         proxy_pass http://127.0.0.1:8084;
     }
 }
@@ -133,8 +133,8 @@ server {
 
 ## 五、部署顺序
 
-1. 准备 MySQL、Redis，并创建数据库 `caam_portal`
-2. 部署后端：改配置 → 注入环境变量 → 编译 → 启动 → 确认 `/caamm/api` 可访问
+1. 准备 MySQL、Redis，并创建数据库 `xxxxx_portal`
+2. 部署后端：改配置 → 注入环境变量 → 编译 → 启动 → 确认 `/xxxxx/api` 可访问
 3. 部署前端：构建 `dist` → 配置 Nginx 指向
 4. 配置外部静态化程序地址/令牌/输出路径，验证静态化接口（如首页生成）正常
 5. 健康检查：访问后台页面、登录、上传、发起一次静态化任务确认无 502
@@ -143,5 +143,5 @@ server {
 
 ## 六、回滚 / 升级
 
-- 后端：替换 `caam` 可执行文件后重启（结构变更会自动迁移表）
+- 后端：替换 `xxxxx` 可执行文件后重启（结构变更会自动迁移表）
 - 前端：替换 Nginx 目录下 `dist` 内容；改版本时建议保留旧目录以便快速回退
