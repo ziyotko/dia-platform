@@ -984,7 +984,7 @@ const handleGenerateSingle = async (row: any) => {
         ? String(r.generated_at).replace('T', ' ').slice(0, 19)
         : '-'
       ElMessageBox.alert(
-        `生产时间：${generatedAt}`,
+        `生成时间：${generatedAt}`,
         `「${name}」生成成功`,
         { confirmButtonText: '确定', type: 'success' }
       )
