@@ -50,3 +50,46 @@ export async function getStaticJob(id: string): Promise<{ status: number; data: 
   const res: any = await request.get(`/static/jobs/${id}`, { raw: true } as any)
   return { status: res.status, data: res.data }
 }
+
+// 首页重新生成的生成结果（静态化程序同步返回）
+export interface StaticPageResult {
+  generated_at: string
+  duration_seconds: number
+  page: string
+  total_items: number
+  generated_details: number
+  generated_lists: number
+  output: string
+  gray: string
+}
+
+export interface StaticPageResponse {
+  ok: boolean
+  result?: StaticPageResult
+  message?: string
+  msg?: string
+}
+
+// 单页操作-首页重新生成：POST /static/page?name={页面名}
+// 后端代理转发至静态化程序（自动附带 Authorization 验证令牌头），同步返回 HTTP 200 及生成结果；
+// 输出目录与首页整体变灰由后端全局变量决定，前端仅需传页面名。
+export async function startStaticPage(name: string): Promise<{ status: number; data: StaticPageResponse }> {
+  const res: any = await request.post('/static/page', undefined, { params: { name }, raw: true } as any)
+  return { status: res.status, data: res.data }
+}
+
+// 单页操作-栏目页重新生成：POST /static/list?column_name={栏目名称}
+// 后端代理转发至静态化程序（自动附带 Authorization 验证令牌头），同步返回 HTTP 200 及生成结果；
+// 输出目录由后端全局变量决定，前端仅需传栏目名称。
+export async function startStaticList(columnName: string): Promise<{ status: number; data: StaticPageResponse }> {
+  const res: any = await request.post('/static/list', undefined, { params: { column_name: columnName }, raw: true } as any)
+  return { status: res.status, data: res.data }
+}
+
+// 单页操作-详情页重新生成：POST /static/article?id={文章ID}
+// 后端代理转发至静态化程序（自动附带 Authorization 验证令牌头），同步返回 HTTP 200 及生成结果；
+// 输出目录由后端全局变量决定，前端仅需传文章ID。
+export async function startStaticArticle(id: number | string): Promise<{ status: number; data: StaticPageResponse }> {
+  const res: any = await request.post('/static/article', undefined, { params: { id }, raw: true } as any)
+  return { status: res.status, data: res.data }
+}

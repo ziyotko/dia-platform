@@ -486,7 +486,7 @@ import { getColumnPublishes } from '@/api/column'
 import { getStaticPages } from '@/api/static_page'
 import { getStaticLogList, clearStaticLogs, getStaticLatestTimes } from '@/api/static_log'
 import { getStaticMonitor } from '@/api/static_monitor'
-import { startStaticJob, getStaticJob } from '@/api/static_job'
+import { startStaticJob, getStaticJob, startStaticPage, startStaticList, startStaticArticle } from '@/api/static_job'
 import type { StaticJob, StaticJobStatus } from '@/api/static_job'
 import { getSettings } from '@/api/settings'
 import { getErrorMessage } from '@/utils/request'
@@ -956,11 +956,47 @@ const handleGenerateSingle = async (row: any) => {
   row.generating = true
   const name = row.title || row.name
   try {
-    // TODO: 调用单页生成接口
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    ElMessage.success(`「${name}」生成成功`)
-  } catch (error) {
-    ElMessage.error(`「${name}」生成失败`)
+    let res: { status: number; data: any }
+    if (activeTab.value === 'home') {
+      // 首页重新生成：调用后端代理 /static/page（自动附带验证头）
+      // 输出目录与首页整体变灰由后端全局变量决定，前端仅传页面名
+      res = await startStaticPage(name)
+    } else if (activeTab.value === 'column') {
+      // 栏目页重新生成：调用后端代理 /static/list（自动附带验证头）
+      // 输出目录由后端全局变量决定，前端仅传栏目名称
+      res = await startStaticList(name)
+    } else if (activeTab.value === 'detail') {
+      // 详情页重新生成：调用后端代理 /static/article（自动附带验证头）
+      // 输出目录由后端全局变量决定，前端仅传文章ID
+      res = await startStaticArticle(row.id)
+    } else if (activeTab.value === 'topic') {
+      // 专题页生成功能暂未实现，点击仅提示
+      ElMessage.info('专题页生成功能暂未实现，敬请期待')
+      return
+    } else {
+      ElMessage.info('该类型暂未接入单页生成接口')
+      return
+    }
+    const data: any = res.data || {}
+    if (res.status === 200 && data.ok && data.result) {
+      const r = data.result
+      const generatedAt = r.generated_at
+        ? String(r.generated_at).replace('T', ' ').slice(0, 19)
+        : '-'
+      ElMessageBox.alert(
+        `生产时间：${generatedAt}`,
+        `「${name}」生成成功`,
+        { confirmButtonText: '确定', type: 'success' }
+      )
+      fetchPageList()
+      fetchStaticStat()
+    } else {
+      const msg = data.message || data.msg || '生成失败'
+      ElMessage.error(`「${name}」生成失败：${msg}`)
+    }
+  } catch (error: any) {
+    const msg = getErrorMessage(error)
+    ElMessage.error(`「${name}」生成失败：${msg}`)
   } finally {
     row.generating = false
   }

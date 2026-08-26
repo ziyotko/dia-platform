@@ -54,6 +54,24 @@ type staticProgramResponse struct {
 	Job *staticProgramJob `json:"job"`
 }
 
+// 静态化程序返回的单页生成结果结构（首页重新生成，同步返回）
+type staticProgramPageResult struct {
+	GeneratedAt      string  `json:"generated_at"`
+	DurationSeconds  float64 `json:"duration_seconds"`
+	Page             string  `json:"page"`
+	TotalItems       int     `json:"total_items"`
+	GeneratedDetails int     `json:"generated_details"`
+	GeneratedLists   int     `json:"generated_lists"`
+	Output           string  `json:"output"`
+	Gray             string  `json:"gray"`
+}
+
+// 静态化程序返回的单页生成统一响应结构
+type staticProgramPageResponse struct {
+	OK     bool                     `json:"ok"`
+	Result *staticProgramPageResult `json:"result"`
+}
+
 // 任务类型 → 中文名
 var staticKindName = map[string]string{
 	"site":     "生成全站",
@@ -188,6 +206,35 @@ func (c *StaticJobController) writeTaskDoneLog(ctx *gin.Context, statusCode int,
 		c.writeStaticLog(ctx, "danger", staticKindText(job.Kind)+"任务失败", staticJobLogMessage(job, "执行失败"), job)
 	case "interrupted":
 		c.writeStaticLog(ctx, "warning", staticKindText(job.Kind)+"任务中断", staticJobLogMessage(job, "已中断"), job)
+	}
+}
+
+// writePageDoneLog 单页（首页/栏目页）重新生成成功后记录静态化日志（同步返回 HTTP 200 及生成结果）
+func (c *StaticJobController) writePageDoneLog(ctx *gin.Context, statusCode int, body []byte, operation, pageName string) {
+	if statusCode != http.StatusOK {
+		return
+	}
+	var resp staticProgramPageResponse
+	if err := json.Unmarshal(body, &resp); err != nil || !resp.OK || resp.Result == nil {
+		return
+	}
+	res := resp.Result
+	duration := fmt.Sprintf("%.0f秒", res.DurationSeconds)
+	if res.DurationSeconds <= 0 {
+		duration = "-"
+	}
+	log := &models.StaticLog{
+		Operation: operation,
+		PageName:  pageName,
+		Path:      res.Output,
+		Duration:  duration,
+		FileSize:  fmt.Sprintf("%d 个文件", res.GeneratedDetails+res.GeneratedLists),
+		Operator:  c.currentOperator(ctx),
+		Status:    "success",
+		Message:   fmt.Sprintf("页面：%s｜耗时：%.1f秒｜生成详情 %d 条｜生成列表 %d 条", pageName, res.DurationSeconds, res.GeneratedDetails, res.GeneratedLists),
+	}
+	if err := c.staticLogService.CreateIfNotExists(log); err != nil {
+		utils.Logger.Warnf("记录静态化日志失败: %s", err)
 	}
 }
 
@@ -372,6 +419,79 @@ func (c *StaticJobController) ArticlesStatic(ctx *gin.Context) {
 		"path": path,
 	})
 	c.writeTaskSubmitLog(ctx, statusCode, body, "articles")
+}
+
+// PageStatic 首页重新生成：POST /static/page?name={页面名}
+// 输出目录与首页整体变灰均读取后端全局变量（静态化输出路径 / 首页整体变灰），
+// 代理转发至静态化程序（自动附带 Authorization 验证令牌头），同步返回 HTTP 200 及生成结果。
+func (c *StaticJobController) PageStatic(ctx *gin.Context) {
+	params, ok := c.resolveStaticParams(ctx)
+	if !ok {
+		return
+	}
+	name := strings.TrimSpace(ctx.Query("name"))
+	if name == "" {
+		ctx.JSON(http.StatusOK, utils.Error(1, "页面名不能为空"))
+		return
+	}
+	path, ok := c.resolveOutputPath(ctx, params)
+	if !ok {
+		return
+	}
+	statusCode, body := c.proxyToStaticProgram(ctx, params, http.MethodPost, "/api/static/page", map[string]string{
+		"name": name,
+		"path": path,
+		"gray": c.resolveGray(ctx, params),
+	})
+	c.writePageDoneLog(ctx, statusCode, body, "生成首页任务完成", name)
+}
+
+// ListStatic 栏目页重新生成：POST /static/list?column_name={栏目名称}
+// 输出目录读取后端全局变量（静态化输出路径），
+// 代理转发至静态化程序（自动附带 Authorization 验证令牌头），同步返回 HTTP 200 及生成结果。
+func (c *StaticJobController) ListStatic(ctx *gin.Context) {
+	params, ok := c.resolveStaticParams(ctx)
+	if !ok {
+		return
+	}
+	columnName := strings.TrimSpace(ctx.Query("column_name"))
+	if columnName == "" {
+		ctx.JSON(http.StatusOK, utils.Error(1, "栏目名称不能为空"))
+		return
+	}
+	path, ok := c.resolveOutputPath(ctx, params)
+	if !ok {
+		return
+	}
+	statusCode, body := c.proxyToStaticProgram(ctx, params, http.MethodPost, "/api/static/list", map[string]string{
+		"column_name": columnName,
+		"path":        path,
+	})
+	c.writePageDoneLog(ctx, statusCode, body, "生成栏目页任务完成", columnName)
+}
+
+// ArticleStatic 详情页重新生成：POST /static/article?id={文章ID}
+// 输出目录读取后端全局变量（静态化输出路径），
+// 代理转发至静态化程序（自动附带 Authorization 验证令牌头），同步返回 HTTP 200 及生成结果。
+func (c *StaticJobController) ArticleStatic(ctx *gin.Context) {
+	params, ok := c.resolveStaticParams(ctx)
+	if !ok {
+		return
+	}
+	id := strings.TrimSpace(ctx.Query("id"))
+	if id == "" {
+		ctx.JSON(http.StatusOK, utils.Error(1, "文章ID不能为空"))
+		return
+	}
+	path, ok := c.resolveOutputPath(ctx, params)
+	if !ok {
+		return
+	}
+	statusCode, body := c.proxyToStaticProgram(ctx, params, http.MethodPost, "/api/static/article", map[string]string{
+		"id":   id,
+		"path": path,
+	})
+	c.writePageDoneLog(ctx, statusCode, body, "生成详情页任务完成", id)
 }
 
 // GetJob 查询任务状态：GET /static/jobs/{任务ID}
