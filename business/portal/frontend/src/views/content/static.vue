@@ -106,16 +106,12 @@
       </el-col>
     </el-row>
 
-    <!-- 批量操作 -->
-    <el-card shadow="hover" class="action-card">
+    <!-- 批量操作 / 单页操作 -->
+    <el-card shadow="hover" class="tab-card">
       <template #header>
         <div class="card-header">
-          <span>批量操作</span>
-          <div class="header-actions">
-            <el-tag v-if="hasActiveJob" type="warning" effect="dark">
-              <el-icon class="is-loading"><Loading /></el-icon>
-              有任务正在执行中...
-            </el-tag>
+          <span>静态化管理</span>
+          <div class="header-right">
             <el-button type="info" plain @click="openLogDialog">
               <el-icon><Document /></el-icon>
               静态化日志
@@ -123,247 +119,280 @@
           </div>
         </div>
       </template>
-      <div class="action-list">
-        <el-button type="primary" size="large" :loading="submitting === 'site'" @click="handleGenerateAll">
-          <el-icon><Refresh /></el-icon>
-          全站静态化
-        </el-button>
-        <el-button type="success" size="large" :loading="submitting === 'pages'" @click="handleGenerateHome">
-          <el-icon><HomeFilled /></el-icon>
-          生成首页
-        </el-button>
-        <el-button type="warning" size="large" :loading="submitting === 'lists'" @click="handleGenerateColumn">
-          <el-icon><Menu /></el-icon>
-          生成栏目页
-        </el-button>
-        <el-button type="info" size="large" @click="handleGenerateTopic">
-          <el-icon><Collection /></el-icon>
-          生成专题页
-        </el-button>
-        <el-button type="danger" size="large" :loading="submitting === 'articles'" @click="handleGenerateDetail">
-          <el-icon><Document /></el-icon>
-          生成详情页
-        </el-button>
-      </div>
-    </el-card>
-
-    <!-- 静态化任务 -->
-    <el-card shadow="hover" class="job-card">
-      <template #header>
-        <div class="card-header">
-          <span>
-            <el-icon><Monitor /></el-icon>
-            静态化任务
-          </span>
-          <div class="monitor-actions">
-            <span class="last-check">任务状态自动轮询（每 3 秒），成功/失败/中断将自动通知</span>
-            <el-button type="primary" :loading="jobLoading" @click="refreshAllJobs(true)">
-              <el-icon><Refresh /></el-icon>
-              刷新
-            </el-button>
-          </div>
-        </div>
-      </template>
-      <el-table :data="jobList" v-loading="jobLoading" border stripe empty-text="暂无静态化任务，点击上方按钮发起批量操作">
-        <el-table-column label="任务ID" min-width="150" show-overflow-tooltip>
-          <template #default="{ row }">
-            <span class="job-id">{{ row.id }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="类型" width="120" align="center">
-          <template #default="{ row }">
-            <el-tag :type="row.kindType" effect="plain">{{ row.kindText }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="状态" width="120" align="center">
-          <template #default="{ row }">
-            <el-tag :type="row.statusType" effect="dark">
-              <el-icon v-if="row.status === 'running'" class="is-loading"><Loading /></el-icon>
-              {{ row.statusText }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="进度" min-width="280">
-          <template #default="{ row }">
-            <div class="job-progress">
-              <div class="progress-stage">
-                {{ row.progress?.stage || (row.status === 'succeeded' ? '已完成' : '等待执行') }}
-              </div>
-              <el-progress
-                :percentage="row.progressPercent"
-                :status="row.progressStatus"
-                :indeterminate="row.progressIndeterminate"
-                :stroke-width="10"
-              />
-              <div class="progress-meta">
-                <span>已处理 {{ row.progress?.processed ?? 0 }} / {{ row.progress?.total ?? 0 }}</span>
-                <span>已生成文件 {{ row.progress?.generated_files ?? 0 }}</span>
-              </div>
+      <el-tabs v-model="mainTab" @tab-change="handleMainTabChange">
+        <!-- 批量操作 -->
+        <el-tab-pane label="批量操作" name="batch">
+          <div class="batch-actions">
+            <div class="action-list">
+              <el-button
+                type="primary"
+                size="large"
+                :disabled="!monitorData.online"
+                :loading="submitting === 'site'"
+                @click="handleGenerateAll"
+              >
+                <el-icon><Refresh /></el-icon>
+                全站静态化
+              </el-button>
+              <el-button
+                type="success"
+                size="large"
+                :disabled="!monitorData.online"
+                :loading="submitting === 'pages'"
+                @click="handleGenerateHome"
+              >
+                <el-icon><HomeFilled /></el-icon>
+                生成首页
+              </el-button>
+              <el-button
+                type="warning"
+                size="large"
+                :disabled="!monitorData.online"
+                :loading="submitting === 'lists'"
+                @click="handleGenerateColumn"
+              >
+                <el-icon><Menu /></el-icon>
+                生成栏目页
+              </el-button>
+              <el-button type="info" size="large" :disabled="!monitorData.online" @click="handleGenerateTopic">
+                <el-icon><Collection /></el-icon>
+                生成专题页
+              </el-button>
+              <el-button
+                type="danger"
+                size="large"
+                :disabled="!monitorData.online"
+                :loading="submitting === 'articles'"
+                @click="handleGenerateDetail"
+              >
+                <el-icon><Document /></el-icon>
+                生成详情页
+              </el-button>
             </div>
-          </template>
-        </el-table-column>
-        <el-table-column label="创建时间" width="170">
-          <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
-        </el-table-column>
-        <el-table-column label="更新时间" width="170">
-          <template #default="{ row }">{{ formatTime(row.updated_at) }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="150" align="center" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" :loading="row.refreshing" @click="refreshJob(row.id)">
-              <el-icon><Refresh /></el-icon>刷新
-            </el-button>
-            <el-button link type="info" @click="copyJobId(row.id)">
-              <el-icon><DocumentCopy /></el-icon>复制ID
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
+            <div class="action-info">
+              <el-tag v-if="hasActiveJob" type="warning" effect="dark">
+                <el-icon class="is-loading"><Loading /></el-icon>
+                有任务正在执行中...
+              </el-tag>
+              <span class="last-check">任务状态自动轮询（每 3 秒），成功/失败/中断将自动通知</span>
+              <el-button type="primary" :loading="jobLoading" @click="refreshAllJobs(true)">
+                <el-icon><Refresh /></el-icon>
+                刷新任务
+              </el-button>
+            </div>
+          </div>
 
-    <!-- Tab 切换区域 -->
-    <el-card shadow="hover" class="tab-card">
-      <el-tabs v-model="activeTab" @tab-change="handleTabChange">
-        <!-- 首页 -->
-        <el-tab-pane label="首页" name="home">
-          <el-table :data="homePagedList" v-loading="loading" border stripe>
-            <el-table-column type="index" width="60" align="center" />
-            <el-table-column prop="id" label="ID" width="80" align="center" />
-            <el-table-column prop="name" label="名称" min-width="160" />
-            <el-table-column prop="code" label="编码" min-width="120" />
-            <el-table-column prop="template" label="模板名称" min-width="60" show-overflow-tooltip />
-            <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
-            <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-            <el-table-column prop="createTime" label="创建时间" width="170" />
-            <el-table-column prop="updatedAt" label="更新时间" width="170" />
-            <el-table-column label="操作" width="180" align="center" fixed="right">
-              <template #default="{ row }">
-                <el-button link type="primary" :loading="row.generating" @click="handleGenerateSingle(row)">
-                  <el-icon><Refresh /></el-icon>重新生成
-                </el-button>
-                <el-button link type="success" @click="handlePreview(row)">
-                  <el-icon><View /></el-icon>预览
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-          <div class="pagination">
-            <el-pagination
-              v-model:current-page="queryForm.page"
-              v-model:page-size="queryForm.pageSize"
-              :page-sizes="[10, 20, 50, 100]"
-              :total="homeTotal"
-              layout="total, sizes, prev, pager, next, jumper"
-              @size-change="handleSizeChange"
-              @current-change="handleCurrentChange"
-            />
+          <!-- 静态化任务 -->
+          <div class="job-section">
+            <div class="job-header">
+              <span>
+                <el-icon><Monitor /></el-icon>
+                静态化任务
+              </span>
+            </div>
+            <el-table :data="jobList" v-loading="jobLoading" border stripe empty-text="暂无静态化任务，点击上方按钮发起批量操作">
+              <el-table-column label="任务ID" min-width="150" show-overflow-tooltip>
+                <template #default="{ row }">
+                  <span class="job-id">{{ row.id }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="类型" width="120" align="center">
+                <template #default="{ row }">
+                  <el-tag :type="row.kindType" effect="plain">{{ row.kindText }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="状态" width="120" align="center">
+                <template #default="{ row }">
+                  <el-tag :type="row.statusType" effect="dark">
+                    <el-icon v-if="row.status === 'running'" class="is-loading"><Loading /></el-icon>
+                    {{ row.statusText }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="进度" min-width="280">
+                <template #default="{ row }">
+                  <div class="job-progress">
+                    <div class="progress-stage">
+                      {{ row.progress?.stage || (row.status === 'succeeded' ? '已完成' : '等待执行') }}
+                    </div>
+                    <el-progress
+                      :percentage="row.progressPercent"
+                      :status="row.progressStatus"
+                      :indeterminate="row.progressIndeterminate"
+                      :stroke-width="10"
+                    />
+                    <div class="progress-meta">
+                      <span>已处理 {{ row.progress?.processed ?? 0 }} / {{ row.progress?.total ?? 0 }}</span>
+                      <span>已生成文件 {{ row.progress?.generated_files ?? 0 }}</span>
+                    </div>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column label="创建时间" width="170">
+                <template #default="{ row }">{{ formatTime(row.created_at) }}</template>
+              </el-table-column>
+              <el-table-column label="更新时间" width="170">
+                <template #default="{ row }">{{ formatTime(row.updated_at) }}</template>
+              </el-table-column>
+              <el-table-column label="操作" width="150" align="center" fixed="right">
+                <template #default="{ row }">
+                  <el-button link type="primary" :loading="row.refreshing" @click="refreshJob(row.id)">
+                    <el-icon><Refresh /></el-icon>刷新
+                  </el-button>
+                  <el-button link type="info" @click="copyJobId(row.id)">
+                    <el-icon><DocumentCopy /></el-icon>复制ID
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
           </div>
         </el-tab-pane>
 
-        <!-- 栏目页 -->
-        <el-tab-pane label="栏目页" name="column">
-          <el-table :data="columnPagedList" v-loading="loading" border stripe>
-            <el-table-column type="index" width="60" align="center" />
-            <el-table-column prop="id" label="ID" width="80" align="center" />
-            <el-table-column prop="name" label="栏目名称" min-width="160" />
-            <el-table-column prop="template" label="模板名称" min-width="120" show-overflow-tooltip />
-            <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
-            <el-table-column prop="createTime" label="创建时间" width="170" />
-            <el-table-column prop="updatedAt" label="更新时间" width="170" />
-            <el-table-column label="操作" width="180" align="center" fixed="right">
-              <template #default="{ row }">
-                <el-button link type="primary" :loading="row.generating" @click="handleGenerateSingle(row)">
-                  <el-icon><Refresh /></el-icon>重新生成
-                </el-button>
-                <el-button link type="success" @click="handlePreview(row)">
-                  <el-icon><View /></el-icon>预览
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-          <div class="pagination">
-            <el-pagination
-              v-model:current-page="queryForm.page"
-              v-model:page-size="queryForm.pageSize"
-              :page-sizes="[10, 20, 50, 100]"
-              :total="columnTotal"
-              layout="total, sizes, prev, pager, next, jumper"
-              @size-change="handleSizeChange"
-              @current-change="handleCurrentChange"
-            />
-          </div>
-        </el-tab-pane>
+        <!-- 单页操作 -->
+        <el-tab-pane label="单页操作" name="single">
+          <el-tabs v-model="activeTab" @tab-change="handleTabChange">
+            <!-- 首页 -->
+            <el-tab-pane label="首页" name="home">
+              <el-table :data="homePagedList" v-loading="loading" border stripe>
+                <el-table-column type="index" width="60" align="center" />
+                <el-table-column prop="id" label="ID" width="80" align="center" />
+                <el-table-column prop="name" label="名称" min-width="160" />
+                <el-table-column prop="code" label="编码" min-width="120" />
+                <el-table-column prop="template" label="模板名称" min-width="60" show-overflow-tooltip />
+                <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
+                <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+                <el-table-column prop="createTime" label="创建时间" width="170" />
+                <el-table-column prop="updatedAt" label="更新时间" width="170" />
+                <el-table-column label="操作" width="180" align="center" fixed="right">
+                  <template #default="{ row }">
+                    <el-button link type="primary" :loading="row.generating" @click="handleGenerateSingle(row)">
+                      <el-icon><Refresh /></el-icon>重新生成
+                    </el-button>
+                    <el-button link type="success" @click="handlePreview(row)">
+                      <el-icon><View /></el-icon>预览
+                    </el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <div class="pagination">
+                <el-pagination
+                  v-model:current-page="queryForm.page"
+                  v-model:page-size="queryForm.pageSize"
+                  :page-sizes="[10, 20, 50, 100]"
+                  :total="homeTotal"
+                  layout="total, sizes, prev, pager, next, jumper"
+                  @size-change="handleSizeChange"
+                  @current-change="handleCurrentChange"
+                />
+              </div>
+            </el-tab-pane>
 
-        <!-- 专题页 -->
-        <el-tab-pane label="专题页" name="topic">
-          <el-table :data="topicPagedList" v-loading="loading" border stripe>
-            <el-table-column type="index" width="60" align="center" />
-            <el-table-column prop="id" label="ID" width="80" align="center" />
-            <el-table-column prop="name" label="名称" min-width="160" />
-            <el-table-column prop="code" label="编码" min-width="120" />
-            <el-table-column prop="template" label="模板名称" min-width="60" show-overflow-tooltip />
-            <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
-            <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-            <el-table-column prop="createTime" label="创建时间" width="170" />
-            <el-table-column prop="updatedAt" label="更新时间" width="170" />
-            <el-table-column label="操作" width="180" align="center" fixed="right">
-              <template #default="{ row }">
-                <el-button link type="primary" :loading="row.generating" @click="handleGenerateSingle(row)">
-                  <el-icon><Refresh /></el-icon>重新生成
-                </el-button>
-                <el-button link type="success" @click="handlePreview(row)">
-                  <el-icon><View /></el-icon>预览
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-          <div class="pagination">
-            <el-pagination
-              v-model:current-page="queryForm.page"
-              v-model:page-size="queryForm.pageSize"
-              :page-sizes="[10, 20, 50, 100]"
-              :total="topicTotal"
-              layout="total, sizes, prev, pager, next, jumper"
-              @size-change="handleSizeChange"
-              @current-change="handleCurrentChange"
-            />
-          </div>
-        </el-tab-pane>
+            <!-- 栏目页 -->
+            <el-tab-pane label="栏目页" name="column">
+              <el-table :data="columnPagedList" v-loading="loading" border stripe>
+                <el-table-column type="index" width="60" align="center" />
+                <el-table-column prop="id" label="ID" width="80" align="center" />
+                <el-table-column prop="name" label="栏目名称" min-width="160" />
+                <el-table-column prop="template" label="模板名称" min-width="120" show-overflow-tooltip />
+                <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
+                <el-table-column prop="createTime" label="创建时间" width="170" />
+                <el-table-column prop="updatedAt" label="更新时间" width="170" />
+                <el-table-column label="操作" width="180" align="center" fixed="right">
+                  <template #default="{ row }">
+                    <el-button link type="primary" :loading="row.generating" @click="handleGenerateSingle(row)">
+                      <el-icon><Refresh /></el-icon>重新生成
+                    </el-button>
+                    <el-button link type="success" @click="handlePreview(row)">
+                      <el-icon><View /></el-icon>预览
+                    </el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <div class="pagination">
+                <el-pagination
+                  v-model:current-page="queryForm.page"
+                  v-model:page-size="queryForm.pageSize"
+                  :page-sizes="[10, 20, 50, 100]"
+                  :total="columnTotal"
+                  layout="total, sizes, prev, pager, next, jumper"
+                  @size-change="handleSizeChange"
+                  @current-change="handleCurrentChange"
+                />
+              </div>
+            </el-tab-pane>
 
-        <!-- 详情页 -->
-        <el-tab-pane label="详情页" name="detail">
-          <el-table :data="detailPagedList" v-loading="loading" border stripe>
-            <el-table-column type="index" width="60" align="center" />
-            <el-table-column prop="id" label="ID" width="80" align="center" />
-            <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
-            <el-table-column prop="name" label="模板名称" min-width="60" show-overflow-tooltip />
-            <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
-            <el-table-column prop="author" label="作者" min-width="60" />
-            <el-table-column prop="source" label="来源" min-width="100" />
-            <el-table-column prop="createTime" label="创建时间" width="170" />
-            <el-table-column prop="updatedAt" label="更新时间" width="170" />
-            <el-table-column label="操作" width="180" align="center" fixed="right">
-              <template #default="{ row }">
-                <el-button link type="primary" :loading="row.generating" @click="handleGenerateSingle(row)">
-                  <el-icon><Refresh /></el-icon>重新生成
-                </el-button>
-                <el-button link type="success" @click="handlePreview(row)">
-                  <el-icon><View /></el-icon>预览
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-          <div class="pagination">
-            <el-pagination
-              v-model:current-page="queryForm.page"
-              v-model:page-size="queryForm.pageSize"
-              :page-sizes="[10, 20, 50, 100]"
-              :total="detailTotal"
-              layout="total, sizes, prev, pager, next, jumper"
-              @size-change="handleSizeChange"
-              @current-change="handleCurrentChange"
-            />
-          </div>
+            <!-- 专题页 -->
+            <el-tab-pane label="专题页" name="topic">
+              <el-table :data="topicPagedList" v-loading="loading" border stripe>
+                <el-table-column type="index" width="60" align="center" />
+                <el-table-column prop="id" label="ID" width="80" align="center" />
+                <el-table-column prop="name" label="名称" min-width="160" />
+                <el-table-column prop="code" label="编码" min-width="120" />
+                <el-table-column prop="template" label="模板名称" min-width="60" show-overflow-tooltip />
+                <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
+                <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+                <el-table-column prop="createTime" label="创建时间" width="170" />
+                <el-table-column prop="updatedAt" label="更新时间" width="170" />
+                <el-table-column label="操作" width="180" align="center" fixed="right">
+                  <template #default="{ row }">
+                    <el-button link type="primary" :loading="row.generating" @click="handleGenerateSingle(row)">
+                      <el-icon><Refresh /></el-icon>重新生成
+                    </el-button>
+                    <el-button link type="success" @click="handlePreview(row)">
+                      <el-icon><View /></el-icon>预览
+                    </el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <div class="pagination">
+                <el-pagination
+                  v-model:current-page="queryForm.page"
+                  v-model:page-size="queryForm.pageSize"
+                  :page-sizes="[10, 20, 50, 100]"
+                  :total="topicTotal"
+                  layout="total, sizes, prev, pager, next, jumper"
+                  @size-change="handleSizeChange"
+                  @current-change="handleCurrentChange"
+                />
+              </div>
+            </el-tab-pane>
+
+            <!-- 详情页 -->
+            <el-tab-pane label="详情页" name="detail">
+              <el-table :data="detailPagedList" v-loading="loading" border stripe>
+                <el-table-column type="index" width="60" align="center" />
+                <el-table-column prop="id" label="ID" width="80" align="center" />
+                <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
+                <el-table-column prop="name" label="模板名称" min-width="60" show-overflow-tooltip />
+                <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
+                <el-table-column prop="author" label="作者" min-width="60" />
+                <el-table-column prop="source" label="来源" min-width="100" />
+                <el-table-column prop="createTime" label="创建时间" width="170" />
+                <el-table-column prop="updatedAt" label="更新时间" width="170" />
+                <el-table-column label="操作" width="180" align="center" fixed="right">
+                  <template #default="{ row }">
+                    <el-button link type="primary" :loading="row.generating" @click="handleGenerateSingle(row)">
+                      <el-icon><Refresh /></el-icon>重新生成
+                    </el-button>
+                    <el-button link type="success" @click="handlePreview(row)">
+                      <el-icon><View /></el-icon>预览
+                    </el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <div class="pagination">
+                <el-pagination
+                  v-model:current-page="queryForm.page"
+                  v-model:page-size="queryForm.pageSize"
+                  :page-sizes="[10, 20, 50, 100]"
+                  :total="detailTotal"
+                  layout="total, sizes, prev, pager, next, jumper"
+                  @size-change="handleSizeChange"
+                  @current-change="handleCurrentChange"
+                />
+              </div>
+            </el-tab-pane>
+          </el-tabs>
         </el-tab-pane>
       </el-tabs>
     </el-card>
@@ -464,6 +493,7 @@ import { getErrorMessage } from '@/utils/request'
 
 const loading = ref(false)
 const activeTab = ref('home')
+const mainTab = ref('batch') // 外层 Tab：批量操作 / 单页操作
 
 // 批量操作参数
 const grayEnabled = ref(true) // 首页整体变灰：1 开启 / 2 关闭
@@ -880,6 +910,14 @@ const handleTabChange = () => {
   fetchPageList()
 }
 
+// 外层 Tab 切换：进入「单页操作」时加载页面列表
+const handleMainTabChange = () => {
+  if (mainTab.value === 'single') {
+    queryForm.page = 1
+    fetchPageList()
+  }
+}
+
 const handleSizeChange = (val: number) => {
   queryForm.pageSize = val
   queryForm.page = 1
@@ -988,88 +1026,6 @@ onUnmounted(() => {
     }
   }
 
-  .action-card {
-    margin-bottom: 20px;
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
-
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 600;
-      color: #2c3e50;
-
-      .header-actions {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-    }
-
-    .action-config {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      padding: 8px 0;
-
-      .el-button {
-        min-width: 140px;
-      }
-    }
-  }
-
-  .job-card {
-    margin-bottom: 20px;
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
-
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 600;
-      color: #2c3e50;
-
-      .monitor-actions {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-
-        .last-check {
-          font-size: 13px;
-          font-weight: 400;
-          color: #909399;
-        }
-      }
-    }
-
-    .job-id {
-      font-family: 'Consolas', 'Courier New', monospace;
-      font-size: 13px;
-      color: #409eff;
-    }
-
-    .job-progress {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      padding: 4px 0;
-
-      .progress-stage {
-        font-size: 13px;
-        color: #606266;
-      }
-
-      .progress-meta {
-        display: flex;
-        gap: 16px;
-        font-size: 12px;
-        color: #909399;
-      }
-    }
-  }
-
   .monitor-card {
     margin-bottom: 20px;
     border-radius: 12px;
@@ -1108,6 +1064,92 @@ onUnmounted(() => {
   .tab-card {
     border-radius: 12px;
     border: 1px solid #e6f2ff;
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 600;
+      color: #2c3e50;
+
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+    }
+
+    .batch-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 8px 0 4px;
+
+      .action-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 12px 0 8px;
+
+        .el-button {
+          min-width: 140px;
+        }
+      }
+
+      .action-info {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 12px;
+        padding: 12px 0 8px;
+
+        .last-check {
+          font-size: 13px;
+          color: #909399;
+        }
+      }
+    }
+
+    .job-section {
+      margin-top: 8px;
+
+      .job-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 600;
+        color: #2c3e50;
+        padding: 12px 0;
+      }
+
+      .job-id {
+        font-family: 'Consolas', 'Courier New', monospace;
+        font-size: 13px;
+        color: #409eff;
+      }
+
+      .job-progress {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 4px 0;
+
+        .progress-stage {
+          font-size: 13px;
+          color: #606266;
+        }
+
+        .progress-meta {
+          display: flex;
+          gap: 16px;
+          font-size: 12px;
+          color: #909399;
+        }
+      }
+    }
 
     .tab-header-actions {
       display: flex;
