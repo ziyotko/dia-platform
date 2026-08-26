@@ -29,14 +29,14 @@
         <div class="card-header">
           <span>模板列表</span>
           <el-button type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon>新增模板
+            新增模板
           </el-button>
         </div>
       </template>
 
       <el-table :data="tableData" v-loading="loading" border stripe>
         <el-table-column type="index" width="60" align="center" />
-        <el-table-column prop="name" label="模板名称" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="name" label="模板名称" min-width="100" show-overflow-tooltip />
         <el-table-column prop="type" label="模板类型" width="120" align="center">
           <template #default="{ row }">
             <el-tag :type="typeTagType(row.type)" size="small">
@@ -56,7 +56,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="description" label="描述" min-width="100" show-overflow-tooltip />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-switch
@@ -68,19 +68,19 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="170" />
-        <el-table-column label="操作" width="260" align="center" fixed="right">
+        <el-table-column label="操作" width="360" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleDesign(row)">
-              <el-icon><Brush /></el-icon>设计
+              模板设计
             </el-button>
             <el-button link type="primary" @click="handlePreview(row)">
-              <el-icon><View /></el-icon>预览
+             预览模板
             </el-button>
             <el-button link type="primary" @click="handleEdit(row)">
-              <el-icon><Edit /></el-icon>编辑
+            编辑信息
             </el-button>
             <el-button link type="danger" @click="handleDelete(row)">
-              <el-icon><Delete /></el-icon>删除
+            删除模板
             </el-button>
           </template>
         </el-table-column>
