@@ -38,14 +38,25 @@ business/portal/
 - `server.allowed_origins`: 生产环境改为实际前端域名，不要用 `*`
 - `database` / `redis`: 按实际环境修改
 
-### 2. 敏感信息用环境变量注入（勿提交真实值）
+### 2. 敏感信息用环境变量注入（必填）
+
+`PORTAL_DB_PASSWORD`（数据库密码）与 `PORTAL_JWT_SECRET`（JWT 密钥，≥32 位随机串）已改为从环境变量读取，`config.yaml` 中仅保留占位值，请勿把真实密码/密钥提交到仓库。
 
 ```bash
+# Linux / macOS
 export PORTAL_DB_PASSWORD='<数据库密码>'
 export PORTAL_JWT_SECRET='<≥32位随机密钥>'
+
+# Windows PowerShell
+$env:PORTAL_DB_PASSWORD='<数据库密码>'
+$env:PORTAL_JWT_SECRET='<≥32位随机密钥>'
+
+# Windows CMD
+set PORTAL_DB_PASSWORD=<数据库密码>
+set PORTAL_JWT_SECRET=<≥32位随机密钥>
 ```
 
-> 启动时若检测到默认/空 JWT 密钥会输出告警，生产必须设置。
+> 环境变量优先于 `config.yaml`。若未设置（或仍为占位值），程序会输出告警并直接退出，生产环境必须注入。
 
 ### 3. 编译
 
