@@ -64,9 +64,6 @@ type LogConfig struct {
 
 var AppConfig Config
 
-// 已知的弱/占位 JWT 密钥，用于启动告警
-const defaultJWTSecret = "your-256-bit-secret-key-here-must-be-at-least-32-characters"
-
 func InitConfig() {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
@@ -86,14 +83,22 @@ func InitConfig() {
 // applyEnvOverrides 允许通过环境变量覆盖敏感配置，避免把密钥/密码提交到仓库。
 // 生产环境务必注入：PORTAL_JWT_SECRET、PORTAL_DB_PASSWORD。
 func applyEnvOverrides() {
+
 	if v := os.Getenv("PORTAL_JWT_SECRET"); v != "" {
 		AppConfig.JWT.Secret = v
 	}
+
 	if v := os.Getenv("PORTAL_DB_PASSWORD"); v != "" {
 		AppConfig.Database.Password = v
 	}
 
-	if AppConfig.JWT.Secret == "" || AppConfig.JWT.Secret == defaultJWTSecret {
-		log.Printf("[WARN] 正在使用弱/默认 JWT 密钥！生产环境必须设置环境变量 PORTAL_JWT_SECRET。")
+	if AppConfig.JWT.Secret == "" || AppConfig.JWT.Secret == "PORTAL_JWT_SECRET" {
+		log.Printf("[WARN] 未设置 JWT 密钥！必须设置环境变量 PORTAL_JWT_SECRET。")
+		log.Fatal("程序退出")
+	}
+
+	if AppConfig.Database.Password == "" || AppConfig.Database.Password == "PORTAL_DB_PASSWORD" {
+		log.Printf("[WARN] 未设置数据库密码！必须设置环境变量 PORTAL_DB_PASSWORD。")
+		log.Fatal("程序退出")
 	}
 }
