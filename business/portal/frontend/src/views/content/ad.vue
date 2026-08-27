@@ -149,39 +149,34 @@
           <el-input v-model="form.name" placeholder="请输入广告名称" />
         </el-form-item>
         <el-form-item label="广告位置" prop="pageId">
-          <el-row :gutter="8" style="width: 100%">
-            <el-col :span="12">
-              <el-select
-                v-model="form.pageId"
-                placeholder="选择页面"
-                style="width: 100%"
-                @change="onFormPageChange"
-              >
-                <el-option
-                  v-for="item in pageList"
-                  :key="item.id"
-                  :label="item.name"
-                  :value="item.id"
-                />
-              </el-select>
-            </el-col>
-            <el-col :span="12">
-              <el-select
-                v-model="form.columnId"
-                placeholder="选择栏目"
-                style="width: 100%"
-                :disabled="!form.pageId"
-                clearable
-              >
-                <el-option
-                  v-for="item in formColumnList"
-                  :key="item.id"
-                  :label="item.name"
-                  :value="item.id"
-                />
-              </el-select>
-            </el-col>
-          </el-row>
+          <el-select
+            v-model="form.pageId"
+            placeholder="选择页面"
+            style="width: 100%"
+            @change="onFormPageChange"
+          >
+            <el-option
+              v-for="item in pageList"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="栏目" prop="columnId">
+          <el-select
+            v-model="form.columnId"
+            placeholder="请选择栏目"
+            style="width: 100%"
+            :disabled="!form.pageId"
+          >
+            <el-option
+              v-for="item in formColumnList"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="跳转链接" prop="link">
           <el-input v-model="form.link" placeholder="请输入跳转链接" />
@@ -316,6 +311,7 @@ const form = reactive({
 const formRules = {
   name: [{ required: true, message: '请输入广告名称', trigger: 'blur' }],
   pageId: [{ required: true, message: '请选择广告位置', trigger: 'change' }],
+  columnId: [{ required: true, message: '请选择栏目', trigger: 'change' }],
   link: [{ required: true, message: '请输入跳转链接', trigger: 'blur' }]
 }
 
@@ -338,7 +334,8 @@ const loadColumnsByPage = async (pageId: number | undefined, target: 'query' | '
   list.value = []
   if (!pageId) return
   try {
-    const res: any = await getColumns({ pageId })
+    // 广告位置只展示栏目类型为「广告展示」的栏目
+    const res: any = await getColumns({ pageId, displayType: 4 })
     list.value = res.data || []
   } catch {
     // ignore
