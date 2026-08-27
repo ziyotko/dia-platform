@@ -60,6 +60,7 @@ type staticProgramPageResult struct {
 	DurationSeconds  float64 `json:"duration_seconds"`
 	Page             string  `json:"page"`
 	TotalItems       int     `json:"total_items"`
+	GeneratedFiles   int     `json:"generated_files"`
 	GeneratedDetails int     `json:"generated_details"`
 	GeneratedLists   int     `json:"generated_lists"`
 	Output           string  `json:"output"`
@@ -228,10 +229,10 @@ func (c *StaticJobController) writePageDoneLog(ctx *gin.Context, statusCode int,
 		PageName:  pageName,
 		Path:      res.Output,
 		Duration:  duration,
-		FileSize:  fmt.Sprintf("%d 个文件", res.GeneratedDetails+res.GeneratedLists),
+		FileSize:  fmt.Sprintf("%d 个文件", res.GeneratedFiles),
 		Operator:  c.currentOperator(ctx),
 		Status:    "success",
-		Message:   fmt.Sprintf("页面：%s｜耗时：%.1f秒｜生成详情 %d 条｜生成列表 %d 条", pageName, res.DurationSeconds, res.GeneratedDetails, res.GeneratedLists),
+		Message:   fmt.Sprintf("页面：%s｜耗时：%.1f秒", pageName, res.DurationSeconds),
 	}
 	if err := c.staticLogService.CreateIfNotExists(log); err != nil {
 		utils.Logger.Warnf("记录静态化日志失败: %s", err)
