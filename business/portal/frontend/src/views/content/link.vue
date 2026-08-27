@@ -149,39 +149,34 @@
           <el-input v-model="form.name" placeholder="请输入网站名称" />
         </el-form-item>
         <el-form-item label="友链位置" prop="pageId">
-          <el-row :gutter="8" style="width: 100%">
-            <el-col :span="12">
-              <el-select
-                v-model="form.pageId"
-                placeholder="选择页面"
-                style="width: 100%"
-                @change="onFormPageChange"
-              >
-                <el-option
-                  v-for="item in pageList"
-                  :key="item.id"
-                  :label="item.name"
-                  :value="item.id"
-                />
-              </el-select>
-            </el-col>
-            <el-col :span="12">
-              <el-select
-                v-model="form.columnId"
-                placeholder="选择栏目"
-                style="width: 100%"
-                :disabled="!form.pageId"
-                clearable
-              >
-                <el-option
-                  v-for="item in formColumnList"
-                  :key="item.id"
-                  :label="item.name"
-                  :value="item.id"
-                />
-              </el-select>
-            </el-col>
-          </el-row>
+          <el-select
+            v-model="form.pageId"
+            placeholder="选择页面"
+            style="width: 100%"
+            @change="onFormPageChange"
+          >
+            <el-option
+              v-for="item in pageList"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="栏目" prop="columnId">
+          <el-select
+            v-model="form.columnId"
+            placeholder="请选择栏目"
+            style="width: 100%"
+            :disabled="!form.pageId"
+          >
+            <el-option
+              v-for="item in formColumnList"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="网站链接" prop="url">
           <el-input v-model="form.url" placeholder="请输入网站链接" />
@@ -294,6 +289,7 @@ const form = reactive({
 const formRules = {
   name: [{ required: true, message: '请输入网站名称', trigger: 'blur' }],
   pageId: [{ required: true, message: '请选择友链位置', trigger: 'change' }],
+  columnId: [{ required: true, message: '请选择栏目', trigger: 'change' }],
   url: [
     { required: true, message: '请输入网站链接', trigger: 'blur' },
     { pattern: /^https?:\/\/.+/, message: '链接格式不正确', trigger: 'blur' }
@@ -319,7 +315,8 @@ const loadColumnsByPage = async (pageId: number | undefined, target: 'query' | '
   list.value = []
   if (!pageId) return
   try {
-    const res: any = await getColumns({ pageId })
+    // 友链位置只展示栏目类型为「友链展示」的栏目
+    const res: any = await getColumns({ pageId, displayType: 5 })
     list.value = res.data || []
   } catch {
     // ignore

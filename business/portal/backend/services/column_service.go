@@ -70,7 +70,7 @@ func (s *ColumnService) GetColumnPublishes() ([]ColumnPublishItem, error) {
 	return result, nil
 }
 
-func (s *ColumnService) GetColumns(pageID uint, parentID uint) ([]models.Column, error) {
+func (s *ColumnService) GetColumns(pageID uint, parentID uint, displayType int) ([]models.Column, error) {
 	var columns []models.Column
 	query := utils.DB.Model(&models.Column{})
 	if pageID > 0 {
@@ -78,6 +78,9 @@ func (s *ColumnService) GetColumns(pageID uint, parentID uint) ([]models.Column,
 	}
 	if parentID > 0 {
 		query = query.Where("parent_id = ?", parentID)
+	}
+	if displayType > 0 {
+		query = query.Where("display_type = ?", displayType)
 	}
 	err := query.Order("sort ASC, id ASC").Preload("Workflow").Find(&columns).Error
 	return columns, err
