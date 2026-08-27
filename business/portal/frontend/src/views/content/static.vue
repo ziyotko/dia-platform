@@ -265,7 +265,7 @@
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
                 <el-table-column label="操作" width="280" align="center" fixed="right">
                   <template #default="{ row }">
-                    <el-button link type="primary" :loading="row.generating" @click="handleGenerateSingle(row)">
+                    <el-button link type="primary" :loading="row.generating" :disabled="!monitorData.online" @click="handleGenerateSingle(row)">
                       <el-icon><Refresh /></el-icon>重新生成
                     </el-button>
                     <el-button link type="success" @click="handlePreview(row)">
@@ -299,7 +299,7 @@
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
                 <el-table-column label="操作" width="280" align="center" fixed="right">
                   <template #default="{ row }">
-                    <el-button link type="primary" :loading="row.generating" @click="handleGenerateSingle(row)">
+                    <el-button link type="primary" :loading="row.generating" :disabled="!monitorData.online" @click="handleGenerateSingle(row)">
                       <el-icon><Refresh /></el-icon>重新生成
                     </el-button>
                     <el-button link type="success" @click="handlePreview(row)">
@@ -335,7 +335,7 @@
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
                 <el-table-column label="操作" width="280" align="center" fixed="right">
                   <template #default="{ row }">
-                    <el-button link type="primary" :loading="row.generating" @click="handleGenerateSingle(row)">
+                    <el-button link type="primary" :loading="row.generating" :disabled="!monitorData.online" @click="handleGenerateSingle(row)">
                       <el-icon><Refresh /></el-icon>重新生成
                     </el-button>
                     <el-button link type="success" @click="handlePreview(row)">
@@ -371,13 +371,13 @@
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
                 <el-table-column label="操作" width="340" align="center" fixed="right">
                   <template #default="{ row }">
-                    <el-button link type="primary" :loading="row.generating" @click="handleGenerateSingle(row)">
+                    <el-button link type="primary" :loading="row.generating" :disabled="!monitorData.online" @click="handleGenerateSingle(row)">
                       <el-icon><Refresh /></el-icon>重新生成
                     </el-button>
                     <el-button link type="success" @click="handlePreview(row)">
                       <el-icon><View /></el-icon>预览
                     </el-button>
-                    <el-button link type="danger" :loading="row.deleting" @click="handleDeleteArticle(row)">
+                    <el-button link type="danger" :loading="row.deleting" :disabled="!monitorData.online" @click="handleDeleteArticle(row)">
                       <el-icon><Delete /></el-icon>删除
                     </el-button>
                   </template>
@@ -462,7 +462,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted, computed, watch } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed, watch, markRaw } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   DocumentChecked,
@@ -845,10 +845,10 @@ const openLogDialog = () => {
 }
 
 const statusIconMap: Record<string, any> = {
-  success: Check,
-  warning: Warning,
-  danger: CircleClose,
-  primary: DocumentChecked
+  success: markRaw(Check),
+  warning: markRaw(Warning),
+  danger: markRaw(CircleClose),
+  primary: markRaw(DocumentChecked)
 }
 
 const statusTextMap: Record<string, string> = {
@@ -869,7 +869,7 @@ const fetchLogList = async () => {
       logList.value = (res.data.list || []).map((item: any) => ({
         ...item,
         statusText: statusTextMap[item.status] || item.status,
-        icon: statusIconMap[item.status] || DocumentChecked,
+        icon: markRaw(statusIconMap[item.status] || DocumentChecked),
         time: item.createTime
       }))
       logTotal.value = res.data.total || 0
@@ -956,6 +956,11 @@ const handleCurrentChange = (val: number) => {
 }
 
 const handleGenerateSingle = async (row: any) => {
+  // 静态化服务停止时禁止重新生成
+  if (!monitorData.online) {
+    ElMessage.warning('静态化服务已停止，无法重新生成页面')
+    return
+  }
   row.generating = true
   const name = row.title || row.name
   try {
@@ -1008,6 +1013,11 @@ const handleGenerateSingle = async (row: any) => {
 // 删除详情页静态文件：调用后端代理 DELETE /static/article?id={文章ID}&path={输出目录}
 // 输出目录取自后端全局变量「静态化输出路径」，确认后执行删除并刷新列表。
 const handleDeleteArticle = (row: any) => {
+  // 静态化服务停止时禁止删除静态文件
+  if (!monitorData.online) {
+    ElMessage.warning('静态化服务已停止，无法删除静态文件')
+    return
+  }
   const name = row.title || row.name || row.id
   ElMessageBox.confirm(
     `确定要删除文章「${name}」(ID: ${row.id}) 的静态文件吗？删除后需重新生成才能恢复。`,
