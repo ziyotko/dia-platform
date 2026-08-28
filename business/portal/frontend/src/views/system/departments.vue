@@ -131,9 +131,10 @@
         <el-form-item label="负责人" prop="leader">
           <el-select
             v-model="form.leaderCode"
-            placeholder="请选择负责人"
+            :placeholder="form.orgId ? '请选择本机构负责人' : '请先选择所属机构'"
             clearable
             filterable
+            :disabled="!form.orgId"
             style="width: 100%"
           >
             <el-option
@@ -394,6 +395,7 @@ const formRules = {
 }
 
 const userOptions = ref<UserItem[]>([])
+const allDialogUsers = ref<UserItem[]>([])
 const dialogUserOptions = ref<UserItem[]>([])
 const orgTreeData = ref<OrgItem[]>([])
 
@@ -508,6 +510,7 @@ const handleAddChild = async (row: DeptItem) => {
   form.parentId = row.id
   form.orgId = row.orgId
   await Promise.all([fetchOrgTreeData(), fetchDialogUsers()])
+  await refreshDialogUsers()
   dialogVisible.value = true
 }
 
@@ -526,6 +529,7 @@ const handleEdit = async (row: DeptItem) => {
     description: row.description
   })
   await Promise.all([fetchOrgTreeData(), fetchDialogUsers()])
+  await refreshDialogUsers()
   dialogVisible.value = true
 }
 
@@ -654,6 +658,9 @@ const syncLeaderFromCode = () => {
 
 watch(() => form.leaderCode, syncLeaderFromCode)
 watch(() => dialogUserOptions.value, syncLeaderFromCode)
+watch(() => form.orgId, () => {
+  refreshDialogUsers()
+})
 watch(viewUserSearch, () => {
   viewUserPage.value = 1
 })
@@ -694,7 +701,7 @@ const fetchDialogUsers = async () => {
   try {
     const res: any = await getUserList({ page: 1, pageSize: 1000, status: 1 })
     if (res && res.code === 0) {
-      dialogUserOptions.value = (res.data.list || []).map((u: any) => ({
+      allDialogUsers.value = (res.data.list || []).map((u: any) => ({
         id: u.id,
         username: u.username,
         account: u.account,
@@ -703,6 +710,30 @@ const fetchDialogUsers = async () => {
     }
   } catch (error) {
     ElMessage.error('获取用户列表失败')
+  }
+}
+
+// 部门负责人必须是该机构的人：按所选机构过滤负责人候选
+const refreshDialogUsers = async () => {
+  let orgUserIds = new Set<number>()
+  if (form.orgId) {
+    try {
+      const res: any = await getOrgUsers(form.orgId)
+      orgUserIds = new Set((res?.data || []).map((id: any) => Number(id)))
+    } catch (error) {
+      orgUserIds = new Set()
+    }
+  }
+  dialogUserOptions.value = form.orgId
+    ? allDialogUsers.value.filter((u) => orgUserIds.has(u.id))
+    : []
+  // 若当前负责人不属于所选机构，则清空
+  if (form.leaderCode) {
+    const user = dialogUserOptions.value.find((u) => String(u.id) === form.leaderCode)
+    if (!user) {
+      form.leaderCode = ''
+      form.leader = ''
+    }
   }
 }
 
