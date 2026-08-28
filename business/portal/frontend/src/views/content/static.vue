@@ -234,13 +234,10 @@
               <el-table-column label="更新时间" width="170">
                 <template #default="{ row }">{{ formatTime(row.updated_at) }}</template>
               </el-table-column>
-              <el-table-column label="操作" width="150" align="center" fixed="right">
+              <el-table-column label="操作" width="90" align="center" fixed="right">
                 <template #default="{ row }">
                   <el-button link type="primary" :loading="row.refreshing" @click="refreshJob(row.id)">
                     <el-icon><Refresh /></el-icon>刷新
-                  </el-button>
-                  <el-button link type="info" @click="copyJobId(row.id)">
-                    <el-icon><DocumentCopy /></el-icon>复制ID
                   </el-button>
                 </template>
               </el-table-column>
@@ -257,10 +254,7 @@
                 <el-table-column type="index" width="60" align="center" />
                 <el-table-column prop="id" label="ID" width="80" align="center" />
                 <el-table-column prop="name" label="名称" min-width="160" />
-                <el-table-column prop="code" label="编码" min-width="120" />
                 <el-table-column prop="template" label="模板名称" min-width="60" show-overflow-tooltip />
-                <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
-                <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
                 <el-table-column prop="createTime" label="创建时间" width="170" />
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
                 <el-table-column label="操作" width="280" align="center" fixed="right">
@@ -294,7 +288,6 @@
                 <el-table-column prop="id" label="ID" width="80" align="center" />
                 <el-table-column prop="name" label="栏目名称" min-width="160" />
                 <el-table-column prop="template" label="模板名称" min-width="120" show-overflow-tooltip />
-                <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
                 <el-table-column prop="createTime" label="创建时间" width="170" />
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
                 <el-table-column label="操作" width="280" align="center" fixed="right">
@@ -328,7 +321,6 @@
                 <el-table-column prop="id" label="ID" width="80" align="center" />
                 <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
                 <el-table-column prop="name" label="模板名称" min-width="60" show-overflow-tooltip />
-                <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
                 <el-table-column prop="author" label="作者" min-width="60" />
                 <el-table-column prop="source" label="来源" min-width="100" />
                 <el-table-column prop="createTime" label="创建时间" width="170" />
@@ -366,10 +358,7 @@
                 <el-table-column type="index" width="60" align="center" />
                 <el-table-column prop="id" label="ID" width="80" align="center" />
                 <el-table-column prop="name" label="名称" min-width="160" />
-                <el-table-column prop="code" label="编码" min-width="120" />
                 <el-table-column prop="template" label="模板名称" min-width="60" show-overflow-tooltip />
-                <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
-                <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
                 <el-table-column prop="createTime" label="创建时间" width="170" />
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
                 <el-table-column label="操作" width="280" align="center" fixed="right">
@@ -483,8 +472,7 @@ import {
   CircleCheck,
   Warning,
   User,
-  Monitor,
-  DocumentCopy
+  Monitor
 } from '@element-plus/icons-vue'
 import { getArticleColumnPublishes } from '@/api/article'
 import { getColumnPublishes } from '@/api/column'
@@ -534,6 +522,10 @@ const hasActiveJob = computed(() =>
 // 格式化 ISO 时间字符串：去掉中间的 T，仅保留到秒（例如 2026-08-24 12:34:56）
 const formatTime = (t?: string) =>
   t ? t.replace('T', ' ').slice(0, 19) : '-'
+
+// 格式化时间字符串：仅保留到分钟，不显示秒（例如 2026-08-24 12:34）
+const formatShortTime = (t?: string) =>
+  t ? t.replace('T', ' ').slice(0, 16) : '-'
 
 // 将后端任务结构标准化为前端展示结构
 const normalizeJob = (job: StaticJob) => {
@@ -709,15 +701,6 @@ const notifyJobDone = (job: any) => {
   }
 }
 
-const copyJobId = async (id: string) => {
-  try {
-    await navigator.clipboard.writeText(id)
-    ElMessage.success('任务ID已复制')
-  } catch (error) {
-    ElMessage.error('复制任务ID失败')
-  }
-}
-
 const monitorLoading = ref(false)
 const monitorData = reactive({
   online: false,
@@ -763,11 +746,11 @@ const fetchStaticStat = async () => {
     if (res.code === 0 || res.code === 200) {
       const d = res.data || {}
       statData.todayCount = d.todayFiles || 0
-      statData.lastTime = d.site || '-'
-      statData.homeLastTime = d.home || '-'
-      statData.columnLastTime = d.column || '-'
-      statData.topicLastTime = d.topic || '-'
-      statData.detailLastTime = d.detail || '-'
+      statData.lastTime = formatShortTime(d.site)
+      statData.homeLastTime = formatShortTime(d.home)
+      statData.columnLastTime = formatShortTime(d.column)
+      statData.topicLastTime = formatShortTime(d.topic)
+      statData.detailLastTime = formatShortTime(d.detail)
     }
   } catch (error) {
     // 忽略，保持默认 '-'
