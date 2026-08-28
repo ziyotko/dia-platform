@@ -229,13 +229,8 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  Plus,
-  Edit,
-  Delete,
   Search,
   RefreshRight,
-  View,
-  Brush,
   Monitor
 } from '@element-plus/icons-vue'
 import {
