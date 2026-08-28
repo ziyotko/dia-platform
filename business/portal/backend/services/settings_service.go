@@ -18,8 +18,10 @@ func (s *SettingsService) GetSettings() (*models.Setting, error) {
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			settings = models.Setting{
-				SiteName:                 "门户网站管理后台",
-				Icp:                      "京ICP备12345678号",
+				SiteName: "门户网站管理后台",
+				SiteUrl:  "",
+				Icp:      "京ICP备12345678号",
+
 				Copyright:                "门户网站管理系统 版权所有",
 				CaptchaEnabled:           true,
 				LockEnabled:              true,

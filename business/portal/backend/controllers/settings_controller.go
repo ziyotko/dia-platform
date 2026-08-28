@@ -38,6 +38,7 @@ func (c *SettingsController) GetPublicSiteInfo(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Success("获取成功", gin.H{
 			"siteName":  "门户网站管理后台",
+			"siteUrl":   "",
 			"logo":      "",
 			"icp":       "",
 			"copyright": "门户网站管理系统 版权所有",
@@ -46,6 +47,7 @@ func (c *SettingsController) GetPublicSiteInfo(ctx *gin.Context) {
 	}
 	ctx.JSON(http.StatusOK, utils.Success("获取成功", gin.H{
 		"siteName":  settings.SiteName,
+		"siteUrl":   settings.SiteUrl,
 		"logo":      settings.Logo,
 		"icp":       settings.Icp,
 		"copyright": settings.Copyright,

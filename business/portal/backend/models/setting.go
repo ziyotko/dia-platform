@@ -12,6 +12,7 @@ type Setting struct {
 	UpdatedAt                time.Time      `json:"updatedAt"`
 	DeletedAt                gorm.DeletedAt `gorm:"index" json:"deletedAt"`
 	SiteName                 string         `gorm:"size:100" json:"siteName"`
+	SiteUrl                  string         `gorm:"size:255" json:"siteUrl"`
 	Logo                     string         `gorm:"size:500" json:"logo"`
 	Icp                      string         `gorm:"size:200" json:"icp"`
 	Copyright                string         `gorm:"size:500" json:"copyright"`

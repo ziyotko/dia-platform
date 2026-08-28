@@ -11,6 +11,9 @@
             <el-form-item label="系统名称">
               <el-input v-model="basicForm.siteName" placeholder="请输入系统名称" />
             </el-form-item>
+            <el-form-item label="访问域名">
+              <el-input v-model="basicForm.siteUrl" placeholder="如: https://www.miic.com.cn" />
+            </el-form-item>
             <el-form-item label="系统Logo">
               <el-upload
                 class="logo-uploader"
@@ -152,6 +155,7 @@ const beforeLogoUpload = (file: File) => {
 
 const basicForm = reactive({
   siteName: '',
+  siteUrl: '',
   logo: '',
   icp: '',
   copyright: '',
@@ -182,6 +186,7 @@ const loadSettings = async () => {
     const res: any = await getSettings()
     const data = res.data as Settings
     basicForm.siteName = data.siteName || ''
+    basicForm.siteUrl = data.siteUrl || ''
     basicForm.logo = data.logo || ''
     basicForm.icp = data.icp || ''
     basicForm.copyright = data.copyright || ''
@@ -213,6 +218,7 @@ const doSave = async (data: Partial<Settings>) => {
   try {
     const payload: Partial<Settings> = {
       siteName: basicForm.siteName,
+      siteUrl: basicForm.siteUrl,
       logo: basicForm.logo,
       icp: basicForm.icp,
       copyright: basicForm.copyright,
@@ -249,6 +255,7 @@ const doSave = async (data: Partial<Settings>) => {
 const handleSaveBasic = () => {
   doSave({
     siteName: basicForm.siteName,
+    siteUrl: basicForm.siteUrl,
     logo: basicForm.logo,
     icp: basicForm.icp,
     copyright: basicForm.copyright,

@@ -2,6 +2,7 @@ import request from '@/utils/request'
 
 export interface Settings {
   siteName: string
+  siteUrl: string
   logo: string
   icp: string
   copyright: string
@@ -35,6 +36,7 @@ export interface Settings {
 
 export interface SiteInfo {
   siteName: string
+  siteUrl: string
   logo: string
   icp: string
   copyright: string
