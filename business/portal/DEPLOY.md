@@ -1,6 +1,6 @@
 # 门户系统（XXXX-portal）部署说明
 
-> 分支：`release` ｜ 项目路径：`business/portal/`
+> 分支：`caam_release`（汽车版）／ `miic_release`（中心版）｜ 项目路径：`business/portal/`
 > 部署拓扑：Nginx 承载静态资源并反代后端 → Go 后端(8084) → MySQL / Redis
 > 说明：本仓库仅含「管理后台」与「后端 API」；网站静态化由外部程序完成，产物由外部 Web 服务托管。
 
