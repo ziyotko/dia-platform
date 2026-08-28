@@ -396,6 +396,11 @@ func (c *ArticleController) UpdateArticleStatus(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "更新文章状态失败"))
 		return
 	}
+
+	// TODO: 文章下线（req.Status == 2）时，调用静态化功能删除该文章的静态文件
+	// 静态化程序接口：DELETE /api/static/article?id={文章ID}&path={静态化输出路径}
+	// 代理处理见 static_job_controller.go DeleteArticleStatic
+
 	ctx.JSON(http.StatusOK, utils.Success("更新文章状态成功", nil))
 }
 
@@ -664,6 +669,11 @@ func (c *ArticleController) DeleteArticle(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "删除文章失败: "+err.Error()))
 		return
 	}
+
+	// TODO: 调用静态化功能删除该文章的静态文件
+	// 静态化程序接口：DELETE /api/static/article?id={文章ID}&path={静态化输出路径}
+	// 代理处理见 static_job_controller.go DeleteArticleStatic
+
 	ctx.JSON(http.StatusOK, utils.Success("删除文章成功", nil))
 }
 
