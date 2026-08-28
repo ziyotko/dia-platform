@@ -503,6 +503,10 @@ func (c *ArticleController) AuditArticle(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "审核文章失败"))
 		return
 	}
+	// TODO: 审核通过（完成审核/文章发布）时，调用静态化功能生成该文章的静态页
+	// 静态化程序接口：POST /api/static/article?id={文章ID}&path={静态化输出路径}
+	// 代理处理见 static_job_controller.go ArticleStatic
+
 	ctx.JSON(http.StatusOK, utils.Success("审核文章成功", nil))
 }
 
