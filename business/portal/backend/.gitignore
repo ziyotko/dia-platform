@@ -5,3 +5,4 @@ logs/
 *.exe
 uploads/*
 caam
+process/*
