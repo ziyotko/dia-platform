@@ -81,25 +81,25 @@
       <el-col :xs="24" :sm="12" :md="8" :lg="4">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
-              <el-icon size="28"><Collection /></el-icon>
-            </div>
-            <div class="stat-info">
-              <div class="stat-value">{{ statData.topicLastTime }}</div>
-              <div class="stat-label">专题页最后静态化时间</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
-      <el-col :xs="24" :sm="12" :md="8" :lg="4">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-content">
             <div class="stat-icon" style="background: rgba(155, 89, 182, 0.1); color: #9b59b6;">
               <el-icon size="28"><Document /></el-icon>
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ statData.detailLastTime }}</div>
               <div class="stat-label">详情页最后静态化时间</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
+            <el-col :xs="24" :sm="12" :md="8" :lg="4">
+        <el-card shadow="hover" class="stat-card">
+          <div class="stat-content">
+            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
+              <el-icon size="28"><Collection /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ statData.topicLastTime }}</div>
+              <div class="stat-label">专题页最后静态化时间</div>
             </div>
           </div>
         </el-card>
@@ -154,10 +154,6 @@
                 <el-icon><Menu /></el-icon>
                 生成栏目页
               </el-button>
-              <el-button type="info" size="large" :disabled="!monitorData.online" @click="handleGenerateTopic">
-                <el-icon><Collection /></el-icon>
-                生成专题页
-              </el-button>
               <el-button
                 type="danger"
                 size="large"
@@ -167,6 +163,10 @@
               >
                 <el-icon><Document /></el-icon>
                 生成详情页
+              </el-button>
+                            <el-button type="info" size="large" :disabled="!monitorData.online" @click="handleGenerateTopic">
+                <el-icon><Collection /></el-icon>
+                生成专题页
               </el-button>
             </div>
             <div class="action-info">
@@ -321,42 +321,6 @@
               </div>
             </el-tab-pane>
 
-            <!-- 专题页 -->
-            <el-tab-pane label="专题页" name="topic">
-              <el-table :data="topicPagedList" v-loading="loading" border stripe>
-                <el-table-column type="index" width="60" align="center" />
-                <el-table-column prop="id" label="ID" width="80" align="center" />
-                <el-table-column prop="name" label="名称" min-width="160" />
-                <el-table-column prop="code" label="编码" min-width="120" />
-                <el-table-column prop="template" label="模板名称" min-width="60" show-overflow-tooltip />
-                <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
-                <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-                <el-table-column prop="createTime" label="创建时间" width="170" />
-                <el-table-column prop="updatedAt" label="更新时间" width="170" />
-                <el-table-column label="操作" width="280" align="center" fixed="right">
-                  <template #default="{ row }">
-                    <el-button link type="primary" :loading="row.generating" :disabled="!monitorData.online" @click="handleGenerateSingle(row)">
-                      <el-icon><Refresh /></el-icon>重新生成
-                    </el-button>
-                    <el-button link type="success" @click="handlePreview(row)">
-                      <el-icon><View /></el-icon>预览
-                    </el-button>
-                  </template>
-                </el-table-column>
-              </el-table>
-              <div class="pagination">
-                <el-pagination
-                  v-model:current-page="queryForm.page"
-                  v-model:page-size="queryForm.pageSize"
-                  :page-sizes="[10, 20, 50, 100]"
-                  :total="topicTotal"
-                  layout="total, sizes, prev, pager, next, jumper"
-                  @size-change="handleSizeChange"
-                  @current-change="handleCurrentChange"
-                />
-              </div>
-            </el-tab-pane>
-
             <!-- 详情页 -->
             <el-tab-pane label="详情页" name="detail">
               <el-table :data="detailPagedList" v-loading="loading" border stripe>
@@ -395,6 +359,44 @@
                 />
               </div>
             </el-tab-pane>
+
+            <!-- 专题页 -->
+            <el-tab-pane label="专题页" name="topic">
+              <el-table :data="topicPagedList" v-loading="loading" border stripe>
+                <el-table-column type="index" width="60" align="center" />
+                <el-table-column prop="id" label="ID" width="80" align="center" />
+                <el-table-column prop="name" label="名称" min-width="160" />
+                <el-table-column prop="code" label="编码" min-width="120" />
+                <el-table-column prop="template" label="模板名称" min-width="60" show-overflow-tooltip />
+                <el-table-column prop="routePath" label="访问路径" min-width="180" show-overflow-tooltip />
+                <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+                <el-table-column prop="createTime" label="创建时间" width="170" />
+                <el-table-column prop="updatedAt" label="更新时间" width="170" />
+                <el-table-column label="操作" width="280" align="center" fixed="right">
+                  <template #default="{ row }">
+                    <el-button link type="primary" :loading="row.generating" :disabled="!monitorData.online" @click="handleGenerateSingle(row)">
+                      <el-icon><Refresh /></el-icon>重新生成
+                    </el-button>
+                    <el-button link type="success" @click="handlePreview(row)">
+                      <el-icon><View /></el-icon>预览
+                    </el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <div class="pagination">
+                <el-pagination
+                  v-model:current-page="queryForm.page"
+                  v-model:page-size="queryForm.pageSize"
+                  :page-sizes="[10, 20, 50, 100]"
+                  :total="topicTotal"
+                  layout="total, sizes, prev, pager, next, jumper"
+                  @size-change="handleSizeChange"
+                  @current-change="handleCurrentChange"
+                />
+              </div>
+            </el-tab-pane>
+
+            
           </el-tabs>
         </el-tab-pane>
       </el-tabs>
