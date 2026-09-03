@@ -543,6 +543,110 @@ func (c *StaticJobController) DeleteArticleStatic(ctx *gin.Context) {
 	c.writeArticleDeleteLog(ctx, statusCode, body, id)
 }
 
+// DeleteArticleStaticByID 删除指定文章ID的详情页静态文件（供文章下线/删除文章等业务复用）。
+// 该调用为尽力而为（best-effort）：读取后端全局静态化参数发起删除，静态化参数未配置、
+// 程序不可达或调用失败时仅记录日志，不写客户端响应，不影响主流程。
+func (c *StaticJobController) DeleteArticleStaticByID(ctx *gin.Context, id string) {
+	if strings.TrimSpace(id) == "" {
+		return
+	}
+	params, err := c.settingsService.GetStaticParamsFromCache()
+	if err != nil {
+		utils.Logger.Warnf("删除文章[%s]静态文件失败：获取静态化参数失败: %s", id, err)
+		return
+	}
+	base := c.staticProgramBaseURL(params)
+	if base == "" {
+		utils.Logger.Warnf("删除文章[%s]静态文件失败：静态化程序访问地址未配置", id)
+		return
+	}
+	path := strings.TrimSpace(params.StaticPath)
+	if path == "" {
+		utils.Logger.Warnf("删除文章[%s]静态文件失败：静态化输出路径未配置", id)
+		return
+	}
+
+	target := base + "/api/static/article"
+	req, err := http.NewRequestWithContext(ctx.Request.Context(), http.MethodDelete, target, nil)
+	if err != nil {
+		utils.Logger.Warnf("构造静态化删除请求失败: %s", err)
+		return
+	}
+	if token := c.staticProgramToken(params); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	q := req.URL.Query()
+	q.Set("id", id)
+	q.Set("path", path)
+	req.URL.RawQuery = q.Encode()
+
+	client := &http.Client{Timeout: 120 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		utils.Logger.Warnf("调用静态化程序删除文章[%s]静态文件失败: %s, url=%s", id, err, target)
+		return
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	utils.Logger.Infof("删除文章静态文件: id=%s url=%s status=%d", id, target, resp.StatusCode)
+
+	c.writeArticleDeleteLog(ctx, resp.StatusCode, body, id)
+}
+
+// GenerateArticleStaticByID 生成指定文章ID的详情页静态文件（供审核通过/文章发布时复用）。
+// 该调用为尽力而为（best-effort）：读取后端全局静态化参数发起生成，静态化参数未配置、
+// 程序不可达或调用失败时仅记录日志，不写客户端响应，不影响主流程。
+func (c *StaticJobController) GenerateArticleStaticByID(ctx *gin.Context, id string) {
+	if strings.TrimSpace(id) == "" {
+		return
+	}
+	params, err := c.settingsService.GetStaticParamsFromCache()
+	if err != nil {
+		utils.Logger.Warnf("生成文章[%s]静态页失败：获取静态化参数失败: %s", id, err)
+		return
+	}
+	base := c.staticProgramBaseURL(params)
+	if base == "" {
+		utils.Logger.Warnf("生成文章[%s]静态页失败：静态化程序访问地址未配置", id)
+		return
+	}
+	path := strings.TrimSpace(params.StaticPath)
+	if path == "" {
+		utils.Logger.Warnf("生成文章[%s]静态页失败：静态化输出路径未配置", id)
+		return
+	}
+
+	target := base + "/api/static/article"
+	req, err := http.NewRequestWithContext(ctx.Request.Context(), http.MethodPost, target, nil)
+	if err != nil {
+		utils.Logger.Warnf("构造静态化生成请求失败: %s", err)
+		return
+	}
+	if token := c.staticProgramToken(params); token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	q := req.URL.Query()
+	q.Set("id", id)
+	q.Set("path", path)
+	req.URL.RawQuery = q.Encode()
+
+	client := &http.Client{Timeout: 120 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		utils.Logger.Warnf("调用静态化程序生成文章[%s]静态页失败: %s, url=%s", id, err, target)
+		return
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	utils.Logger.Infof("生成文章静态页: id=%s url=%s status=%d", id, target, resp.StatusCode)
+
+	c.writePageDoneLog(ctx, resp.StatusCode, body, "生成详情页任务完成", id)
+}
+
 // GetJob 查询任务状态：GET /static/jobs/{任务ID}
 // 返回任务状态结构：queued 等待执行 / running 正在执行 / succeeded 执行成功 / failed 执行失败 / interrupted 被取消或超时中断
 func (c *StaticJobController) GetJob(ctx *gin.Context) {

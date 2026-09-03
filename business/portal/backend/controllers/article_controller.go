@@ -15,16 +15,18 @@ import (
 )
 
 type ArticleController struct {
-	articleService  *services.ArticleService
-	userService     *services.UserService
-	workflowService *services.WorkflowService
+	articleService      *services.ArticleService
+	userService         *services.UserService
+	workflowService     *services.WorkflowService
+	staticJobController *StaticJobController
 }
 
 func NewArticleController() *ArticleController {
 	return &ArticleController{
-		articleService:  &services.ArticleService{},
-		userService:     &services.UserService{},
-		workflowService: &services.WorkflowService{},
+		articleService:      &services.ArticleService{},
+		userService:         &services.UserService{},
+		workflowService:     &services.WorkflowService{},
+		staticJobController: NewStaticJobController(),
 	}
 }
 
@@ -397,9 +399,12 @@ func (c *ArticleController) UpdateArticleStatus(ctx *gin.Context) {
 		return
 	}
 
-	// TODO: 文章下线（req.Status == 2）时，调用静态化功能删除该文章的静态文件
+	// 文章下线（status == 2）时，调用静态化功能删除该文章的静态文件
 	// 静态化程序接口：DELETE /api/static/article?id={文章ID}&path={静态化输出路径}
 	// 代理处理见 static_job_controller.go DeleteArticleStatic
+	if req.Status == 2 {
+		c.staticJobController.DeleteArticleStaticByID(ctx, idStr)
+	}
 
 	ctx.JSON(http.StatusOK, utils.Success("更新文章状态成功", nil))
 }
@@ -503,9 +508,12 @@ func (c *ArticleController) AuditArticle(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "审核文章失败"))
 		return
 	}
-	// TODO: 审核通过（完成审核/文章发布）时，调用静态化功能生成该文章的静态页
+	// 审核通过（完成审核/文章发布）时，调用静态化功能生成该文章的静态页
 	// 静态化程序接口：POST /api/static/article?id={文章ID}&path={静态化输出路径}
 	// 代理处理见 static_job_controller.go ArticleStatic
+	if req.AuditStatus == 2 {
+		c.staticJobController.GenerateArticleStaticByID(ctx, idStr)
+	}
 
 	ctx.JSON(http.StatusOK, utils.Success("审核文章成功", nil))
 }
@@ -674,9 +682,10 @@ func (c *ArticleController) DeleteArticle(ctx *gin.Context) {
 		return
 	}
 
-	// TODO: 调用静态化功能删除该文章的静态文件
+	// 删除文章后，调用静态化功能删除该文章的静态文件
 	// 静态化程序接口：DELETE /api/static/article?id={文章ID}&path={静态化输出路径}
 	// 代理处理见 static_job_controller.go DeleteArticleStatic
+	c.staticJobController.DeleteArticleStaticByID(ctx, idStr)
 
 	ctx.JSON(http.StatusOK, utils.Success("删除文章成功", nil))
 }
