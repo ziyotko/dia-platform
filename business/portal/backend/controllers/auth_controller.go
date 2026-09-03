@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"math"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -33,10 +34,10 @@ func NewAuthController() *AuthController {
 func (c *AuthController) GetCaptcha(ctx *gin.Context) {
 	id, b64s, err := utils.GenerateCaptcha()
 	if err != nil {
-		ctx.JSON(200, utils.Error(1, "生成验证码失败"))
+		ctx.JSON(http.StatusOK, utils.Error(1, "生成验证码失败"))
 		return
 	}
-	ctx.JSON(200, utils.Success("获取验证码成功", gin.H{"captcha_id": id, "captcha_img": b64s}))
+	ctx.JSON(http.StatusOK, utils.Success("获取验证码成功", gin.H{"captcha_id": id, "captcha_img": b64s}))
 }
 
 func (c *AuthController) Login(ctx *gin.Context) {
@@ -50,7 +51,7 @@ func (c *AuthController) Login(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(200, utils.Error(1, "参数错误"))
+		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误"))
 		return
 	}
 
@@ -87,9 +88,9 @@ func (c *AuthController) Login(ctx *gin.Context) {
 			}
 		}
 		if isSafe {
-			ctx.JSON(200, utils.Error(1, errMsg))
+			ctx.JSON(http.StatusOK, utils.Error(1, errMsg))
 		} else {
-			ctx.JSON(200, utils.Error(1, "登录失败，请稍后重试"))
+			ctx.JSON(http.StatusOK, utils.Error(1, "登录失败，请稍后重试"))
 		}
 		return
 	}
@@ -106,7 +107,7 @@ func (c *AuthController) Login(ctx *gin.Context) {
 	if err != nil {
 		userRoles = []int{}
 	}
-	ctx.JSON(200, utils.Success("登录成功", gin.H{
+	ctx.JSON(http.StatusOK, utils.Success("登录成功", gin.H{
 		"user": gin.H{
 			"id":       user.ID,
 			"username": user.Username,
@@ -121,28 +122,28 @@ func (c *AuthController) Login(ctx *gin.Context) {
 func (c *AuthController) Logout(ctx *gin.Context) {
 	token := ctx.GetHeader("Authorization")
 	if token == "" {
-		ctx.JSON(200, utils.Error(1, "未提供token"))
+		ctx.JSON(http.StatusOK, utils.Error(1, "未提供token"))
 		return
 	}
 
 	token = token[7:]
 	err := c.userService.Logout(token)
 	if err != nil {
-		ctx.JSON(200, utils.Error(1, "登出失败"))
+		ctx.JSON(http.StatusOK, utils.Error(1, "登出失败"))
 		return
 	}
 
 	userID := ctx.GetUint("userID")
 	utils.Redis.Del(utils.Ctx, fmt.Sprintf("signkey:%d", userID))
 
-	ctx.JSON(200, utils.Success("登出成功", nil))
+	ctx.JSON(http.StatusOK, utils.Success("登出成功", nil))
 }
 
 func (c *AuthController) GetProfile(ctx *gin.Context) {
 	userID := ctx.GetUint("userID")
 	user, err := c.userService.GetUserByID(userID)
 	if err != nil {
-		ctx.JSON(200, utils.Error(1, err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, err.Error()))
 		return
 	}
 
@@ -159,7 +160,7 @@ func (c *AuthController) GetProfile(ctx *gin.Context) {
 	onlineDays := max(int(math.Floor(time.Since(user.CreatedAt).Hours()/24)), 1)
 	articleCount := c.articleService.GetArticleCountByAuthor(strconv.FormatUint(uint64(user.ID), 10))
 
-	ctx.JSON(200, utils.Success("获取用户信息成功", gin.H{
+	ctx.JSON(http.StatusOK, utils.Success("获取用户信息成功", gin.H{
 		"user": gin.H{
 			"id":             user.ID,
 			"username":       user.Username,
@@ -187,17 +188,17 @@ func (c *AuthController) UpdateProfile(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(200, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
 		return
 	}
 
 	err := c.userService.UpdateProfile(userID, req.Email, req.Phone, req.Bio, req.Avatar)
 	if err != nil {
-		ctx.JSON(200, utils.Error(1, "更新失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, "更新失败: "+err.Error()))
 		return
 	}
 
-	ctx.JSON(200, utils.Success("更新成功", nil))
+	ctx.JSON(http.StatusOK, utils.Success("更新成功", nil))
 }
 
 func (c *AuthController) ChangePassword(ctx *gin.Context) {
@@ -208,27 +209,27 @@ func (c *AuthController) ChangePassword(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(200, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
 		return
 	}
 
 	settingsService := &services.SettingsService{}
 	settings, err := settingsService.GetSettings()
 	if err != nil {
-		ctx.JSON(200, utils.Error(1, "获取安全设置失败"))
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取安全设置失败"))
 		return
 	}
 
 	if len(req.NewPassword) < settings.MinPasswordLength {
-		ctx.JSON(200, utils.Error(1, fmt.Sprintf("密码长度不能少于%d位", settings.MinPasswordLength)))
+		ctx.JSON(http.StatusOK, utils.Error(1, fmt.Sprintf("密码长度不能少于%d位", settings.MinPasswordLength)))
 		return
 	}
 
 	err = c.userService.ChangePassword(userID, req.OldPassword, req.NewPassword)
 	if err != nil {
-		ctx.JSON(200, utils.Error(1, err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, err.Error()))
 		return
 	}
 
-	ctx.JSON(200, utils.Success("密码修改成功", nil))
+	ctx.JSON(http.StatusOK, utils.Success("密码修改成功", nil))
 }

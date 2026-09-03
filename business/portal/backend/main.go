@@ -58,6 +58,5 @@ func main() {
 
 	addr := fmt.Sprintf("%s:%s", config.AppConfig.Server.Host, config.AppConfig.Server.Port)
 	utils.Logger.Infof("Server started on %s", addr)
-	fmt.Printf("Server started on %s\n", addr)
 	router.Run(addr)
 }

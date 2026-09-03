@@ -21,7 +21,7 @@ func (c *LikeController) RecordLike(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误：article_id 必填"))
+		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: article_id 必填"))
 		return
 	}
 

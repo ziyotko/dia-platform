@@ -1395,15 +1395,7 @@ const handleCustomPaste = (editor: IDomEditor, event: ClipboardEvent) => {
 
   // 方案1.5：HTML 有 img 但无 base64，且有 RTF，尝试从 RTF 提取图片
   if (html && rtf && html.includes('<img') && !hasBase64) {
-    const pictIdx = rtf.indexOf('\\pict')
-    console.log('[paste] rtf has \\pict:', pictIdx !== -1)
-    if (pictIdx !== -1) {
-      console.log('[paste] rtf around \\pict:', rtf.substring(Math.max(0, pictIdx - 100), pictIdx + 300))
-    } else {
-      console.log('[paste] rtf snippet:', rtf.substring(0, 800))
-    }
     const blobs = extractImagesFromRTF(rtf)
-    console.log('[paste] RTF images extracted:', blobs.length)
     if (blobs.length > 0) {
       event.preventDefault()
       Promise.all(

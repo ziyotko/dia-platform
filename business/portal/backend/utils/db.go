@@ -48,7 +48,6 @@ func InitDB() {
 		conf.ReadTimeout,
 		conf.WriteTimeout,
 	)
-	println(dsn)
 	var err error
 	newLogger := logger.New(
 		log.New(&gormLogWriter{}, "\r\n", log.LstdFlags),
