@@ -1001,11 +1001,20 @@ func (s *ArticleService) CompleteArticleAudit(articleID uint) error {
 			if err := tx.Create(&publish).Error; err != nil {
 				return err
 			}
-			if err := tx.Model(&article).Updates(map[string]any{"status": 1}).Error; err != nil {
-				return err
-			}
-
 		}
+		// 所有栏目都创建完成后统一更新文章状态（避免重复更新同一记录）
+		if err := tx.Model(&article).Updates(map[string]any{"status": 1}).Error; err != nil {
+			return err
+		}
+		// // 审核通过（完成审核/文章发布）时，调用静态化功能生成该文章的静态页
+		// // 静态化程序接口：POST /api/static/article?id={文章ID}&path={静态化输出路径}
+		// // 代理处理见 static_job_controller.go ArticleStatic
+		// println("11111111111111111111")
+		// if req.AuditStatus == 2 {
+		// 	println("22222222222222222222222")
+		// 	c.staticJobController.GenerateArticleStaticByID(ctx, idStr)
+		// }
+
 		return nil
 	})
 }
