@@ -23,12 +23,14 @@ import (
 type StaticJobController struct {
 	settingsService  *services.SettingsService
 	staticLogService *services.StaticLogService
+	staticJobService *services.StaticJobService
 }
 
 func NewStaticJobController() *StaticJobController {
 	return &StaticJobController{
 		settingsService:  &services.SettingsService{},
 		staticLogService: &services.StaticLogService{},
+		staticJobService: services.NewStaticJobService(),
 	}
 }
 
@@ -602,49 +604,11 @@ func (c *StaticJobController) GenerateArticleStaticByID(ctx *gin.Context, id str
 	if strings.TrimSpace(id) == "" {
 		return
 	}
-	params, err := c.settingsService.GetStaticParamsFromCache()
-	if err != nil {
-		utils.Logger.Warnf("生成文章[%s]静态页失败：获取静态化参数失败: %s", id, err)
+	statusCode, body := c.staticJobService.GenerateArticleStaticByID(ctx.Request.Context(), id)
+	if len(body) == 0 {
 		return
 	}
-	base := c.staticProgramBaseURL(params)
-	if base == "" {
-		utils.Logger.Warnf("生成文章[%s]静态页失败：静态化程序访问地址未配置", id)
-		return
-	}
-	path := strings.TrimSpace(params.StaticPath)
-	if path == "" {
-		utils.Logger.Warnf("生成文章[%s]静态页失败：静态化输出路径未配置", id)
-		return
-	}
-
-	target := base + "/api/static/article"
-	req, err := http.NewRequestWithContext(ctx.Request.Context(), http.MethodPost, target, nil)
-	if err != nil {
-		utils.Logger.Warnf("构造静态化生成请求失败: %s", err)
-		return
-	}
-	if token := c.staticProgramToken(params); token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	q := req.URL.Query()
-	q.Set("id", id)
-	q.Set("path", path)
-	req.URL.RawQuery = q.Encode()
-
-	client := &http.Client{Timeout: 120 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		utils.Logger.Warnf("调用静态化程序生成文章[%s]静态页失败: %s, url=%s", id, err, target)
-		return
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-	utils.Logger.Infof("生成文章静态页: id=%s url=%s status=%d", id, target, resp.StatusCode)
-
-	c.writePageDoneLog(ctx, resp.StatusCode, body, "生成详情页任务完成", id)
+	c.writePageDoneLog(ctx, statusCode, body, "生成详情页任务完成", id)
 }
 
 // GetJob 查询任务状态：GET /static/jobs/{任务ID}

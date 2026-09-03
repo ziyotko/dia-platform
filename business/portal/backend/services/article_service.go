@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"server/models"
 	"server/utils"
@@ -962,7 +963,7 @@ func (s *ArticleService) GetMyAuditArticles(userID uint, page, pageSize int) ([]
 
 // CompleteArticleAudit 完成文章审核（所有栏目通过后调用）
 func (s *ArticleService) CompleteArticleAudit(articleID uint) error {
-	return utils.DB.Transaction(func(tx *gorm.DB) error {
+	err := utils.DB.Transaction(func(tx *gorm.DB) error {
 		// 更新文章审核状态为已审核
 		if err := tx.Model(&models.Article{}).Where("id = ?", articleID).Update("audit_status", 2).Error; err != nil {
 			return err
@@ -1006,15 +1007,16 @@ func (s *ArticleService) CompleteArticleAudit(articleID uint) error {
 		if err := tx.Model(&article).Updates(map[string]any{"status": 1}).Error; err != nil {
 			return err
 		}
-		// // 审核通过（完成审核/文章发布）时，调用静态化功能生成该文章的静态页
-		// // 静态化程序接口：POST /api/static/article?id={文章ID}&path={静态化输出路径}
-		// // 代理处理见 static_job_controller.go ArticleStatic
-		// println("11111111111111111111")
-		// if req.AuditStatus == 2 {
-		// 	println("22222222222222222222222")
-		// 	c.staticJobController.GenerateArticleStaticByID(ctx, idStr)
-		// }
 
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	// 审核通过（完成审核/文章发布）时，调用静态化功能生成该文章的静态页（尽力而为，不影响主流程）
+	// 静态化程序接口：POST /api/static/article?id={文章ID}&path={静态化输出路径}
+	// 代理处理见 static_job_controller.go ArticleStatic / services.StaticJobService.GenerateArticleStaticByID
+	NewStaticJobService().GenerateArticleStaticByID(context.Background(), strconv.FormatUint(uint64(articleID), 10))
+
+	return nil
 }
