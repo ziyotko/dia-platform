@@ -24,6 +24,15 @@ func NewSettingsController() *SettingsController {
 	}
 }
 
+func (c *SettingsController) GetMinPasswordLengthSettings(ctx *gin.Context) {
+	settings, err := c.settingsService.GetMinPasswordLengthSettings()
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取设置失败"))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("获取设置成功", settings))
+}
+
 func (c *SettingsController) GetSettings(ctx *gin.Context) {
 	settings, err := c.settingsService.GetSettings()
 	if err != nil {

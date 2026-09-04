@@ -42,6 +42,10 @@ export interface SiteInfo {
   copyright: string
 }
 
+export function getMinPasswordLengthSettings() {
+  return request.get<Settings>('/minPasswordLengthSettings')
+}
+
 export function getSettings() {
   return request.get<Settings>('/settings')
 }

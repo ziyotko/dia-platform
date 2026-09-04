@@ -12,6 +12,15 @@ import (
 
 type SettingsService struct{}
 
+func (s *SettingsService) GetMinPasswordLengthSettings() (*models.Setting, error) {
+	var settings models.Setting
+	result := utils.DB.Select("min_password_length").First(&settings)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &settings, nil
+}
+
 func (s *SettingsService) GetSettings() (*models.Setting, error) {
 	var settings models.Setting
 	result := utils.DB.First(&settings)

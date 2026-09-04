@@ -97,7 +97,7 @@ import {
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
 import type { MenuItem } from '@/api/menus'
-import { getPublicSiteInfo, getSettings } from '@/api/settings'
+import { getPublicSiteInfo, getMinPasswordLengthSettings } from '@/api/settings'
 import type { Settings } from '@/api/settings'
 import Breadcrumb from '@/components/Breadcrumb.vue'
 import TagsView from '@/components/TagsView.vue'
@@ -158,7 +158,7 @@ const loadSiteInfo = async () => {
 
 const loadSettings = async () => {
   try {
-    const res: any = await getSettings()
+    const res: any = await getMinPasswordLengthSettings()
     const data = res.data as Settings
     if (data) {
       appStore.setSecuritySettings({

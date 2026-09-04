@@ -16,13 +16,14 @@ import (
 // 这些接口属于个人账户/工具类接口或没有对应菜单的只读接口，任意已认证用户均可用；
 // 若后续需要收紧，可在此处调整或移除对应条目。
 var memberAPIPrefixExemptPaths = map[string]bool{
-	"/logout":           true,
-	"/profile":          true,
-	"/profile/password": true,
-	"/menus/user":       true,
-	"/upload":           true,
-	"/pages":            true,
-	"/static-pages":     true,
+	"/logout":                    true,
+	"/profile":                   true,
+	"/profile/password":          true,
+	"/menus/user":                true,
+	"/upload":                    true,
+	"/pages":                     true,
+	"/static-pages":              true,
+	"/minPasswordLengthSettings": true,
 }
 
 // pathMatchesAPIPrefix 判断请求路径是否命中某个 api_prefix。

@@ -78,6 +78,8 @@ func SetupRoutes(router *gin.Engine) {
 	member := router.Group(apiPrefix)
 	member.Use(middleware.AuthMiddleware(), middleware.MenuAPIPrefixMiddleware(), middleware.ReplayProtectionMiddleware(), middleware.OperationLog(), ipLimiter.Limit())
 	{
+		member.GET("/minPasswordLengthSettings", settingsController.GetMinPasswordLengthSettings)
+
 		member.POST("/logout", authController.Logout)
 
 		member.GET("/profile", authController.GetProfile)
