@@ -48,7 +48,17 @@ func main() {
 
 	router := gin.New()
 	router.Use(middleware.GinLogger(), gin.Recovery())
-	router.SetTrustedProxies([]string{"127.0.0.1"})
+
+	// 可信反向代理读取自配置；若为空则回退为仅信任本机回环，避免误信任任意代理头
+	trustedProxies := config.AppConfig.Server.TrustedProxies
+	if len(trustedProxies) == 0 {
+		trustedProxies = []string{"127.0.0.1"}
+	}
+	if err := router.SetTrustedProxies(trustedProxies); err != nil {
+		utils.Logger.Warnf("设置可信代理失败，回退为仅信任回环地址: %s", err)
+		_ = router.SetTrustedProxies([]string{"127.0.0.1"})
+	}
+
 	router.Use(middleware.CorsMiddleware())
 	router.Use(middleware.SecurityHeaders())
 

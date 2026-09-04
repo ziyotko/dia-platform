@@ -24,6 +24,9 @@ type ServerConfig struct {
 	MaxConcurrentIPs int      `mapstructure:"max_concurrent_ips"`
 	AllowedOrigins   []string `mapstructure:"allowed_origins"`
 
+	// 可信反向代理地址，决定 gin 是否信任 X-Forwarded-For / X-Real-IP
+	TrustedProxies []string `mapstructure:"trusted_proxies"`
+
 	// 站点分析等公开写接口的限流配置（按真实客户端 IP）
 	AnalyticsRateLimit      int `mapstructure:"analytics_rate_limit"`          // 每窗口允许的最大请求数
 	AnalyticsRateWindowSecs int `mapstructure:"analytics_rate_window_seconds"` // 限流窗口（秒）
