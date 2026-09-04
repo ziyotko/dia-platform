@@ -106,14 +106,15 @@ func (s *MenuService) CreateMenu(menu *models.Menu) error {
 
 func (s *MenuService) UpdateMenu(id uint, menu *models.Menu) error {
 	return utils.DB.Model(&models.Menu{}).Where("id = ?", id).Updates(map[string]any{
-		"parent_id": menu.ParentID,
-		"name":      menu.Name,
-		"path":      menu.Path,
-		"component": menu.Component,
-		"icon":      menu.Icon,
-		"type":      menu.Type,
-		"sort":      menu.Sort,
-		"status":    menu.Status,
+		"parent_id":  menu.ParentID,
+		"name":       menu.Name,
+		"path":       menu.Path,
+		"component":  menu.Component,
+		"api_prefix": menu.APIPrefix,
+		"icon":       menu.Icon,
+		"type":       menu.Type,
+		"sort":       menu.Sort,
+		"status":     menu.Status,
 	}).Error
 }
 

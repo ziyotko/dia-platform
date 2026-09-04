@@ -11,6 +11,7 @@ type menuSeedItem struct {
 	Name      string
 	Path      string
 	Component string
+	APIPrefix string
 	Icon      string
 	Type      string
 	Sort      int
@@ -105,6 +106,7 @@ func seedMenu(parentID uint, item *menuSeedItem) {
 		Name:      item.Name,
 		Path:      item.Path,
 		Component: item.Component,
+		APIPrefix: item.APIPrefix,
 		Icon:      item.Icon,
 		Type:      item.Type,
 		Sort:      item.Sort,

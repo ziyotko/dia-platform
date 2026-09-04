@@ -28,6 +28,7 @@
         </el-table-column>
         <el-table-column prop="path" label="路由路径" min-width="140" />
         <el-table-column prop="component" label="组件路径" min-width="280" show-overflow-tooltip />
+        <el-table-column prop="apiPrefix" label="接口前缀" min-width="140" show-overflow-tooltip />
         <el-table-column prop="sort" label="排序" width="80" align="center" />
         <el-table-column prop="type" label="类型" width="90" align="center">
           <template #default="{ row }">
@@ -96,6 +97,9 @@
         </el-form-item>
         <el-form-item label="组件路径" v-if="form.type === 'menu'">
           <el-input v-model="form.component" placeholder="请输入组件路径" />
+        </el-form-item>
+        <el-form-item label="接口前缀" v-if="form.type === 'menu'">
+          <el-input v-model="form.apiPrefix" placeholder="请输入接口前缀，如 /api/content" />
         </el-form-item>
         <el-form-item label="菜单图标">
           <div class="icon-select-row">
@@ -207,6 +211,7 @@ const form = reactive<MenuForm>({
   name: '',
   path: '',
   component: '',
+  apiPrefix: '',
   icon: '',
   type: 'directory',
   sort: 0,
@@ -226,7 +231,7 @@ const fetchMenus = async () => {
   try {
     const res: any = await getMenuList()
     tableData.value = res.data || []
-    menuTreeData.value = [{ id: 0, parentId: 0, name: '顶级菜单', path: '', component: '', icon: '', type: 'directory', sort: 0, status: 1, children: [] }, ...tableData.value]
+    menuTreeData.value = [{ id: 0, parentId: 0, name: '顶级菜单', path: '', component: '', apiPrefix: '', icon: '', type: 'directory', sort: 0, status: 1, children: [] }, ...tableData.value]
   } catch (error) {
     ElMessage.error('获取菜单列表失败')
   } finally {
@@ -255,6 +260,7 @@ const handleEdit = (row: MenuItem) => {
     name: row.name,
     path: row.path,
     component: row.component,
+    apiPrefix: row.apiPrefix,
     icon: row.icon,
     type: row.type,
     sort: row.sort,
@@ -308,6 +314,7 @@ const resetForm = () => {
   form.name = ''
   form.path = ''
   form.component = ''
+  form.apiPrefix = ''
   form.icon = ''
   form.type = 'directory'
   form.sort = 0

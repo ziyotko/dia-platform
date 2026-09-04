@@ -6,6 +6,7 @@ export interface MenuItem {
   name: string
   path: string
   component: string
+  apiPrefix: string
   icon: string
   type: string
   sort: number
@@ -21,6 +22,7 @@ export interface MenuForm {
   name: string
   path: string
   component: string
+  apiPrefix: string
   icon: string
   type: string
   sort: number
