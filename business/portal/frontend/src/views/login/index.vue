@@ -65,7 +65,8 @@
               <div class="captcha-row">
                 <el-input
                   v-model="form.captchaCode"
-                  placeholder="请输入验证码"
+                  placeholder="请输入图中的汉字"
+                  maxlength="5"
                   :prefix-icon="Grid"
                   clearable
                   @keyup.enter="handleLogin"
@@ -394,8 +395,8 @@ onMounted(() => {
 }
 
 .captcha-image {
-  width: 120px;
-  height: 40px;
+  width: 150px;
+  height: 50px;
   border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
@@ -405,6 +406,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  align-self: center;
 
   img {
     width: 100%;
