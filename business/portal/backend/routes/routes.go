@@ -74,8 +74,9 @@ func SetupRoutes(router *gin.Engine) {
 	ipLimiter := middleware.NewIPLimiter()
 
 	// === 登录用户路由（任意已认证用户可用，需防重放+请求签名）===
+	// 额外校验: 请求路径需命中用户已授权菜单的 api_prefix，否则返回"没有授权"（账户/工具类及无菜单只读接口豁免）
 	member := router.Group(apiPrefix)
-	member.Use(middleware.AuthMiddleware(), middleware.ReplayProtectionMiddleware(), middleware.OperationLog(), ipLimiter.Limit())
+	member.Use(middleware.AuthMiddleware(), middleware.MenuAPIPrefixMiddleware(), middleware.ReplayProtectionMiddleware(), middleware.OperationLog(), ipLimiter.Limit())
 	{
 		member.POST("/logout", authController.Logout)
 
