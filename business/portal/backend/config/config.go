@@ -38,6 +38,11 @@ type ServerConfig struct {
 	// 验证码接口限流（防刷验证码，按真实客户端 IP）
 	CaptchaRateLimit      int `mapstructure:"captcha_rate_limit"`          // 每窗口允许的最大请求数
 	CaptchaRateWindowSecs int `mapstructure:"captcha_rate_window_seconds"` // 限流窗口（秒）
+
+	// 防重放/请求签名校验（主动检测与临时封禁）
+	ReplayWindowSecs int `mapstructure:"replay_window_seconds"` // 时间戳新鲜度窗口（秒），默认 120
+	ReplayMaxFail    int `mapstructure:"replay_max_fail"`       // 触发临时封禁的失败次数
+	ReplayBanMinutes int `mapstructure:"replay_ban_minutes"`    // 临时封禁时长（分钟）
 }
 
 type DatabaseConfig struct {
