@@ -15,7 +15,7 @@ type WorkflowRole struct {
 	Name        string         `gorm:"size:50;not null" json:"name"`
 	Code        string         `gorm:"unique;size:50;not null" json:"code"`
 	Description string         `gorm:"size:255" json:"description"`
-	Status      int            `gorm:"default:1" json:"status"`
+	Status      int            `gorm:"index" json:"status"`
 }
 
 // WorkflowRoleUser 流程角色与用户关联
