@@ -501,6 +501,12 @@
             </el-button>
             <template #tip>
               <div class="video-tip">支持 MP4、MOV 等常见视频格式，单个文件不超过 800MB</div>
+              <el-progress
+                v-if="videoUploadProgress > 0 && !videoForm.videoUrl"
+                :percentage="videoUploadProgress"
+                :stroke-width="6"
+                style="margin-top: 6px"
+              />
             </template>
           </el-upload>
           <div v-if="videoForm.videoUrl" class="video-preview">
@@ -921,6 +927,8 @@ const videoForm = reactive({
 })
 
 const videoDialogTitle = ref('新增视频')
+// 视频上传进度（0-100），仅在上传过程中展示
+const videoUploadProgress = ref(0)
 
 const dataDialogVisible = ref(false)
 const dataSubmitLoading = ref(false)
@@ -2137,6 +2145,7 @@ const resetVideoForm = () => {
   videoForm.videoUrl = ''
   videoForm.videoName = ''
   videoForm.videoSize = 0
+  videoUploadProgress.value = 0
 }
 
 const resetDataForm = () => {
@@ -2164,9 +2173,19 @@ const handleVideoUpload = async (options: any) => {
   const formData = new FormData()
   formData.append('file', file)
   formData.append('dir', 'video')
+  videoUploadProgress.value = 0
   try {
     const res: any = await request.post('/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
+      // 大文件上传不套用默认 30s 超时，避免 800MB 视频被提前中断
+      timeout: 0,
+      // 进度提示，便于观察大文件上传进度
+      onUploadProgress: (evt: any) => {
+        if (evt.total) {
+          const pct = Math.round((evt.loaded / evt.total) * 100)
+          videoUploadProgress.value = pct
+        }
+      }
     })
     const url = res.data?.url || ''
     if (url) {
@@ -2189,6 +2208,7 @@ const handleVideoRemove = () => {
   videoForm.videoUrl = ''
   videoForm.videoName = ''
   videoForm.videoSize = 0
+  videoUploadProgress.value = 0
 }
 
 const handleSubmitVideo = async () => {
