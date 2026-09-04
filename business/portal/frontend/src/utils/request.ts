@@ -36,17 +36,24 @@ function hmacSha256(message: string, secret: string): string {
   return CryptoJS.HmacSHA256(message, secret).toString(CryptoJS.enc.Hex)
 }
 
-function getRequestPath(config: any): string {
-  let url = config.url || ''
-  if (url.startsWith('http')) {
-    url = new URL(url).pathname
-  } else {
+// 计算最终请求的 target（path + query），必须与后端 c.Request.URL.RequestURI() 一致，
+// 从而让 GET 查询参数也受到签名保护。
+function getRequestTarget(config: any): string {
+  try {
+    // axios.getUri 会按 baseURL/url/params 序列化出最终会发送的完整 URL
+    const fullUrl = axios.getUri(config)
+    const parsed = new URL(fullUrl, 'http://local.invalid')
+    return parsed.pathname + parsed.search
+  } catch {
+    let url = config.url || ''
+    if (url.startsWith('http')) {
+      const parsed = new URL(url)
+      return parsed.pathname + parsed.search
+    }
     const baseURL = (config.baseURL || '').replace(/\/+$/, '')
     const path = url.startsWith('/') ? url : '/' + url
-    url = baseURL + path
+    return (baseURL + path).split('?')[0]
   }
-  // 去掉 query string，只签 path
-  return url.split('?')[0]
 }
 
 function getBodyString(body: unknown): string {
@@ -58,22 +65,75 @@ function getBodyString(body: unknown): string {
   return JSON.stringify(body)
 }
 
+// 将 ArrayBuffer 转为 crypto-js 的 WordArray，按字节正确计算哈希
+function toWordArray(arrayBuffer: ArrayBuffer): any {
+  const uint8 = new Uint8Array(arrayBuffer)
+  const words: number[] = []
+  for (let i = 0; i < uint8.length; i += 4) {
+    words.push(
+      (uint8[i] << 24) |
+        ((uint8[i + 1] || 0) << 16) |
+        ((uint8[i + 2] || 0) << 8) |
+        (uint8[i + 3] || 0)
+    )
+  }
+  return CryptoJS.lib.WordArray.create(words, uint8.length)
+}
+
+// 分块读取 Blob 并累加进哈希，避免大文件一次性进入内存阻塞主线程
+async function hashBlob(blob: Blob, hasher: any): Promise<void> {
+  const chunkSize = 1024 * 1024 // 1MB
+  for (let offset = 0; offset < blob.size; offset += chunkSize) {
+    const chunk = blob.slice(offset, offset + chunkSize)
+    const buf = await chunk.arrayBuffer()
+    hasher.update(toWordArray(buf))
+  }
+}
+
+// 仅对小于阈值（默认 50MB）的上传计算文件内容哈希；超大文件回退为空串哈希，兼容旧逻辑
+const MAX_MULTIPART_HASH_BYTES = 50 * 1024 * 1024
+
+async function computeFormDataHash(formData: FormData): Promise<string> {
+  const hasher = CryptoJS.algo.SHA256.create()
+  let total = 0
+  let hasFile = false
+  for (const [, value] of formData.entries()) {
+    if (value instanceof Blob) {
+      hasFile = true
+      total += value.size
+      if (total > MAX_MULTIPART_HASH_BYTES) {
+        return sha256('')
+      }
+      await hashBlob(value, hasher)
+    }
+  }
+  if (!hasFile) return sha256('')
+  return hasher.finalize().toString(CryptoJS.enc.Hex)
+}
+
+// 计算请求体哈希；multipart 时返回文件内容哈希，并在 fileHash 中回传用于上报 X-Body-Hash-Value
+async function computeBodyHash(body: unknown): Promise<{ hash: string; fileHash?: string }> {
+  if (body instanceof FormData) {
+    const fileHash = await computeFormDataHash(body)
+    return fileHash !== sha256('') ? { hash: fileHash, fileHash } : { hash: fileHash }
+  }
+  return { hash: sha256(getBodyString(body)) }
+}
+
 function createRequestSignature(
   signKey: string,
   method: string,
-  path: string,
+  target: string,
   timestamp: string,
   nonce: string,
-  body: unknown
+  bodyHash: string
 ): string {
-  const bodyString = getBodyString(body)
-  const bodyHash = sha256(bodyString)
-  const payload = `${method.toUpperCase()}|${path}|${timestamp}|${nonce}|${bodyHash}`
+  const payload = `${method.toUpperCase()}|${target}|${timestamp}|${nonce}|${bodyHash}`
   return hmacSha256(payload, signKey)
 }
 
 request.interceptors.request.use(
-  (config) => {
+  async (config) => {
     const userStore = useUserStore()
     if (userStore.token) {
       config.headers.Authorization = `Bearer ${userStore.token}`
@@ -85,14 +145,18 @@ request.interceptors.request.use(
     config.headers['X-Request-Nonce'] = nonce
 
     if (userStore.signKey && config.url) {
-      const path = getRequestPath(config)
+      const target = getRequestTarget(config)
+      const { hash, fileHash } = await computeBodyHash(config.data)
+      if (fileHash) {
+        config.headers['X-Body-Hash-Value'] = fileHash
+      }
       const signature = createRequestSignature(
         userStore.signKey,
         config.method || 'GET',
-        path,
+        target,
         timestamp,
         nonce,
-        config.data
+        hash
       )
       config.headers['X-Request-Signature'] = signature
     }

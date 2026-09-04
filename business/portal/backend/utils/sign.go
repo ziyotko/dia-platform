@@ -32,14 +32,16 @@ func HmacSha256(data, secret string) string {
 }
 
 // SignRequest 构造请求签名
-// payload = METHOD|PATH|TIMESTAMP|NONCE|SHA256(BODY)
-func SignRequest(signKey, method, path, timestamp, nonce, bodyHash string) string {
-	payload := fmt.Sprintf("%s|%s|%s|%s|%s", method, path, timestamp, nonce, bodyHash)
+// payload = METHOD|TARGET|TIMESTAMP|NONCE|SHA256(BODY)
+// TARGET 为 URL 的 path + query（与后端 c.Request.URL.RequestURI() 一致），
+// 从而让方法、路径、查询参数与请求体一起受到签名保护。
+func SignRequest(signKey, method, target, timestamp, nonce, bodyHash string) string {
+	payload := fmt.Sprintf("%s|%s|%s|%s|%s", method, target, timestamp, nonce, bodyHash)
 	return HmacSha256(payload, signKey)
 }
 
 // VerifyRequest 安全地比较请求签名
-func VerifyRequest(signKey, method, path, timestamp, nonce, bodyHash, signature string) bool {
-	expected := SignRequest(signKey, method, path, timestamp, nonce, bodyHash)
+func VerifyRequest(signKey, method, target, timestamp, nonce, bodyHash, signature string) bool {
+	expected := SignRequest(signKey, method, target, timestamp, nonce, bodyHash)
 	return hmac.Equal([]byte(expected), []byte(signature))
 }
