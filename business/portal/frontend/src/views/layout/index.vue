@@ -72,7 +72,7 @@
       <el-main class="main-content">
         <router-view v-slot="{ Component }">
           <transition name="fade" mode="out-in">
-            <component :is="Component" />
+            <component :is="Component" :key="route.path + '_' + appStore.refreshKey" />
           </transition>
         </router-view>
       </el-main>

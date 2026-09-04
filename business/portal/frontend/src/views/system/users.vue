@@ -3,10 +3,10 @@
     <el-card shadow="hover" class="search-card">
       <el-form :model="queryForm" inline>
         <el-form-item label="用户名">
-          <el-input v-model="queryForm.username" placeholder="请输入用户名" clearable />
+          <el-input v-model="queryForm.username" placeholder="请输入用户名" clearable @keyup.enter="handleSearch" />
         </el-form-item>
         <el-form-item label="用户账号">
-          <el-input v-model="queryForm.account" placeholder="请输入用户账号" clearable />
+          <el-input v-model="queryForm.account" placeholder="请输入用户账号" clearable @keyup.enter="handleSearch" />
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="queryForm.status" placeholder="全部状态" clearable style="width: 120px">
