@@ -37,11 +37,11 @@ func (s *UserService) Login(email, account, mobile, password, captchaID, captcha
 	} else if mobile != "" {
 		err = utils.DB.Where("mobile = ?", mobile).First(&user).Error
 	} else {
-		return nil, "", "", errors.New("用户不存在")
+		return nil, "", "", errors.New("获取用户失败")
 	}
 
 	if err != nil {
-		return nil, "", "", errors.New("用户不存在")
+		return nil, "", "", errors.New("获取用户失败")
 	}
 
 	if user.Status != 1 {
@@ -127,7 +127,7 @@ func (s *UserService) Logout(token string) error {
 func (s *UserService) GetUserByID(userID uint) (*models.User, error) {
 	var user models.User
 	if err := utils.DB.First(&user, userID).Error; err != nil {
-		return nil, errors.New("用户不存在")
+		return nil, errors.New("获取用户失败")
 	}
 	return &user, nil
 }

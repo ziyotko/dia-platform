@@ -5,7 +5,6 @@ import (
 	"math"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -77,21 +76,8 @@ func (c *AuthController) Login(ctx *gin.Context) {
 	if err != nil {
 		loginLog.Status = 0
 		utils.DB.Create(loginLog)
-		errMsg := err.Error()
-		// 仅返回已知用户友好的错误，避免泄露底层敏感信息
-		safeErrors := []string{"验证码错误", "用户不存在", "用户已禁用", "密码错误", "登录失败次数过多", "账号已锁定", "获取系统设置失败"}
-		isSafe := false
-		for _, safe := range safeErrors {
-			if strings.Contains(errMsg, safe) {
-				isSafe = true
-				break
-			}
-		}
-		if isSafe {
-			ctx.JSON(http.StatusOK, utils.Error(1, errMsg))
-		} else {
-			ctx.JSON(http.StatusOK, utils.Error(1, "登录失败，请稍后重试"))
-		}
+		// 安全考虑：登录失败一律返回统一提示，避免泄露具体错误原因
+		ctx.JSON(http.StatusOK, utils.Error(1, "登录失败，请稍后重试"))
 		return
 	}
 

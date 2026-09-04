@@ -105,7 +105,6 @@ func SetupRoutes(router *gin.Engine) {
 
 		// 内容引用所需的基础数据（只读）
 		member.GET("/menus/user", menuController.GetUserMenus)
-		member.GET("/settings", settingsController.GetSettings)
 		member.GET("/categories", categoryController.GetCategories)
 		member.GET("/categories/all", categoryController.GetAllCategories)
 		member.GET("/categories/stats", categoryController.GetCategoryArticleStats)
@@ -120,7 +119,6 @@ func SetupRoutes(router *gin.Engine) {
 		member.GET("/workflows/:id", workflowController.GetWorkflowByID)
 		member.GET("/workflows/:id/nodes", workflowController.GetWorkflowNodes)
 		member.GET("/workflow-roles", workflowRoleController.GetWorkflowRoles)
-		member.GET("/users", userController.GetUsers)
 		member.GET("/ads", adController.GetAds)
 		member.GET("/ads/:id", adController.GetAdByID)
 		member.GET("/links", linkController.GetLinks)
@@ -135,6 +133,7 @@ func SetupRoutes(router *gin.Engine) {
 	admin.Use(middleware.AuthMiddleware(), middleware.AdminMiddleware(), middleware.ReplayProtectionMiddleware(), middleware.OperationLog(), ipLimiter.Limit())
 	{
 		// 用户管理
+		admin.GET("/users", userController.GetUsers)
 		admin.POST("/users", userController.CreateUser)
 		admin.POST("/users/import", userController.ImportUsers)
 		admin.GET("/users/:id", userController.GetUserByID)
@@ -197,6 +196,7 @@ func SetupRoutes(router *gin.Engine) {
 
 		// 系统设置（写操作）
 		admin.PUT("/settings", settingsController.UpdateSettings)
+		admin.GET("/settings", settingsController.GetSettings)
 
 		// 模板管理
 		admin.GET("/templates", templateController.GetTemplates)
