@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"server/config"
 	"server/models"
 	"server/utils"
 
@@ -97,21 +96,9 @@ func (s *UserService) Login(email, account, mobile, password, captchaID, captcha
 		return nil, "", "", err
 	}
 
-	signKey, err := utils.GenerateSignKey()
-	if err != nil {
-		return nil, "", "", err
-	}
-
-	ttl := time.Duration(config.AppConfig.JWT.ExpiresHour) * time.Hour
-	if expiresHour > 0 {
-		ttl = time.Duration(expiresHour) * time.Hour
-	}
-	signKeyKey := fmt.Sprintf("signkey:%d", user.ID)
-	if err := utils.Redis.Set(utils.Ctx, signKeyKey, signKey, ttl).Err(); err != nil {
-		return nil, "", "", err
-	}
-
-	return &user, token, signKey, nil
+	// 签名密钥由 Token 派生，登录不再单独生成 / 存储 signKey（见 utils/sign.go 的 DeriveSignKey）。
+	// 保留第 3 个返回值为空，供旧接口兼容；前端已不再使用。
+	return &user, token, "", nil
 }
 
 func (s *UserService) Logout(token string) error {

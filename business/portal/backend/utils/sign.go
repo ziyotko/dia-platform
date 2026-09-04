@@ -17,6 +17,13 @@ func GenerateSignKey() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
+// DeriveSignKey 从访问 Token 派生请求签名密钥。
+// 使签名密钥与会话 Token 绑定：随登录轮换、随 Token 过期而失效，
+// 无需再单独下发 / 存储 signKey，从而减少额外的密钥暴露面。
+func DeriveSignKey(token string) string {
+	return HmacSha256(token, "portal-replay-sign-v1")
+}
+
 // Sha256 计算字符串的 SHA-256 哈希，返回 hex 字符串
 func Sha256(data string) string {
 	h := sha256.New()

@@ -54,7 +54,7 @@ func (c *AuthController) Login(ctx *gin.Context) {
 		return
 	}
 
-	user, token, signKey, err := c.userService.Login(req.Email, req.Account, req.Mobile, req.Password, req.CaptchaID, req.CaptchaCode)
+	user, token, _, err := c.userService.Login(req.Email, req.Account, req.Mobile, req.Password, req.CaptchaID, req.CaptchaCode)
 
 	username := req.Account
 	if username == "" {
@@ -100,8 +100,7 @@ func (c *AuthController) Login(ctx *gin.Context) {
 			"avatar":   user.Avatar,
 			"roleIds":  userRoles,
 		},
-		"token":   token,
-		"signKey": signKey,
+		"token": token,
 	}))
 }
 
@@ -118,9 +117,6 @@ func (c *AuthController) Logout(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "登出失败"))
 		return
 	}
-
-	userID := ctx.GetUint("userID")
-	utils.Redis.Del(utils.Ctx, fmt.Sprintf("signkey:%d", userID))
 
 	ctx.JSON(http.StatusOK, utils.Success("登出成功", nil))
 }

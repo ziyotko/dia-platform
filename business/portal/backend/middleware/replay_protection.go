@@ -101,13 +101,9 @@ func ReplayProtectionMiddleware() gin.HandlerFunc {
 				return
 			}
 
-			signKey, err := utils.Redis.Get(utils.Ctx, fmt.Sprintf("signkey:%d", uid)).Result()
-			if err != nil {
-				utils.RecordReplayFail(c, "invalid_signkey", uid, true)
-				c.JSON(http.StatusOK, utils.Error(1, "签名密钥无效或已过期"))
-				c.Abort()
-				return
-			}
+			// 签名密钥由 Token 派生（不再依赖 Redis 存储的 signKey）；
+			// Token 已在 AuthMiddleware 完成校验，这里只需从 Authorization 头提取。
+			signKey := utils.DeriveSignKey(strings.TrimPrefix(c.GetHeader("Authorization"), "Bearer "))
 
 			bodyHash := ""
 			isMultipart := strings.HasPrefix(c.ContentType(), "multipart/form-data")

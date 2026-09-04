@@ -36,6 +36,12 @@ function hmacSha256(message: string, secret: string): string {
   return CryptoJS.HmacSHA256(message, secret).toString(CryptoJS.enc.Hex)
 }
 
+// 签名密钥由访问 Token 派生（与后端 utils/sign.go 的 DeriveSignKey 保持一致），
+// 不再单独存储 signKey，降低密钥暴露面并随 Token 轮换。
+function deriveSignKey(token: string): string {
+  return hmacSha256(token, 'portal-replay-sign-v1')
+}
+
 // 计算最终请求的 target（path + query），必须与后端 c.Request.URL.RequestURI() 一致，
 // 从而让 GET 查询参数也受到签名保护。
 function getRequestTarget(config: any): string {
@@ -144,14 +150,15 @@ request.interceptors.request.use(
     config.headers['X-Request-Timestamp'] = timestamp
     config.headers['X-Request-Nonce'] = nonce
 
-    if (userStore.signKey && config.url) {
+    const signKey = userStore.token ? deriveSignKey(userStore.token) : ''
+    if (signKey && config.url) {
       const target = getRequestTarget(config)
       const { hash, fileHash } = await computeBodyHash(config.data)
       if (fileHash) {
         config.headers['X-Body-Hash-Value'] = fileHash
       }
       const signature = createRequestSignature(
-        userStore.signKey,
+        signKey,
         config.method || 'GET',
         target,
         timestamp,

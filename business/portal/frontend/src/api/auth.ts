@@ -9,7 +9,6 @@ export interface LoginData {
 
 export interface LoginResult {
   token: string
-  signKey: string
   user: {
     id: number
     username: string
