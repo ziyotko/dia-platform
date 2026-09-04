@@ -6,6 +6,16 @@ server:
   api_prefix: /caamm/api
   upload_dir_prefix: "/caamm"
   max_concurrent_ips: 10
+  # 站点分析等公开写接口的限流配置（按真实客户端 IP）。
+  # 建议 production 依据真实流量调整，避免正常用户被误伤。
+  analytics_rate_limit: 60
+  analytics_rate_window_seconds: 60
+  # 登录接口限流（防暴力破解，按真实客户端 IP）
+  login_rate_limit: 10
+  login_rate_window_seconds: 300
+  # 验证码接口限流（防刷验证码，按真实客户端 IP）
+  captcha_rate_limit: 30
+  captcha_rate_window_seconds: 60
   # CORS 白名单（前端来源），生产环境请按实际域名配置，不要使用 *
   allowed_origins:
     - http://localhost:5173

@@ -23,6 +23,18 @@ type ServerConfig struct {
 	UploadDirPrefix  string   `mapstructure:"upload_dir_prefix"`
 	MaxConcurrentIPs int      `mapstructure:"max_concurrent_ips"`
 	AllowedOrigins   []string `mapstructure:"allowed_origins"`
+
+	// 站点分析等公开写接口的限流配置（按真实客户端 IP）
+	AnalyticsRateLimit      int `mapstructure:"analytics_rate_limit"`          // 每窗口允许的最大请求数
+	AnalyticsRateWindowSecs int `mapstructure:"analytics_rate_window_seconds"` // 限流窗口（秒）
+
+	// 登录接口限流（防暴力破解，按真实客户端 IP）
+	LoginRateLimit      int `mapstructure:"login_rate_limit"`          // 每窗口允许的最大请求数
+	LoginRateWindowSecs int `mapstructure:"login_rate_window_seconds"` // 限流窗口（秒）
+
+	// 验证码接口限流（防刷验证码，按真实客户端 IP）
+	CaptchaRateLimit      int `mapstructure:"captcha_rate_limit"`          // 每窗口允许的最大请求数
+	CaptchaRateWindowSecs int `mapstructure:"captcha_rate_window_seconds"` // 限流窗口（秒）
 }
 
 type DatabaseConfig struct {

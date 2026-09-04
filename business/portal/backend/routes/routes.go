@@ -1,6 +1,8 @@
 package routes
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 
 	"server/config"
@@ -42,17 +44,31 @@ func SetupRoutes(router *gin.Engine) {
 	public := router.Group(apiPrefix)
 	public.Use(middleware.ReplayProtectionMiddleware())
 	{
-		public.GET("/captcha", authController.GetCaptcha)
-		public.POST("/login", authController.Login)
+		// 登录/验证码接口：按真实客户端 IP 做更严格的独立限流（防暴力破解/防刷验证码）
+		public.GET("/captcha", middleware.RateLimitMiddleware(
+			config.AppConfig.Server.CaptchaRateLimit,
+			time.Duration(config.AppConfig.Server.CaptchaRateWindowSecs)*time.Second,
+		), authController.GetCaptcha)
+		public.POST("/login", middleware.RateLimitMiddleware(
+			config.AppConfig.Server.LoginRateLimit,
+			time.Duration(config.AppConfig.Server.LoginRateWindowSecs)*time.Second,
+		), authController.Login)
 		public.GET("/site-info", settingsController.GetPublicSiteInfo)
 
 		//开放文章搜索（无需认证，仅返回已发布文章，不含正文）
 		public.GET("/search/articles", articleController.PublicSearchArticles)
 
-		//站点分析接口
-		public.POST("/visit", visitController.RecordVisit)
-		public.POST("/like", likeController.RecordLike)
-		public.POST("/share", shareController.RecordShare)
+		//站点分析接口（公开写接口：按真实客户端 IP 限流，防脚本刷量；业务层再做去重+文章校验）
+		analytics := public.Group("")
+		analytics.Use(middleware.RateLimitMiddleware(
+			config.AppConfig.Server.AnalyticsRateLimit,
+			time.Duration(config.AppConfig.Server.AnalyticsRateWindowSecs)*time.Second,
+		))
+		{
+			analytics.POST("/visit", visitController.RecordVisit)
+			analytics.POST("/like", likeController.RecordLike)
+			analytics.POST("/share", shareController.RecordShare)
+		}
 	}
 
 	ipLimiter := middleware.NewIPLimiter()
