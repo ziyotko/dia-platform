@@ -22,10 +22,8 @@ type ServerConfig struct {
 	MaxConcurrentIPs int      `mapstructure:"max_concurrent_ips"`
 	UploadDirPrefix  string   `mapstructure:"upload_dir_prefix"`
 	AllowedOrigins   []string `mapstructure:"allowed_origins"`
+	TrustedProxies   []string `mapstructure:"trusted_proxies"`
 }
-
-// 已知的弱默认密钥，用于启动时告警
-const defaultJWTSecret = "member-jwt-secret-key-2024"
 
 type MySQLConfig struct {
 	Host     string `mapstructure:"host"`
@@ -79,6 +77,7 @@ func applyEnvOverrides() {
 	if v := os.Getenv("MEMBER_JWT_SECRET"); v != "" {
 		Cfg.JWT.Secret = v
 	}
+
 	if v := os.Getenv("MEMBER_DB_PASSWORD"); v != "" {
 		Cfg.MySQL.Password = v
 	}
@@ -90,7 +89,13 @@ func applyEnvOverrides() {
 		Cfg.Server.Mode = "release"
 	}
 
-	if Cfg.JWT.Secret == "" || Cfg.JWT.Secret == defaultJWTSecret {
-		log.Printf("[WARN] 正在使用弱/默认 JWT 密钥！生产环境必须设置环境变量 MEMBER_JWT_SECRET。")
+	if Cfg.JWT.Secret == "" || Cfg.JWT.Secret == "MEMBER_JWT_SECRET" {
+		log.Printf("[WARN] 未设置 JWT 密钥！必须设置环境变量 MEMBER_JWT_SECRET。")
+		log.Fatal("程序退出")
+	}
+
+	if Cfg.MySQL.Password == "" || Cfg.MySQL.Password == "MEMBER_DB_PASSWORD" {
+		log.Printf("[WARN] 未设置数据库密码！必须设置环境变量 MEMBER_DB_PASSWORD。")
+		log.Fatal("程序退出")
 	}
 }

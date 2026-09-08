@@ -9,13 +9,16 @@ server:
   allowed_origins:
     - http://localhost:5173
     - http://127.0.0.1:5173
+  # 可信反向代理 IP 列表（用于正确获取客户端真实 IP）
+  trusted_proxies:
+    - 127.0.0.1
 
 mysql:
-  host: 10.3.1.95
+  host: 127.0.0.1
   port: 3305
   user: root
-  # 生产环境请使用环境变量 MEMBER_DB_PASSWORD 注入，勿提交真实密码到仓库
-  password: "1qaz@WSX"
+  # 请使用环境变量 MEMBER_DB_PASSWORD 注入，勿提交真实密码到仓库
+  password: MEMBER_DB_PASSWORD
   db_name: caam_member
   charset: utf8mb4
   max_open: 50
@@ -28,8 +31,8 @@ redis:
   anti_replay_db: 12
 
 jwt:
-  # 生产环境请使用环境变量 MEMBER_JWT_SECRET 注入强随机密钥
-  secret: member-jwt-secret-key-2024
+  # 请使用环境变量 MEMBER_JWT_SECRET 注入强随机密钥
+  secret: MEMBER_JWT_SECRET
   expire_hours: 24
   issuer: caam-member
 

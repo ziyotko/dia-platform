@@ -66,7 +66,7 @@ func main() {
 	r.Use(middleware.IPLimit())
 	r.Use(gin.Recovery())
 	r.Use(middleware.SecureUploads())
-	r.SetTrustedProxies([]string{"127.0.0.1"})
+	r.SetTrustedProxies(config.Cfg.Server.TrustedProxies)
 
 	// Serve uploaded files
 	r.Static(config.Cfg.Server.UploadDirPrefix+"/uploads", "./uploads")
