@@ -16,6 +16,7 @@ type Config struct {
 }
 
 type ServerConfig struct {
+	Host             string   `mapstructure:"host"`
 	Port             int      `mapstructure:"port"`
 	Mode             string   `mapstructure:"mode"`
 	APIPrefix        string   `mapstructure:"api_prefix"`

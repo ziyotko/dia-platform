@@ -75,7 +75,7 @@ func main() {
 	routes.Register(r)
 
 	// Start server
-	addr := "0.0.0.0:" + itoa(config.Cfg.Server.Port)
+	addr := config.Cfg.Server.Host + ":" + itoa(config.Cfg.Server.Port)
 	utils.Logger.Infof("Member server starting on %s", addr)
 	if err := r.Run(addr); err != nil {
 		utils.Logger.Fatalf("Server failed: %v", err)
