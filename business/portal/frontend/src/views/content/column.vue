@@ -427,7 +427,7 @@ const displayTypeMap: Record<number, string> = {
   3: '图片展示',
   4: '广告展示',
   5: '友链展示',
-  6: 'tab页展示',
+  6: '报刊展示',
   7: '数据展示',
   8: '视频展示',
   9: '其他展示'
@@ -439,7 +439,7 @@ const displayTypeOptions = [
   { label: '图片展示', value: 3 },
   { label: '广告展示', value: 4 },
   { label: '友链展示', value: 5 },
-  { label: 'tab页展示', value: 6 },
+  { label: '报刊展示', value: 6 },
     { label: '数据展示', value: 7 },
       { label: '视频展示', value: 8 },
   { label: '其他展示', value: 9 }

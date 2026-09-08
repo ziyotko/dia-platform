@@ -34,7 +34,7 @@ var defaultMenus = []menuSeedItem{
 		Icon: "FolderOpened", Type: "directory", Sort: 1, Status: 1,
 		Children: []menuSeedItem{
 			{Name: "待审核", Path: "/content/pending-audits", Component: "system/pending-audits", Icon: "Bell", Type: "menu", Sort: 1, Status: 1, APIPrefix: "/articles/my-audits"},
-			{Name: "文章管理", Path: "/content/article", Component: "content/article", Icon: "Document", Type: "menu", Sort: 2, Status: 1, APIPrefix: "/articles"},
+			{Name: "图文管理", Path: "/content/article", Component: "content/article", Icon: "Document", Type: "menu", Sort: 2, Status: 1, APIPrefix: "/articles"},
 			{Name: "广告管理", Path: "/content/ad", Component: "content/ad", Icon: "Picture", Type: "menu", Sort: 3, Status: 1, APIPrefix: "/ads"},
 			{Name: "链接管理", Path: "/content/link", Component: "content/link", Icon: "Link", Type: "menu", Sort: 4, Status: 1, APIPrefix: "/links"},
 			{Name: "模板管理", Path: "/content/template", Component: "content/template", Icon: "Tickets", Type: "menu", Sort: 5, Status: 1, APIPrefix: "/templates"},
