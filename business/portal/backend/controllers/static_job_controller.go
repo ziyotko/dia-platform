@@ -124,10 +124,7 @@ func staticJobDuration(job *staticProgramJob) string {
 			end = t
 		}
 	}
-	total := int64(end.Sub(start).Seconds())
-	if total < 0 {
-		total = 0
-	}
+	total := max(int64(end.Sub(start).Seconds()), 0)
 	h, m, s := total/3600, (total%3600)/60, total%60
 	switch {
 	case h > 0:
