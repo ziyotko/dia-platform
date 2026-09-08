@@ -95,16 +95,16 @@ func createSystemConfig() {
 	}
 
 	configs := []models.SystemConfig{
-		{Key: "site_name", Value: "中国电器工业协会会员系统", Description: "网站名称"},
-		{Key: "site_description", Value: "中国电器工业协会官方会员服务系统", Description: "网站描述"},
+		{Key: "site_name", Value: "XXXXXXXX协会会员系统", Description: "网站名称"},
+		{Key: "site_description", Value: "XXXXXXXXXXXXX协会官方会员服务系统", Description: "网站描述"},
 		{Key: "bank_name", Value: "中国工商银行北京分行", Description: "开户银行"},
-		{Key: "bank_account", Value: "02000041092001234567", Description: "银行账号"},
-		{Key: "bank_account_name", Value: "中国电器工业协会", Description: "账户名称"},
-		{Key: "contact_phone", Value: "010-68166500", Description: "联系电话"},
-		{Key: "contact_email", Value: "member@ceeia.com", Description: "联系邮箱"},
-		{Key: "copyright_name", Value: "中国电器工业协会", Description: "版权所有者"},
-		{Key: "icp_no", Value: "京ICP备09041796号-1", Description: "ICP备案号"},
-		{Key: "beian_no", Value: "京公网安备11010502000000号", Description: "网安备案号"},
+		{Key: "bank_account", Value: "XXXXXXXXXXXXX7", Description: "银行账号"},
+		{Key: "bank_account_name", Value: "XXXXXXXXXXXXX", Description: "账户名称"},
+		{Key: "contact_phone", Value: "010-ccccccccc0", Description: "联系电话"},
+		{Key: "contact_email", Value: "member@ccccccc.com", Description: "联系邮箱"},
+		{Key: "copyright_name", Value: "XXXXXXXXXXXXX", Description: "版权所有者"},
+		{Key: "icp_no", Value: "京ICP备0cccc796号-1", Description: "ICP备案号"},
+		{Key: "beian_no", Value: "京公网安备1101ccccc号", Description: "网安备案号"},
 	}
 	db.DB.Create(&configs)
 
