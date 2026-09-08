@@ -89,7 +89,7 @@
             <el-button type="warning" @click="handleAddData">
               <el-icon><DataLine /></el-icon>新增数据
             </el-button>
-            <el-button type="info" @click="handleAddPaper">
+            <el-button type="primary" @click="handleAddPaper">
               <el-icon><Files /></el-icon>新增报刊
             </el-button>
           </div>
@@ -119,9 +119,9 @@
                 :underline="'never'"
                 @click="handlePreview(row)"
               >
-                {{ row.type === 3 && row.summary ? `${row.summary}${row.title}` : row.title }}
+                {{ (row.type === 3 || row.type === 4) && row.summary ? `${row.summary}${row.title}` : row.title }}
               </el-link>
-              <span v-else>{{ row.type === 3 && row.summary ? `${row.summary}${row.title}` : row.title }}</span>
+              <span v-else>{{ (row.type === 3 || row.type === 4) && row.summary ? `${row.summary}${row.title}` : row.title }}</span>
             </span>
           </template>
         </el-table-column>
@@ -604,6 +604,128 @@
       </template>
     </el-dialog>
 
+    <el-dialog v-model="paperDialogVisible" :title="paperDialogTitle" width="680px" destroy-on-close :close-on-click-modal="false">
+      <el-form ref="paperFormRef" :model="paperForm" :rules="paperFormRules" label-width="90px">
+        <el-form-item label="报刊标题" prop="title">
+          <el-input v-model="paperForm.title" placeholder="请输入报刊标题" clearable />
+        </el-form-item>
+        <el-row :gutter="20">
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="所属分类" prop="categoryIds">
+              <el-select v-model="paperForm.categoryIds" multiple placeholder="请选择分类" style="width: 100%">
+                <el-option
+                  v-for="item in categoryList"
+                  :key="item.id"
+                  :label="item.name"
+                  :value="item.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="文章标签" prop="tagIds">
+              <el-select v-model="paperForm.tagIds" multiple placeholder="请选择标签" style="width: 100%">
+                <el-option
+                  v-for="item in tagList"
+                  :key="item.id"
+                  :label="item.name"
+                  :value="item.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="期号" prop="issueNo">
+              <el-input v-model="paperForm.issueNo" placeholder="如 2026年第9期" clearable />
+            </el-form-item>
+          </el-col>
+          <el-col :xs="24" :sm="12">
+            <el-form-item label="出版年月" prop="yearMonth">
+              <el-date-picker
+                v-model="paperForm.yearMonth"
+                type="month"
+                placeholder="请选择出版年月"
+                format="YYYY年MM月"
+                value-format="YYYY-MM"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-form-item label="来源" prop="source">
+          <el-input v-model="paperForm.source" placeholder="请输入来源" clearable />
+        </el-form-item>
+        <el-form-item label="封面图" prop="cover">
+          <div class="article-cover-uploader">
+            <el-upload
+              v-if="!paperForm.cover"
+              class="cover-uploader"
+              action=""
+              :http-request="handlePaperCoverUpload"
+              :show-file-list="false"
+              accept="image/*"
+            >
+              <el-icon class="uploader-icon"><Plus /></el-icon>
+              <div class="uploader-text">点击上传封面</div>
+              <div class="uploader-hint">建议尺寸 800×480</div>
+            </el-upload>
+            <div v-else class="cover-preview">
+              <div class="cover-image-wrapper">
+                <el-image
+                  :src="paperForm.cover"
+                  fit="cover"
+                  style="width: 100%; height: 100%"
+                  :preview-src-list="[paperForm.cover]"
+                />
+                <div class="cover-overlay" @click="handleRemovePaperCover">
+                  <el-icon><Delete /></el-icon>
+                  <span>删除封面</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </el-form-item>
+        <el-form-item label="报刊摘要" prop="abstract">
+          <el-input
+            v-model="paperForm.abstract"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入报刊摘要，简要描述本期报刊内容"
+            maxlength="500"
+            show-word-limit
+          />
+        </el-form-item>
+        <el-form-item label="报刊文件" prop="pdf">
+          <el-upload
+            action="#"
+            :http-request="handlePaperAttachmentUpload"
+            :before-upload="handlePaperAttachmentBeforeUpload"
+            :on-remove="handlePaperAttachmentRemove"
+            :limit="1"
+            accept=".pdf,application/pdf"
+            class="paper-uploader"
+          >
+            <el-button type="primary" plain :disabled="!!paperForm.pdf">
+              <el-icon><Plus /></el-icon>上传 PDF 报刊文件
+            </el-button>
+            <template #tip>
+              <div class="paper-tip">支持 PDF 格式报刊文件，单个文件不超过 50MB</div>
+            </template>
+          </el-upload>
+          <div v-if="paperForm.pdf && paperForm.pdf.url" class="paper-file-preview">
+            <el-icon><Document /></el-icon>
+            <a :href="paperForm.pdf.url" target="_blank">{{ paperForm.pdf.name }}</a>
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="paperDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="paperSubmitLoading" @click="handleSubmitPaper">确定</el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog v-model="previewVisible" title="文章预览" width="800px" destroy-on-close>
       <div class="preview-content">
         <h2>{{ previewData.title }}</h2>
@@ -957,6 +1079,24 @@ const dataForm = reactive({
 
 const dataDialogTitle = ref('新增数据')
 
+const paperDialogVisible = ref(false)
+const paperSubmitLoading = ref(false)
+const paperFormRef = ref()
+const paperForm = reactive({
+  id: undefined as number | undefined,
+  title: '',
+  issueNo: '',
+  yearMonth: '',
+  source: '',
+  cover: '',
+  abstract: '',
+  categoryIds: [] as number[],
+  tagIds: [] as number[],
+  pdf: null as any
+})
+
+const paperDialogTitle = ref('新增报刊')
+
 const columnDialogVisible = ref(false)
 const columnDialogTitle = ref('')
 const selectedColumnIds = ref<number[]>([])
@@ -1122,6 +1262,11 @@ const dataFormRules = {
   publishTime: [{ required: true, message: '请选择发布时间', trigger: 'change' }],
   yearMonth: [{ required: true, message: '请选择年月', trigger: 'change' }],
   content: [{ required: true, message: '请输入数据内容', trigger: 'blur' }]
+}
+
+const paperFormRules = {
+  title: [{ required: true, message: '请输入报刊标题', trigger: 'blur' }],
+  yearMonth: [{ required: true, message: '请选择出版年月', trigger: 'change' }]
 }
 
 const route = useRoute()
@@ -1569,10 +1714,9 @@ const handleAdd = () => {
 }
 
 const handleAddPaper = () => {
-  dialogTitle.value = '新增报刊'
-  resetForm()
-  form.type = 4
-  dialogVisible.value = true
+  paperDialogTitle.value = '新增报刊'
+  resetPaperForm()
+  paperDialogVisible.value = true
 }
 
 const handleAddVideo = () => {
@@ -1637,7 +1781,25 @@ const handleEdit = async (row: any) => {
     dataDialogVisible.value = true
     return
   }
-  dialogTitle.value = detail.type === 4 ? '编辑报刊' : '编辑文章'
+  if (row.type === 4) {
+    paperDialogTitle.value = '编辑报刊'
+    resetPaperForm()
+    Object.assign(paperForm, {
+      id: detail.id,
+      title: detail.title,
+      issueNo: detail.summary || '',
+      yearMonth: detail.publishTime ? detail.publishTime.slice(0, 7) : '',
+      source: detail.source || '',
+      cover: detail.cover || '',
+      abstract: detail.content || '',
+      categoryIds: detail.categoryIds || [],
+      tagIds: detail.tagIds || [],
+      pdf: detail.attachments?.[0] || null
+    })
+    paperDialogVisible.value = true
+    return
+  }
+  dialogTitle.value = '编辑文章'
   resetForm()
   Object.assign(form, {
     id: detail.id,
@@ -2337,6 +2499,113 @@ const handleSubmitData = async () => {
   }
 }
 
+const resetPaperForm = () => {
+  paperForm.id = undefined
+  paperForm.title = ''
+  paperForm.issueNo = ''
+  paperForm.yearMonth = ''
+  paperForm.source = ''
+  paperForm.cover = ''
+  paperForm.abstract = ''
+  paperForm.categoryIds = []
+  paperForm.tagIds = []
+  paperForm.pdf = null
+}
+
+const handlePaperCoverUpload = async (options: any) => {
+  try {
+    const res: any = await uploadFile(options.file, 'article')
+    paperForm.cover = res.data?.url || res.url || ''
+    ElMessage.success('封面图上传成功')
+  } catch (error: any) {
+    ElMessage.error(error?.message || '封面图上传失败')
+  }
+}
+
+const handleRemovePaperCover = () => {
+  paperForm.cover = ''
+}
+
+const handlePaperAttachmentBeforeUpload = (file: File) => {
+  const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf'
+  if (!isPdf) {
+    ElMessage.warning('仅支持 PDF 格式的报刊文件')
+    return false
+  }
+  if (file.size > 50 * 1024 * 1024) {
+    ElMessage.warning('PDF 文件大小不能超过 50MB')
+    return false
+  }
+  return true
+}
+
+const handlePaperAttachmentUpload = async (options: any) => {
+  const file = options.file
+  const formData = new FormData()
+  formData.append('file', file)
+  formData.append('dir', 'attachment')
+  try {
+    const res: any = await request.post('/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    const url = res.data?.url || ''
+    if (url) {
+      paperForm.pdf = { url, name: file.name, size: file.size, uid: file.uid }
+      options.onSuccess({ url, name: file.name, size: file.size })
+      ElMessage.success('报刊文件上传成功')
+    } else {
+      options.onError(new Error('上传失败'))
+      ElMessage.error('报刊文件上传失败')
+    }
+  } catch (error: any) {
+    options.onError(error)
+    ElMessage.error(error?.message || '报刊文件上传失败')
+  }
+}
+
+const handlePaperAttachmentRemove = () => {
+  paperForm.pdf = null
+}
+
+const handleSubmitPaper = async () => {
+  const valid = await paperFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+  paperSubmitLoading.value = true
+  try {
+    const data = {
+      title: paperForm.title,
+      type: 4,
+      categoryIds: paperForm.categoryIds,
+      tagIds: paperForm.tagIds,
+      summary: paperForm.issueNo,
+      content: noReferrerContent(paperForm.abstract),
+      status: 0,
+      auditStatus: 0,
+      isTop: 0,
+      isBold: 0,
+      defaultColor: '',
+      cover: paperForm.cover,
+      source: paperForm.source,
+      publishTime: paperForm.yearMonth ? `${paperForm.yearMonth}-01 00:00:00` : '',
+      url: '',
+      attachments: paperForm.pdf && paperForm.pdf.url
+        ? [{ name: paperForm.pdf.name, url: paperForm.pdf.url, size: paperForm.pdf.size || 0 }]
+        : []
+    }
+    if (paperForm.id) {
+      await updateArticle(paperForm.id, data)
+      ElMessage.success('编辑报刊成功')
+    } else {
+      await createArticle(data)
+      ElMessage.success('新增报刊成功')
+    }
+    paperDialogVisible.value = false
+    fetchData()
+  } finally {
+    paperSubmitLoading.value = false
+  }
+}
+
 const handleSizeChange = (val: number) => {
   queryForm.pageSize = val
   fetchData()
@@ -2822,6 +3091,34 @@ onMounted(() => {
   background: #fafbfc;
   border-radius: 8px;
   border: 1px solid #e6f2ff;
+}
+
+.paper-uploader {
+  .paper-tip {
+    font-size: 13px;
+    color: #909399;
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+}
+
+.paper-file-preview {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #fafbfc;
+  border-radius: 8px;
+  border: 1px solid #e6f2ff;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #002fa7;
+  font-size: 14px;
+
+  a {
+    color: #002fa7;
+    text-decoration: none;
+    word-break: break-all;
+  }
 }
 
 :global(.el-image-viewer__wrapper) {
