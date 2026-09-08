@@ -129,7 +129,7 @@
         <el-table-column prop="source" label="来源" width="140" show-overflow-tooltip />
         <el-table-column prop="publishTime" label="发布时间" width="120" align="center">
           <template #default="{ row }">
-            {{ row.publishTime ? row.publishTime.slice(0, 10) : '-' }}
+            {{ row.publishTime ? (row.type === 4 ? row.publishTime.slice(0, 7) : row.publishTime.slice(0, 10)) : '-' }}
           </template>
         </el-table-column>
         <el-table-column prop="columnCount" label="发布栏目数量" width="120" align="center" />
