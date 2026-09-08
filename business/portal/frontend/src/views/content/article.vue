@@ -1,5 +1,5 @@
 <template>
-  <div class="page-container">
+  <div class="page-container" v-loading="deleting" :element-loading-text="deletingText">
     <el-card shadow="hover" class="search-card">
       <el-form :model="queryForm" inline>
         <el-form-item label="文章标题">
@@ -904,6 +904,8 @@ const currentUserId = computed(() => userStore.userInfo?.id || 0)
 const isAdmin = computed(() => userStore.userInfo?.roleIds?.includes(1) || userStore.userInfo?.roleIds?.includes(2) || false)
 
 const loading = ref(false)
+const deleting = ref(false)
+const deletingText = ref('文章删除中...')
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const submitLoading = ref(false)
@@ -1649,9 +1651,15 @@ const handleDelete = (row: any) => {
     cancelButtonText: '取消',
     type: 'warning'
   }).then(async () => {
-    await deleteArticle(row.id)
-    ElMessage.success('删除成功')
-    fetchData()
+    deletingText.value = '文章删除中...'
+    deleting.value = true
+    try {
+      await deleteArticle(row.id)
+      ElMessage.success('删除成功')
+      fetchData()
+    } finally {
+      deleting.value = false
+    }
   })
 }
 
@@ -1867,9 +1875,15 @@ const handleAudit = async (row: any) => {
     cancelButtonText: '取消',
     type: 'warning'
   }).then(async () => {
-    await auditArticle(row.id, 1)
-    ElMessage.success('提交审核成功')
-    fetchData()
+    deletingText.value = '提交审核中...'
+    deleting.value = true
+    try {
+      await auditArticle(row.id, 1)
+      ElMessage.success('提交审核成功')
+      fetchData()
+    } finally {
+      deleting.value = false
+    }
   })
 }
 
@@ -1917,9 +1931,15 @@ const handleOffShelf = (row: any) => {
     cancelButtonText: '取消',
     type: 'warning'
   }).then(async () => {
-    await updateArticleStatus(row.id, 2)
-    ElMessage.success('下线成功')
-    fetchData()
+    deletingText.value = '文章下线中...'
+    deleting.value = true
+    try {
+      await updateArticleStatus(row.id, 2)
+      ElMessage.success('下线成功')
+      fetchData()
+    } finally {
+      deleting.value = false
+    }
   })
 }
 
