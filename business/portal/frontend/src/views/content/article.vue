@@ -80,16 +80,16 @@
         <div class="card-header">
           <span>文章列表</span>
           <div class="header-actions">
-            <el-button type="primary" plain @click="handleAdd">
+            <el-button type="primary" @click="handleAdd">
               <el-icon><Plus /></el-icon>新增文章
             </el-button>
-            <el-button type="success" plain @click="handleAddVideo">
+            <el-button type="primary" @click="handleAddVideo">
               <el-icon><VideoCamera /></el-icon>新增视频
             </el-button>
-            <el-button type="warning" plain @click="handleAddData">
+            <el-button type="primary" @click="handleAddData">
               <el-icon><DataLine /></el-icon>新增数据
             </el-button>
-            <el-button type="danger" plain @click="handleAddPaper">
+            <el-button type="primary" @click="handleAddPaper">
               <el-icon><Files /></el-icon>新增报刊
             </el-button>
           </div>
