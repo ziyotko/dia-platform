@@ -1907,9 +1907,15 @@ const handleReAudit = async (row: any) => {
       type: 'warning'
     }
   ).then(async () => {
-    await restartArticleAudit(row.id)
-    ElMessage.success('重新提交审核成功')
-    fetchData()
+    deletingText.value = '重新提交审核中...'
+    deleting.value = true
+    try {
+      await restartArticleAudit(row.id)
+      ElMessage.success('重新提交审核成功')
+      fetchData()
+    } finally {
+      deleting.value = false
+    }
   })
 }
 
