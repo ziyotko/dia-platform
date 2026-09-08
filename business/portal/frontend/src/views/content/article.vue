@@ -55,6 +55,7 @@
             <el-option label="图文" :value="1" />
             <el-option label="视频" :value="2" />
             <el-option label="数据" :value="3" />
+            <el-option label="报刊" :value="4" />
           </el-select>
         </el-form-item>
         <el-form-item label="作者">
@@ -88,6 +89,9 @@
             <el-button type="warning" @click="handleAddData">
               <el-icon><DataLine /></el-icon>新增数据
             </el-button>
+            <el-button type="info" @click="handleAddPaper">
+              <el-icon><Files /></el-icon>新增报刊
+            </el-button>
           </div>
         </div>
       </template>
@@ -102,6 +106,9 @@
               </el-tag>
               <el-tag v-else-if="row.type === 3" type="warning" effect="light" size="small" class="type-tag">
                 <el-icon><DataLine /></el-icon>数据
+              </el-tag>
+              <el-tag v-else-if="row.type === 4" type="success" effect="light" size="small" class="type-tag">
+                <el-icon><Files /></el-icon>报刊
               </el-tag>
               <el-tag v-else type="primary" effect="light" size="small" class="type-tag">
                 <el-icon><Document /></el-icon>图文
@@ -653,7 +660,8 @@
           当前文章类型：<el-tag size="small" type="primary" effect="light">{{ articleTypeName }}</el-tag>；
           <template v-if="currentArticleType === 2">仅展示「视频展示」类栏目。</template>
           <template v-else-if="currentArticleType === 3">仅展示「数据展示」类栏目。</template>
-          <template v-else>不展示「视频展示」和「数据展示」类栏目。</template>
+          <template v-else-if="currentArticleType === 4">仅展示「报刊展示」类栏目。</template>
+          <template v-else>不展示「视频展示」「数据展示」和「报刊展示」类栏目。</template>
           请先选择页面，再勾选该页面下的栏目；支持跨页面多选。
         </span>
       </div>
@@ -866,7 +874,8 @@ import {
   Collection,
   Check,
   ArrowRight,
-  User
+  User,
+  Files
 } from '@element-plus/icons-vue'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
@@ -959,7 +968,7 @@ const pageList = ref<any[]>([])
 const columnList = ref<any[]>([])
 
 const articleTypeName = computed(() => {
-  const map: Record<number, string> = { 1: '图文', 2: '视频', 3: '数据' }
+  const map: Record<number, string> = { 1: '图文', 2: '视频', 3: '数据', 4: '报刊' }
   return map[currentArticleType.value || 1] || '图文'
 })
 
@@ -971,8 +980,10 @@ const selectedColumnPageColumns = computed(() => {
     cols = cols.filter((col: any) => col.displayType === 8)
   } else if (type === 3) {
     cols = cols.filter((col: any) => col.displayType === 7)
+  } else if (type === 4) {
+    cols = cols.filter((col: any) => col.displayType === 6)
   } else {
-    cols = cols.filter((col: any) => col.displayType !== 7 && col.displayType !== 8)
+    cols = cols.filter((col: any) => col.displayType !== 6 && col.displayType !== 7 && col.displayType !== 8)
   }
   return cols.sort((a: any, b: any) => {
     const aIsRoot = !a.parentId || a.parentId === 0
@@ -1131,8 +1142,10 @@ const getColumnCountByPage = (pageId: number) => {
     return cols.filter((col: any) => col.displayType === 8).length
   } else if (type === 3) {
     return cols.filter((col: any) => col.displayType === 7).length
+  } else if (type === 4) {
+    return cols.filter((col: any) => col.displayType === 6).length
   } else {
-    return cols.filter((col: any) => col.displayType !== 7 && col.displayType !== 8).length
+    return cols.filter((col: any) => col.displayType !== 6 && col.displayType !== 7 && col.displayType !== 8).length
   }
 }
 
@@ -1555,6 +1568,13 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
+const handleAddPaper = () => {
+  dialogTitle.value = '新增报刊'
+  resetForm()
+  form.type = 4
+  dialogVisible.value = true
+}
+
 const handleAddVideo = () => {
   videoDialogTitle.value = '新增视频'
   resetVideoForm()
@@ -1617,7 +1637,7 @@ const handleEdit = async (row: any) => {
     dataDialogVisible.value = true
     return
   }
-  dialogTitle.value = '编辑文章'
+  dialogTitle.value = detail.type === 4 ? '编辑报刊' : '编辑文章'
   resetForm()
   Object.assign(form, {
     id: detail.id,
