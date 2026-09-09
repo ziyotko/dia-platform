@@ -38,7 +38,6 @@
             <Fold v-if="!collapsed" /><Expand v-else />
           </el-icon>
           <el-breadcrumb separator="/">
-            <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">{{ siteStore.site_name }}</el-breadcrumb-item>
             <el-breadcrumb-item v-if="route.meta?.title">{{ route.meta.title }}</el-breadcrumb-item>
           </el-breadcrumb>
         </div>
