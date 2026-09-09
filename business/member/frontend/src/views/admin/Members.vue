@@ -99,7 +99,7 @@
     <!-- 变更会员等级弹窗 -->
     <el-dialog v-model="levelDialogVisible" title="变更会员等级" width="460px" class="member-level-dialog" :close-on-click-modal="false" append-to-body>
       <div v-loading="levelLoading">
-        <p class="level-hint">仅可为该会员选择其已缴费加入的会籍等级。</p>
+        <p class="level-hint">仅可为该会员选择其已缴费加入的机构所支持的会员等级。</p>
         <el-form label-width="90px">
           <el-form-item label="当前等级">
             <span>{{ levelTarget?.member_level || '-' }}</span>
@@ -108,7 +108,7 @@
             <el-select v-model="selectedLevel" placeholder="请选择会员等级" style="width:100%">
               <el-option v-for="lvl in levelOptions" :key="lvl.id" :label="lvl.name" :value="lvl.name" />
             </el-select>
-            <div v-if="!levelLoading && !levelOptions.length" class="level-empty">暂无已缴费的会籍等级可选</div>
+            <div v-if="!levelLoading && !levelOptions.length" class="level-empty">该会员暂无已缴费加入机构可选的会员等级</div>
           </el-form-item>
         </el-form>
       </div>
@@ -217,6 +217,10 @@ async function confirmChangeLevel() {
     return
   }
   if (!levelTarget.value) return
+  if (selectedLevel.value === levelTarget.value.member_level) {
+    ElMessage.warning('新旧会员等级不能相同')
+    return
+  }
   savingLevel.value = true
   try {
     await adminApi.updateMemberLevel(levelTarget.value.id, selectedLevel.value)

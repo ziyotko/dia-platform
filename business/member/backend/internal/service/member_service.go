@@ -78,17 +78,21 @@ func (s *MemberService) UpdateMemberLevel(id uint64, level string) error {
 	if level == "" {
 		return errors.New("请选择会员等级")
 	}
+	if m.MemberLevel == level {
+		return errors.New("新旧会员等级不能相同")
+	}
 
-	// 目标等级必须来自该会员已缴费加入的会籍
+	// 目标等级必须来自该会员已缴费加入的机构所支持的等级（member_org_levels）
 	var cnt int64
-	if err := db.DB.Model(&models.FeeRecord{}).
-		Where("member_id = ? AND status = ?", id, models.FeeStatusPaid).
-		Where("level_name = ? OR level_id IN (SELECT id FROM member_levels WHERE name = ?)", level, level).
+	if err := db.DB.Model(&models.MemberLevel{}).
+		Joins("JOIN member_org_levels mol ON mol.level_id = member_levels.id").
+		Joins("JOIN member_fee_records fr ON fr.org_id = mol.org_id").
+		Where("fr.member_id = ? AND fr.status = ? AND member_levels.name = ?", id, models.FeeStatusPaid, level).
 		Count(&cnt).Error; err != nil {
 		return err
 	}
 	if cnt == 0 {
-		return errors.New("该等级不在该会员已缴费加入的会籍中")
+		return errors.New("该等级不在该会员已缴费加入的机构所支持的等级中")
 	}
 
 	if err := db.DB.Model(&models.Member{}).Where("id = ?", id).Update("member_level", level).Error; err != nil {
@@ -106,14 +110,15 @@ func (s *MemberService) UpdateMemberLevel(id uint64, level string) error {
 	return nil
 }
 
-// GetMemberAvailableLevels returns the levels this member has paid to join (会籍),
-// used to populate the change-level dropdown options.
+// GetMemberAvailableLevels returns the member levels supported by the organizations
+// the member has paid to join (已缴费加入机构的关联等级), used for the change-level dropdown.
 func (s *MemberService) GetMemberAvailableLevels(memberID uint64) ([]models.MemberLevel, error) {
 	var levels []models.MemberLevel
 	err := db.DB.Raw(`
 		SELECT DISTINCT ml.id, ml.name, ml.level, ml.description, ml.created_at, ml.updated_at, ml.deleted_at
 		FROM member_levels ml
-		JOIN member_fee_records fr ON fr.level_id = ml.id
+		JOIN member_org_levels mol ON mol.level_id = ml.id
+		JOIN member_fee_records fr ON fr.org_id = mol.org_id
 		WHERE fr.member_id = ? AND fr.status = ?
 		ORDER BY ml.level ASC
 	`, memberID, models.FeeStatusPaid).Scan(&levels).Error
