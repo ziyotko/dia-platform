@@ -10,9 +10,10 @@
         :collapse="collapsed"
         :collapse-transition="false"
         router
-        background-color="#f8fafc"
-        text-color="#4b5563"
-        active-text-color="#409eff"
+        background-color="transparent"
+        text-color="#344054"
+        active-text-color="#002fa7"
+        class="sidebar-menu"
       >
         <el-menu-item index="/member/dashboard">
           <el-icon><HomeFilled /></el-icon>
@@ -114,8 +115,9 @@ function handleCommand(cmd: string) {
 <style scoped lang="scss">
 .member-layout { height: 100vh; }
 .sidebar {
-  background: #f8fafc;
-  border-right: 1px solid #e5e7eb;
+  background: #fff;
+  border-right: 1px solid var(--app-border);
+  box-shadow: 2px 0 12px rgba(16, 24, 40, 0.04);
   overflow: hidden;
   transition: width 0.3s;
   .sidebar-header {
@@ -123,9 +125,22 @@ function handleCommand(cmd: string) {
     align-items: center;
     gap: 10px;
     padding: 20px;
-    color: #1f2937;
+    color: var(--app-text-primary);
     cursor: pointer;
     .title { flex: 1; min-width: 0; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  }
+  .sidebar-menu {
+    border-right: none;
+    :deep(.el-menu-item) {
+      border-radius: 8px;
+      margin: 2px 8px;
+      &:hover { background: var(--el-color-primary-light-9); }
+      &.is-active {
+        background: var(--el-color-primary-light-9);
+        color: var(--el-color-primary);
+        font-weight: 600;
+      }
+    }
   }
 }
 .topbar {
@@ -133,21 +148,21 @@ function handleCommand(cmd: string) {
   justify-content: space-between;
   align-items: center;
   background: #fff;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--app-border);
   padding: 0 24px;
   height: 56px;
   .topbar-left { display: flex; align-items: center; gap: 16px; }
-  .collapse-btn { cursor: pointer; &:hover { color: #1a6fb5; } }
+  .collapse-btn { cursor: pointer; &:hover { color: var(--el-color-primary); } }
   .user-info {
     display: flex;
     align-items: center;
     gap: 8px;
     cursor: pointer;
-    .username { font-size: 14px; color: #374151; }
+    .username { font-size: 14px; color: var(--app-text-secondary); }
   }
 }
 .main-content {
-  background: #f0f4f8;
+  background: var(--app-bg);
   padding: 24px;
 }
 </style>

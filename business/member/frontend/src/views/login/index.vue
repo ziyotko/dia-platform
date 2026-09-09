@@ -145,9 +145,9 @@ async function handleLogin() {
 </script>
 
 <style scoped lang="scss">
-$primary: #1a6fb5;
-$primary-dark: #0d4f85;
-$primary-gradient: linear-gradient(160deg, #1a6fb5 0%, #0d4f85 100%);
+$primary: #002fa7;
+$primary-dark: #001b5e;
+$primary-gradient: linear-gradient(160deg, #2f5ed6 0%, #001b5e 100%);
 
 .login-container {
   min-height: calc(100vh - 180px);
@@ -155,7 +155,7 @@ $primary-gradient: linear-gradient(160deg, #1a6fb5 0%, #0d4f85 100%);
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #e8f4fd 0%, #f0f7ff 50%, #e8f4fd 100%);
+  background: linear-gradient(135deg, #e6eaf6 0%, #f5f9ff 50%, #e6eaf6 100%);
   position: relative;
   overflow: hidden;
   padding: 40px 24px;
@@ -165,7 +165,7 @@ $primary-gradient: linear-gradient(160deg, #1a6fb5 0%, #0d4f85 100%);
     position: absolute;
     width: 800px;
     height: 800px;
-    background: radial-gradient(circle, rgba(26, 111, 181, 0.08) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(0, 47, 167, 0.08) 0%, transparent 70%);
     top: -200px;
     left: -200px;
   }
@@ -175,7 +175,7 @@ $primary-gradient: linear-gradient(160deg, #1a6fb5 0%, #0d4f85 100%);
     position: absolute;
     width: 600px;
     height: 600px;
-    background: radial-gradient(circle, rgba(26, 111, 181, 0.06) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(0, 47, 167, 0.06) 0%, transparent 70%);
     bottom: -100px;
     right: -100px;
   }
@@ -187,7 +187,7 @@ $primary-gradient: linear-gradient(160deg, #1a6fb5 0%, #0d4f85 100%);
   min-height: 520px;
   background: #fff;
   border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(26, 111, 181, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 47, 167, 0.16);
   overflow: hidden;
   z-index: 1;
 }
@@ -259,8 +259,8 @@ $primary-gradient: linear-gradient(160deg, #1a6fb5 0%, #0d4f85 100%);
 
 .login-form {
   :deep(.el-input__wrapper) {
-    box-shadow: 0 0 0 1px #d9ecff inset;
-    background: #f5f9ff;
+    box-shadow: 0 0 0 1px var(--el-color-primary-light-8) inset;
+    background: #f8fafd;
     border-radius: 8px;
     transition: box-shadow 0.2s;
 
@@ -286,8 +286,8 @@ $primary-gradient: linear-gradient(160deg, #1a6fb5 0%, #0d4f85 100%);
   border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
-  background: #f5f9ff;
-  border: 1px solid #d9ecff;
+  background: #f8fafd;
+  border: 1px solid var(--el-color-primary-light-8);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -310,13 +310,13 @@ $primary-gradient: linear-gradient(160deg, #1a6fb5 0%, #0d4f85 100%);
   font-size: 16px;
   font-weight: 500;
   border-radius: 8px;
-  background: linear-gradient(135deg, #1a6fb5 0%, #0d4f85 100%);
+  background: linear-gradient(135deg, #002fa7 0%, #002fa7 100%);
   border: none;
 
   &:hover {
-    background: linear-gradient(135deg, #4a9fd5 0%, #1a6fb5 100%);
+    background: linear-gradient(135deg, #2050cf 0%, #002fa7 100%);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(26, 111, 181, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 47, 167, 0.3);
   }
 }
 

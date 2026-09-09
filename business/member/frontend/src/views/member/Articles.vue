@@ -262,7 +262,7 @@ function formatDate(d: string) { return d ? d.slice(0, 16) : '' }
   font-size: 14px;
   line-height: 1.7;
   background: #f8fafc;
-  border-left: 3px solid #409eff;
+  border-left: 3px solid #002fa7;
   padding: 10px 14px;
   border-radius: 4px;
   margin-bottom: 16px;

@@ -129,7 +129,7 @@ async function delRow(row: any) {
   h3 {
     font-size: 22px;
     font-weight: 600;
-    color: #1a1a2e;
+    color: #1d2739;
     margin: 0;
   }
 }
@@ -137,8 +137,8 @@ async function delRow(row: any) {
   border-radius: 10px;
 }
 .key-text {
-  background: #f0f7ff;
-  color: #3b82f6;
+  background: #f5f9ff;
+  color: #002fa7;
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 13px;

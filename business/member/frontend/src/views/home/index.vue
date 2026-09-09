@@ -35,7 +35,7 @@
       </div>
       <div class="hero-wave" aria-hidden="true">
         <svg viewBox="0 0 1440 90" preserveAspectRatio="none">
-          <path d="M0,60 C240,95 480,25 720,40 C960,55 1200,90 1440,55 L1440,90 L0,90 Z" fill="#f5f7fa"></path>
+          <path d="M0,60 C240,95 480,25 720,40 C960,55 1200,90 1440,55 L1440,90 L0,90 Z" fill="#f5f7fb"></path>
         </svg>
       </div>
     </section>
@@ -200,7 +200,7 @@ const heroFeatures = ['在线入会', '会费管理', '证书下载', '信息共
 
 // ── Services ──
 const features = [
-  { icon: 'DocumentChecked', title: '在线入会', desc: '在线填写资料、提交申请、追踪审核进度', color: '#1a6fb5', bg: '#e6f0fa' },
+  { icon: 'DocumentChecked', title: '在线入会', desc: '在线填写资料、提交申请、追踪审核进度', color: '#002fa7', bg: '#e6eaf6' },
   { icon: 'Money', title: '会费管理', desc: '查看缴费记录、在线缴纳年度会费', color: '#16a34a', bg: '#e6f7ee' },
   { icon: 'Medal', title: '证书下载', desc: '审核通过后在线下载会员证书', color: '#d97706', bg: '#fdf3e3' },
   { icon: 'Reading', title: '服务中心', desc: '浏览协会公告动态与行业文章', color: '#7c3aed', bg: '#f1ebfe' },
@@ -243,7 +243,7 @@ const filteredAnnouncements = computed(() =>
 // ── Member levels ──
 const levels = ref<any[]>([])
 const loadingLevels = ref(false)
-const rankColors = ['#3b82f6', '#0ea5e9', '#8b5cf6', '#f59e0b', '#22c55e']
+const rankColors = ['#002fa7', '#0ea5e9', '#8b5cf6', '#f59e0b', '#22c55e']
 
 // ── Divisions ──
 const divisions = ref<any[]>([])
@@ -302,13 +302,13 @@ function formatDate(d: string) { return d ? d.slice(0, 10) : '' }
 </script>
 
 <style scoped lang="scss">
-$primary: #1a6fb5;
-$primary-dark: #0b3d6f;
-$primary-deep: #0a335c;
+$primary: #002fa7;
+$primary-dark: #002686;
+$primary-deep: #001b5e;
 $text: #1f2937;
 $text-secondary: #6b7280;
 $text-light: #9ca3af;
-$bg-soft: #f5f7fa;
+$bg-soft: #f5f7fb;
 
 .container {
   max-width: 1200px;
@@ -332,7 +332,7 @@ $bg-soft: #f5f7fa;
     font-weight: 700;
     letter-spacing: 3px;
     color: $primary;
-    background: #e6f0fa;
+    background: #e6eaf6;
     padding: 4px 14px;
     border-radius: 999px;
     margin-bottom: 14px;
@@ -351,7 +351,7 @@ $bg-soft: #f5f7fa;
 // ════════════════════════════════════════════
 .hero {
   position: relative;
-  background: linear-gradient(135deg, $primary-deep 0%, $primary-dark 40%, #145a9e 70%, $primary 100%);
+  background: linear-gradient(135deg, #001b5e 0%, #002fa7 55%, #2050cf 100%);
   color: #fff;
   text-align: center;
   padding: 110px 24px 150px;
@@ -369,7 +369,7 @@ $bg-soft: #f5f7fa;
     filter: blur(60px);
     opacity: 0.35;
   }
-  .blob-1 { width: 420px; height: 420px; background: #3b82f6; top: -140px; left: -100px; }
+  .blob-1 { width: 420px; height: 420px; background: #002fa7; top: -140px; left: -100px; }
   .blob-2 { width: 360px; height: 360px; background: #22d3ee; bottom: -120px; right: -80px; }
   .blob-3 { width: 280px; height: 280px; background: #818cf8; top: 10%; right: 22%; }
   .hero-grid {
@@ -426,7 +426,7 @@ $bg-soft: #f5f7fa;
     font-weight: 800;
     margin: 0 0 14px;
     letter-spacing: 1px;
-    background: linear-gradient(90deg, #fff 0%, #bfdbfe 100%);
+    background: linear-gradient(90deg, #fff 0%, #b3c1e5 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -454,10 +454,10 @@ $bg-soft: #f5f7fa;
     --el-button-bg-color: #ffffff;
     --el-button-border-color: rgba(255,255,255,0.7);
     --el-button-text-color: $primary-dark;
-    --el-button-hover-bg-color: #dbeafe;
+    --el-button-hover-bg-color: #ccd5ed;
     --el-button-hover-border-color: #ffffff;
     --el-button-hover-text-color: $primary-deep;
-    --el-button-active-bg-color: #bfdbfe;
+    --el-button-active-bg-color: #b3c1e5;
     border-radius: 10px;
     font-weight: 600;
     padding: 14px 30px;
@@ -594,7 +594,7 @@ $bg-soft: #f5f7fa;
     transition: all 0.2s;
     &:hover { color: $primary; }
     &.active {
-      background: #e6f0fa;
+      background: #e6eaf6;
       color: $primary;
       font-weight: 600;
     }
@@ -689,7 +689,7 @@ $bg-soft: #f5f7fa;
     height: 72px;
     margin: 0 auto;
     border-radius: 50%;
-    background: linear-gradient(135deg, #e6f0fa, #cfe3f6);
+    background: linear-gradient(135deg, #e6eaf6, #cfe3f6);
     color: $primary;
     display: flex;
     align-items: center;
@@ -735,7 +735,7 @@ $bg-soft: #f5f7fa;
     width: 44px;
     height: 44px;
     border-radius: 12px;
-    background: #e6f0fa;
+    background: #e6eaf6;
     color: $primary;
     display: flex;
     align-items: center;
@@ -763,7 +763,7 @@ $bg-soft: #f5f7fa;
     .org-type {
       font-size: 12px;
       color: $primary;
-      background: #e6f0fa;
+      background: #e6eaf6;
       padding: 3px 10px;
       border-radius: 999px;
       white-space: nowrap;
@@ -825,7 +825,7 @@ $bg-soft: #f5f7fa;
     --el-button-bg-color: #ffffff;
     --el-button-border-color: #ffffff;
     --el-button-text-color: $primary-dark;
-    --el-button-hover-bg-color: #dbeafe;
+    --el-button-hover-bg-color: #ccd5ed;
     --el-button-hover-border-color: #ffffff;
     --el-button-hover-text-color: $primary-deep;
     border-radius: 10px;

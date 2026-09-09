@@ -60,7 +60,7 @@ async function resetPwd() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #f5f7fa, #e5e7eb);
+  background: linear-gradient(135deg, #f5f7fb, #e5e7eb);
   padding: 40px;
 }
 .reset-card {
@@ -71,6 +71,6 @@ async function resetPwd() {
   box-shadow: 0 4px 24px rgba(0,0,0,0.08);
   h2 { text-align: center; margin-bottom: 32px; }
   .full-btn { width: 100%; }
-  .back-link { text-align: center; a { color: #1a6fb5; text-decoration: none; font-size: 14px; } }
+  .back-link { text-align: center; a { color: #002fa7; text-decoration: none; font-size: 14px; } }
 }
 </style>

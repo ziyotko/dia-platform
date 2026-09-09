@@ -93,7 +93,7 @@ async function delAnn(row: any) {
   h3 {
     font-size: 22px;
     font-weight: 600;
-    color: #1a1a2e;
+    color: #1d2739;
     margin: 0;
   }
 }

@@ -273,7 +273,7 @@
           备注：{{ invoiceTarget.invoice_remark || '-' }}
           <template v-if="invoiceTarget.invoice_status === 'issued'">
             <br>当前票据号码：{{ invoiceTarget.invoice_no || '-' }}
-            <br>当前发票文件：<a v-if="invoiceTarget.invoice_file" :href="invoiceTarget.invoice_file" target="_blank" style="color:#409eff">查看</a><span v-else>-</span>
+            <br>当前发票文件：<a v-if="invoiceTarget.invoice_file" :href="invoiceTarget.invoice_file" target="_blank" style="color:#002fa7">查看</a><span v-else>-</span>
           </template>
         </div>
       </div>
@@ -587,7 +587,7 @@ async function deleteFee(row: any) {
     h3 {
       font-size: 22px;
       font-weight: 600;
-      color: #1a1a2e;
+      color: #1d2739;
       display: flex;
       align-items: center;
       gap: 8px;
@@ -627,7 +627,7 @@ async function deleteFee(row: any) {
   .stat-body {
     display: flex; flex-direction: column;
     .stat-label { font-size: 13px; color: #94a3b8; margin-bottom: 4px; }
-    .stat-value { font-size: 22px; font-weight: 700; color: #1a1a2e; }
+    .stat-value { font-size: 22px; font-weight: 700; color: #1d2739; }
   }
   &--total .stat-icon { background: #eef2ff; color: #4361ee; }
   &--paid .stat-icon { background: #ecfdf5; color: #10b981; }
@@ -664,7 +664,7 @@ async function deleteFee(row: any) {
   gap: 2px;
   .member-name {
     font-weight: 500;
-    color: #1a1a2e;
+    color: #1d2739;
     line-height: 1.4;
   }
   .member-unit {
@@ -682,7 +682,7 @@ async function deleteFee(row: any) {
 }
 .cell-amount {
   font-weight: 600;
-  color: #1a1a2e;
+  color: #1d2739;
   font-variant-numeric: tabular-nums;
 }
 .cell-time {
@@ -708,7 +708,7 @@ async function deleteFee(row: any) {
 }
 .fee-form {
   .form-hint { color: #94a3b8; font-size: 13px; }
-  .form-value { color: #1a1a2e; font-size: 14px; }
+  .form-value { color: #1d2739; font-size: 14px; }
 }
 .member-info-tag {
   display: flex;
@@ -717,7 +717,7 @@ async function deleteFee(row: any) {
 }
 
 .confirm-info {
-  background: #f5f7fa;
+  background: #f5f7fb;
   border-radius: 8px;
   padding: 14px 16px;
   margin-bottom: 20px;

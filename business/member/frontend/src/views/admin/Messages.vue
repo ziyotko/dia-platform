@@ -93,7 +93,7 @@ async function deleteRow(row: any) {
   h3 {
     font-size: 22px;
     font-weight: 600;
-    color: #1a1a2e;
+    color: #1d2739;
     margin: 0;
   }
 }
@@ -103,7 +103,7 @@ async function deleteRow(row: any) {
 .pagination { display: flex; justify-content: center; padding: 20px 0; }
 
 .reply-origin {
-  background: #f5f7fa;
+  background: #f5f7fb;
   border-radius: 8px;
   padding: 14px 16px;
   margin-bottom: 16px;

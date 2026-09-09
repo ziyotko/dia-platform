@@ -2,7 +2,7 @@
   <el-container class="admin-layout">
     <el-aside :width="collapsed ? '64px' : '160px'" class="sidebar">
       <div class="sidebar-header" @click="$router.push('/admin/dashboard')">
-        <el-icon :size="24" color="#409eff"><Setting /></el-icon>
+        <el-icon :size="24" color="#002fa7"><Setting /></el-icon>
         <span v-show="!collapsed" class="title">管理后台</span>
       </div>
       <el-menu
@@ -10,9 +10,10 @@
         :collapse="collapsed"
         :collapse-transition="false"
         :default-active="route.path"
-        background-color="#f8fafc"
-        text-color="#4b5563"
-        active-text-color="#409eff"
+        background-color="transparent"
+        text-color="#344054"
+        active-text-color="#002fa7"
+        class="sidebar-menu"
       >
         <el-menu-item index="/admin/dashboard"><el-icon><DataAnalysis /></el-icon><span>管理首页</span></el-menu-item>
         <el-menu-item index="/admin/applications"><el-icon><DocumentChecked /></el-icon><span>入会审核</span></el-menu-item>
@@ -86,8 +87,9 @@ function handleCommand(cmd: string) {
 .admin-layout { height: 100vh; }
 
 .sidebar {
-  background: #f8fafc;
-  border-right: 1px solid #e5e7eb;
+  background: #fff;
+  border-right: 1px solid var(--app-border);
+  box-shadow: 2px 0 12px rgba(16, 24, 40, 0.04);
   overflow: hidden;
   transition: width 0.3s;
   .sidebar-header {
@@ -95,9 +97,22 @@ function handleCommand(cmd: string) {
     align-items: center;
     gap: 10px;
     padding: 20px;
-    color: #1f2937;
+    color: var(--app-text-primary);
     cursor: pointer;
     .title { flex: 1; min-width: 0; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  }
+  .sidebar-menu {
+    border-right: none;
+    :deep(.el-menu-item) {
+      border-radius: 8px;
+      margin: 2px 8px;
+      &:hover { background: var(--el-color-primary-light-9); }
+      &.is-active {
+        background: var(--el-color-primary-light-9);
+        color: var(--el-color-primary);
+        font-weight: 600;
+      }
+    }
   }
 }
 
@@ -106,21 +121,21 @@ function handleCommand(cmd: string) {
   justify-content: space-between;
   align-items: center;
   background: #fff;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--app-border);
   padding: 0 24px;
   height: 56px;
   .topbar-left { display: flex; align-items: center; gap: 16px; }
-  .collapse-btn { cursor: pointer; &:hover { color: #1a6fb5; } }
+  .collapse-btn { cursor: pointer; &:hover { color: var(--el-color-primary); } }
   .user-info {
     display: flex;
     align-items: center;
     gap: 8px;
     cursor: pointer;
-    .username { font-size: 14px; color: #374151; }
+    .username { font-size: 14px; color: var(--app-text-secondary); }
   }
 }
 .main-content {
-  background: #f8fafc;
+  background: var(--app-bg);
   padding: 24px;
 }
 </style>

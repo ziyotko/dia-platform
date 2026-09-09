@@ -59,7 +59,7 @@
                     </el-button>
                   </template>
                   <input ref="fileInputRef" type="file" accept=".jpg,.jpeg,.png,.pdf" style="display:none" @change="handleCertUpload" />
-                  <span v-if="uploading" style="margin-left:8px;color:#409eff">上传中...</span>
+                  <span v-if="uploading" style="margin-left:8px;color:#002fa7">上传中...</span>
                 </div>
               </el-form-item>
             </template>

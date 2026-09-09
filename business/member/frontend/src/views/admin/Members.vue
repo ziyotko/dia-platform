@@ -262,7 +262,7 @@ async function confirmChangeLevel() {
   h3 {
     font-size: 22px;
     font-weight: 600;
-    color: #1a1a2e;
+    color: #1d2739;
     margin: 0;
   }
 }
@@ -276,7 +276,7 @@ async function confirmChangeLevel() {
   cursor: pointer;
 }
 .members-table :deep(.members-row:hover td) {
-  background: #f5f7fa !important;
+  background: #f5f7fb !important;
 }
 </style>
 
@@ -303,7 +303,7 @@ async function confirmChangeLevel() {
     padding-right: 40px;
   }
   .detail-avatar {
-    background: linear-gradient(135deg, #4f8cff, #6f6bff);
+    background: linear-gradient(135deg, #002fa7, #002686);
     color: #fff;
     font-size: 24px;
     font-weight: 600;
@@ -314,7 +314,7 @@ async function confirmChangeLevel() {
       display: flex;
       align-items: center;
       gap: 12px;
-      .name { font-size: 20px; font-weight: 600; color: #1a1a2e; }
+      .name { font-size: 20px; font-weight: 600; color: #1d2739; }
     }
     .sub { margin-top: 6px; color: #909399; font-size: 13px; }
   }
@@ -325,9 +325,9 @@ async function confirmChangeLevel() {
     .section-title {
       font-size: 15px;
       font-weight: 600;
-      color: #1a1a2e;
+      color: #1d2739;
       padding-left: 10px;
-      border-left: 4px solid #4f8cff;
+      border-left: 4px solid #002fa7;
       margin-bottom: 14px;
       line-height: 1.2;
     }

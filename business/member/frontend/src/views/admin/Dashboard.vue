@@ -36,7 +36,7 @@
         <el-card class="section-card" shadow="never">
           <template #header>
             <div class="section-header">
-              <span><el-icon :size="16" color="#3b82f6"><PieChart /></el-icon> 会员类型分布</span>
+              <span><el-icon :size="16" color="#002fa7"><PieChart /></el-icon> 会员类型分布</span>
             </div>
           </template>
           <div ref="typeChartRef" class="chart-container"></div>
@@ -85,7 +85,7 @@
         <el-card class="section-card" shadow="never">
           <template #header>
             <div class="section-header">
-              <span><el-icon :size="16" color="#3b82f6"><UserFilled /></el-icon> 最近注册</span>
+              <span><el-icon :size="16" color="#002fa7"><UserFilled /></el-icon> 最近注册</span>
               <el-button text size="small" type="primary" @click="$router.push('/admin/members')">查看全部</el-button>
             </div>
           </template>
@@ -156,7 +156,7 @@ const recentMembers = ref<any[]>([])
 
 // ===== 统计卡片 =====
 const stats = ref([
-  { icon: 'UserFilled', label: '会员总数', value: 0, color: '#3b82f6', bg: '#dbeafe' },
+  { icon: 'UserFilled', label: '会员总数', value: 0, color: '#002fa7', bg: '#ccd5ed' },
   { icon: 'User', label: '正式会员', value: 0, color: '#22c55e', bg: '#dcfce7' },
   { icon: 'TrendCharts', label: '今日新增', value: 0, color: '#8b5cf6', bg: '#ede9fe' },
   { icon: 'Clock', label: '待审核', value: 0, color: '#f59e0b', bg: '#fef3c7' },
@@ -206,7 +206,7 @@ function typeChartOption() {
         itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.2)' }
       },
       data: [
-        { value: typeData.unit, name: '单位会员', itemStyle: { color: '#60a5fa' } },
+        { value: typeData.unit, name: '单位会员', itemStyle: { color: '#4d6dc1' } },
         { value: typeData.personal, name: '个人会员', itemStyle: { color: '#fbbf24' } }
       ]
     }],
@@ -291,7 +291,7 @@ function handleResize() {
 
 // ===== 快捷操作 =====
 const quickActions = [
-  { icon: 'DocumentChecked', label: '入会审核', desc: '审核新会员申请', path: '/admin/applications', color: '#3b82f6', bg: '#dbeafe' },
+  { icon: 'DocumentChecked', label: '入会审核', desc: '审核新会员申请', path: '/admin/applications', color: '#002fa7', bg: '#ccd5ed' },
   { icon: 'Money', label: '会费管理', desc: '查看会费缴纳记录', path: '/admin/fees', color: '#22c55e', bg: '#dcfce7' },
   { icon: 'Medal', label: '证书管理', desc: '管理会员证书发放', path: '/admin/certificates', color: '#8b5cf6', bg: '#ede9fe' },
   { icon: 'UserFilled', label: '会员管理', desc: '查看和管理所有会员', path: '/admin/members', color: '#f59e0b', bg: '#fef3c7' },
@@ -303,7 +303,7 @@ const quickActions = [
 const todos = ref([
   { text: '待审核入会申请', tag: 'warning' as const, color: '#f59e0b', count: 0, path: '/admin/applications' },
   { text: '待确认缴费记录', tag: 'danger' as const, color: '#f97316', count: 0, path: '/admin/fees' },
-  { text: '待回复会员留言', tag: 'primary' as const, color: '#3b82f6', count: 0, path: '/admin/messages' },
+  { text: '待回复会员留言', tag: 'primary' as const, color: '#002fa7', count: 0, path: '/admin/messages' },
   { text: '待处理证书申请', tag: 'primary' as const, color: '#8b5cf6', count: 0, path: '/admin/certificates' }
 ])
 
@@ -437,7 +437,7 @@ onBeforeUnmount(() => {
 
 .stat-card {
   border-radius: 14px;
-  border: 1px solid #f0f4f8;
+  border: 1px solid #eef2f8;
   background: linear-gradient(135deg, #ffffff 0%, #fafcff 100%);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -450,7 +450,7 @@ onBeforeUnmount(() => {
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, var(--card-color, #3b82f6), var(--card-color-light, #93c5fd));
+    background: linear-gradient(90deg, var(--card-color, #002fa7), var(--card-color-light, #8097d3));
     opacity: 0;
     transition: opacity 0.3s;
   }
@@ -524,7 +524,7 @@ onBeforeUnmount(() => {
 
 .section-card {
   border-radius: 14px;
-  border: 1px solid #f0f4f8;
+  border: 1px solid #eef2f8;
   margin-bottom: 20px;
   display: flex;
   flex-direction: column;

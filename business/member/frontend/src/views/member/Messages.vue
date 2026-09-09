@@ -147,7 +147,7 @@ function formatDate(d: string) { return d ? d.replace('T', ' ').slice(0, 16) : '
 .detail-label { font-size: 13px; color: #909399; margin-bottom: 6px; }
 .detail-value { font-size: 14px; color: #303133; line-height: 1.6; }
 .detail-content {
-  background: #f5f7fa;
+  background: #f5f7fb;
   border-radius: 8px;
   padding: 14px 16px;
   white-space: pre-wrap;

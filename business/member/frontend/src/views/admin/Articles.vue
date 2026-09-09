@@ -107,7 +107,7 @@ async function deleteRow(row: any) {
   h3 {
     font-size: 22px;
     font-weight: 600;
-    color: #1a1a2e;
+    color: #1d2739;
     margin: 0;
   }
 }
@@ -132,7 +132,7 @@ async function deleteRow(row: any) {
   font-size: 14px;
   line-height: 1.7;
   background: #f8fafc;
-  border-left: 3px solid #409eff;
+  border-left: 3px solid #002fa7;
   padding: 10px 14px;
   border-radius: 4px;
   margin-bottom: 16px;

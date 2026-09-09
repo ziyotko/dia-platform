@@ -131,7 +131,7 @@ async function review(row: any, approved: boolean) {
   h3 {
     font-size: 22px;
     font-weight: 600;
-    color: #1a1a2e;
+    color: #1d2739;
     margin: 0;
   }
 }

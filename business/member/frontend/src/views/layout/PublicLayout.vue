@@ -61,7 +61,7 @@ const siteStore = useSiteStore()
     align-items: center;
     gap: 10px;
     cursor: pointer;
-    color: #1a6fb5;
+    color: #002fa7;
     .logo-text {
       font-size: 18px;
       font-weight: 700;
@@ -75,7 +75,7 @@ const siteStore = useSiteStore()
       color: #4b5563;
       text-decoration: none;
       font-size: 15px;
-      &:hover { color: #1a6fb5; }
+      &:hover { color: #002fa7; }
     }
   }
 }

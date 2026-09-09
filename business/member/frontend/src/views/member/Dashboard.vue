@@ -172,7 +172,7 @@
               </div>
               <el-progress
                 :percentage="feeProgress"
-                :color="feeProgress === 100 ? '#22c55e' : feeProgress > 50 ? '#60a5fa' : '#f59e0b'"
+                :color="feeProgress === 100 ? '#22c55e' : feeProgress > 50 ? '#4d6dc1' : '#f59e0b'"
                 :stroke-width="10"
                 striped
                 striped-flow
@@ -257,7 +257,7 @@ const avatarLetter = computed(() => {
   return name ? name.charAt(0).toUpperCase() : 'M'
 })
 
-const avatarColors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6']
+const avatarColors = ['#002fa7', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6']
 const avatarBg = computed(() => {
   const name = displayName.value
   if (!name) return avatarColors[0]
@@ -274,7 +274,7 @@ const memberTypeLabel = computed(() => {
 
 // ── Quick Actions ──
 const quickActions = [
-  { name: 'Applications', icon: 'DocumentChecked', label: '我的申请', bg: '#e8f4fd', color: '#3b82f6' },
+  { name: 'Applications', icon: 'DocumentChecked', label: '我的申请', bg: '#e6eaf6', color: '#002fa7' },
   { name: 'Fees', icon: 'Coin', label: '会费管理', bg: '#fef3c7', color: '#f59e0b' },
   { name: 'Certificates', icon: 'Medal', label: '我的证书', bg: '#dcfce7', color: '#22c55e' },
   { name: 'Articles', icon: 'EditPen', label: '我的文章', bg: '#ede9fe', color: '#8b5cf6' },
@@ -284,7 +284,7 @@ const quickActions = [
 
 // ── Stats ──
 const stats = computed(() => [
-  { icon: 'DocumentChecked', label: '我的申请', value: dash.value?.application?.label || '暂无', color: '#3b82f6', bg: '#dbeafe' },
+  { icon: 'DocumentChecked', label: '我的申请', value: dash.value?.application?.label || '暂无', color: '#002fa7', bg: '#ccd5ed' },
   { icon: 'ChatDotRound', label: '未读消息', value: dash.value?.unread_messages || 0, color: '#f59e0b', bg: '#fef3c7' },
   { icon: 'EditPen', label: '我的文章', value: dash.value?.article_count || 0, color: '#22c55e', bg: '#dcfce7' },
   { icon: 'Coin', label: '已缴年数', value: (dash.value?.fee_summary?.paid_count || 0) + ' 年', color: '#8b5cf6', bg: '#ede9fe' }
@@ -322,7 +322,7 @@ function formatDate(d: string) { return d ? d.slice(0, 10) : '' }
 
 <style scoped lang="scss">
 // ── Variables ──
-$primary: #3b82f6;
+$primary: #002fa7;
 $success: #22c55e;
 $warning: #f59e0b;
 $danger: #ef4444;
@@ -458,11 +458,11 @@ $shadow-hover: 0 4px 16px rgba(0,0,0,0.08);
   }
 
   .el-button--primary {
-    background: linear-gradient(135deg, #dbeafe, #bfdbfe) !important;
-    border: 1px solid #93c5fd !important;
+    background: linear-gradient(135deg, #ccd5ed, #b3c1e5) !important;
+    border: 1px solid #8097d3 !important;
     color: #1e40af !important;
     &:hover {
-      background: linear-gradient(135deg, #bfdbfe, #93c5fd) !important;
+      background: linear-gradient(135deg, #b3c1e5, #8097d3) !important;
     }
   }
 

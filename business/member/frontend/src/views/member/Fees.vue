@@ -326,7 +326,7 @@ function formatDate(d: string) { return d ? d.slice(0, 16) : '' }
 .bank-info { margin-bottom: 16px; }
 
 .pay-info {
-  background: #f5f7fa;
+  background: #f5f7fb;
   border-radius: 8px;
   padding: 14px 16px;
   margin-bottom: 20px;

@@ -115,7 +115,7 @@ const feeMap = reactive<Record<number, FeeItem[]>>({})
 
 const maxYear = computed(() => new Date().getFullYear() + 10)
 
-const levelColors = ['#409eff', '#67c23a', '#e6a23c', '#f56c6c', '#909399', '#b37feb']
+const levelColors = ['#002fa7', '#67c23a', '#e6a23c', '#f56c6c', '#909399', '#b37feb']
 
 function levelColor(level: number) {
   return levelColors[level % levelColors.length]
@@ -264,7 +264,7 @@ async function deleteRow(level: any, row: FeeItem) {
   h3 {
     font-size: 22px;
     font-weight: 600;
-    color: #1a1a2e;
+    color: #1d2739;
     margin: 0;
   }
 

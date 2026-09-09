@@ -331,7 +331,7 @@ function formatDate(d: string) { return d ? d.replace('T', ' ').slice(0, 16) : '
       top: 2px;
       bottom: 2px;
       width: 4px;
-      background: #409eff;
+      background: #002fa7;
       border-radius: 2px;
     }
   }
@@ -387,7 +387,7 @@ function formatDate(d: string) { return d ? d.replace('T', ' ').slice(0, 16) : '
   padding: 12px 16px;
   background: #ecf5ff;
   border-radius: 8px;
-  color: #409eff;
+  color: #002fa7;
   display: flex;
   align-items: center;
   gap: 6px;

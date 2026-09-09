@@ -13,7 +13,7 @@
         <!-- Root -->
         <div class="root-header">
           <div class="root-info">
-            <el-icon :size="22" color="#3b82f6"><OfficeBuilding /></el-icon>
+            <el-icon :size="22" color="#002fa7"><OfficeBuilding /></el-icon>
             <span class="root-name">{{ rootNode.name }}</span>
             <el-tag size="small" type="info" effect="plain">上级机构</el-tag>
           </div>
@@ -257,7 +257,7 @@ async function delChild(data: any) {
   h3 {
     font-size: 22px;
     font-weight: 600;
-    color: #1a1a2e;
+    color: #1d2739;
     margin: 0;
   }
   .header-actions { display: flex; gap: 12px; }
@@ -277,7 +277,7 @@ async function delChild(data: any) {
   justify-content: space-between;
   align-items: center;
   padding: 18px 24px;
-  background: #f0f4f8;
+  background: #eef2f8;
   border-bottom: 1px solid #e5e7eb;
 
   .root-info {

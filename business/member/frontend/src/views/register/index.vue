@@ -138,7 +138,7 @@
 
         <div v-else key="stepConfirm" class="confirm-step">
           <div class="confirm-header">
-            <el-icon :size="28" color="#409eff"><CircleCheckFilled /></el-icon>
+            <el-icon :size="28" color="#002fa7"><CircleCheckFilled /></el-icon>
             <span>{{ form1.memberType === 'unit' ? '请确认入会信息' : '确认注册信息' }}</span>
           </div>
 
@@ -539,7 +539,7 @@ async function handleSubmit() {
 }
 .bg-circle-1 {
   width: 500px; height: 500px;
-  background: radial-gradient(circle, #409eff44 0%, transparent 70%);
+  background: radial-gradient(circle, #002fa744 0%, transparent 70%);
   top: -150px; left: -100px;
   animation: float 8s ease-in-out infinite;
 }
@@ -591,7 +591,7 @@ async function handleSubmit() {
     width: 64px;
     height: 64px;
     margin: 0 auto 16px;
-    background: linear-gradient(135deg, #409eff, #337ecc);
+    background: linear-gradient(135deg, #002fa7, #002fa7);
     border-radius: 18px;
     display: flex;
     align-items: center;
@@ -619,8 +619,8 @@ async function handleSubmit() {
   :deep(.el-step) {
     .el-step__head.is-process,
     .el-step__head.is-finish {
-      color: #409eff;
-      border-color: #409eff;
+      color: #002fa7;
+      border-color: #002fa7;
     }
     .el-step__title {
       font-size: 13px;
@@ -641,7 +641,7 @@ async function handleSubmit() {
     color: #4e5969;
     margin-bottom: 12px;
     padding-left: 12px;
-    border-left: 3px solid #409eff;
+    border-left: 3px solid #002fa7;
     line-height: 1;
 
     &:not(:first-child) {
@@ -666,7 +666,7 @@ async function handleSubmit() {
     }
 
     &.is-focus {
-      box-shadow: 0 0 0 2px #409eff40 inset;
+      box-shadow: 0 0 0 2px #002fa740 inset;
       background: #fff;
     }
   }
@@ -712,15 +712,15 @@ async function handleSubmit() {
     }
 
     &.is-checked .type-card-content {
-      border-color: #409eff;
+      border-color: #002fa7;
       background: #ecf5ff;
-      color: #409eff;
+      color: #002fa7;
       box-shadow: 0 4px 12px rgba(64,158,255,0.15);
     }
 
     &:hover .type-card-content {
-      border-color: #409eff;
-      background: #f0f7ff;
+      border-color: #002fa7;
+      background: #f5f9ff;
     }
   }
 }
@@ -837,7 +837,7 @@ async function handleSubmit() {
 
 /* ===== 验证码区域 ===== */
 .captcha-section {
-  background: linear-gradient(135deg, #f0f5ff, #f5f7fa);
+  background: linear-gradient(135deg, #f0f5ff, #f5f7fb);
   border-radius: 16px;
   padding: 18px 20px;
   margin-bottom: 24px;
@@ -881,7 +881,7 @@ async function handleSubmit() {
     object-fit: cover;
 
     &:hover {
-      border-color: #409eff;
+      border-color: #002fa7;
       box-shadow: 0 2px 8px rgba(64,158,255,0.15);
       transform: scale(1.02);
     }
@@ -925,11 +925,11 @@ async function handleSubmit() {
   }
 
   &:hover {
-    border-color: #409eff;
+    border-color: #002fa7;
     background: #ecf5ff;
 
-    .el-icon { color: #409eff; }
-    span { color: #409eff; }
+    .el-icon { color: #002fa7; }
+    span { color: #002fa7; }
   }
 }
 
