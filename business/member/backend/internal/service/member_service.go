@@ -67,7 +67,7 @@ func (s *MemberService) UpdateMemberStatus(id uint64, status string) error {
 
 // UpdateMemberLevel updates a member's level (admin). Only active members may change
 // level, and the target level must come from the member's paid memberships (会籍).
-func (s *MemberService) UpdateMemberLevel(id uint64, level string) error {
+func (s *MemberService) UpdateMemberLevel(id uint64, levelID uint64) error {
 	var m models.Member
 	if err := db.DB.First(&m, id).Error; err != nil {
 		return errors.New("会员不存在")
@@ -75,10 +75,16 @@ func (s *MemberService) UpdateMemberLevel(id uint64, level string) error {
 	if m.Status != models.MemberStatusActive {
 		return errors.New("仅正式会员可变更等级")
 	}
-	if level == "" {
+	if levelID == 0 {
 		return errors.New("请选择会员等级")
 	}
-	if m.MemberLevel == level {
+
+	// 查找目标等级并校验
+	var lvl models.MemberLevel
+	if err := db.DB.First(&lvl, levelID).Error; err != nil {
+		return errors.New("会员等级不存在")
+	}
+	if m.MemberLevel == lvl.Name {
 		return errors.New("新旧会员等级不能相同")
 	}
 
@@ -87,7 +93,7 @@ func (s *MemberService) UpdateMemberLevel(id uint64, level string) error {
 	if err := db.DB.Model(&models.MemberLevel{}).
 		Joins("JOIN member_org_levels mol ON mol.level_id = member_levels.id").
 		Joins("JOIN member_fee_records fr ON fr.org_id = mol.org_id").
-		Where("fr.member_id = ? AND fr.status = ? AND member_levels.name = ?", id, models.FeeStatusPaid, level).
+		Where("fr.member_id = ? AND fr.status = ? AND member_levels.id = ?", id, models.FeeStatusPaid, levelID).
 		Count(&cnt).Error; err != nil {
 		return err
 	}
@@ -95,17 +101,14 @@ func (s *MemberService) UpdateMemberLevel(id uint64, level string) error {
 		return errors.New("该等级不在该会员已缴费加入的机构所支持的等级中")
 	}
 
-	if err := db.DB.Model(&models.Member{}).Where("id = ?", id).Update("member_level", level).Error; err != nil {
+	if err := db.DB.Model(&models.Member{}).Where("id = ?", id).Update("member_level", lvl.Name).Error; err != nil {
 		return err
 	}
 
 	// 同步更新该会员生效证书的等级
-	var lvl models.MemberLevel
-	if err := db.DB.Where("name = ?", level).First(&lvl).Error; err == nil {
-		db.DB.Model(&models.Certificate{}).
-			Where("member_id = ? AND status = ?", id, "active").
-			Updates(map[string]interface{}{"level_id": lvl.ID, "level_name": lvl.Name})
-	}
+	db.DB.Model(&models.Certificate{}).
+		Where("member_id = ? AND status = ?", id, "active").
+		Updates(map[string]interface{}{"level_id": lvl.ID, "level_name": lvl.Name})
 
 	return nil
 }

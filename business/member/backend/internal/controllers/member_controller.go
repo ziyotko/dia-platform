@@ -68,13 +68,13 @@ func (ctrl *MemberController) UpdateMemberStatus(c *gin.Context) {
 func (ctrl *MemberController) UpdateMemberLevel(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	var req struct {
-		Level string `json:"level" binding:"required"`
+		LevelID uint64 `json:"level_id" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "参数错误")
 		return
 	}
-	if err := ctrl.memberService.UpdateMemberLevel(id, req.Level); err != nil {
+	if err := ctrl.memberService.UpdateMemberLevel(id, req.LevelID); err != nil {
 		response.BadRequest(c, err.Error())
 		return
 	}
