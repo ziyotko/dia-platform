@@ -514,9 +514,11 @@ onBeforeUnmount(() => {
 
   > .el-col {
     display: flex;
+    min-width: 0;
 
     > .el-card {
       flex: 1;
+      min-width: 0;
     }
   }
 }
@@ -561,7 +563,9 @@ onBeforeUnmount(() => {
 // ===== ECharts Container =====
 .chart-container {
   width: 100%;
-  height: 220px;
+  height: 360px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 // ===== Quick Actions =====
