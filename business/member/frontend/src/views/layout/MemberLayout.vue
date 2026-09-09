@@ -131,6 +131,14 @@ function handleCommand(cmd: string) {
   }
   .sidebar-menu {
     border-right: none;
+    &.el-menu--collapse {
+      :deep(.el-menu-item) {
+        margin: 2px 0;
+        padding: 0;
+        justify-content: center;
+        .el-icon { margin: 0; }
+      }
+    }
     :deep(.el-menu-item) {
       border-radius: 8px;
       margin: 2px 8px;

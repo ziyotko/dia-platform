@@ -103,6 +103,14 @@ function handleCommand(cmd: string) {
   }
   .sidebar-menu {
     border-right: none;
+    &.el-menu--collapse {
+      :deep(.el-menu-item) {
+        margin: 2px 0;
+        padding: 0;
+        justify-content: center;
+        .el-icon { margin: 0; }
+      }
+    }
     :deep(.el-menu-item) {
       border-radius: 8px;
       margin: 2px 8px;
@@ -131,7 +139,14 @@ function handleCommand(cmd: string) {
     align-items: center;
     gap: 8px;
     cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    outline: none;
+    &:focus, &:focus-visible { outline: none; }
     .username { font-size: 14px; color: var(--app-text-secondary); }
+  }
+  :deep(.el-dropdown) {
+    &:focus, &:focus-visible, &:focus-within { outline: none; }
   }
 }
 .main-content {
