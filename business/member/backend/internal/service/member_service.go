@@ -25,6 +25,8 @@ func (s *MemberService) ListMembers(page, size int, keyword, status, memberType 
 	var total int64
 
 	query := db.DB.Model(&models.Member{})
+	// 不显示管理员
+	query = query.Where("is_admin = ?", false)
 	if keyword != "" {
 		kw := "%" + keyword + "%"
 		query = query.Where("username LIKE ? OR company_name LIKE ? OR mobile LIKE ? OR email LIKE ?",

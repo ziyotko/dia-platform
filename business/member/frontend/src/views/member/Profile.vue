@@ -6,6 +6,7 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="用户名"><el-input v-model="form.username" disabled /></el-form-item>
+            <el-form-item v-if="form.member_type === 'unit'" label="联系人"><el-input v-model="form.contact_person" /></el-form-item>
             <el-form-item label="手机号" prop="mobile"><el-input v-model="form.mobile" maxlength="11" /></el-form-item>
             <el-form-item label="邮箱" prop="email"><el-input v-model="form.email" maxlength="40" /></el-form-item>
             <el-form-item label="会员类型">
@@ -22,7 +23,6 @@
             <el-form-item label="单位名称"><el-input v-model="form.company_name" /></el-form-item>
             <el-form-item label="组织机构代码证" prop="credit_code"><el-input v-model="form.credit_code" maxlength="18" placeholder="统一社会信用代码" /></el-form-item>
             <el-form-item label="法定代表人"><el-input v-model="form.legal_person" /></el-form-item>
-            <el-form-item label="联系人"><el-input v-model="form.contact_person" /></el-form-item>
             <el-form-item label="单位地址"><el-input v-model="form.address" /></el-form-item>
             <el-form-item label="网站"><el-input v-model="form.website" /></el-form-item>
             <el-form-item label="组织机构证">
