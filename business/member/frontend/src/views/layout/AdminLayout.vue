@@ -28,6 +28,8 @@
         <el-menu-item index="/admin/announcements"><el-icon><Notification /></el-icon><span>公告管理</span></el-menu-item>
         <div class="menu-divider" />
         <el-menu-item index="/admin/system-config"><el-icon><Setting /></el-icon><span>系统管理</span></el-menu-item>
+        <div class="menu-divider" />
+        <el-menu-item index="/admin/profile"><el-icon><User /></el-icon><span>我的资料</span></el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -64,7 +66,7 @@ import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useSiteStore } from '@/stores/site'
-import { UserFilled, Fold, Expand, Coin } from '@element-plus/icons-vue'
+import { UserFilled, Fold, Expand, Coin, User } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -77,7 +79,7 @@ function toggleCollapse() {
 }
 
 function handleCommand(cmd: string) {
-  if (cmd === 'member') router.push('/member/profile')
+  if (cmd === 'member') router.push('/admin/profile')
   else if (cmd === 'logout') userStore.logout()
 }
 </script>
