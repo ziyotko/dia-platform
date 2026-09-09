@@ -29,6 +29,10 @@ type Member struct {
 	IsAdmin     bool   `gorm:"default:false" json:"is_admin"`
 	Avatar      string `gorm:"size:255" json:"avatar"`
 
+	// 主入会机构（非数据库字段，管理端查询时由 service 填充）：
+	// 会员通过入会申请审批/缴费加入的机构名称。
+	OrgName string `gorm:"-" json:"org_name"`
+
 	// Company info (for unit members)
 	CompanyName       string `gorm:"size:255" json:"company_name"`
 	CreditCode        string `gorm:"size:64" json:"credit_code"`

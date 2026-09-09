@@ -21,13 +21,13 @@
           <template #default="{row}">{{ row.member_type === 'unit' ? row.company_name : row.name }}</template>
         </el-table-column>
         <el-table-column prop="member_type" label="类型" min-width="100"><template #default="{row}">{{ row.member_type === 'unit' ? '单位' : '个人' }}</template></el-table-column>
+        <el-table-column label="入会机构" min-width="150"><template #default="{row}">{{ row.org_name || '-' }}</template></el-table-column>
         <el-table-column prop="member_level" label="会员等级" min-width="120"><template #default="{row}">{{ levelName(row.member_level) }}</template></el-table-column>
         <el-table-column prop="status" label="状态" min-width="120">
           <template #default="{row}"><el-tag :type="statusTag(row.status)">{{ statusLabel(row.status) }}</el-tag></template>
         </el-table-column>
         <el-table-column label="操作" min-width="180">
           <template #default="{row}">
-            <el-button text size="small" type="primary" @click.stop="openDetail(row)">查看</el-button>
             <el-button text size="small" type="warning" :disabled="row.status !== 'active'" @click.stop="openLevelDialog(row)">变更等级</el-button>
             <el-button text size="small" type="danger" :disabled="row.status !== 'registering'" @click.stop="delMember(row)">删除</el-button>
           </template>
@@ -57,6 +57,7 @@
             <div class="section-title">基本资料</div>
             <div class="grid">
               <div class="item"><span class="label">会员类型</span><span class="value">{{ typeLabel(detail.member_type) }}</span></div>
+              <div class="item"><span class="label">入会机构</span><span class="value">{{ detail.org_name || '-' }}</span></div>
               <div class="item"><span class="label">会员等级</span><span class="value">{{ detail.member_level || '-' }}</span></div>
               <div class="item"><span class="label">注册时间</span><span class="value">{{ fmt(detail.created_at) }}</span></div>
               <div class="item"><span class="label">最近更新</span><span class="value">{{ fmt(detail.updated_at) }}</span></div>

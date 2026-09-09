@@ -16,7 +16,68 @@ func (s *MemberService) GetMember(id uint64) (*models.Member, error) {
 	if err := db.DB.First(&m, id).Error; err != nil {
 		return nil, errors.New("会员不存在")
 	}
+	// 填充主入会机构名称
+	members := []models.Member{m}
+	_ = s.fillOrgNames(members)
+	m.OrgName = members[0].OrgName
 	return &m, nil
+}
+
+// fillOrgNames fills each member's OrgName with its primary joined organization
+// (主入会机构). Priority:
+//  1. 该会员进行中的入会申请（待审核/已通过）所选机构；
+//  2. 兜底：最近一条已缴费记录所属机构（覆盖无申请记录的历史/管理员直录会员）。
+func (s *MemberService) fillOrgNames(members []models.Member) error {
+	if len(members) == 0 {
+		return nil
+	}
+	ids := make([]uint64, 0, len(members))
+	index := make(map[uint64]*models.Member, len(members))
+	for i := range members {
+		ids = append(ids, members[i].ID)
+		index[members[i].ID] = &members[i]
+	}
+
+	// 1) 入会申请（待审核/已通过）对应机构；同一会员同时至多存在一个进行中的申请
+	var appRows []struct {
+		MemberID uint64
+		OrgName  string
+	}
+	err := db.DB.Model(&models.Application{}).
+		Select("member_applications.member_id AS member_id, mo.name AS org_name").
+		Joins("JOIN member_organizations mo ON mo.id = member_applications.org_id AND mo.deleted_at IS NULL").
+		Where("member_applications.member_id IN ? AND member_applications.status IN ?", ids,
+			[]string{models.AppStatusApproved, models.AppStatusPendingReview}).
+		Order("member_applications.created_at DESC, member_applications.id DESC").
+		Scan(&appRows).Error
+	if err != nil {
+		return err
+	}
+	for _, r := range appRows {
+		if m, ok := index[r.MemberID]; ok && m.OrgName == "" {
+			m.OrgName = r.OrgName
+		}
+	}
+
+	// 2) 兜底：取该会员最近一条“已缴费”记录所属机构
+	var feeRows []struct {
+		MemberID uint64
+		OrgName  string
+	}
+	err = db.DB.Model(&models.FeeRecord{}).
+		Select("member_id, org_name").
+		Where("member_id IN ? AND status = ? AND org_name <> ''", ids, models.FeeStatusPaid).
+		Order("year DESC, id DESC").
+		Scan(&feeRows).Error
+	if err != nil {
+		return err
+	}
+	for _, r := range feeRows {
+		if m, ok := index[r.MemberID]; ok && m.OrgName == "" {
+			m.OrgName = r.OrgName
+		}
+	}
+	return nil
 }
 
 // ListMembers returns paginated member list (admin)
@@ -44,6 +105,10 @@ func (s *MemberService) ListMembers(page, size int, keyword, status, memberType 
 	}
 
 	if err := query.Order("created_at DESC").Offset((page - 1) * size).Limit(size).Find(&members).Error; err != nil {
+		return nil, 0, err
+	}
+	// 填充主入会机构名称
+	if err := s.fillOrgNames(members); err != nil {
 		return nil, 0, err
 	}
 	return members, total, nil
