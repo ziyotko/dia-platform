@@ -65,9 +65,62 @@ func (s *MemberService) UpdateMemberStatus(id uint64, status string) error {
 	return db.DB.Model(&models.Member{}).Where("id = ?", id).Update("status", status).Error
 }
 
-// UpdateMemberLevel updates a member's level (admin)
+// UpdateMemberLevel updates a member's level (admin). Only active members may change
+// level, and the target level must come from the member's paid memberships (会籍).
 func (s *MemberService) UpdateMemberLevel(id uint64, level string) error {
-	return db.DB.Model(&models.Member{}).Where("id = ?", id).Update("member_level", level).Error
+	var m models.Member
+	if err := db.DB.First(&m, id).Error; err != nil {
+		return errors.New("会员不存在")
+	}
+	if m.Status != models.MemberStatusActive {
+		return errors.New("仅正式会员可变更等级")
+	}
+	if level == "" {
+		return errors.New("请选择会员等级")
+	}
+
+	// 目标等级必须来自该会员已缴费加入的会籍
+	var cnt int64
+	if err := db.DB.Model(&models.FeeRecord{}).
+		Where("member_id = ? AND status = ?", id, models.FeeStatusPaid).
+		Where("level_name = ? OR level_id IN (SELECT id FROM member_levels WHERE name = ?)", level, level).
+		Count(&cnt).Error; err != nil {
+		return err
+	}
+	if cnt == 0 {
+		return errors.New("该等级不在该会员已缴费加入的会籍中")
+	}
+
+	if err := db.DB.Model(&models.Member{}).Where("id = ?", id).Update("member_level", level).Error; err != nil {
+		return err
+	}
+
+	// 同步更新该会员生效证书的等级
+	var lvl models.MemberLevel
+	if err := db.DB.Where("name = ?", level).First(&lvl).Error; err == nil {
+		db.DB.Model(&models.Certificate{}).
+			Where("member_id = ? AND status = ?", id, "active").
+			Updates(map[string]interface{}{"level_id": lvl.ID, "level_name": lvl.Name})
+	}
+
+	return nil
+}
+
+// GetMemberAvailableLevels returns the levels this member has paid to join (会籍),
+// used to populate the change-level dropdown options.
+func (s *MemberService) GetMemberAvailableLevels(memberID uint64) ([]models.MemberLevel, error) {
+	var levels []models.MemberLevel
+	err := db.DB.Raw(`
+		SELECT DISTINCT ml.id, ml.name, ml.level, ml.description, ml.created_at, ml.updated_at, ml.deleted_at
+		FROM member_levels ml
+		JOIN member_fee_records fr ON fr.level_id = ml.id
+		WHERE fr.member_id = ? AND fr.status = ?
+		ORDER BY ml.level ASC
+	`, memberID, models.FeeStatusPaid).Scan(&levels).Error
+	if err != nil {
+		return nil, err
+	}
+	return levels, nil
 }
 
 // DeleteMember soft-deletes a member (admin)

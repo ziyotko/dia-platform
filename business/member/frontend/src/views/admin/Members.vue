@@ -24,9 +24,10 @@
         <el-table-column prop="status" label="状态" min-width="120">
           <template #default="{row}"><el-tag :type="statusTag(row.status)">{{ statusLabel(row.status) }}</el-tag></template>
         </el-table-column>
-        <el-table-column label="操作" min-width="120">
+        <el-table-column label="操作" min-width="180">
           <template #default="{row}">
             <el-button text size="small" type="primary" @click.stop="openDetail(row)">查看</el-button>
+            <el-button text size="small" type="warning" :disabled="row.status !== 'active'" @click.stop="openLevelDialog(row)">变更等级</el-button>
             <el-button text size="small" type="danger" :disabled="row.status !== 'registering'" @click.stop="delMember(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -94,6 +95,28 @@
         </template>
       </div>
     </el-dialog>
+
+    <!-- 变更会员等级弹窗 -->
+    <el-dialog v-model="levelDialogVisible" title="变更会员等级" width="460px" class="member-level-dialog" :close-on-click-modal="false" append-to-body>
+      <div v-loading="levelLoading">
+        <p class="level-hint">仅可为该会员选择其已缴费加入的会籍等级。</p>
+        <el-form label-width="90px">
+          <el-form-item label="当前等级">
+            <span>{{ levelTarget?.member_level || '-' }}</span>
+          </el-form-item>
+          <el-form-item label="新等级" required>
+            <el-select v-model="selectedLevel" placeholder="请选择会员等级" style="width:100%">
+              <el-option v-for="lvl in levelOptions" :key="lvl.id" :label="lvl.name" :value="lvl.name" />
+            </el-select>
+            <div v-if="!levelLoading && !levelOptions.length" class="level-empty">暂无已缴费的会籍等级可选</div>
+          </el-form-item>
+        </el-form>
+      </div>
+      <template #footer>
+        <el-button @click="levelDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="savingLevel" :disabled="!levelOptions.length || !selectedLevel" @click="confirmChangeLevel">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -110,6 +133,13 @@ const keyword = ref(''); const filterStatus = ref('')
 const detailVisible = ref(false)
 const detail = ref<any>(null)
 const detailLoading = ref(false)
+
+const levelDialogVisible = ref(false)
+const levelTarget = ref<any>(null)
+const levelOptions = ref<any[]>([])
+const levelLoading = ref(false)
+const selectedLevel = ref('')
+const savingLevel = ref(false)
 
 const statusMap: Record<string, { l: string; t: string }> = {
   registering: { l: '注册中', t: 'info' }, pending_review: { l: '待审核', t: 'warning' },
@@ -163,6 +193,37 @@ async function delMember(row: any) {
     await ElMessageBox.confirm('确认删除该会员？', '警告', { type: 'warning' })
     await adminApi.deleteMember(row.id); ElMessage.success('已删除'); fetchData()
   } catch {}
+}
+
+async function openLevelDialog(row: any) {
+  if (row.status !== 'active') {
+    ElMessage.warning('仅正式会员可变更等级')
+    return
+  }
+  levelTarget.value = row
+  selectedLevel.value = row.member_level || ''
+  levelOptions.value = []
+  levelDialogVisible.value = true
+  levelLoading.value = true
+  try {
+    const res = await adminApi.getMemberLevelOptions(row.id)
+    levelOptions.value = res.data || []
+  } catch {} finally { levelLoading.value = false }
+}
+
+async function confirmChangeLevel() {
+  if (!selectedLevel.value) {
+    ElMessage.warning('请选择会员等级')
+    return
+  }
+  if (!levelTarget.value) return
+  savingLevel.value = true
+  try {
+    await adminApi.updateMemberLevel(levelTarget.value.id, selectedLevel.value)
+    ElMessage.success('等级变更成功')
+    levelDialogVisible.value = false
+    fetchData()
+  } catch {} finally { savingLevel.value = false }
 }
 </script>
 
@@ -267,5 +328,9 @@ async function delMember(row: any) {
       .value { font-size: 14px; color: #303133; line-height: 1.6; word-break: break-word; }
     }
   }
+}
+.member-level-dialog {
+  .level-hint { margin: 0 0 16px; color: #909399; font-size: 13px; line-height: 1.6; }
+  .level-empty { margin-top: 4px; font-size: 12px; color: #f56c6c; }
 }
 </style>

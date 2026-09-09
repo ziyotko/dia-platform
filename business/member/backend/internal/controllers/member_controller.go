@@ -81,6 +81,17 @@ func (ctrl *MemberController) UpdateMemberLevel(c *gin.Context) {
 	response.SuccessWithMessage(c, "等级更新成功", nil)
 }
 
+// GetMemberLevelOptions returns the levels this member can be changed to (from paid memberships)
+func (ctrl *MemberController) GetMemberLevelOptions(c *gin.Context) {
+	id := parseUint(c.Param("id"))
+	levels, err := ctrl.memberService.GetMemberAvailableLevels(id)
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+	response.Success(c, levels)
+}
+
 // DeleteMember deletes a member (admin)
 func (ctrl *MemberController) DeleteMember(c *gin.Context) {
 	id := parseUint(c.Param("id"))

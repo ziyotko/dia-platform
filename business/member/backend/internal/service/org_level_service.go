@@ -18,15 +18,26 @@ func (s *OrgLevelService) GetOrgLevels(orgID uint64) ([]models.MemberOrgLevel, e
 
 // SetOrgLevels replaces all level associations for an organization
 func (s *OrgLevelService) SetOrgLevels(orgID uint64, levelIDs []uint64) error {
-	// Delete existing associations
-	if err := db.DB.Where("org_id = ?", orgID).Delete(&models.MemberOrgLevel{}).Error; err != nil {
+	tx := db.DB.Begin()
+
+	// 物理删除旧关联：GORM 默认 Delete 为软删（写入 deleted_at），而唯一索引
+	// idx_org_level 只含 (org_id, level_id)，软删记录仍占索引导致重新插入重复报错。
+	if err := tx.Unscoped().Where("org_id = ?", orgID).Delete(&models.MemberOrgLevel{}).Error; err != nil {
+		tx.Rollback()
 		return err
 	}
-	// Insert new associations
+
+	// 插入新关联（去重并跳过空值，避免重复键冲突）
+	seen := map[uint64]bool{}
 	for _, lid := range levelIDs {
-		if err := db.DB.Create(&models.MemberOrgLevel{OrgID: orgID, LevelID: lid}).Error; err != nil {
+		if lid == 0 || seen[lid] {
+			continue
+		}
+		seen[lid] = true
+		if err := tx.Create(&models.MemberOrgLevel{OrgID: orgID, LevelID: lid}).Error; err != nil {
+			tx.Rollback()
 			return err
 		}
 	}
-	return nil
+	return tx.Commit().Error
 }
