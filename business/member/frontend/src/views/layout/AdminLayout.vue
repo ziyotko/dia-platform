@@ -47,7 +47,7 @@
             <span>{{ userStore.userInfo?.username }}</span>
           </span>
           <template #dropdown>
-            <el-dropdown-item command="member">会员中心</el-dropdown-item>
+            <el-dropdown-item command="member">个人资料</el-dropdown-item>
             <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
           </template>
         </el-dropdown>
@@ -77,7 +77,7 @@ function toggleCollapse() {
 }
 
 function handleCommand(cmd: string) {
-  if (cmd === 'member') router.push('/member/dashboard')
+  if (cmd === 'member') router.push('/member/profile')
   else if (cmd === 'logout') userStore.logout()
 }
 </script>

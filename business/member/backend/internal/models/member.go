@@ -30,14 +30,22 @@ type Member struct {
 	Avatar      string `gorm:"size:255" json:"avatar"`
 
 	// Company info (for unit members)
-	CompanyName   string `gorm:"size:255" json:"company_name"`
-	CreditCode    string `gorm:"size:64" json:"credit_code"`
-	LegalPerson   string `gorm:"size:64" json:"legal_person"`
-	ContactPerson string `gorm:"size:64" json:"contact_person"`
-	Address       string `gorm:"size:255" json:"address"`
-	Website       string `gorm:"size:255" json:"website"`
-	Description   string `gorm:"type:text" json:"description"`
-	CertFile      string `gorm:"size:255" json:"cert_file"`
+	CompanyName       string `gorm:"size:255" json:"company_name"`
+	CreditCode        string `gorm:"size:64" json:"credit_code"`
+	LegalPerson       string `gorm:"size:64" json:"legal_person"`
+	ContactPerson     string `gorm:"size:64" json:"contact_person"`
+	ContactTitle      string `gorm:"size:64" json:"contact_title"`
+	ContactMobile     string `gorm:"size:20" json:"contact_mobile"`
+	Industry          string `gorm:"size:64" json:"industry"`
+	FoundedDate       string `gorm:"size:20" json:"founded_date"`
+	RegisteredCapital string `gorm:"size:64" json:"registered_capital"`
+	EmployeeCount     int    `gorm:"default:0" json:"employee_count"`
+	BusinessScope     string `gorm:"type:text" json:"business_scope"`
+	PostalCode        string `gorm:"size:16" json:"postal_code"`
+	Address           string `gorm:"size:255" json:"address"`
+	Website           string `gorm:"size:255" json:"website"`
+	Description       string `gorm:"type:text" json:"description"`
+	CertFile          string `gorm:"size:255" json:"cert_file"`
 
 	// Personal info (for personal members)
 	Name   string `gorm:"size:64" json:"name"`

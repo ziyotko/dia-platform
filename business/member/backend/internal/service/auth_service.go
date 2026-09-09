@@ -52,6 +52,7 @@ func (s *AuthService) Register(req RegisterRequest) (*LoginResponse, error) {
 		member.CreditCode = req.CreditCode
 		member.LegalPerson = req.LegalPerson
 		member.ContactPerson = req.ContactPerson
+		member.ContactMobile = req.ContactMobile
 		member.Address = req.Address
 		member.CertFile = req.CertFile
 	}
@@ -172,18 +173,26 @@ func (s *AuthService) GetProfile(memberID uint64) (*models.Member, error) {
 // UpdateProfile updates the member profile
 func (s *AuthService) UpdateProfile(memberID uint64, req UpdateProfileRequest) error {
 	updates := map[string]interface{}{
-		"mobile":         req.Mobile,
-		"email":          req.Email,
-		"name":           req.Name,
-		"id_card":        req.IDCard,
-		"company_name":   req.CompanyName,
-		"credit_code":    req.CreditCode,
-		"legal_person":   req.LegalPerson,
-		"contact_person": req.ContactPerson,
-		"address":        req.Address,
-		"website":        req.Website,
-		"description":    req.Description,
-		"cert_file":      req.CertFile,
+		"mobile":             req.Mobile,
+		"email":              req.Email,
+		"name":               req.Name,
+		"id_card":            req.IDCard,
+		"company_name":       req.CompanyName,
+		"credit_code":        req.CreditCode,
+		"legal_person":       req.LegalPerson,
+		"contact_person":     req.ContactPerson,
+		"contact_title":      req.ContactTitle,
+		"contact_mobile":     req.ContactMobile,
+		"industry":           req.Industry,
+		"founded_date":       req.FoundedDate,
+		"registered_capital": req.RegisteredCapital,
+		"employee_count":     req.EmployeeCount,
+		"business_scope":     req.BusinessScope,
+		"postal_code":        req.PostalCode,
+		"address":            req.Address,
+		"website":            req.Website,
+		"description":        req.Description,
+		"cert_file":          req.CertFile,
 	}
 	return db.DB.Model(&models.Member{}).Where("id = ?", memberID).Updates(updates).Error
 }
@@ -260,6 +269,7 @@ type RegisterRequest struct {
 	CreditCode    string `json:"credit_code"`
 	LegalPerson   string `json:"legal_person"`
 	ContactPerson string `json:"contact_person"`
+	ContactMobile string `json:"contact_mobile"`
 	Address       string `json:"address"`
 	CertFile      string `json:"cert_file"`
 }
@@ -290,18 +300,26 @@ type MemberInfo struct {
 }
 
 type UpdateProfileRequest struct {
-	Mobile        string `json:"mobile"`
-	Email         string `json:"email"`
-	Name          string `json:"name"`
-	IDCard        string `json:"id_card"`
-	CompanyName   string `json:"company_name"`
-	CreditCode    string `json:"credit_code"`
-	LegalPerson   string `json:"legal_person"`
-	ContactPerson string `json:"contact_person"`
-	Address       string `json:"address"`
-	Website       string `json:"website"`
-	Description   string `json:"description"`
-	CertFile      string `json:"cert_file"`
+	Mobile            string `json:"mobile"`
+	Email             string `json:"email"`
+	Name              string `json:"name"`
+	IDCard            string `json:"id_card"`
+	CompanyName       string `json:"company_name"`
+	CreditCode        string `json:"credit_code"`
+	LegalPerson       string `json:"legal_person"`
+	ContactPerson     string `json:"contact_person"`
+	ContactTitle      string `json:"contact_title"`
+	ContactMobile     string `json:"contact_mobile"`
+	Industry          string `json:"industry"`
+	FoundedDate       string `json:"founded_date"`
+	RegisteredCapital string `json:"registered_capital"`
+	EmployeeCount     int    `json:"employee_count"`
+	BusinessScope     string `json:"business_scope"`
+	PostalCode        string `json:"postal_code"`
+	Address           string `json:"address"`
+	Website           string `json:"website"`
+	Description       string `json:"description"`
+	CertFile          string `json:"cert_file"`
 }
 
 type ChangePasswordRequest struct {

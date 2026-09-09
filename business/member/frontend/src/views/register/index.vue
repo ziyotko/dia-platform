@@ -482,6 +482,7 @@ async function handleSubmit() {
       registerData.credit_code = form2.creditCode
       registerData.legal_person = form2.legalPerson
       registerData.contact_person = form2.contactPerson
+      registerData.contact_mobile = form1.mobile
       registerData.address = form2.address
       registerData.cert_file = certFileUrl.value
     }
