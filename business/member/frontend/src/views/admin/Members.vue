@@ -1,7 +1,7 @@
 <template>
   <div class="admin-members" v-loading="loading">
     <div class="page-header">
-      <h3>会员管理</h3>
+      <h3>会籍管理</h3>
       <div class="filters">
         <el-input v-model="keyword" placeholder="搜索用户名/公司名" clearable style="width:200px" @clear="search" @keyup.enter="search" />
         <el-select v-model="filterStatus" placeholder="状态" clearable style="width:130px" @change="search">
@@ -20,7 +20,6 @@
         <el-table-column label="公司名称/姓名" min-width="200">
           <template #default="{row}">{{ row.member_type === 'unit' ? row.company_name : row.name }}</template>
         </el-table-column>
-        <el-table-column prop="mobile" label="手机号" min-width="140" />
         <el-table-column prop="member_type" label="类型" min-width="100"><template #default="{row}">{{ row.member_type === 'unit' ? '单位' : '个人' }}</template></el-table-column>
         <el-table-column prop="status" label="状态" min-width="120">
           <template #default="{row}"><el-tag :type="statusTag(row.status)">{{ statusLabel(row.status) }}</el-tag></template>
@@ -28,7 +27,7 @@
         <el-table-column label="操作" min-width="120">
           <template #default="{row}">
             <el-button text size="small" type="primary" @click.stop="openDetail(row)">查看</el-button>
-            <el-button text size="small" type="danger" @click.stop="delMember(row)">删除</el-button>
+            <el-button text size="small" type="danger" :disabled="row.status !== 'registering'" @click.stop="delMember(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -55,12 +54,12 @@
           <div class="section">
             <div class="section-title">基本资料</div>
             <div class="grid">
-              <div class="item"><span class="label">手机号</span><span class="value">{{ detail.mobile || '-' }}</span></div>
-              <div class="item"><span class="label">邮箱</span><span class="value">{{ detail.email || '-' }}</span></div>
               <div class="item"><span class="label">会员类型</span><span class="value">{{ typeLabel(detail.member_type) }}</span></div>
               <div class="item"><span class="label">会员等级</span><span class="value">{{ detail.member_level || '-' }}</span></div>
               <div class="item"><span class="label">注册时间</span><span class="value">{{ fmt(detail.created_at) }}</span></div>
               <div class="item"><span class="label">最近更新</span><span class="value">{{ fmt(detail.updated_at) }}</span></div>
+              <div class="item"><span class="label">手机号</span><span class="value">{{ detail.mobile || '-' }}</span></div>
+              <div class="item"><span class="label">邮箱</span><span class="value">{{ detail.email || '-' }}</span></div>
             </div>
           </div>
 
@@ -70,9 +69,9 @@
               <div class="item"><span class="label">公司名称</span><span class="value">{{ detail.company_name || '-' }}</span></div>
               <div class="item"><span class="label">统一社会信用代码</span><span class="value">{{ detail.credit_code || '-' }}</span></div>
               <div class="item"><span class="label">法定代表人</span><span class="value">{{ detail.legal_person || '-' }}</span></div>
+              <div class="item"><span class="label">所属行业</span><span class="value">{{ detail.industry || '-' }}</span></div>
               <div class="item"><span class="label">联系人</span><span class="value">{{ detail.contact_person || '-' }}<template v-if="detail.contact_title">（{{ detail.contact_title }}）</template></span></div>
               <div class="item"><span class="label">联系电话</span><span class="value">{{ detail.contact_mobile || '-' }}</span></div>
-              <div class="item"><span class="label">所属行业</span><span class="value">{{ detail.industry || '-' }}</span></div>
               <div class="item"><span class="label">成立日期</span><span class="value">{{ detail.founded_date || '-' }}</span></div>
               <div class="item"><span class="label">注册资本</span><span class="value">{{ detail.registered_capital || '-' }}</span></div>
               <div class="item"><span class="label">员工人数</span><span class="value">{{ detail.employee_count != null ? detail.employee_count + ' 人' : '-' }}</span></div>
@@ -156,6 +155,10 @@ async function openDetail(row: any) {
 }
 
 async function delMember(row: any) {
+  if (row.status !== 'registering') {
+    ElMessage.warning('仅“注册中”状态的会员才可删除')
+    return
+  }
   try {
     await ElMessageBox.confirm('确认删除该会员？', '警告', { type: 'warning' })
     await adminApi.deleteMember(row.id); ElMessage.success('已删除'); fetchData()
