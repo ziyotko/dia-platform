@@ -3,8 +3,7 @@
     <!-- 页面标题 -->
     <div class="page-header">
       <div class="header-left">
-        <h3>控制台</h3>
-        <p class="header-desc">欢迎回来，这是会员管理系统的数据概览</p>
+        <h3>驾驶舱</h3>
       </div>
       <div class="header-right">
         <el-button text @click="refresh">
