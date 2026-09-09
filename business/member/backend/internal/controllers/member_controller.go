@@ -98,12 +98,13 @@ func (ctrl *MemberController) GetMemberStats(c *gin.Context) {
 	now := time.Now()
 	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 
-	db.DB.Model(&models.Member{}).Count(&total)
-	db.DB.Model(&models.Member{}).Where("status = ?", "active").Count(&active)
-	db.DB.Model(&models.Member{}).Where("status IN ?", []string{"pending_review", "pending_payment", "registering"}).Count(&pending)
-	db.DB.Model(&models.Member{}).Where("status = ?", "rejected").Count(&rejected)
-	db.DB.Model(&models.Member{}).Where("status = ?", "pending_payment").Count(&pendingPayment)
-	db.DB.Model(&models.Member{}).Where("created_at >= ?", todayStart).Count(&todayNew)
+	// 会员统计不包含管理员
+	db.DB.Model(&models.Member{}).Where("is_admin = ?", false).Count(&total)
+	db.DB.Model(&models.Member{}).Where("is_admin = ? AND status = ?", false, "active").Count(&active)
+	db.DB.Model(&models.Member{}).Where("is_admin = ? AND status IN ?", false, []string{"pending_review", "pending_payment", "registering"}).Count(&pending)
+	db.DB.Model(&models.Member{}).Where("is_admin = ? AND status = ?", false, "rejected").Count(&rejected)
+	db.DB.Model(&models.Member{}).Where("is_admin = ? AND status = ?", false, "pending_payment").Count(&pendingPayment)
+	db.DB.Model(&models.Member{}).Where("is_admin = ? AND created_at >= ?", false, todayStart).Count(&todayNew)
 
 	response.Success(c, gin.H{
 		"total":           total,
