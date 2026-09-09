@@ -212,6 +212,9 @@ func (s *FeeService) ApplyInvoice(memberID, feeID uint64, req ApplyInvoiceReques
 	if fee.Status != models.FeeStatusPaid {
 		return errors.New("只有已缴费的费用才能申请开票")
 	}
+	if fee.PaidAmount <= 0 {
+		return errors.New("实缴金额为0，无法申请开票")
+	}
 	if fee.InvoiceStatus != "" {
 		return errors.New("该费用已申请开票，请勿重复申请")
 	}
@@ -286,12 +289,18 @@ type ApplyInvoiceRequest struct {
 	InvoiceRemark  string  `json:"invoice_remark"`
 }
 
-// updateCertificateWithLevelAndTemplate updates the member's active certificate with level info and template ID
+// updateCertificateWithLevelAndTemplate updates the member's active certificate with level info and template ID.
+// 仅当费用关联了有效等级时才更新证书等级，避免把证书已有的 level_id / level_name / cert_template_id 清空。
 func (s *FeeService) updateCertificateWithLevelAndTemplate(memberID, levelID uint64, levelName string) {
 	// Find the active certificate for this member
 	var cert models.Certificate
 	if err := db.DB.Where("member_id = ? AND status = 'active'", memberID).First(&cert).Error; err != nil {
 		return // no active certificate found, skip
+	}
+
+	// 无有效等级（如手工新增的免缴费用）时保持证书原等级不变
+	if levelID == 0 {
+		return
 	}
 
 	updates := map[string]interface{}{

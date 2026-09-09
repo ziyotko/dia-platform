@@ -57,7 +57,10 @@
         <el-table-column label="操作" width="150">
           <template #default="{ row }">
             <el-button v-if="row.status === 'unpaid'" type="primary" size="small" @click="openPayDialog(row)">缴费</el-button>
-            <el-button v-else-if="row.status === 'paid' && !row.invoice_status" type="success" size="small" @click="openInvoiceDialog(row)">申请开票</el-button>
+            <el-button v-else-if="row.status === 'paid' && !row.invoice_status && row.paid_amount > 0" type="success" size="small" @click="openInvoiceDialog(row)">申请开票</el-button>
+            <el-tooltip v-else-if="row.status === 'paid' && !row.invoice_status" content="实缴金额为0，无法申请开票" placement="top">
+              <el-tag type="info" effect="plain" size="small">实缴为0</el-tag>
+            </el-tooltip>
             <el-button v-else-if="row.invoice_status === 'issued'" type="primary" size="small" @click="downloadInvoice(row)">下载发票</el-button>
             <el-tag v-else-if="row.status === 'pending'" type="warning" effect="plain" size="small">待确认</el-tag>
             <span v-else style="color:#9ca3af">-</span>
@@ -266,6 +269,10 @@ const canSubmitInvoice = computed(() => {
 })
 
 async function openInvoiceDialog(row: any) {
+  if (!row.paid_amount || row.paid_amount <= 0) {
+    ElMessage.warning('实缴金额为0，无法申请开票')
+    return
+  }
   invoiceTarget.value = row
   invoiceForm.invoice_amount = row.amount || 0
   invoiceForm.invoice_remark = ''
