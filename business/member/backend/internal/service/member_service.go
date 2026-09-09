@@ -101,7 +101,7 @@ func (s *MemberService) UpdateMemberLevel(id uint64, levelID uint64) error {
 		return errors.New("该等级不在该会员已缴费加入的机构所支持的等级中")
 	}
 
-	if err := db.DB.Model(&models.Member{}).Where("id = ?", id).Update("member_level", lvl.Name).Error; err != nil {
+	if err := db.DB.Model(&models.Member{}).Where("id = ?", id).Update("member_level", lvl.ID).Error; err != nil {
 		return err
 	}
 
