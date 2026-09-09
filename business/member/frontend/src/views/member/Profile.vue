@@ -12,8 +12,8 @@
               <el-tag>{{ form.member_type === 'unit' ? '单位会员' : '个人会员' }}</el-tag>
             </el-form-item>
             <el-form-item label="会员等级">
-              <el-tag :type="!form.member_level || form.member_level === 'normal' ? 'info' : 'warning'">
-                {{ !form.member_level || form.member_level === 'normal' ? '暂无' : form.member_level }}
+              <el-tag :type="levelName(form.member_level) ? 'warning' : 'info'">
+                {{ levelName(form.member_level) || '暂无' }}
               </el-tag>
             </el-form-item>
           </el-col>
@@ -91,6 +91,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { authApi } from '@/api/auth'
+import { orgApi } from '@/api/index'
 import { ElMessage } from 'element-plus'
 import { Download, Upload } from '@element-plus/icons-vue'
 
@@ -103,6 +104,7 @@ const showPwdDialog = ref(false)
 const pwdForm = reactive({ oldPassword: '', newPassword: '' })
 const uploading = ref(false)
 const fileInputRef = ref<HTMLInputElement>()
+const levels = ref<any[]>([])
 
 // 防抖：避免输入过程中频繁请求后端查重
 function debounce<A extends any[]>(fn: (...args: A) => void, delay = 400) {
@@ -212,11 +214,22 @@ const rules = {
 
 onMounted(async () => {
   try {
-    const res = await authApi.getProfile()
-    Object.assign(form, res.data)
-    Object.assign(original, res.data)
+    const [profileRes, levelRes] = await Promise.all([
+      authApi.getProfile(),
+      orgApi.getMemberLevels()
+    ])
+    Object.assign(form, profileRes.data)
+    Object.assign(original, profileRes.data)
+    levels.value = levelRes.data || []
   } catch {} finally { loading.value = false }
 })
+
+// 会员等级 id -> 名称
+function levelName(id: any) {
+  if (id === null || id === undefined || id === '' || id === 0 || id === '0') return ''
+  const lvl = levels.value.find((l: any) => String(l.id) === String(id))
+  return lvl ? lvl.name : ''
+}
 
 async function saveProfile() {
   const valid = await formRef.value?.validate().catch(() => false)
