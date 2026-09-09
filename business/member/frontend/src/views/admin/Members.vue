@@ -21,6 +21,7 @@
           <template #default="{row}">{{ row.member_type === 'unit' ? row.company_name : row.name }}</template>
         </el-table-column>
         <el-table-column prop="member_type" label="类型" min-width="100"><template #default="{row}">{{ row.member_type === 'unit' ? '单位' : '个人' }}</template></el-table-column>
+        <el-table-column prop="member_level" label="会员等级" min-width="120"><template #default="{row}">{{ levelName(row.member_level) }}</template></el-table-column>
         <el-table-column prop="status" label="状态" min-width="120">
           <template #default="{row}"><el-tag :type="statusTag(row.status)">{{ statusLabel(row.status) }}</el-tag></template>
         </el-table-column>
@@ -102,7 +103,7 @@
         <p class="level-hint">仅可为该会员选择其已缴费加入的机构所支持的会员等级。</p>
         <el-form label-width="90px">
           <el-form-item label="当前等级">
-            <span>{{ levelTarget?.member_level || '-' }}</span>
+            <span>{{ levelName(levelTarget?.member_level) }}</span>
           </el-form-item>
           <el-form-item label="新等级" required>
             <el-select v-model="selectedLevel" placeholder="请选择会员等级" style="width:100%">
@@ -126,6 +127,7 @@ import { adminApi } from '@/api/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const list = ref<any[]>([])
+const levels = ref<any[]>([])
 const loading = ref(true)
 const page = ref(1); const size = ref(10); const total = ref(0)
 const keyword = ref(''); const filterStatus = ref('')
@@ -150,6 +152,11 @@ const statusMap: Record<string, { l: string; t: string }> = {
 function statusLabel(s: string) { return statusMap[s]?.l || s }
 function statusTag(s: string) { return statusMap[s]?.t || 'info' as any }
 function typeLabel(t: string) { return t === 'unit' ? '单位会员' : t === 'personal' ? '个人会员' : (t || '-') }
+function levelName(id: any) {
+  if (id === null || id === undefined || id === '') return '-'
+  const lvl = levels.value.find((l: any) => String(l.id) === String(id))
+  return lvl ? lvl.name : String(id)
+}
 function displayName(m: any) {
   if (!m) return '-'
   return m.member_type === 'unit' ? (m.company_name || m.username || '-') : (m.name || m.username || '-')
@@ -163,7 +170,13 @@ function fileUrl(path?: string) {
 }
 function tableRowClassName() { return 'members-row' }
 
-onMounted(() => fetchData())
+onMounted(() => { fetchData(); fetchLevels() })
+async function fetchLevels() {
+  try {
+    const res = await adminApi.getMemberLevels()
+    levels.value = res.data || []
+  } catch {}
+}
 async function fetchData() {
   loading.value = true
   try {
@@ -208,7 +221,7 @@ async function openLevelDialog(row: any) {
   try {
     const res = await adminApi.getMemberLevelOptions(row.id)
     levelOptions.value = res.data || []
-    const current = levelOptions.value.find((lvl: any) => lvl.name === row.member_level)
+    const current = levelOptions.value.find((lvl: any) => String(lvl.id) === String(row.member_level))
     if (current) selectedLevel.value = current.id
   } catch {} finally { levelLoading.value = false }
 }
@@ -219,7 +232,7 @@ async function confirmChangeLevel() {
     return
   }
   if (!levelTarget.value) return
-  const current = levelOptions.value.find((lvl: any) => lvl.name === levelTarget.value.member_level)
+  const current = levelOptions.value.find((lvl: any) => String(lvl.id) === String(levelTarget.value.member_level))
   if (selectedLevel.value === current?.id) {
     ElMessage.warning('新旧会员等级不能相同')
     return
