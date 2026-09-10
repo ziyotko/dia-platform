@@ -113,6 +113,9 @@
             </el-select>
             <div v-if="!levelLoading && !levelOptions.length" class="level-empty">该会员暂无已缴费加入机构可选的会员等级</div>
           </el-form-item>
+          <el-form-item label="变更原因" required>
+            <el-input v-model="levelReason" type="textarea" :rows="3" maxlength="500" show-word-limit placeholder="请输入变更原因" />
+          </el-form-item>
         </el-form>
       </div>
       <template #footer>
@@ -137,6 +140,7 @@
                 <span>入会机构：{{ item.org_name || '-' }}</span>
                 <span>变更人：{{ item.operator || '-' }}</span>
               </div>
+              <div class="history-reason" v-if="item.reason">变更原因：{{ item.reason }}</div>
             </div>
           </el-timeline-item>
         </el-timeline>
@@ -169,6 +173,7 @@ const levelTarget = ref<any>(null)
 const levelOptions = ref<any[]>([])
 const levelLoading = ref(false)
 const selectedLevel = ref<number | null>(null)
+const levelReason = ref('')
 const savingLevel = ref(false)
 
 const historyVisible = ref(false)
@@ -252,6 +257,7 @@ async function openLevelDialog(row: any) {
   }
   levelTarget.value = row
   selectedLevel.value = null
+  levelReason.value = ''
   levelOptions.value = []
   levelDialogVisible.value = true
   levelLoading.value = true
@@ -274,9 +280,13 @@ async function confirmChangeLevel() {
     ElMessage.warning('新旧会员等级不能相同')
     return
   }
+  if (!levelReason.value.trim()) {
+    ElMessage.warning('请填写变更原因')
+    return
+  }
   savingLevel.value = true
   try {
-    await adminApi.updateMemberLevel(levelTarget.value.id, selectedLevel.value)
+    await adminApi.updateMemberLevel(levelTarget.value.id, selectedLevel.value, levelReason.value.trim())
     ElMessage.success('等级变更成功')
     levelDialogVisible.value = false
     fetchData()
@@ -456,6 +466,16 @@ function onHistoryScroll() {
         margin-top: 10px;
         font-size: 13px;
         color: #606266;
+      }
+      .history-reason {
+        margin-top: 10px;
+        padding: 8px 10px;
+        background: #fff7e6;
+        border-radius: 6px;
+        font-size: 13px;
+        color: #7a5b1a;
+        line-height: 1.6;
+        word-break: break-word;
       }
     }
 

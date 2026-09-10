@@ -38,6 +38,9 @@
             <el-tag type="warning">{{ row.new_level_name }}（#{{ row.new_level_id }}）</el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="变更原因" min-width="180" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.reason || '-' }}</template>
+        </el-table-column>
         <el-table-column prop="operator" label="变更人" min-width="110">
           <template #default="{ row }">{{ row.operator || '-' }}</template>
         </el-table-column>

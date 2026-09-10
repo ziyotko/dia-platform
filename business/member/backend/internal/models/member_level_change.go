@@ -15,6 +15,7 @@ type MemberLevelChange struct {
 	OldLevelName string `gorm:"size:64" json:"old_level_name"` // 原始会籍
 	NewLevelID   uint64 `gorm:"default:0" json:"new_level_id"` // 新的会籍 ID
 	NewLevelName string `gorm:"size:64" json:"new_level_name"` // 新的会籍
+	Reason       string `gorm:"size:500" json:"reason"`        // 变更原因
 	Operator     string `gorm:"size:64" json:"operator"`       // 变更人
 }
 

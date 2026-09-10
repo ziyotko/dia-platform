@@ -135,7 +135,7 @@ func (s *MemberService) UpdateMemberStatus(id uint64, status string) error {
 // UpdateMemberLevel updates a member's level (admin). Only active members may change
 // level, and the target level must come from the member's paid memberships (会籍).
 // Every successful change is recorded in the membership change log.
-func (s *MemberService) UpdateMemberLevel(id uint64, levelID uint64, operator string) error {
+func (s *MemberService) UpdateMemberLevel(id uint64, levelID uint64, operator string, reason string) error {
 	var m models.Member
 	if err := db.DB.First(&m, id).Error; err != nil {
 		return errors.New("会员不存在")
@@ -204,6 +204,7 @@ func (s *MemberService) UpdateMemberLevel(id uint64, levelID uint64, operator st
 		OldLevelName: oldLevelName,
 		NewLevelID:   lvl.ID,
 		NewLevelName: lvl.Name,
+		Reason:       reason,
 		Operator:     operator,
 	}
 	if err := db.DB.Create(&change).Error; err != nil {

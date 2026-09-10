@@ -70,12 +70,17 @@ func (ctrl *MemberController) UpdateMemberLevel(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	var req struct {
 		LevelID uint64 `json:"level_id" binding:"required"`
+		Reason  string `json:"reason"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "参数错误")
 		return
 	}
-	if err := ctrl.memberService.UpdateMemberLevel(id, req.LevelID, middleware.GetUsername(c)); err != nil {
+	if req.Reason == "" {
+		response.BadRequest(c, "请填写变更原因")
+		return
+	}
+	if err := ctrl.memberService.UpdateMemberLevel(id, req.LevelID, middleware.GetUsername(c), req.Reason); err != nil {
 		response.BadRequest(c, err.Error())
 		return
 	}
