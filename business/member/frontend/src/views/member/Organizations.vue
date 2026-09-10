@@ -63,7 +63,9 @@
           <template #default="{ data }">
             <span class="tree-node-label">
               <span>{{ data.name }}</span>
-              <el-tag v-if="data.disabled" type="info" size="small" effect="plain">已加入</el-tag>
+              <el-tag v-if="data.disabled" type="info" size="small" effect="plain">
+                {{ data._disabledReason === 'hierarchy' ? '不可加入' : '已加入' }}
+              </el-tag>
             </span>
           </template>
         </el-tree>
@@ -167,10 +169,12 @@ const processedOrgTree = computed(() => {
     return nodes.map(n => {
       const isJoined = joinedOrgIds.value.has(n.id)
       const nodeDepth = depthMap.get(n.id) ?? 0
-      const disabled = isJoined || (minDepth >= 0 && nodeDepth < minDepth)
+      const hierarchyBlocked = minDepth >= 0 && nodeDepth < minDepth
+      const disabled = isJoined || hierarchyBlocked
       return {
         ...n,
         disabled,
+        _disabledReason: isJoined ? 'joined' : (hierarchyBlocked ? 'hierarchy' : ''),
         children: n.children ? markDisabled(n.children) : n.children
       }
     })
@@ -269,7 +273,11 @@ function filterNode(value: string, data: any) {
 
 function selectOrg(node: any) {
   if (node.disabled) {
-    ElMessage.info('您已加入该组织，无需重复加入')
+    ElMessage.info(
+      node._disabledReason === 'hierarchy'
+        ? '只要加入任意分支机构或代表机构则默认加入更高层级的组织'
+        : '您已加入该组织，无需重复加入'
+    )
     selectedOrg.value = null
     return
   }
