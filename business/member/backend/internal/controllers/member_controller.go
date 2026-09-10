@@ -3,6 +3,7 @@ package controllers
 import (
 	"time"
 
+	"member/internal/middleware"
 	"member/internal/models"
 	"member/internal/service"
 	"member/pkg/db"
@@ -74,11 +75,31 @@ func (ctrl *MemberController) UpdateMemberLevel(c *gin.Context) {
 		response.BadRequest(c, "参数错误")
 		return
 	}
-	if err := ctrl.memberService.UpdateMemberLevel(id, req.LevelID); err != nil {
+	if err := ctrl.memberService.UpdateMemberLevel(id, req.LevelID, middleware.GetUsername(c)); err != nil {
 		response.BadRequest(c, err.Error())
 		return
 	}
 	response.SuccessWithMessage(c, "等级更新成功", nil)
+}
+
+// ListLevelChanges lists membership change records (admin)
+func (ctrl *MemberController) ListLevelChanges(c *gin.Context) {
+	page := parseIntDefault(c.Query("page"), 1)
+	size := parseIntDefault(c.Query("size"), 10)
+	keyword := c.Query("keyword")
+	memberType := c.Query("member_type")
+
+	list, total, err := ctrl.memberService.ListLevelChanges(page, size, keyword, memberType)
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+	response.Success(c, gin.H{
+		"list":  list,
+		"total": total,
+		"page":  page,
+		"size":  size,
+	})
 }
 
 // GetMemberLevelOptions returns the levels this member can be changed to (from paid memberships)

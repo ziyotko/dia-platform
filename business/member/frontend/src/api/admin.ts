@@ -9,6 +9,7 @@ export const adminApi = {
   getMemberLevelOptions: (id: number) => request.get(`/admin/members/${id}/level-options`),
   deleteMember: (id: number) => request.delete(`/admin/members/${id}`),
   getMemberStats: () => request.get('/admin/member-stats'),
+  getMemberLevelChanges: (params?: any) => request.get('/admin/member-level-changes', { params }),
 
   // Applications
   getApplications: (params?: any) => request.get('/admin/applications', { params }),

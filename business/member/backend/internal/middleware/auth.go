@@ -63,3 +63,11 @@ func GetMemberID(c *gin.Context) uint64 {
 	}
 	return id.(uint64)
 }
+
+func GetUsername(c *gin.Context) string {
+	name, _ := c.Get(CtxUsername)
+	if name == nil {
+		return ""
+	}
+	return name.(string)
+}

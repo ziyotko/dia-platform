@@ -49,6 +49,7 @@ func main() {
 		&models.MemberOrgLevel{},
 		&models.MemberFeeStandard{},
 		&models.MemberCertificateTemplate{},
+		&models.MemberLevelChange{},
 	); err != nil {
 		utils.Logger.Fatalf("AutoMigrate failed: %v", err)
 	}

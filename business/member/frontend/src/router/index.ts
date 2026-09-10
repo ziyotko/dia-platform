@@ -76,6 +76,7 @@ const router = createRouter({
       children: [
         { path: 'dashboard', name: 'AdminDashboard', meta: { title: '管理首页' }, component: () => import('@/views/admin/Dashboard.vue') },
         { path: 'members', name: 'AdminMembers', meta: { title: '会员管理' }, component: () => import('@/views/admin/Members.vue') },
+        { path: 'member-level-changes', name: 'AdminMemberLevelChanges', meta: { title: '会籍变更记录' }, component: () => import('@/views/admin/MemberLevelChanges.vue') },
         { path: 'applications', name: 'AdminApplications', meta: { title: '入会审核' }, component: () => import('@/views/admin/Applications.vue') },
         { path: 'fees', name: 'AdminFees', meta: { title: '会费管理' }, component: () => import('@/views/admin/Fees.vue') },
         { path: 'certificates', name: 'AdminCertificates', meta: { title: '证书管理' }, component: () => import('@/views/admin/Certificates.vue') },

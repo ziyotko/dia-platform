@@ -4,6 +4,8 @@ import (
 	"errors"
 	"member/internal/models"
 	"member/pkg/db"
+	"strconv"
+	"time"
 
 	"gorm.io/gorm"
 )
@@ -132,7 +134,8 @@ func (s *MemberService) UpdateMemberStatus(id uint64, status string) error {
 
 // UpdateMemberLevel updates a member's level (admin). Only active members may change
 // level, and the target level must come from the member's paid memberships (会籍).
-func (s *MemberService) UpdateMemberLevel(id uint64, levelID uint64) error {
+// Every successful change is recorded in the membership change log.
+func (s *MemberService) UpdateMemberLevel(id uint64, levelID uint64, operator string) error {
 	var m models.Member
 	if err := db.DB.First(&m, id).Error; err != nil {
 		return errors.New("会员不存在")
@@ -149,7 +152,8 @@ func (s *MemberService) UpdateMemberLevel(id uint64, levelID uint64) error {
 	if err := db.DB.First(&lvl, levelID).Error; err != nil {
 		return errors.New("会员等级不存在")
 	}
-	if m.MemberLevel == lvl.Name {
+	oldLevelID := parseUint(m.MemberLevel)
+	if oldLevelID == lvl.ID {
 		return errors.New("新旧会员等级不能相同")
 	}
 
@@ -166,6 +170,15 @@ func (s *MemberService) UpdateMemberLevel(id uint64, levelID uint64) error {
 		return errors.New("该等级不在该会员已缴费加入的机构所支持的等级中")
 	}
 
+	// 原始会籍名称
+	oldLevelName := ""
+	if oldLevelID > 0 {
+		var oldLvl models.MemberLevel
+		if err := db.DB.First(&oldLvl, oldLevelID).Error; err == nil {
+			oldLevelName = oldLvl.Name
+		}
+	}
+
 	if err := db.DB.Model(&models.Member{}).Where("id = ?", id).Update("member_level", lvl.ID).Error; err != nil {
 		return err
 	}
@@ -175,7 +188,91 @@ func (s *MemberService) UpdateMemberLevel(id uint64, levelID uint64) error {
 		Where("member_id = ? AND status = ?", id, "active").
 		Updates(map[string]interface{}{"level_id": lvl.ID, "level_name": lvl.Name})
 
+	// 主入会机构
+	orgID, orgName := s.primaryOrg(&m)
+
+	// 记录会籍变更
+	change := models.MemberLevelChange{
+		MemberID:     m.ID,
+		Username:     m.Username,
+		MemberName:   memberDisplayName(&m),
+		MemberType:   m.MemberType,
+		ChangeYear:   time.Now().Year(),
+		OrgID:        orgID,
+		OrgName:      orgName,
+		OldLevelID:   oldLevelID,
+		OldLevelName: oldLevelName,
+		NewLevelID:   lvl.ID,
+		NewLevelName: lvl.Name,
+		Operator:     operator,
+	}
+	if err := db.DB.Create(&change).Error; err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// primaryOrg returns the member's primary joined organization (id + name).
+func (s *MemberService) primaryOrg(m *models.Member) (uint64, string) {
+	members := []models.Member{*m}
+	_ = s.fillOrgNames(members)
+	name := members[0].OrgName
+	if name == "" {
+		return 0, ""
+	}
+	var org models.Organization
+	if err := db.DB.Where("name = ?", name).First(&org).Error; err != nil {
+		return 0, name
+	}
+	return org.ID, name
+}
+
+// ListLevelChanges returns paginated membership change records (admin).
+func (s *MemberService) ListLevelChanges(page, size int, keyword, memberType string) ([]models.MemberLevelChange, int64, error) {
+	var list []models.MemberLevelChange
+	var total int64
+
+	query := db.DB.Model(&models.MemberLevelChange{})
+	if keyword != "" {
+		kw := "%" + keyword + "%"
+		query = query.Where("username LIKE ? OR member_name LIKE ? OR old_level_name LIKE ? OR new_level_name LIKE ?",
+			kw, kw, kw, kw)
+	}
+	if memberType != "" {
+		query = query.Where("member_type = ?", memberType)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if err := query.Order("id DESC").Offset((page - 1) * size).Limit(size).Find(&list).Error; err != nil {
+		return nil, 0, err
+	}
+	return list, total, nil
+}
+
+// memberDisplayName returns the company name for unit members or personal name.
+func memberDisplayName(m *models.Member) string {
+	if m.MemberType == models.MemberTypePersonal {
+		if m.Name != "" {
+			return m.Name
+		}
+		return m.Username
+	}
+	if m.CompanyName != "" {
+		return m.CompanyName
+	}
+	return m.Username
+}
+
+// parseUint parses a string into uint64, returning 0 on error or empty input.
+func parseUint(s string) uint64 {
+	n, err := strconv.ParseUint(s, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return n
 }
 
 // GetMemberAvailableLevels returns the member levels supported by the organizations
