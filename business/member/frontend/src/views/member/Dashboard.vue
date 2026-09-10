@@ -28,11 +28,6 @@
               <el-icon><User /></el-icon>
               {{ memberTypeLabel }}
             </span>
-            <span class="meta-divider"></span>
-            <span class="meta-item">
-              <el-icon><Message /></el-icon>
-              {{ dash.member.email || dash.member.mobile || '未设置联系方式' }}
-            </span>
           </div>
           <div class="hero-actions">
             <el-button
