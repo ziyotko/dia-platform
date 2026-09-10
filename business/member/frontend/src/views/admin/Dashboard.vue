@@ -158,7 +158,7 @@ const stats = ref([
   { icon: 'UserFilled', label: '会员总数', value: 0, color: '#002fa7', bg: '#ccd5ed' },
   { icon: 'User', label: '正式会员', value: 0, color: '#22c55e', bg: '#dcfce7' },
   { icon: 'TrendCharts', label: '今日新增', value: 0, color: '#8b5cf6', bg: '#ede9fe' },
-  { icon: 'Clock', label: '待审核', value: 0, color: '#f59e0b', bg: '#fef3c7' },
+  { icon: 'Clock', label: '待处理', value: 0, color: '#f59e0b', bg: '#fef3c7' },
   { icon: 'Money', label: '待缴费', value: 0, color: '#f97316', bg: '#fff7ed' },
   { icon: 'CircleClose', label: '已拒绝', value: 0, color: '#ef4444', bg: '#fee2e2' }
 ])
@@ -276,7 +276,7 @@ function updateCharts() {
     typeChart?.setOption(typeChartOption(), true)
     statusChart?.setOption(statusChartOption([
       { label: '正式会员', value: stats.value[1].value, color: '#22c55e' },
-      { label: '待审核', value: stats.value[3].value - stats.value[4].value > 0 ? stats.value[3].value - stats.value[4].value : stats.value[3].value, color: '#f59e0b' },
+      { label: '待处理', value: stats.value[3].value - stats.value[4].value > 0 ? stats.value[3].value - stats.value[4].value : stats.value[3].value, color: '#f59e0b' },
       { label: '待缴费', value: stats.value[4].value, color: '#f97316' },
       { label: '已拒绝', value: stats.value[5].value, color: '#ef4444' }
     ]), true)
@@ -300,7 +300,7 @@ const quickActions = [
 
 // ===== 待办事项 =====
 const todos = ref([
-  { text: '待审核入会申请', tag: 'warning' as const, color: '#f59e0b', count: 0, path: '/admin/applications' },
+  { text: '待处理入会申请', tag: 'warning' as const, color: '#f59e0b', count: 0, path: '/admin/applications' },
   { text: '待确认缴费记录', tag: 'danger' as const, color: '#f97316', count: 0, path: '/admin/fees' },
   { text: '待回复会员留言', tag: 'primary' as const, color: '#002fa7', count: 0, path: '/admin/messages' },
   { text: '待处理证书申请', tag: 'primary' as const, color: '#8b5cf6', count: 0, path: '/admin/certificates' }

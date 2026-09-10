@@ -18,7 +18,7 @@
         <el-menu-item index="/admin/dashboard"><el-icon><DataAnalysis /></el-icon><span>管理首页</span></el-menu-item>
         <el-menu-item index="/admin/applications"><el-icon><DocumentChecked /></el-icon><span>入会审核</span></el-menu-item>
         <el-menu-item index="/admin/members"><el-icon><UserFilled /></el-icon><span>会籍管理</span></el-menu-item>
-        <el-menu-item index="/admin/member-level-changes"><el-icon><Switch /></el-icon><span>会籍变更记录</span></el-menu-item>
+        <el-menu-item index="/admin/member-level-changes"><el-icon><Switch /></el-icon><span>变更记录</span></el-menu-item>
 
         <el-menu-item index="/admin/fees"><el-icon><Money /></el-icon><span>会费管理</span></el-menu-item>
         <el-menu-item index="/admin/certificates"><el-icon><Medal /></el-icon><span>证书管理</span></el-menu-item>
