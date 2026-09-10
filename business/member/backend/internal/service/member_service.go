@@ -253,7 +253,7 @@ func (s *MemberService) ListLevelChanges(page, size int, keyword, memberType str
 	return list, total, nil
 }
 
-// GetMemberLevelChanges returns a single member's level change history in chronological order.
+// GetMemberLevelChanges returns a single member's level change history, newest first.
 func (s *MemberService) GetMemberLevelChanges(memberID uint64, page, size int) ([]models.MemberLevelChange, int64, error) {
 	var list []models.MemberLevelChange
 	var total int64
@@ -262,7 +262,7 @@ func (s *MemberService) GetMemberLevelChanges(memberID uint64, page, size int) (
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	if err := query.Order("created_at ASC, id ASC").Offset((page - 1) * size).Limit(size).Find(&list).Error; err != nil {
+	if err := query.Order("created_at DESC, id DESC").Offset((page - 1) * size).Limit(size).Find(&list).Error; err != nil {
 		return nil, 0, err
 	}
 	return list, total, nil
