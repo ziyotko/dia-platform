@@ -1,0 +1,83 @@
+<template>
+  <div class="page-card">
+    <div class="page-toolbar">
+      <div style="display:flex;gap:12px">
+        <el-input v-model="keyword" placeholder="搜索项目名称" clearable style="width:220px" @keyup.enter="fetch" @clear="fetch" />
+        <el-select v-model="status" placeholder="全部状态" clearable style="width:160px" @change="fetch">
+          <el-option v-for="(label, key) in applicationStatusMap" :key="key" :label="label" :value="key" />
+        </el-select>
+        <el-button type="primary" @click="fetch">查询</el-button>
+      </div>
+      <el-button type="primary" @click="$router.push('/member/applications/create')">新建申报</el-button>
+    </div>
+
+    <el-table :data="list" v-loading="loading">
+      <el-table-column prop="title" label="项目名称" min-width="220" />
+      <el-table-column label="申报批次" min-width="160">
+        <template #default="{ row }">{{ row.batch?.title || '-' }}</template>
+      </el-table-column>
+      <el-table-column label="状态" width="110">
+        <template #default="{ row }">
+          <el-tag :type="applicationStatusType[row.status]">{{ applicationStatusMap[row.status] || row.status }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="平均分" width="90">
+        <template #default="{ row }">{{ row.avgScore || '-' }}</template>
+      </el-table-column>
+      <el-table-column label="提交时间" width="160">
+        <template #default="{ row }">{{ fmt(row.submittedAt) }}</template>
+      </el-table-column>
+      <el-table-column label="操作" width="220" fixed="right">
+        <template #default="{ row }">
+          <el-button size="small" @click="$router.push(`/member/applications/${row.id}`)">查看</el-button>
+          <el-button v-if="row.status === 'draft'" size="small" type="primary" @click="$router.push(`/member/applications/${row.id}`)">编辑</el-button>
+          <el-button v-if="row.status === 'draft'" size="small" type="danger" @click="remove(row)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <el-pagination
+      style="margin-top:16px;justify-content:flex-end"
+      layout="total, prev, pager, next"
+      :total="total" :page-size="pageSize" :current-page="page"
+      @current-change="onPage"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { memberApi } from '@/api/member'
+import { applicationStatusMap, applicationStatusType, fmt } from '@/utils/constants'
+
+const list = ref<any[]>([])
+const total = ref(0)
+const page = ref(1)
+const pageSize = 10
+const keyword = ref('')
+const status = ref('')
+const loading = ref(false)
+
+async function fetch() {
+  loading.value = true
+  try {
+    const res = await memberApi.getMyApplications({ page: page.value, pageSize, keyword: keyword.value, status: status.value })
+    list.value = res.data.list
+    total.value = res.data.total
+  } finally {
+    loading.value = false
+  }
+}
+
+function onPage(p: number) { page.value = p; fetch() }
+
+async function remove(row: any) {
+  await ElMessageBox.confirm('确认删除该草稿申报？', '提示', { type: 'warning' })
+  await memberApi.deleteApplication(row.id)
+  ElMessage.success('删除成功')
+  fetch()
+}
+
+onMounted(fetch)
+</script>

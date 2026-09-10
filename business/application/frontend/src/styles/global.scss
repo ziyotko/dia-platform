@@ -1,0 +1,52 @@
+:root {
+  --primary-color: #002fa7;
+  --primary-light: #4d6dc1;
+  --primary-dark: #002686;
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --danger-color: #ef4444;
+  --info-color: #6366f1;
+  --app-bg: #f5f7fb;
+  --app-border: #eef1f6;
+  --app-text-primary: #1d2739;
+  --app-text-secondary: #667085;
+}
+
+.el-button--primary {
+  --el-button-bg-color: var(--primary-color);
+  --el-button-border-color: var(--primary-color);
+  --el-button-hover-bg-color: var(--primary-dark);
+  --el-button-hover-border-color: var(--primary-dark);
+}
+
+.el-menu {
+  --el-menu-active-color: var(--primary-color);
+}
+
+.page-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.page-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+  border-radius: 12px;
+  color: #fff;
+}
+
+.stat-card .stat-value { font-size: 30px; font-weight: bold; }
+.stat-card .stat-label { font-size: 14px; opacity: 0.9; }

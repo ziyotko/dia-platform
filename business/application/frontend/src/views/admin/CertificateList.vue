@@ -1,0 +1,104 @@
+<template>
+  <div class="page-card">
+    <div class="page-toolbar">
+      <el-input v-model="keyword" placeholder="搜索证书编号/名称/持有人" clearable style="width:260px" @keyup.enter="fetch" @clear="fetch" />
+      <el-button type="primary" @click="openDialog">颁发证书</el-button>
+    </div>
+
+    <el-table :data="list" v-loading="loading">
+      <el-table-column prop="certNo" label="证书编号" width="170" />
+      <el-table-column prop="title" label="证书名称" min-width="200" />
+      <el-table-column prop="holder" label="持有人" width="110" />
+      <el-table-column label="所属项目" min-width="180">
+        <template #default="{ row }">{{ row.application?.title || '-' }}</template>
+      </el-table-column>
+      <el-table-column label="操作" width="120" fixed="right">
+        <template #default="{ row }">
+          <el-button size="small" type="primary" @click="openEdit(row)">编辑</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <el-pagination
+      style="margin-top:16px;justify-content:flex-end"
+      layout="total, prev, pager, next"
+      :total="total" :page-size="pageSize" :current-page="page"
+      @current-change="onPage"
+    />
+
+    <el-dialog v-model="dialogVisible" :title="form.id ? '编辑证书' : '颁发证书'" width="560px">
+      <el-form :model="form" label-width="90px">
+        <el-form-item label="关联申报" v-if="!form.id">
+          <el-select v-model="form.applicationId" style="width:100%" filterable placeholder="选择已通过的申报">
+            <el-option v-for="a in passedApps" :key="a.id" :label="`${a.title}（${a.user?.realName}）`" :value="a.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="证书编号"><el-input v-model="form.certNo" /></el-form-item>
+        <el-form-item label="证书名称"><el-input v-model="form.title" /></el-form-item>
+        <el-form-item label="持有人"><el-input v-model="form.holder" /></el-form-item>
+        <el-form-item label="证书文件URL"><el-input v-model="form.fileUrl" placeholder="/uploads/xxx.pdf" /></el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="save">保存</el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, reactive, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import { adminApi } from '@/api/admin'
+
+const list = ref<any[]>([])
+const passedApps = ref<any[]>([])
+const total = ref(0)
+const page = ref(1)
+const pageSize = 10
+const keyword = ref('')
+const loading = ref(false)
+const dialogVisible = ref(false)
+const form = reactive<any>({ id: 0, applicationId: '', certNo: '', title: '', holder: '', fileUrl: '' })
+
+async function fetch() {
+  loading.value = true
+  try {
+    const res = await adminApi.getCertificates({ page: page.value, pageSize, keyword: keyword.value })
+    list.value = res.data.list
+    total.value = res.data.total
+  } finally {
+    loading.value = false
+  }
+}
+
+function onPage(p: number) { page.value = p; fetch() }
+
+async function openDialog() {
+  Object.assign(form, { id: 0, applicationId: '', certNo: '', title: '', holder: '', fileUrl: '' })
+  const res = await adminApi.getApplications({ page: 1, pageSize: 100, status: 'passed' })
+  passedApps.value = res.data.list
+  dialogVisible.value = true
+}
+
+function openEdit(row: any) {
+  Object.assign(form, { ...row })
+  dialogVisible.value = true
+}
+
+async function save() {
+  if (form.id) {
+    await adminApi.updateCertificate(form.id, { certNo: form.certNo, title: form.title, holder: form.holder, fileUrl: form.fileUrl })
+  } else {
+    await adminApi.issueCertificate({
+      applicationId: Number(form.applicationId), certNo: form.certNo, title: form.title,
+      holder: form.holder, fileUrl: form.fileUrl,
+    })
+  }
+  ElMessage.success('保存成功')
+  dialogVisible.value = false
+  fetch()
+}
+
+onMounted(fetch)
+</script>

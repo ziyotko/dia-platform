@@ -1,0 +1,33 @@
+server:
+  port: 8087
+  mode: debug
+  api_prefix: /application/api
+  max_concurrent_ips: 100
+  upload_dir_prefix: ""
+
+mysql:
+  host: 127.0.0.1
+  port: 3305
+  user: root
+  password: '1qaz@WSX'
+  db_name: caam_application
+  charset: utf8mb4
+  max_open: 50
+  max_idle: 10
+
+redis:
+  addr: 127.0.0.1:6379
+  password:
+  captcha_db: 8
+  anti_replay_db: 9
+
+jwt:
+  secret: application-jwt-secret-key-2026
+  expire_hours: 24
+  issuer: caam-application
+
+log:
+  path: logs/application.log
+  max_size: 100
+  max_backups: 30
+  max_age: 180
