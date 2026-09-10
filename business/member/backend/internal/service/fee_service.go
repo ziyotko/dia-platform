@@ -81,6 +81,9 @@ func (s *FeeService) ConfirmFee(id uint64, amount float64, remark string, operat
 	db.DB.Model(&models.Member{}).Where("id = ? AND status = ?", fee.MemberID, models.MemberStatusPendingPay).
 		Update("status", models.MemberStatusActive)
 
+	// 确认缴费：会员加入分会/代表处时，若尚未加入总会（根组织），则自动补一条加入总会的记录
+	s.ensureRootOrgMembership(fee.MemberID, fee.OrgID, fee.LevelID)
+
 	// Update the member's level on the user record
 	if fee.LevelID > 0 {
 		db.DB.Model(&models.Member{}).Where("id = ?", fee.MemberID).
@@ -159,6 +162,9 @@ func (s *FeeService) UpdateFeeRecord(id uint64, status, invoiceNo string, amount
 		db.DB.Model(&models.Member{}).Where("id = ? AND status = ?", fee.MemberID, models.MemberStatusPendingPay).
 			Update("status", models.MemberStatusActive)
 
+		// 免缴确认：会员加入分会/代表处时，若尚未加入总会（根组织），则自动补一条加入总会的记录
+		s.ensureRootOrgMembership(fee.MemberID, fee.OrgID, fee.LevelID)
+
 		// Update the member's level on the user record
 		if fee.LevelID > 0 {
 			db.DB.Model(&models.Member{}).Where("id = ?", fee.MemberID).
@@ -198,6 +204,40 @@ func (s *FeeService) recordPaymentChange(fee models.FeeRecord, operator string) 
 		Operator:     operator,
 	}
 	db.DB.Create(&change)
+}
+
+// ensureRootOrgMembership 在免缴确认时调用：当会员加入的是分会/代表处（非总会）时，
+// 检查其是否已加入总会（组织机构中的根组织，parent_id=0）。若未加入，则自动补一条加入总会的记录。
+func (s *FeeService) ensureRootOrgMembership(memberID, feeOrgID, levelID uint64) {
+	var roots []models.Organization
+	if err := db.DB.Where("parent_id = ?", 0).Find(&roots).Error; err != nil || len(roots) == 0 {
+		return
+	}
+	for _, root := range roots {
+		if root.ID == 0 || feeOrgID == root.ID {
+			continue // 费用本身即针对总会，或未找到根组织
+		}
+		// 已通过直接加入记录加入总会
+		var count int64
+		db.DB.Model(&models.MemberOrganization{}).
+			Where("member_id = ? AND org_id = ?", memberID, root.ID).Count(&count)
+		if count > 0 {
+			continue
+		}
+		// 已通过入会申请（已通过）加入总会
+		db.DB.Model(&models.Application{}).
+			Where("member_id = ? AND org_id = ? AND status = ?", memberID, root.ID, models.AppStatusApproved).Count(&count)
+		if count > 0 {
+			continue
+		}
+		// 手动加入总会
+		db.DB.Create(&models.MemberOrganization{
+			MemberID: memberID,
+			OrgID:    root.ID,
+			LevelID:  levelID,
+			JoinedAt: time.Now(),
+		})
+	}
 }
 
 // DeleteFeeRecord deletes a fee record (admin, unpaid only)
