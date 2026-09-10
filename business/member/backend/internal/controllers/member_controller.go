@@ -82,6 +82,25 @@ func (ctrl *MemberController) UpdateMemberLevel(c *gin.Context) {
 	response.SuccessWithMessage(c, "等级更新成功", nil)
 }
 
+// GetMemberLevelChanges lists a single member's level change history (admin)
+func (ctrl *MemberController) GetMemberLevelChanges(c *gin.Context) {
+	id := parseUint(c.Param("id"))
+	page := parseIntDefault(c.Query("page"), 1)
+	size := parseIntDefault(c.Query("size"), 10)
+
+	list, total, err := ctrl.memberService.GetMemberLevelChanges(id, page, size)
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+	response.Success(c, gin.H{
+		"list":  list,
+		"total": total,
+		"page":  page,
+		"size":  size,
+	})
+}
+
 // ListLevelChanges lists membership change records (admin)
 func (ctrl *MemberController) ListLevelChanges(c *gin.Context) {
 	page := parseIntDefault(c.Query("page"), 1)

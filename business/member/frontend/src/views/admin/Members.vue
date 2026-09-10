@@ -26,9 +26,10 @@
         <el-table-column prop="status" label="状态" min-width="120">
           <template #default="{row}"><el-tag :type="statusTag(row.status)">{{ statusLabel(row.status) }}</el-tag></template>
         </el-table-column>
-        <el-table-column label="操作" min-width="180">
+        <el-table-column label="操作" min-width="260">
           <template #default="{row}">
             <el-button text size="small" type="warning" :disabled="row.status !== 'active'" @click.stop="openLevelDialog(row)">变更等级</el-button>
+            <el-button text size="small" type="primary" @click.stop="openHistory(row)">会籍历史</el-button>
             <el-button text size="small" type="danger" :disabled="row.status !== 'registering'" @click.stop="delMember(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -119,6 +120,31 @@
         <el-button type="primary" :loading="savingLevel" :disabled="!levelOptions.length || !selectedLevel" @click="confirmChangeLevel">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 会籍变更历史弹窗 -->
+    <el-dialog v-model="historyVisible" :title="`会籍变更历史 - ${historyTarget ? displayName(historyTarget) : ''}`" width="640px" class="member-history-dialog" append-to-body>
+      <div ref="historyBodyRef" class="history-body" @scroll="onHistoryScroll">
+        <el-timeline v-if="historyList.length">
+          <el-timeline-item v-for="item in historyList" :key="item.id" :timestamp="fmt(item.created_at)" placement="top">
+            <div class="history-card">
+              <div class="history-line">
+                <span class="from">{{ item.old_level_name || '无' }}</span>
+                <el-icon class="arrow"><Right /></el-icon>
+                <span class="to">{{ item.new_level_name }}</span>
+              </div>
+              <div class="history-meta">
+                <span>年份：{{ item.change_year }}</span>
+                <span>入会机构：{{ item.org_name || '-' }}</span>
+                <span>变更人：{{ item.operator || '-' }}</span>
+              </div>
+            </div>
+          </el-timeline-item>
+        </el-timeline>
+        <el-empty v-else-if="!historyLoading" description="暂无会籍变更记录" />
+        <div v-if="historyLoading" class="history-loading">加载中...</div>
+        <div v-else-if="historyList.length > 0 && historyList.length >= historyTotal" class="history-end">已加载全部记录</div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -126,6 +152,7 @@
 import { ref, onMounted } from 'vue'
 import { adminApi } from '@/api/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Right } from '@element-plus/icons-vue'
 
 const list = ref<any[]>([])
 const levels = ref<any[]>([])
@@ -143,6 +170,15 @@ const levelOptions = ref<any[]>([])
 const levelLoading = ref(false)
 const selectedLevel = ref<number | null>(null)
 const savingLevel = ref(false)
+
+const historyVisible = ref(false)
+const historyTarget = ref<any>(null)
+const historyList = ref<any[]>([])
+const historyPage = ref(1)
+const historySize = 10
+const historyTotal = ref(0)
+const historyLoading = ref(false)
+const historyBodyRef = ref<HTMLElement | null>(null)
 
 const statusMap: Record<string, { l: string; t: string }> = {
   registering: { l: '注册中', t: 'info' }, pending_review: { l: '待审核', t: 'warning' },
@@ -245,6 +281,39 @@ async function confirmChangeLevel() {
     levelDialogVisible.value = false
     fetchData()
   } catch {} finally { savingLevel.value = false }
+}
+
+async function openHistory(row: any) {
+  historyTarget.value = row
+  historyList.value = []
+  historyPage.value = 1
+  historyTotal.value = 0
+  historyVisible.value = true
+  await fetchHistory()
+}
+
+async function fetchHistory() {
+  if (historyLoading.value) return
+  if (historyList.value.length >= historyTotal.value && historyPage.value > 1) return
+  historyLoading.value = true
+  try {
+    const res = await adminApi.getMemberLevelChangesByMember(historyTarget.value.id, {
+      page: historyPage.value,
+      size: historySize
+    })
+    const list = res.data?.list || []
+    historyTotal.value = res.data?.total || 0
+    historyList.value = historyList.value.concat(list)
+    historyPage.value += 1
+  } catch {} finally { historyLoading.value = false }
+}
+
+function onHistoryScroll() {
+  const el = historyBodyRef.value
+  if (!el) return
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - 60) {
+    fetchHistory()
+  }
 }
 </script>
 
@@ -353,5 +422,49 @@ async function confirmChangeLevel() {
 .member-level-dialog {
   .level-hint { margin: 0 0 16px; color: #909399; font-size: 13px; line-height: 1.6; }
   .level-empty { margin-top: 4px; font-size: 12px; color: #f56c6c; }
+}
+
+.member-history-dialog {
+  border-radius: 14px;
+  overflow: hidden;
+
+  .history-body {
+    max-height: 460px;
+    overflow-y: auto;
+    padding: 4px 8px 4px 0;
+
+    .history-card {
+      background: #fafbfc;
+      border: 1px solid #eef0f3;
+      border-radius: 10px;
+      padding: 12px 16px;
+
+      .history-line {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 15px;
+        font-weight: 600;
+        .from { color: #909399; }
+        .arrow { color: #c0c4cc; }
+        .to { color: #e6a23c; }
+      }
+      .history-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 18px;
+        margin-top: 10px;
+        font-size: 13px;
+        color: #606266;
+      }
+    }
+
+    .history-loading, .history-end {
+      text-align: center;
+      color: #909399;
+      font-size: 13px;
+      padding: 14px 0;
+    }
+  }
 }
 </style>

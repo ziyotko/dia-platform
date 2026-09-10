@@ -252,6 +252,21 @@ func (s *MemberService) ListLevelChanges(page, size int, keyword, memberType str
 	return list, total, nil
 }
 
+// GetMemberLevelChanges returns a single member's level change history in chronological order.
+func (s *MemberService) GetMemberLevelChanges(memberID uint64, page, size int) ([]models.MemberLevelChange, int64, error) {
+	var list []models.MemberLevelChange
+	var total int64
+
+	query := db.DB.Model(&models.MemberLevelChange{}).Where("member_id = ?", memberID)
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if err := query.Order("created_at ASC, id ASC").Offset((page - 1) * size).Limit(size).Find(&list).Error; err != nil {
+		return nil, 0, err
+	}
+	return list, total, nil
+}
+
 // memberDisplayName returns the company name for unit members or personal name.
 func memberDisplayName(m *models.Member) string {
 	if m.MemberType == models.MemberTypePersonal {
