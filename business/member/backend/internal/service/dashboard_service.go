@@ -52,16 +52,17 @@ func (s *DashboardService) GetMemberDashboard(memberID uint64) (*MemberDashboard
 
 	dash := &MemberDashboard{
 		Member: MemberInfo{
-			ID:          member.ID,
-			Username:    member.Username,
-			Mobile:      member.Mobile,
-			Email:       member.Email,
-			MemberType:  member.MemberType,
-			MemberLevel: member.MemberLevel,
-			Status:      member.Status,
-			IsAdmin:     member.IsAdmin,
-			Avatar:      member.Avatar,
-			CompanyName: member.CompanyName,
+			ID:            member.ID,
+			Username:      member.Username,
+			Mobile:        member.Mobile,
+			Email:         member.Email,
+			MemberType:    member.MemberType,
+			MemberLevel:   member.MemberLevel,
+			Status:        member.Status,
+			IsAdmin:       member.IsAdmin,
+			Avatar:        member.Avatar,
+			CompanyName:   member.CompanyName,
+			ContactPerson: member.ContactPerson,
 		},
 	}
 

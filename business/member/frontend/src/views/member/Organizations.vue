@@ -1,7 +1,7 @@
 <template>
   <div class="orgs-page" v-loading="loading">
     <div class="page-header">
-      <h3>加入的总会或分会信息</h3>
+      <h3>加入的组织机构信息</h3>
       <el-tooltip v-if="!hasPaidOrg" content="暂无缴费加入的组织，无法加入新组织" placement="top">
         <el-button type="primary" disabled>新的加入</el-button>
       </el-tooltip>
@@ -29,7 +29,13 @@
             </div>
           </div>
           <div class="card-right">
-            <el-button v-if="item._type === 'org'" text type="danger" size="small" @click="leaveOrg(item)">退出</el-button>
+            <el-button
+              v-if="item._type === 'org' && item.org?.parent_id !== 0"
+              text
+              type="danger"
+              size="small"
+              @click="leaveOrg(item)"
+            >退出</el-button>
           </div>
         </div>
       </div>

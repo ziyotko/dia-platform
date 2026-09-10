@@ -132,13 +132,13 @@
             <span><el-icon style="vertical-align:-3px;margin-right:6px"><InfoFilled /></el-icon>基本信息</span>
           </template>
           <div class="profile-mini">
-            <div class="profile-row">
-              <span class="profile-label">用户名</span>
-              <span class="profile-value">{{ dash.member.username }}</span>
-            </div>
             <div class="profile-row" v-if="dash.member.company_name">
               <span class="profile-label">单位名称</span>
               <span class="profile-value">{{ dash.member.company_name }}</span>
+            </div>
+            <div class="profile-row">
+              <span class="profile-label">联系人姓名</span>
+              <span class="profile-value">{{ dash.member.contact_person || '未设置' }}</span>
             </div>
             <div class="profile-row">
               <span class="profile-label">手机号码</span>

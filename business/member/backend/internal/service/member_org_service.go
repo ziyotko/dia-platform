@@ -55,10 +55,32 @@ func (s *MemberOrgService) JoinOrg(memberID, orgID, levelID uint64) error {
 
 // LeaveOrg leaves an organization
 func (s *MemberOrgService) LeaveOrg(memberID, orgID uint64) error {
+	if err := s.checkLeavable(orgID); err != nil {
+		return err
+	}
 	return db.DB.Where("member_id = ? AND org_id = ?", memberID, orgID).Delete(&models.MemberOrganization{}).Error
 }
 
 // LeaveOrgByID leaves by membership record ID
 func (s *MemberOrgService) LeaveOrgByID(memberID, id uint64) error {
+	var mo models.MemberOrganization
+	if err := db.DB.Where("id = ? AND member_id = ?", id, memberID).First(&mo).Error; err != nil {
+		return errors.New("未找到该加入记录")
+	}
+	if err := s.checkLeavable(mo.OrgID); err != nil {
+		return err
+	}
 	return db.DB.Where("id = ? AND member_id = ?", id, memberID).Delete(&models.MemberOrganization{}).Error
+}
+
+// checkLeavable prevents a member from leaving the root (level-1) organization
+func (s *MemberOrgService) checkLeavable(orgID uint64) error {
+	var org models.Organization
+	if err := db.DB.First(&org, orgID).Error; err != nil {
+		return errors.New("组织不存在")
+	}
+	if org.ParentID == 0 {
+		return errors.New("总会为一级组织，不可自行退出")
+	}
+	return nil
 }

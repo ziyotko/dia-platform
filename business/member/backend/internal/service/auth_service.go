@@ -288,16 +288,17 @@ type LoginResponse struct {
 }
 
 type MemberInfo struct {
-	ID          uint64 `json:"id"`
-	Username    string `json:"username"`
-	Mobile      string `json:"mobile"`
-	Email       string `json:"email"`
-	MemberType  string `json:"member_type"`
-	MemberLevel string `json:"member_level"`
-	Status      string `json:"status"`
-	IsAdmin     bool   `json:"is_admin"`
-	Avatar      string `json:"avatar"`
-	CompanyName string `json:"company_name"`
+	ID            uint64 `json:"id"`
+	Username      string `json:"username"`
+	Mobile        string `json:"mobile"`
+	Email         string `json:"email"`
+	MemberType    string `json:"member_type"`
+	MemberLevel   string `json:"member_level"`
+	Status        string `json:"status"`
+	IsAdmin       bool   `json:"is_admin"`
+	Avatar        string `json:"avatar"`
+	CompanyName   string `json:"company_name"`
+	ContactPerson string `json:"contact_person"`
 }
 
 type UpdateProfileRequest struct {
