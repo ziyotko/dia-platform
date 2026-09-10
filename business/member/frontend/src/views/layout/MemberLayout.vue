@@ -164,7 +164,14 @@ function handleCommand(cmd: string) {
     align-items: center;
     gap: 8px;
     cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    outline: none;
+    &:focus, &:focus-visible { outline: none; }
     .username { font-size: 14px; color: var(--app-text-secondary); }
+  }
+  :deep(.el-dropdown) {
+    &:focus, &:focus-visible, &:focus-within { outline: none; }
   }
 }
 .main-content {

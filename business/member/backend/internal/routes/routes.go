@@ -135,6 +135,7 @@ func Register(r *gin.Engine) {
 		admin.DELETE("/admin/members/:id", memberCtrl.DeleteMember)
 		admin.GET("/admin/member-stats", memberCtrl.GetMemberStats)
 		admin.GET("/admin/member-level-changes", memberCtrl.ListLevelChanges)
+		admin.GET("/admin/member-profile-changes", memberCtrl.ListProfileChanges)
 
 		// Application review
 		admin.GET("/admin/applications", appCtrl.ListApplications)

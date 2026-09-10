@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"member/config"
@@ -8,6 +9,7 @@ import (
 	"member/pkg/captcha"
 	"member/pkg/db"
 	mjwt "member/pkg/jwt"
+	"reflect"
 	"time"
 
 	"github.com/google/uuid"
@@ -170,8 +172,14 @@ func (s *AuthService) GetProfile(memberID uint64) (*models.Member, error) {
 	return &member, nil
 }
 
-// UpdateProfile updates the member profile
+// UpdateProfile updates the member profile and records a profile change
+// (资料变更记录) when any tracked field changes. Passwords are never recorded.
 func (s *AuthService) UpdateProfile(memberID uint64, req UpdateProfileRequest) error {
+	var member models.Member
+	if err := db.DB.First(&member, memberID).Error; err != nil {
+		return errors.New("会员不存在")
+	}
+
 	updates := map[string]interface{}{
 		"mobile":             req.Mobile,
 		"email":              req.Email,
@@ -195,7 +203,90 @@ func (s *AuthService) UpdateProfile(memberID uint64, req UpdateProfileRequest) e
 		"cert_file":          req.CertFile,
 		"avatar":             req.Avatar,
 	}
+
+	// Build the "after" state from the request to snapshot what was changed.
+	newMember := member
+	newMember.Mobile = req.Mobile
+	newMember.Email = req.Email
+	newMember.Name = req.Name
+	newMember.IDCard = req.IDCard
+	newMember.CompanyName = req.CompanyName
+	newMember.CreditCode = req.CreditCode
+	newMember.LegalPerson = req.LegalPerson
+	newMember.ContactPerson = req.ContactPerson
+	newMember.ContactTitle = req.ContactTitle
+	newMember.ContactMobile = req.ContactMobile
+	newMember.Industry = req.Industry
+	newMember.FoundedDate = req.FoundedDate
+	newMember.RegisteredCapital = req.RegisteredCapital
+	newMember.EmployeeCount = req.EmployeeCount
+	newMember.BusinessScope = req.BusinessScope
+	newMember.PostalCode = req.PostalCode
+	newMember.Address = req.Address
+	newMember.Website = req.Website
+	newMember.Description = req.Description
+	newMember.CertFile = req.CertFile
+	newMember.Avatar = req.Avatar
+
+	oldSnapshot := profileSnapshot(&member)
+	newSnapshot := profileSnapshot(&newMember)
+
+	if !reflect.DeepEqual(oldSnapshot, newSnapshot) {
+		change := models.ProfileChange{
+			MemberID:   member.ID,
+			ChangedAt:  &models.LocalTime{Time: time.Now()},
+			OldName:    memberDisplayName(&member),
+			OldContent: profileSnapshotJSON(oldSnapshot),
+			NewName:    memberDisplayName(&newMember),
+			NewContent: profileSnapshotJSON(newSnapshot),
+			Operator:   member.Username,
+		}
+		return db.DB.Transaction(func(tx *gorm.DB) error {
+			if err := tx.Model(&models.Member{}).Where("id = ?", memberID).Updates(updates).Error; err != nil {
+				return err
+			}
+			return tx.Create(&change).Error
+		})
+	}
+
+	// Nothing changed; still apply (idempotent) so the API behaves as before.
 	return db.DB.Model(&models.Member{}).Where("id = ?", memberID).Updates(updates).Error
+}
+
+// profileSnapshot returns the tracked profile fields (excluding password and
+// non-profile fields) keyed by their Chinese display names.
+func profileSnapshot(m *models.Member) map[string]interface{} {
+	return map[string]interface{}{
+		"手机号":     m.Mobile,
+		"邮箱":      m.Email,
+		"姓名":      m.Name,
+		"身份证号":    m.IDCard,
+		"单位名称":    m.CompanyName,
+		"组织机构代码证": m.CreditCode,
+		"法定代表人":   m.LegalPerson,
+		"联系人":     m.ContactPerson,
+		"联系人职务":   m.ContactTitle,
+		"联系人手机号":  m.ContactMobile,
+		"所属行业":    m.Industry,
+		"成立日期":    m.FoundedDate,
+		"注册资本":    m.RegisteredCapital,
+		"员工规模":    m.EmployeeCount,
+		"经营范围":    m.BusinessScope,
+		"邮编":      m.PostalCode,
+		"单位地址":    m.Address,
+		"网站":      m.Website,
+		"简介":      m.Description,
+		"组织机构证":   m.CertFile,
+	}
+}
+
+// profileSnapshotJSON serializes a profile snapshot for storage.
+func profileSnapshotJSON(snapshot map[string]interface{}) string {
+	b, err := json.Marshal(snapshot)
+	if err != nil {
+		return ""
+	}
+	return string(b)
 }
 
 // ChangePassword changes the member password

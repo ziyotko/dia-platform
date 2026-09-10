@@ -126,6 +126,25 @@ func (ctrl *MemberController) ListLevelChanges(c *gin.Context) {
 	})
 }
 
+// ListProfileChanges lists profile change records (资料变更记录, admin)
+func (ctrl *MemberController) ListProfileChanges(c *gin.Context) {
+	page := parseIntDefault(c.Query("page"), 1)
+	size := parseIntDefault(c.Query("size"), 10)
+	keyword := c.Query("keyword")
+
+	list, total, err := ctrl.memberService.ListProfileChanges(page, size, keyword)
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+	response.Success(c, gin.H{
+		"list":  list,
+		"total": total,
+		"page":  page,
+		"size":  size,
+	})
+}
+
 // GetMemberLevelOptions returns the levels this member can be changed to (from paid memberships)
 func (ctrl *MemberController) GetMemberLevelOptions(c *gin.Context) {
 	id := parseUint(c.Param("id"))

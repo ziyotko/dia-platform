@@ -12,6 +12,7 @@ export const adminApi = {
   deleteMember: (id: number) => request.delete(`/admin/members/${id}`),
   getMemberStats: () => request.get('/admin/member-stats'),
   getMemberLevelChanges: (params?: any) => request.get('/admin/member-level-changes', { params }),
+  getProfileChanges: (params?: any) => request.get('/admin/member-profile-changes', { params }),
 
   // Applications
   getApplications: (params?: any) => request.get('/admin/applications', { params }),

@@ -28,7 +28,8 @@
         <el-menu-item index="/admin/announcements"><el-icon><Notification /></el-icon><span>公告管理</span></el-menu-item>
         <el-menu-item index="/admin/system-config"><el-icon><Setting /></el-icon><span>系统管理</span></el-menu-item>
         <el-menu-item index="/admin/profile"><el-icon><User /></el-icon><span>我的资料</span></el-menu-item>
-        <el-menu-item index="/admin/member-level-changes"><el-icon><Switch /></el-icon><span>变更记录</span></el-menu-item>
+        <el-menu-item index="/admin/member-level-changes"><el-icon><Switch /></el-icon><span>会籍记录</span></el-menu-item>
+        <el-menu-item index="/admin/profile-changes"><el-icon><EditPen /></el-icon><span>资料记录</span></el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
@@ -64,7 +65,7 @@ import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useSiteStore } from '@/stores/site'
-import { UserFilled, Fold, Expand, Coin, User, Switch } from '@element-plus/icons-vue'
+import { UserFilled, Fold, Expand, Coin, User, Switch, EditPen } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()

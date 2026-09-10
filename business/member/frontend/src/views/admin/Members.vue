@@ -152,7 +152,7 @@
     </el-dialog>
 
     <!-- 加入组织机构弹窗 -->
-    <el-dialog v-model="orgsVisible" :title="`加入组织机构 - ${orgsTarget ? displayName(orgsTarget) : ''}`" width="760px" class="member-orgs-dialog" append-to-body>
+    <el-dialog v-model="orgsVisible" :title="`所有会籍 - ${orgsTarget ? displayName(orgsTarget) : ''}`" width="760px" class="member-orgs-dialog" append-to-body>
       <div v-loading="orgsLoading" class="orgs-body">
         <div class="orgs-section">
           <div class="orgs-section-title">

@@ -253,6 +253,26 @@ func (s *MemberService) ListLevelChanges(page, size int, keyword, memberType str
 	return list, total, nil
 }
 
+// ListProfileChanges returns paginated profile change records (资料变更记录, admin).
+func (s *MemberService) ListProfileChanges(page, size int, keyword string) ([]models.ProfileChange, int64, error) {
+	var list []models.ProfileChange
+	var total int64
+
+	query := db.DB.Model(&models.ProfileChange{})
+	if keyword != "" {
+		kw := "%" + keyword + "%"
+		query = query.Where("operator LIKE ? OR old_name LIKE ? OR new_name LIKE ?", kw, kw, kw)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if err := query.Order("id DESC").Offset((page - 1) * size).Limit(size).Find(&list).Error; err != nil {
+		return nil, 0, err
+	}
+	return list, total, nil
+}
+
 // GetMemberLevelChanges returns a single member's level change history, newest first.
 func (s *MemberService) GetMemberLevelChanges(memberID uint64, page, size int) ([]models.MemberLevelChange, int64, error) {
 	var list []models.MemberLevelChange
