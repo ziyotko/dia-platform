@@ -34,6 +34,7 @@ func seedRoles() {
 			"announcement:manage",
 			"notification:send",
 			"user:manage", "admin:manage", "role:manage",
+			"expert:manage",
 			"audit:view",
 		},
 		models.RoleManager: {
@@ -47,6 +48,7 @@ func seedRoles() {
 			"announcement:manage",
 			"notification:send",
 			"user:manage",
+			"expert:manage",
 			"audit:view",
 		},
 		models.RoleReviewer: {
@@ -58,12 +60,14 @@ func seedRoles() {
 	}
 
 	for _, role := range roles {
+		perms, _ := json.Marshal(permMap[role.Code])
 		var count int64
 		db.DB.Model(&models.Role{}).Where("code = ?", role.Code).Count(&count)
 		if count == 0 {
-			perms, _ := json.Marshal(permMap[role.Code])
 			role.Permissions = string(perms)
 			db.DB.Create(&role)
+		} else {
+			db.DB.Model(&models.Role{}).Where("code = ?", role.Code).Update("permissions", string(perms))
 		}
 	}
 }

@@ -46,6 +46,7 @@ const collapsed = ref(false)
 const fullMenus = [
   { path: '/admin/dashboard', label: '管理看板', icon: 'DataAnalysis' },
   { path: '/admin/categories', label: '类别管理', icon: 'FolderOpened' },
+  { path: '/admin/experts', label: '专家库', icon: 'School' },
   { path: '/admin/batches', label: '批次管理', icon: 'Files' },
   { path: '/admin/applications', label: '申报管理', icon: 'Tickets' },
   { path: '/admin/reviews', label: '评审管理', icon: 'Histogram' },

@@ -20,6 +20,7 @@ func Register(r *gin.Engine) {
 	resultCtrl := &controllers.ResultController{}
 	notifCtrl := &controllers.NotificationController{}
 	userCtrl := &controllers.UserController{}
+	expertCtrl := &controllers.ExpertController{}
 	dashboardCtrl := &controllers.DashboardController{}
 	auditCtrl := &controllers.AuditController{}
 
@@ -134,6 +135,13 @@ func Register(r *gin.Engine) {
 		admin.PUT("/users/:id", middleware.PermissionGuard("user:manage"), userCtrl.UpdateUser)
 		admin.DELETE("/users/:id", middleware.PermissionGuard("user:manage"), userCtrl.DeleteUser)
 		admin.PUT("/users/:id/status", middleware.PermissionGuard("user:manage"), userCtrl.SetUserStatus)
+
+		// Experts (专家库管理)
+		admin.GET("/experts", middleware.PermissionGuard("expert:manage"), expertCtrl.List)
+		admin.POST("/experts", middleware.PermissionGuard("expert:manage"), expertCtrl.Create)
+		admin.PUT("/experts/:id", middleware.PermissionGuard("expert:manage"), expertCtrl.Update)
+		admin.DELETE("/experts/:id", middleware.PermissionGuard("expert:manage"), expertCtrl.Delete)
+		admin.PUT("/experts/:id/status", middleware.PermissionGuard("expert:manage"), expertCtrl.SetStatus)
 
 		// Admins & Roles (账号/角色管理)
 		admin.GET("/admins", middleware.PermissionGuard("admin:manage"), userCtrl.ListAdmins)

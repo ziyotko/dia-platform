@@ -38,6 +38,7 @@ func main() {
 		&models.User{},
 		&models.Admin{},
 		&models.Role{},
+		&models.Expert{},
 		&models.ProjectCategory{},
 		&models.ProjectBatch{},
 		&models.Application{},

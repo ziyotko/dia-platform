@@ -39,6 +39,7 @@ const routes: RouteRecordRaw[] = [
       { path: '', redirect: '/admin/dashboard' },
       { path: 'dashboard', name: 'AdminDashboard', component: () => import('@/views/admin/Dashboard.vue'), meta: { title: '管理看板' } },
       { path: 'categories', name: 'AdminCategories', component: () => import('@/views/admin/CategoryList.vue'), meta: { title: '类别管理' } },
+      { path: 'experts', name: 'AdminExperts', component: () => import('@/views/admin/ExpertList.vue'), meta: { title: '专家库管理' } },
       { path: 'batches', name: 'AdminBatches', component: () => import('@/views/admin/BatchList.vue'), meta: { title: '批次管理' } },
       { path: 'applications', name: 'AdminApplications', component: () => import('@/views/admin/ApplicationList.vue'), meta: { title: '申报管理' } },
       { path: 'applications/:id', name: 'AdminApplicationDetail', component: () => import('@/views/admin/ApplicationDetail.vue'), meta: { title: '申报详情' } },

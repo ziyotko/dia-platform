@@ -66,6 +66,13 @@ export const adminApi = {
   deleteUser: (id: number) => request.delete(`/admin/users/${id}`),
   setUserStatus: (id: number, data: any) => request.put(`/admin/users/${id}/status`, data),
 
+  // Experts (专家库管理)
+  getExperts: (params?: any) => request.get('/admin/experts', { params }),
+  createExpert: (data: any) => request.post('/admin/experts', data),
+  updateExpert: (id: number, data: any) => request.put(`/admin/experts/${id}`, data),
+  deleteExpert: (id: number) => request.delete(`/admin/experts/${id}`),
+  setExpertStatus: (id: number, data: any) => request.put(`/admin/experts/${id}/status`, data),
+
   // Admins & Roles (账号/角色管理)
   getAdmins: (params?: any) => request.get('/admin/admins', { params }),
   createAdmin: (data: any) => request.post('/admin/admins', data),

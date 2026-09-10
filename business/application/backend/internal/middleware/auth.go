@@ -165,6 +165,7 @@ func GetRolePermissions() map[string][]string {
 			"announcement:manage",
 			"notification:send",
 			"user:manage", "admin:manage", "role:manage",
+			"expert:manage",
 			"audit:view",
 		},
 		"manager": {
@@ -178,6 +179,7 @@ func GetRolePermissions() map[string][]string {
 			"announcement:manage",
 			"notification:send",
 			"user:manage",
+			"expert:manage",
 			"audit:view",
 		},
 		"reviewer": {
