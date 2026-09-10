@@ -48,7 +48,7 @@ func (s *FeeService) PayFee(memberID, feeID uint64, receiptFile, paidDate string
 }
 
 // ConfirmFee confirms a pending fee (admin)
-func (s *FeeService) ConfirmFee(id uint64, amount float64, remark string) error {
+func (s *FeeService) ConfirmFee(id uint64, amount float64, remark string, operator string) error {
 	var fee models.FeeRecord
 	if err := db.DB.First(&fee, id).Error; err != nil {
 		return errors.New("费用记录不存在")
@@ -87,6 +87,9 @@ func (s *FeeService) ConfirmFee(id uint64, amount float64, remark string) error 
 	// Update the member's active certificate with level info and template ID
 	s.updateCertificateWithLevelAndTemplate(fee.MemberID, fee.LevelID, fee.LevelName)
 
+	// Record membership change (缴费确认)
+	s.recordPaymentChange(fee, operator)
+
 	return nil
 }
 
@@ -117,7 +120,7 @@ func (s *FeeService) CreateFeeRecord(req CreateFeeRequest) (*models.FeeRecord, e
 }
 
 // UpdateFeeRecord updates a fee record (admin)
-func (s *FeeService) UpdateFeeRecord(id uint64, status, invoiceNo string, amount float64, remark string, levelID uint64, levelName string) error {
+func (s *FeeService) UpdateFeeRecord(id uint64, status, invoiceNo string, amount float64, remark string, levelID uint64, levelName string, operator string) error {
 	updates := map[string]interface{}{}
 	if status != "" {
 		updates["status"] = status
@@ -160,9 +163,38 @@ func (s *FeeService) UpdateFeeRecord(id uint64, status, invoiceNo string, amount
 		}
 
 		s.updateCertificateWithLevelAndTemplate(fee.MemberID, fee.LevelID, fee.LevelName)
+
+		// Record membership change (缴费确认)
+		s.recordPaymentChange(fee, operator)
 	}
 
 	return nil
+}
+
+// recordPaymentChange inserts a membership change record for a paid fee confirmation.
+// 变更原因为“缴费确认”，原始会籍 id/name 为空，新会籍取自费用记录。
+func (s *FeeService) recordPaymentChange(fee models.FeeRecord, operator string) {
+	var member models.Member
+	if err := db.DB.First(&member, fee.MemberID).Error; err != nil {
+		return
+	}
+
+	change := models.MemberLevelChange{
+		MemberID:     member.ID,
+		Username:     member.Username,
+		MemberName:   memberDisplayName(&member),
+		MemberType:   member.MemberType,
+		ChangeYear:   time.Now().Year(),
+		OrgID:        fee.OrgID,
+		OrgName:      fee.OrgName,
+		OldLevelID:   0,
+		OldLevelName: "",
+		NewLevelID:   fee.LevelID,
+		NewLevelName: fee.LevelName,
+		Reason:       "缴费确认",
+		Operator:     operator,
+	}
+	db.DB.Create(&change)
 }
 
 // DeleteFeeRecord deletes a fee record (admin, unpaid only)

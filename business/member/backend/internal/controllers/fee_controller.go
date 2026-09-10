@@ -58,7 +58,7 @@ func (ctrl *FeeController) ConfirmFee(c *gin.Context) {
 		response.BadRequest(c, "参数错误")
 		return
 	}
-	if err := ctrl.feeService.ConfirmFee(id, req.Amount, req.Remark); err != nil {
+	if err := ctrl.feeService.ConfirmFee(id, req.Amount, req.Remark, middleware.GetUsername(c)); err != nil {
 		response.BadRequest(c, err.Error())
 		return
 	}
@@ -126,7 +126,7 @@ func (ctrl *FeeController) UpdateFee(c *gin.Context) {
 		response.BadRequest(c, "参数错误")
 		return
 	}
-	if err := ctrl.feeService.UpdateFeeRecord(id, req.Status, req.InvoiceNo, req.Amount, req.Remark, req.LevelID, req.LevelName); err != nil {
+	if err := ctrl.feeService.UpdateFeeRecord(id, req.Status, req.InvoiceNo, req.Amount, req.Remark, req.LevelID, req.LevelName, middleware.GetUsername(c)); err != nil {
 		response.BadRequest(c, err.Error())
 		return
 	}
