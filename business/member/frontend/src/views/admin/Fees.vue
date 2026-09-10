@@ -380,7 +380,8 @@ const paidAmount = computed(() => list.value.filter(r => r.status === 'paid').re
 onMounted(() => {
   fetchData()
   const y = new Date().getFullYear()
-  yearOptions.value = Array.from({ length: 10 }, (_, i) => y - i)
+  // 往前 3 年 + 当年 + 往后 9 年，共 13 个年度可选
+  yearOptions.value = Array.from({ length: 13 }, (_, i) => y + 3 - i)
 })
 async function fetchData() {
   loading.value = true

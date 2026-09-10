@@ -18,8 +18,6 @@
         <el-menu-item index="/admin/dashboard"><el-icon><DataAnalysis /></el-icon><span>管理首页</span></el-menu-item>
         <el-menu-item index="/admin/applications"><el-icon><DocumentChecked /></el-icon><span>入会审核</span></el-menu-item>
         <el-menu-item index="/admin/members"><el-icon><UserFilled /></el-icon><span>会籍管理</span></el-menu-item>
-        <el-menu-item index="/admin/member-level-changes"><el-icon><Switch /></el-icon><span>变更记录</span></el-menu-item>
-
         <el-menu-item index="/admin/fees"><el-icon><Money /></el-icon><span>会费管理</span></el-menu-item>
         <el-menu-item index="/admin/certificates"><el-icon><Medal /></el-icon><span>证书管理</span></el-menu-item>
         <el-menu-item index="/admin/organizations"><el-icon><Connection /></el-icon><span>组织机构</span></el-menu-item>
@@ -30,6 +28,7 @@
         <el-menu-item index="/admin/announcements"><el-icon><Notification /></el-icon><span>公告管理</span></el-menu-item>
         <el-menu-item index="/admin/system-config"><el-icon><Setting /></el-icon><span>系统管理</span></el-menu-item>
         <el-menu-item index="/admin/profile"><el-icon><User /></el-icon><span>我的资料</span></el-menu-item>
+        <el-menu-item index="/admin/member-level-changes"><el-icon><Switch /></el-icon><span>变更记录</span></el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>
