@@ -309,6 +309,108 @@ func (s *MemberService) GetMemberAvailableLevels(memberID uint64) ([]models.Memb
 	return levels, nil
 }
 
+// MemberJoinedOrgInfo 会员加入组织机构信息（管理端查看）
+type MemberJoinedOrgInfo struct {
+	Paid      []MemberPaidJoin      `json:"paid"`      // 付费加入
+	Voluntary []MemberVoluntaryJoin `json:"voluntary"` // 主动加入
+}
+
+// MemberPaidJoin 付费加入：已缴费会费记录对应的机构
+type MemberPaidJoin struct {
+	OrgID      uint64  `json:"org_id"`
+	OrgName    string  `json:"org_name"`
+	LevelID    uint64  `json:"level_id"`
+	LevelName  string  `json:"level_name"`
+	Year       int     `json:"year"`
+	Amount     float64 `json:"amount"`      // 应缴金额
+	PaidAmount float64 `json:"paid_amount"` // 实缴金额
+	PaidDate   string  `json:"paid_date"`
+	PaidAt     string  `json:"paid_at"`
+}
+
+// MemberVoluntaryJoin 主动加入：会员自主加入组织记录
+type MemberVoluntaryJoin struct {
+	ID        uint64 `json:"id"`
+	OrgID     uint64 `json:"org_id"`
+	OrgName   string `json:"org_name"`
+	LevelID   uint64 `json:"level_id"`
+	LevelName string `json:"level_name"`
+	JoinedAt  string `json:"joined_at"`
+}
+
+// GetMemberJoinedOrgs returns the organizations a member has joined (admin):
+//   - paid: 已缴费（status=paid）的会费记录所属机构；
+//   - voluntary: 会员自主加入的组织（member_user_orgs）。
+func (s *MemberService) GetMemberJoinedOrgs(memberID uint64) (*MemberJoinedOrgInfo, error) {
+	info := &MemberJoinedOrgInfo{
+		Paid:      make([]MemberPaidJoin, 0),
+		Voluntary: make([]MemberVoluntaryJoin, 0),
+	}
+
+	// 1) 付费加入：已缴费会费记录
+	var fees []models.FeeRecord
+	if err := db.DB.Where("member_id = ? AND status = ? AND org_name <> ''", memberID, models.FeeStatusPaid).
+		Order("year DESC, id DESC").Find(&fees).Error; err != nil {
+		return nil, err
+	}
+	for _, f := range fees {
+		paidAt := ""
+		if f.PaidAt != nil && !f.PaidAt.IsZero() {
+			paidAt = f.PaidAt.Format("2006-01-02 15:04:05")
+		}
+		info.Paid = append(info.Paid, MemberPaidJoin{
+			OrgID:      f.OrgID,
+			OrgName:    f.OrgName,
+			LevelID:    f.LevelID,
+			LevelName:  f.LevelName,
+			Year:       f.Year,
+			Amount:     f.Amount,
+			PaidAmount: f.PaidAmount,
+			PaidDate:   f.PaidDate,
+			PaidAt:     paidAt,
+		})
+	}
+
+	// 2) 主动加入：会员自主加入组织记录
+	var orgs []models.MemberOrganization
+	if err := db.DB.Preload("Org").Where("member_id = ?", memberID).
+		Order("joined_at DESC, id DESC").Find(&orgs).Error; err != nil {
+		return nil, err
+	}
+
+	levelIDs := make([]uint64, 0)
+	for _, o := range orgs {
+		if o.LevelID > 0 {
+			levelIDs = append(levelIDs, o.LevelID)
+		}
+	}
+	levelNames := map[uint64]string{}
+	if len(levelIDs) > 0 {
+		var lvls []models.MemberLevel
+		if err := db.DB.Where("id IN ?", levelIDs).Find(&lvls).Error; err == nil {
+			for _, l := range lvls {
+				levelNames[l.ID] = l.Name
+			}
+		}
+	}
+	for _, o := range orgs {
+		orgName := ""
+		if o.Org.ID > 0 {
+			orgName = o.Org.Name
+		}
+		info.Voluntary = append(info.Voluntary, MemberVoluntaryJoin{
+			ID:        o.ID,
+			OrgID:     o.OrgID,
+			OrgName:   orgName,
+			LevelID:   o.LevelID,
+			LevelName: levelNames[o.LevelID],
+			JoinedAt:  o.JoinedAt.Format("2006-01-02 15:04"),
+		})
+	}
+
+	return info, nil
+}
+
 // DeleteMember soft-deletes a member (admin)
 func (s *MemberService) DeleteMember(id uint64) error {
 	var m models.Member

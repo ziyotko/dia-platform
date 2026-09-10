@@ -137,6 +137,17 @@ func (ctrl *MemberController) GetMemberLevelOptions(c *gin.Context) {
 	response.Success(c, levels)
 }
 
+// GetMemberJoinedOrgs returns the organizations a member has joined (admin)
+func (ctrl *MemberController) GetMemberJoinedOrgs(c *gin.Context) {
+	id := parseUint(c.Param("id"))
+	info, err := ctrl.memberService.GetMemberJoinedOrgs(id)
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+	response.Success(c, info)
+}
+
 // DeleteMember deletes a member (admin)
 func (ctrl *MemberController) DeleteMember(c *gin.Context) {
 	id := parseUint(c.Param("id"))

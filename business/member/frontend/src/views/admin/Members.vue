@@ -26,8 +26,9 @@
         <el-table-column prop="status" label="状态" min-width="120">
           <template #default="{row}"><el-tag :type="statusTag(row.status)">{{ statusLabel(row.status) }}</el-tag></template>
         </el-table-column>
-        <el-table-column label="操作" min-width="260">
+        <el-table-column label="操作" min-width="340">
           <template #default="{row}">
+            <el-button text size="small" type="primary" @click.stop="openOrgs(row)">所有会籍</el-button>
             <el-button text size="small" type="warning" :disabled="row.status !== 'active'" @click.stop="openLevelDialog(row)">变更等级</el-button>
             <el-button text size="small" type="primary" @click.stop="openHistory(row)">会籍历史</el-button>
             <el-button text size="small" type="danger" :disabled="row.status !== 'registering'" @click.stop="delMember(row)">删除</el-button>
@@ -149,6 +150,53 @@
         <div v-else-if="historyList.length > 0 && historyList.length >= historyTotal" class="history-end">已加载全部记录</div>
       </div>
     </el-dialog>
+
+    <!-- 加入组织机构弹窗 -->
+    <el-dialog v-model="orgsVisible" :title="`加入组织机构 - ${orgsTarget ? displayName(orgsTarget) : ''}`" width="760px" class="member-orgs-dialog" append-to-body>
+      <div v-loading="orgsLoading" class="orgs-body">
+        <div class="orgs-section">
+          <div class="orgs-section-title">
+            <span>付费加入</span>
+            <el-tag type="success" effect="plain" size="small">{{ orgsInfo.paid.length }}</el-tag>
+          </div>
+          <el-table v-if="orgsInfo.paid.length" :data="orgsInfo.paid" size="small" class="orgs-table">
+            <el-table-column prop="org_name" label="机构名称" min-width="180">
+              <template #default="{row}">{{ row.org_name || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="会员等级" min-width="120">
+              <template #default="{row}">{{ row.level_name || '-' }}</template>
+            </el-table-column>
+            <el-table-column prop="year" label="年度" width="80" />
+            <el-table-column label="缴费金额" min-width="120">
+              <template #default="{row}">{{ fmtMoney(row.paid_amount > 0 ? row.paid_amount : row.amount) }}</template>
+            </el-table-column>
+            <el-table-column label="缴费日期" min-width="150">
+              <template #default="{row}">{{ fmt(row.paid_date || row.paid_at) }}</template>
+            </el-table-column>
+          </el-table>
+          <el-empty v-else description="暂无付费加入记录" image-size="60" />
+        </div>
+
+        <div class="orgs-section">
+          <div class="orgs-section-title">
+            <span>主动加入</span>
+            <el-tag type="info" effect="plain" size="small">{{ orgsInfo.voluntary.length }}</el-tag>
+          </div>
+          <el-table v-if="orgsInfo.voluntary.length" :data="orgsInfo.voluntary" size="small" class="orgs-table">
+            <el-table-column prop="org_name" label="机构名称" min-width="200">
+              <template #default="{row}">{{ row.org_name || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="会员等级" min-width="140">
+              <template #default="{row}">{{ row.level_name || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="加入时间" min-width="150">
+              <template #default="{row}">{{ fmt(row.joined_at) }}</template>
+            </el-table-column>
+          </el-table>
+          <el-empty v-else description="暂无主动加入记录" image-size="60" />
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -184,6 +232,11 @@ const historySize = 10
 const historyTotal = ref(0)
 const historyLoading = ref(false)
 const historyBodyRef = ref<HTMLElement | null>(null)
+
+const orgsVisible = ref(false)
+const orgsTarget = ref<any>(null)
+const orgsLoading = ref(false)
+const orgsInfo = ref<{ paid: any[]; voluntary: any[] }>({ paid: [], voluntary: [] })
 
 const statusMap: Record<string, { l: string; t: string }> = {
   registering: { l: '注册中', t: 'info' }, pending_review: { l: '待审核', t: 'warning' },
@@ -324,6 +377,24 @@ function onHistoryScroll() {
   if (el.scrollTop + el.clientHeight >= el.scrollHeight - 60) {
     fetchHistory()
   }
+}
+
+async function openOrgs(row: any) {
+  orgsTarget.value = row
+  orgsInfo.value = { paid: [], voluntary: [] }
+  orgsVisible.value = true
+  orgsLoading.value = true
+  try {
+    const res = await adminApi.getMemberOrgs(row.id)
+    orgsInfo.value = res.data || { paid: [], voluntary: [] }
+  } catch {} finally { orgsLoading.value = false }
+}
+
+function fmtMoney(n: any) {
+  if (n === null || n === undefined || n === '') return '-'
+  const num = Number(n)
+  if (!isFinite(num)) return '-'
+  return '¥' + num.toFixed(2)
 }
 </script>
 
@@ -485,6 +556,34 @@ function onHistoryScroll() {
       font-size: 13px;
       padding: 14px 0;
     }
+  }
+}
+
+.member-orgs-dialog {
+  border-radius: 14px;
+  overflow: hidden;
+
+  .orgs-body {
+    min-height: 200px;
+  }
+  .orgs-section {
+    margin-bottom: 24px;
+    &:last-child { margin-bottom: 0; }
+  }
+  .orgs-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1d2739;
+    padding-left: 10px;
+    border-left: 4px solid #002fa7;
+    margin-bottom: 12px;
+    line-height: 1.2;
+  }
+  .orgs-table {
+    width: 100%;
   }
 }
 </style>
