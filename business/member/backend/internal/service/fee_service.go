@@ -4,6 +4,7 @@ import (
 	"errors"
 	"member/internal/models"
 	"member/pkg/db"
+	"strconv"
 	"time"
 )
 
@@ -77,6 +78,12 @@ func (s *FeeService) ConfirmFee(id uint64, amount float64, remark string) error 
 	db.DB.Model(&models.Member{}).Where("id = ? AND status = ?", fee.MemberID, models.MemberStatusPendingPay).
 		Update("status", models.MemberStatusActive)
 
+	// Update the member's level on the user record
+	if fee.LevelID > 0 {
+		db.DB.Model(&models.Member{}).Where("id = ?", fee.MemberID).
+			Update("member_level", strconv.FormatUint(fee.LevelID, 10))
+	}
+
 	// Update the member's active certificate with level info and template ID
 	s.updateCertificateWithLevelAndTemplate(fee.MemberID, fee.LevelID, fee.LevelName)
 
@@ -145,6 +152,12 @@ func (s *FeeService) UpdateFeeRecord(id uint64, status, invoiceNo string, amount
 		db.DB.First(&fee, id)
 		db.DB.Model(&models.Member{}).Where("id = ? AND status = ?", fee.MemberID, models.MemberStatusPendingPay).
 			Update("status", models.MemberStatusActive)
+
+		// Update the member's level on the user record
+		if fee.LevelID > 0 {
+			db.DB.Model(&models.Member{}).Where("id = ?", fee.MemberID).
+				Update("member_level", strconv.FormatUint(fee.LevelID, 10))
+		}
 
 		s.updateCertificateWithLevelAndTemplate(fee.MemberID, fee.LevelID, fee.LevelName)
 	}
