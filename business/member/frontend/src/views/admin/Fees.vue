@@ -150,7 +150,14 @@
               <el-button v-if="row.status==='unpaid'" text size="small" :icon="Edit" @click="editFee(row)">编辑</el-button>
               <el-button v-if="row.receipt_file" text size="small" type="primary" :icon="Download" @click="viewReceipt(row)">缴费回执</el-button>
               <el-button v-if="row.status==='pending'" text size="small" type="success" :icon="CircleCheck" @click="confirmPay(row)">确认缴费</el-button>
-              <el-button v-if="row.status==='unpaid'" text size="small" type="success" :icon="CircleCheck" @click="markPaid(row)">免缴确认</el-button>
+              <el-tooltip
+                v-if="row.status==='unpaid' && !hasLevel(row)"
+                content="会员级别为空，请先修改会员级别"
+                placement="top"
+              >
+                <el-button text size="small" type="success" :icon="CircleCheck" disabled>免缴确认</el-button>
+              </el-tooltip>
+              <el-button v-else-if="row.status==='unpaid'" text size="small" type="success" :icon="CircleCheck" @click="markPaid(row)">免缴确认</el-button>
               <el-button v-if="row.status==='unpaid'" text size="small" type="danger" :icon="Delete" @click="deleteFee(row)">删除</el-button>
               <el-button v-if="row.invoice_status==='applied'" text size="small" type="warning" :icon="Coin" @click="openIssueInvoice(row)">开票</el-button>
               <el-button v-if="row.invoice_status==='issued'" text size="small" type="warning" :icon="Upload" @click="openIssueInvoice(row)">重新上传发票</el-button>
@@ -214,7 +221,7 @@
           </div>
           <span v-else class="form-hint">-</span>
         </el-form-item>
-        <el-form-item label="会员级别">
+        <el-form-item label="会员级别" required>
           <el-select
             v-model="editForm.levelId"
             style="width:100%"
@@ -363,7 +370,7 @@ const invoiceNo = ref('')
 const invoiceFileList = ref<any[]>([])
 const invoiceUploadRef = ref<any>(null)
 const issuingInvoice = ref(false)
-const editForm = reactive({ id: 0, memberId: 0, memberName: '', orgId: 0, orgName: '', levelId: 0, levelName: '', year: 0, amount: 0, status: 'unpaid', remark: '' })
+const editForm = reactive({ id: 0, memberId: 0, memberName: '', orgId: 0, orgName: '', levelId: null as number | null, levelName: '', year: 0, amount: 0, status: 'unpaid', remark: '' })
 const editLevelOptions = ref<any[]>([])
 const editLevelLoading = ref(false)
 
@@ -442,7 +449,7 @@ function editFee(row: any) {
   editForm.memberName = row.member?.company_name || row.member?.username || ''
   editForm.orgId = row.org_id
   editForm.orgName = row.org_name || ''
-  editForm.levelId = row.level_id
+  editForm.levelId = row.level_id || null
   editForm.year = row.year
   editForm.amount = row.amount
   editForm.status = row.status
@@ -479,6 +486,7 @@ async function onEditLevelChange(levelId: number) {
   } catch {}
 }
 async function saveEdit() {
+  if (!editForm.levelId) { ElMessage.warning('请选择会员级别'); return }
   try {
     await adminApi.updateFee(editForm.id, {
       amount: editForm.amount,
@@ -491,7 +499,14 @@ async function saveEdit() {
     fetchData()
   } catch {}
 }
+function hasLevel(row: any) {
+  return !!row.level_name || Number(row.level_id) > 0
+}
 async function markPaid(row: any) {
+  if (!hasLevel(row)) {
+    ElMessage.warning('会员级别为空，请先联系管理员修改会员级别')
+    return
+  }
   try {
     const { value } = await ElMessageBox.prompt(`确定将会费（¥${row.amount?.toFixed(2)} - ${row.year}年）标记为已缴费？`, '确认缴费', {
       type: 'warning',

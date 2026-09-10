@@ -56,7 +56,14 @@
         </el-table-column>
         <el-table-column label="操作" width="150">
           <template #default="{ row }">
-            <el-button v-if="row.status === 'unpaid'" type="primary" size="small" @click="openPayDialog(row)">缴费</el-button>
+            <el-tooltip
+              v-if="row.status === 'unpaid' && !hasLevel(row)"
+              content="会员级别为空，请先联系管理员修改会员级别"
+              placement="top"
+            >
+              <el-button type="primary" size="small" disabled>缴费</el-button>
+            </el-tooltip>
+            <el-button v-else-if="row.status === 'unpaid'" type="primary" size="small" @click="openPayDialog(row)">缴费</el-button>
             <el-button v-else-if="row.status === 'paid' && !row.invoice_status && row.paid_amount > 0" type="success" size="small" @click="openInvoiceDialog(row)">申请开票</el-button>
             <el-tooltip v-else-if="row.status === 'paid' && !row.invoice_status" content="实缴金额为0，无法申请开票" placement="top">
               <el-tag type="info" effect="plain" size="small">实缴为0</el-tag>
@@ -205,7 +212,15 @@ function statusLabel(status: string) {
   return status === 'paid' ? '已缴费' : status === 'pending' ? '待确认' : '未缴费'
 }
 
+function hasLevel(row: any) {
+  return !!row.level_name || Number(row.level_id) > 0
+}
+
 function openPayDialog(row: any) {
+  if (!hasLevel(row)) {
+    ElMessage.warning('会员级别为空，请先联系管理员修改会员级别')
+    return
+  }
   payTarget.value = row
   payDate.value = ''
   fileList.value = []

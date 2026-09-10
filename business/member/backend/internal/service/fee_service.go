@@ -35,6 +35,9 @@ func (s *FeeService) PayFee(memberID, feeID uint64, receiptFile, paidDate string
 	if fee.Status != models.FeeStatusUnpaid {
 		return errors.New("该费用已提交，请等待管理员确认")
 	}
+	if fee.LevelID == 0 && fee.LevelName == "" {
+		return errors.New("会员级别为空，请先联系管理员修改会员级别")
+	}
 
 	updates := map[string]interface{}{
 		"status":       models.FeeStatusPending,
