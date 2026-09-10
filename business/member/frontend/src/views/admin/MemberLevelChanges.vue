@@ -29,13 +29,13 @@
         </el-table-column>
         <el-table-column label="原始会籍" min-width="150">
           <template #default="{ row }">
-            <span v-if="row.old_level_id">{{ row.old_level_name }}（#{{ row.old_level_id }}）</span>
+            <span v-if="row.old_level_id">{{ row.old_level_name }}</span>
             <span v-else>-</span>
           </template>
         </el-table-column>
         <el-table-column label="新的会籍" min-width="150">
           <template #default="{ row }">
-            <el-tag type="warning">{{ row.new_level_name }}（#{{ row.new_level_id }}）</el-tag>
+            <el-tag type="warning">{{ row.new_level_name }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="变更原因" min-width="180" show-overflow-tooltip>
