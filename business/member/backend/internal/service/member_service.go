@@ -92,8 +92,8 @@ func (s *MemberService) ListMembers(page, size int, keyword, status, memberType 
 	query = query.Where("is_admin = ?", false)
 	if keyword != "" {
 		kw := "%" + keyword + "%"
-		query = query.Where("username LIKE ? OR company_name LIKE ? OR mobile LIKE ? OR email LIKE ?",
-			kw, kw, kw, kw)
+		query = query.Where("username LIKE ? OR company_name LIKE ? OR name LIKE ? OR mobile LIKE ? OR email LIKE ?",
+			kw, kw, kw, kw, kw)
 	}
 	if status != "" {
 		query = query.Where("status = ?", status)

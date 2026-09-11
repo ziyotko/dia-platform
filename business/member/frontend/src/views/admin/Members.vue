@@ -9,6 +9,9 @@
           <el-option label="待缴费" value="pending_payment" /><el-option label="正式会员" value="active" />
           <el-option label="已拒绝" value="rejected" /><el-option label="已过期" value="expired" />
         </el-select>
+        <el-select v-model="filterType" placeholder="会员类型" clearable style="width:130px" @change="search">
+          <el-option label="单位会员" value="unit" /><el-option label="个人会员" value="personal" />
+        </el-select>
         <el-button type="primary" @click="search">查询</el-button>
       </div>
     </div>
@@ -210,7 +213,7 @@ const list = ref<any[]>([])
 const levels = ref<any[]>([])
 const loading = ref(true)
 const page = ref(1); const size = ref(10); const total = ref(0)
-const keyword = ref(''); const filterStatus = ref('')
+const keyword = ref(''); const filterStatus = ref(''); const filterType = ref('')
 
 const detailVisible = ref(false)
 const detail = ref<any>(null)
@@ -275,7 +278,7 @@ async function fetchLevels() {
 async function fetchData() {
   loading.value = true
   try {
-    const res = await adminApi.getMembers({ page: page.value, size: size.value, keyword: keyword.value, status: filterStatus.value })
+    const res = await adminApi.getMembers({ page: page.value, size: size.value, keyword: keyword.value, status: filterStatus.value, member_type: filterType.value })
     list.value = res.data?.list || []; total.value = res.data?.total || 0
   } catch {} finally { loading.value = false }
 }

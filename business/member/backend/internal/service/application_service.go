@@ -11,6 +11,10 @@ type ApplicationService struct{}
 
 // CreateApplication creates a new membership application
 func (s *ApplicationService) CreateApplication(memberID uint64, req CreateAppRequest) (*models.Application, error) {
+	if req.OrgID == 0 {
+		return nil, errors.New("请选择入会机构")
+	}
+
 	// Check if member already has a pending/approved application
 	var existing models.Application
 	if err := db.DB.Where("member_id = ? AND status NOT IN (?, ?)",
