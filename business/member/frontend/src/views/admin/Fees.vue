@@ -188,7 +188,7 @@
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="年度" required>
-              <el-select v-model="feeForm.year" style="width:100%">
+              <el-select v-model="feeForm.year" style="width:100%" @change="applyFeeStandard">
                 <el-option v-for="y in yearOptions" :key="y" :label="y+'年'" :value="y" />
               </el-select>
             </el-form-item>
@@ -422,6 +422,22 @@ async function onMemberSelect(id: number) {
     selectedMemberInfo.levelId = d.level_id || 0
     selectedMemberInfo.orgName = d.org_name || ''
     selectedMemberInfo.levelName = d.level_name || ''
+  } catch {}
+  // 选择会员后按「入会等级 + 年度」自动带出金额
+  feeForm.amount = 0
+  await applyFeeStandard()
+}
+async function applyFeeStandard() {
+  const levelId = selectedMemberInfo.levelId
+  const year = feeForm.year
+  if (!levelId || !year) return
+  try {
+    const r = await adminApi.getFeeStandardsByLevel(levelId)
+    const standards: any[] = r.data || []
+    const std = standards.find((s: any) => s.year === year)
+    if (std && std.amount > 0) {
+      feeForm.amount = std.amount
+    }
   } catch {}
 }
 async function createFee() {
