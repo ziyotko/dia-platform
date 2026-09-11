@@ -101,6 +101,22 @@ func (s *OrganizationService) DeleteOrganization(id uint64) error {
 	if count > 0 {
 		return errors.New("该组织下有子组织，无法删除")
 	}
+	// 占用校验：被会员加入 / 入会申请 / 会费记录引用的组织不可删除，避免悬空 org_id
+	var joinCount int64
+	db.DB.Model(&models.MemberOrganization{}).Where("org_id = ?", id).Count(&joinCount)
+	if joinCount > 0 {
+		return errors.New("该组织已有会员加入，无法删除")
+	}
+	var appCount int64
+	db.DB.Model(&models.Application{}).Where("org_id = ?", id).Count(&appCount)
+	if appCount > 0 {
+		return errors.New("该组织已有入会申请记录，无法删除")
+	}
+	var feeCount int64
+	db.DB.Model(&models.FeeRecord{}).Where("org_id = ?", id).Count(&feeCount)
+	if feeCount > 0 {
+		return errors.New("该组织已有会费记录，无法删除")
+	}
 	// Clean up level associations
 	db.DB.Where("org_id = ?", id).Delete(&models.MemberOrgLevel{})
 	return db.DB.Delete(&models.Organization{}, id).Error

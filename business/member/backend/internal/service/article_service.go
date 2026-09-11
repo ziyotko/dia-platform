@@ -43,7 +43,14 @@ func (s *ArticleService) UpdateArticle(memberID, articleID uint64, req UpdateArt
 		"cover_image": req.CoverImage,
 		"category_id": req.CategoryID,
 	}
-	if req.Submit && article.Status == models.ArticleStatusDraft {
+	switch {
+	case article.Status == models.ArticleStatusPublished:
+		// 已发布文章再次编辑：必须重新提交审核，不能直接改动线上内容
+		updates["status"] = models.ArticleStatusPending
+		updates["published_at"] = nil
+		updates["review_comment"] = ""
+	case req.Submit && article.Status != models.ArticleStatusPending:
+		// 草稿/已拒绝可（重新）提交审核
 		updates["status"] = models.ArticleStatusPending
 	}
 	return db.DB.Model(&article).Updates(updates).Error

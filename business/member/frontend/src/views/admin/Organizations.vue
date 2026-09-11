@@ -3,65 +3,72 @@
     <div class="page-header">
       <h3>机构管理</h3>
       <div class="header-actions">
-        <el-button type="primary" @click="openAddChild('branch')">新增分支机构</el-button>
-        <el-button @click="openAddChild('representative')">新增代表机构</el-button>
+        <el-button type="primary" @click="openAddRoot">新增上级机构</el-button>
       </div>
     </div>
 
     <el-card>
-      <div v-if="!loading && rootNode" class="root-card">
-        <!-- Root -->
-        <div class="root-header">
-          <div class="root-info">
-            <el-icon :size="22" color="#002fa7"><OfficeBuilding /></el-icon>
-            <span class="root-name">{{ rootNode.name }}</span>
-            <el-tag size="small" type="info" effect="plain">上级机构</el-tag>
-          </div>
-          <div class="root-levels" v-if="rootNode.levels?.length">
-            <el-tag v-for="lvl in rootNode.levels" :key="lvl.id" size="small" effect="plain" round>{{ lvl.level?.name || lvl.name }}</el-tag>
-          </div>
-          <div class="root-actions">
-            <el-button text size="small" type="primary" @click="editRoot">
-              <el-icon><Edit /></el-icon> 编辑
-            </el-button>
-          </div>
-        </div>
-
-        <!-- Children -->
-        <div class="children-list" v-if="children.length > 0">
-          <div v-for="child in children" :key="child.id" class="child-item">
-            <div class="child-info">
-              <el-tag
-                size="small"
-                :type="child.type === 'branch' ? 'primary' : 'success'"
-                effect="dark"
-              >
-                {{ child.type === 'branch' ? '分支机构' : '代表机构' }}
-              </el-tag>
-              <span class="child-name">{{ child.name }}</span>
-              <div class="child-levels" v-if="child.levels?.length">
-                <el-tag v-for="lvl in child.levels" :key="lvl.id" size="small" effect="plain" round>{{ lvl.level?.name || lvl.name }}</el-tag>
-              </div>
+      <div v-if="!loading && roots.length" class="roots-list">
+        <div v-for="root in roots" :key="root.id" class="root-card">
+          <!-- Root -->
+          <div class="root-header">
+            <div class="root-info">
+              <el-icon :size="22" color="#002fa7"><OfficeBuilding /></el-icon>
+              <span class="root-name">{{ root.name }}</span>
+              <el-tag size="small" type="info" effect="plain">上级机构</el-tag>
             </div>
-            <div class="child-actions">
-              <el-button text size="small" type="warning" @click="editChild(child)">
+            <div class="root-levels" v-if="root.levels?.length">
+              <el-tag v-for="lvl in root.levels" :key="lvl.id" size="small" effect="plain" round>{{ lvl.level?.name || lvl.name }}</el-tag>
+            </div>
+            <div class="root-actions">
+              <el-button text size="small" type="primary" @click="openAddChild(root, 'branch')">
+                <el-icon><Plus /></el-icon> 分支
+              </el-button>
+              <el-button text size="small" type="success" @click="openAddChild(root, 'representative')">
+                <el-icon><Plus /></el-icon> 代表处
+              </el-button>
+              <el-button text size="small" type="primary" @click="editRoot(root)">
                 <el-icon><Edit /></el-icon> 编辑
               </el-button>
-              <el-button text size="small" type="danger" @click="delChild(child)">
-                <el-icon><Delete /></el-icon> 删除
-              </el-button>
             </div>
           </div>
-        </div>
-        <div class="children-empty" v-else>
-          <span class="empty-hint">暂无下属机构，请点击上方按钮新增</span>
+
+          <!-- Children -->
+          <div class="children-list" v-if="root.children && root.children.length > 0">
+            <div v-for="child in root.children" :key="child.id" class="child-item">
+              <div class="child-info">
+                <el-tag
+                  size="small"
+                  :type="child.type === 'branch' ? 'primary' : 'success'"
+                  effect="dark"
+                >
+                  {{ child.type === 'branch' ? '分支机构' : '代表机构' }}
+                </el-tag>
+                <span class="child-name">{{ child.name }}</span>
+                <div class="child-levels" v-if="child.levels?.length">
+                  <el-tag v-for="lvl in child.levels" :key="lvl.id" size="small" effect="plain" round>{{ lvl.level?.name || lvl.name }}</el-tag>
+                </div>
+              </div>
+              <div class="child-actions">
+                <el-button text size="small" type="warning" @click="editChild(child)">
+                  <el-icon><Edit /></el-icon> 编辑
+                </el-button>
+                <el-button text size="small" type="danger" @click="delChild(child)">
+                  <el-icon><Delete /></el-icon> 删除
+                </el-button>
+              </div>
+            </div>
+          </div>
+          <div class="children-empty" v-else>
+            <span class="empty-hint">暂无下属机构，请点击上方按钮新增</span>
+          </div>
         </div>
       </div>
-      <el-empty v-else-if="!loading && !rootNode" description="尚未创建机构" />
+      <el-empty v-else-if="!loading" description="尚未创建机构" />
     </el-card>
 
     <!-- Dialog: Edit Root -->
-    <el-dialog v-model="showRootDialog" title="编辑上级机构" width="420px">
+    <el-dialog v-model="showRootDialog" :title="editingRoot ? '编辑上级机构' : '新增上级机构'" width="420px">
       <el-form :model="rootForm" size="large">
         <el-form-item label="名称" required>
           <el-input v-model="rootForm.name" />
@@ -114,23 +121,24 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { adminApi } from '@/api/admin'
 import { orgApi } from '@/api/index'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Edit, Delete } from '@element-plus/icons-vue'
+import { Edit, Delete, Plus } from '@element-plus/icons-vue'
 
 const tree = ref<any[]>([])
 const allLevels = ref<any[]>([])
 const loading = ref(true)
 const saving = ref(false)
 
-const rootNode = computed(() => tree.value[0] || null)
-const children = computed(() => rootNode.value?.children || [])
+const roots = computed(() => tree.value || [])
 
-// Root dialog
+// Root dialog（editingRoot 为空表示新增）
 const showRootDialog = ref(false)
+const editingRoot = ref<any>(null)
 const rootForm = reactive({ name: '', levelIds: [] as number[] })
 
 // Child dialog
 const showChildDialog = ref(false)
 const editingChild = ref<any>(null)
+const childParentRoot = ref<any>(null)
 const childType = ref<'branch' | 'representative'>('branch')
 const childForm = reactive({ name: '', description: '', sort: 0, levelIds: [] as number[] })
 
@@ -150,10 +158,17 @@ async function fetchData() {
 
 // ---- Root operations ----
 
-function editRoot() {
-  const node = rootNode.value
-  rootForm.name = node?.name || ''
-  rootForm.levelIds = node?.levels?.map((l: any) => l.level_id || l.id) || []
+function openAddRoot() {
+  editingRoot.value = null
+  rootForm.name = ''
+  rootForm.levelIds = []
+  showRootDialog.value = true
+}
+
+function editRoot(root: any) {
+  editingRoot.value = root
+  rootForm.name = root?.name || ''
+  rootForm.levelIds = root?.levels?.map((l: any) => l.level_id || l.id) || []
   showRootDialog.value = true
 }
 
@@ -161,13 +176,17 @@ async function saveRoot() {
   if (!rootForm.name) { ElMessage.warning('请输入名称'); return }
   saving.value = true
   try {
-    await adminApi.updateOrg(rootNode.value.id, { name: rootForm.name })
-    // Save level associations
-    if (rootNode.value.id && rootForm.levelIds.length > 0) {
-      await adminApi.setOrgLevels(rootNode.value.id, rootForm.levelIds)
-    } else if (rootNode.value.id) {
-      await adminApi.setOrgLevels(rootNode.value.id, [])
+    let orgId: number
+    if (editingRoot.value) {
+      await adminApi.updateOrg(editingRoot.value.id, { name: rootForm.name })
+      orgId = editingRoot.value.id
+    } else {
+      const r = await adminApi.createOrg({ name: rootForm.name, parent_id: 0, type: 'root', sort: 0 })
+      orgId = r.data?.id
+      if (!orgId) { ElMessage.error('创建失败'); return }
     }
+    // 等级关联（空数组表示清空）
+    await adminApi.setOrgLevels(orgId, rootForm.levelIds)
     ElMessage.success('已保存')
     showRootDialog.value = false
     fetchData()
@@ -176,7 +195,8 @@ async function saveRoot() {
 
 // ---- Child operations ----
 
-function openAddChild(type: 'branch' | 'representative') {
+function openAddChild(root: any, type: 'branch' | 'representative') {
+  childParentRoot.value = root
   childType.value = type
   editingChild.value = null
   childForm.name = ''
@@ -206,17 +226,18 @@ async function editChild(data: any) {
 
 async function saveChild() {
   if (!childForm.name) { ElMessage.warning('请输入名称'); return }
+  if (!editingChild.value && !childParentRoot.value) { ElMessage.warning('请先选择上级机构'); return }
   saving.value = true
   try {
     let orgId: number
     if (editingChild.value) {
-      await adminApi.updateOrg(editingChild.value.id, { name: childForm.name, description: childForm.description })
+      await adminApi.updateOrg(editingChild.value.id, { name: childForm.name, description: childForm.description, sort: childForm.sort })
       orgId = editingChild.value.id
       ElMessage.success('修改成功')
     } else {
       const r = await adminApi.createOrg({
         name: childForm.name,
-        parent_id: rootNode.value.id,
+        parent_id: childParentRoot.value?.id || 0,
         type: childType.value,
         description: childForm.description,
         sort: childForm.sort
@@ -224,8 +245,8 @@ async function saveChild() {
       orgId = r.data?.id
       ElMessage.success(childType.value === 'branch' ? '分支机构创建成功' : '代表机构创建成功')
     }
-    // Save level associations
-    if (orgId && childForm.levelIds.length > 0) {
+    // 等级关联（始终保存，空数组表示清空）
+    if (orgId) {
       await adminApi.setOrgLevels(orgId, childForm.levelIds)
     }
     showChildDialog.value = false
@@ -265,6 +286,11 @@ async function delChild(data: any) {
 
 .el-card {
   border-radius: 10px;
+}
+.roots-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 .root-card {
   border: 1px solid #e5e7eb;

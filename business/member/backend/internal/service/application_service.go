@@ -165,14 +165,7 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 			// 机构不存在时按申请机构本身处理（兼容历史数据）
 			appliedOrg.ID = app.OrgID
 		}
-		rootOrg := appliedOrg
-		for i := 0; i < 10 && rootOrg.ParentID != 0; i++ {
-			var parent models.Organization
-			if err := db.DB.First(&parent, rootOrg.ParentID).Error; err != nil {
-				break
-			}
-			rootOrg = parent
-		}
+		rootOrg := resolveOrgRoot(appliedOrg)
 
 		// Look up the minimum member level for the 总会 and get its fee standard for current year;
 		// 分会/代表机构沿用总会等级，总会未配置等级时回退到申请机构自身的配置。
@@ -272,6 +265,19 @@ func findMinOrgLevel(orgID uint64) (models.MemberOrgLevel, error) {
 		Order("ml.level ASC").
 		First(&orgLevel).Error
 	return orgLevel, err
+}
+
+// resolveOrgRoot 向上追溯机构的根组织（parent_id=0 的祖先）；查不到时返回传入的机构。
+func resolveOrgRoot(org models.Organization) models.Organization {
+	root := org
+	for i := 0; i < 10 && root.ParentID != 0; i++ {
+		var parent models.Organization
+		if err := db.DB.First(&parent, root.ParentID).Error; err != nil {
+			break
+		}
+		root = parent
+	}
+	return root
 }
 
 // ListApplications lists applications (admin)

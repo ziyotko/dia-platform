@@ -9,13 +9,13 @@
         <el-table-column prop="reply" label="回复"><template #default="{row}"><span :style="{color:row.reply?'#22c55e':'#9ca3af'}">{{ row.reply || '未回复' }}</span></template></el-table-column>
         <el-table-column prop="created_at" label="时间" width="160"><template #default="{row}">{{ row.created_at?.replace('T', ' ').slice(0,16) }}</template></el-table-column>
         <el-table-column label="操作" width="150"><template #default="{row}">
-          <el-button v-if="!row.reply" text size="small" type="primary" @click="openReply(row)">回复</el-button>
+          <el-button text size="small" type="primary" @click="openReply(row)">{{ row.reply ? '修改回复' : '回复' }}</el-button>
           <el-button text size="small" type="danger" @click="deleteRow(row)">删除</el-button>
         </template></el-table-column>
       </el-table>
 
       <!-- 回复对话框 -->
-      <el-dialog v-model="replyVisible" title="回复留言" width="560px">
+      <el-dialog v-model="replyVisible" :title="replyTarget?.reply ? '修改回复' : '回复留言'" width="560px">
         <div class="reply-origin" v-if="replyTarget">
           <div class="reply-label">原留言：</div>
           <div class="reply-content">{{ replyTarget.content }}</div>
@@ -56,7 +56,7 @@ async function fetchData() {
 }
 function openReply(row: any) {
   replyTarget.value = row
-  replyText.value = ''
+  replyText.value = row.reply || ''
   replyVisible.value = true
 }
 async function submitReply() {

@@ -7,13 +7,13 @@
 
     <el-card>
       <div class="filter-bar">
-        <el-select v-model="filterStatus" placeholder="状态筛选" clearable style="width:140px" @change="fetchData">
+        <el-select v-model="filterStatus" placeholder="状态筛选" clearable style="width:140px" @change="onFilterChange">
           <el-option label="草稿" value="draft" />
           <el-option label="待审核" value="pending" />
           <el-option label="已发布" value="published" />
           <el-option label="已拒绝" value="rejected" />
         </el-select>
-        <el-select v-model="filterCat" placeholder="分类筛选" clearable style="width:140px;margin-left:12px" @change="fetchData">
+        <el-select v-model="filterCat" placeholder="分类筛选" clearable style="width:140px;margin-left:12px" @change="onFilterChange">
           <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
         </el-select>
       </div>
@@ -38,6 +38,16 @@
         </el-table-column>
       </el-table>
       <el-empty v-if="!loading && articles.length === 0" description="暂无文章" />
+      <div class="pagination" v-if="total > 0">
+        <el-pagination
+          background
+          layout="total, prev, pager, next"
+          :total="total"
+          :page-size="size"
+          v-model:current-page="page"
+          @current-change="fetchData"
+        />
+      </div>
     </el-card>
 
     <!-- Create/Edit Dialog -->
@@ -71,8 +81,8 @@
       </el-form>
       <template #footer>
         <el-button @click="showDialog = false">取消</el-button>
-        <el-button @click="saveArticle(false)">保存草稿</el-button>
-        <el-button type="primary" @click="saveArticle(true)">立即提交</el-button>
+        <el-button v-if="editingStatus !== 'published'" @click="saveArticle(false)">保存草稿</el-button>
+        <el-button type="primary" @click="saveArticle(true)">{{ editingStatus === 'published' ? '提交修改（需重新审核）' : '立即提交' }}</el-button>
       </template>
     </el-dialog>
 
@@ -104,8 +114,12 @@ const categories = ref<any[]>([])
 const loading = ref(true)
 const showDialog = ref(false)
 const editingId = ref<number | null>(null)
+const editingStatus = ref('')
 const filterStatus = ref('')
 const filterCat = ref<number | ''>('')
+const page = ref(1)
+const size = ref(10)
+const total = ref(0)
 
 const articleForm = reactive({ title: '', categoryId: null as number | null, summary: '', content: '', coverImage: '' })
 
@@ -141,33 +155,42 @@ function statusTag(s: string) { return statusMap[s]?.tag || 'info' as any }
 onMounted(async () => {
   try {
     const [artRes, catRes] = await Promise.all([
-      articleApi.getMyArticles({ page: 1, size: 100 }),
+      articleApi.getMyArticles({ page: page.value, size: size.value }),
       articleApi.getCategories()
     ])
     articles.value = artRes.data?.list || []
+    total.value = artRes.data?.total || 0
     categories.value = catRes.data || []
   } catch {} finally { loading.value = false }
 })
 
+function onFilterChange() {
+  page.value = 1
+  fetchData()
+}
+
 async function fetchData() {
   loading.value = true
   try {
-    const params: any = { page: 1, size: 100 }
+    const params: any = { page: page.value, size: size.value }
     if (filterStatus.value) params.status = filterStatus.value
     if (filterCat.value) params.category_id = filterCat.value
     const res = await articleApi.getMyArticles(params)
     articles.value = res.data?.list || []
+    total.value = res.data?.total || 0
   } catch {} finally { loading.value = false }
 }
 
 function openCreate() {
   editingId.value = null
+  editingStatus.value = ''
   Object.assign(articleForm, { title: '', categoryId: null, summary: '', content: '', coverImage: '' })
   showDialog.value = true
 }
 
 function editArticle(row: any) {
   editingId.value = row.id
+  editingStatus.value = row.status
   Object.assign(articleForm, {
     title: row.title,
     categoryId: row.category_id,
@@ -233,6 +256,7 @@ function formatDate(d: string) { return d ? d.slice(0, 16) : '' }
 .articles-page {  width: 100%;}
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .filter-bar { margin-bottom: 16px; }
+.pagination { display: flex; justify-content: center; margin-top: 20px; }
 .cover-preview {
   width: 200px;
   height: 120px;

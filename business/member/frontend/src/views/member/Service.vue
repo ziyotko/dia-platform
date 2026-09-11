@@ -40,7 +40,7 @@
         <span>作者：{{ viewedArticle.member?.company_name || viewedArticle.member?.name || viewedArticle.member?.username }}</span>
         <span>时间：{{ formatDate(viewedArticle.published_at) }}</span>
       </div>
-      <div class="article-content">{{ viewedArticle?.content || '暂无内容' }}</div>
+      <div class="article-content" v-html="viewedArticle?.content || '暂无内容'"></div>
     </el-dialog>
   </div>
 </template>
@@ -122,5 +122,5 @@ function typeLabel(t: string) { return typeMap[t] || t }
   .time { color: #9ca3af; font-size: 13px; white-space: nowrap; }
 }
 .article-meta { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; font-size: 13px; color: #6b7280; }
-.article-content { line-height: 1.8; white-space: pre-wrap; }
+.article-content { line-height: 1.8; }
 </style>

@@ -335,13 +335,26 @@ func (s *FeeService) GetMemberFeeInfo(memberID uint64) (orgID, levelID uint64, o
 	// member_level 存等级 ID 字符串（兼容历史名称），作为各分支的等级兑底
 	memberLevelID, memberLevelName := resolveMemberLevel(member.MemberLevel)
 
-	// 1) 已通过的入会申请
+	// 1) 已通过的入会申请：会费按“总会”收取（向上追溯到 parent_id=0 的根组织），
+	//    等级取总会支持的最小等级；总会未配置时回退申请机构等级，再回退会员等级。
 	var app models.Application
 	if err := db.DB.Preload("Org").Where("member_id = ? AND status = ?", memberID, models.AppStatusApproved).
 		Order("created_at DESC").First(&app).Error; err == nil {
-		orgID = app.OrgID
-		orgName = app.Org.Name
-		levelID, levelName = orgMinLevelInfo(app.OrgID)
+		appliedOrg := app.Org
+		if appliedOrg.ID == 0 {
+			db.DB.First(&appliedOrg, app.OrgID)
+		}
+		rootOrg := resolveOrgRoot(appliedOrg)
+		orgID = rootOrg.ID
+		orgName = rootOrg.Name
+		if orgID == 0 {
+			// 兼容历史数据：机构被删除时退回申请机构 ID
+			orgID = app.OrgID
+		}
+		levelID, levelName = orgMinLevelInfo(orgID)
+		if levelID == 0 {
+			levelID, levelName = orgMinLevelInfo(app.OrgID)
+		}
 		if levelID == 0 {
 			levelID, levelName = memberLevelID, memberLevelName
 		}

@@ -2,6 +2,7 @@ package seed
 
 import (
 	"member/internal/models"
+	"member/internal/service"
 	"member/pkg/db"
 	"time"
 
@@ -32,7 +33,7 @@ func createAdmin() {
 		return
 	}
 
-	hashed, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
+	hashed, _ := bcrypt.GenerateFromPassword([]byte(service.DefaultPassword), bcrypt.DefaultCost)
 	admin := models.Member{
 		Username:    "admin",
 		Password:    string(hashed),
