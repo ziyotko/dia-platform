@@ -31,10 +31,12 @@ func (s *MemberOrgService) JoinOrg(memberID, orgID, levelID uint64) error {
 	if err := db.DB.Where("member_id = ? AND org_id = ?", memberID, orgID).First(&exist).Error; err == nil {
 		return errors.New("已加入该组织")
 	}
-	// Check if the member has at least one approved application (paid join)
+	// 会员需有缴费加入的组织（已批准的入会申请，或已缴费/免缴的会费记录）
 	var approvedCount int64
 	db.DB.Model(&models.Application{}).Where("member_id = ? AND status = ?", memberID, models.AppStatusApproved).Count(&approvedCount)
-	if approvedCount == 0 {
+	var paidFeeCount int64
+	db.DB.Model(&models.FeeRecord{}).Where("member_id = ? AND status = ? AND org_name <> ''", memberID, models.FeeStatusPaid).Count(&paidFeeCount)
+	if approvedCount == 0 && paidFeeCount == 0 {
 		return errors.New("暂无缴费加入的组织，无法加入新组织")
 	}
 	// If levelID is provided, verify it belongs to this org

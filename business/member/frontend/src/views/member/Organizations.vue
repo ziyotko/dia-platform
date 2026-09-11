@@ -10,7 +10,7 @@
 
     <!-- 卡片列表 -->
     <div v-if="combinedList.length" class="card-list">
-      <div v-for="item in combinedList" :key="item.id" class="org-card">
+      <div v-for="item in combinedList" :key="item._key" class="org-card">
         <div class="card-body">
           <div class="card-left">
             <div class="org-name">{{ item.org?.name || '未知机构' }}</div>
@@ -124,6 +124,7 @@ const myOrgs = ref<any[]>([])
 const memberLevel = ref('')
 const orgTree = ref<any[]>([])
 const approvedApps = ref<any[]>([])
+const paidFees = ref<any[]>([])
 const loading = ref(true)
 const showJoin = ref(false)
 const selectedOrg = ref<any>(null)
@@ -131,19 +132,27 @@ const searchQuery = ref('')
 const treeRef = ref<any>(null)
 
 const combinedList = computed(() => {
-  const apps = approvedApps.value.map((a: any) => ({ ...a, _type: 'application' }))
-  const orgs = myOrgs.value.map((o: any) => ({ ...o, _type: 'org' }))
-  return [...apps, ...orgs]
+  const apps = approvedApps.value.map((a: any) => ({ ...a, _type: 'application', _key: 'app-' + a.id }))
+  const feeOrgs = paidFees.value.map((f: any) => ({
+    ...f,
+    _type: 'application',
+    _key: 'fee-' + f.id,
+    org: { id: f.org_id, name: f.org_name, parent_id: 0 },
+    created_at: f.paid_date || f.paid_at
+  }))
+  const orgs = myOrgs.value.map((o: any) => ({ ...o, _type: 'org', _key: 'org-' + o.id }))
+  return [...feeOrgs, ...apps, ...orgs]
 })
 
-// 是否有通过缴费加入的组织
-const hasPaidOrg = computed(() => approvedApps.value.length > 0)
+// 是否有通过缴费加入的组织（已批准入会申请，或已缴费/免缴的会费记录）
+const hasPaidOrg = computed(() => approvedApps.value.length > 0 || paidFees.value.length > 0)
 
 // 已加入的组织 ID 集合（含申请批准的 + 直接加入的）
 const joinedOrgIds = computed(() => {
   const ids = new Set<number>()
   myOrgs.value.forEach((o: any) => ids.add(o.org_id ?? o.org?.id))
   approvedApps.value.forEach((a: any) => ids.add(a.org_id ?? a.org?.id))
+  paidFees.value.forEach((f: any) => { if (f.org_id) ids.add(f.org_id) })
   return ids
 })
 
@@ -264,6 +273,8 @@ onMounted(async () => {
     const paid = fees.find((f: any) => f.status === 'paid')
     const unpaid = fees.find((f: any) => f.status === 'unpaid')
     memberLevel.value = paid?.level_name || unpaid?.level_name || ''
+    // 已缴费且带机构信息的费用记录（如新增会员的免缴总会）计入已加入组织
+    paidFees.value = fees.filter((f: any) => f.status === 'paid' && f.org_name)
   } catch {} finally { loading.value = false }
 })
 
