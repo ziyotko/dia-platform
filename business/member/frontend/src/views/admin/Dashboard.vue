@@ -303,7 +303,7 @@ const todos = ref([
   { text: '待处理入会申请', tag: 'warning' as const, color: '#f59e0b', count: 0, path: '/admin/applications' },
   { text: '待确认缴费记录', tag: 'danger' as const, color: '#f97316', count: 0, path: '/admin/fees' },
   { text: '待回复会员留言', tag: 'primary' as const, color: '#002fa7', count: 0, path: '/admin/messages' },
-  { text: '待处理证书申请', tag: 'primary' as const, color: '#8b5cf6', count: 0, path: '/admin/certificates' }
+  { text: '待审核会员文章', tag: 'primary' as const, color: '#8b5cf6', count: 0, path: '/admin/articles' }
 ])
 
 // ===== 工具函数 =====
@@ -354,12 +354,11 @@ async function fetchData() {
     typeData.unit = unitRes.data?.total || 0
     typeData.personal = personalRes.data?.total || 0
 
-    // 3. 待办事项
-    const pendingPayment = d.pending_payment || 0
-    todos.value[0].count = pending - pendingPayment > 0 ? pending - pendingPayment : pending
-    todos.value[1].count = pendingPayment
-    todos.value[2].count = 0
-    todos.value[3].count = 0
+    // 3. 待办事项（后端返回真实待处理数量）
+    todos.value[0].count = d.pending_applications || 0
+    todos.value[1].count = d.pending_fees || 0
+    todos.value[2].count = d.pending_messages || 0
+    todos.value[3].count = d.pending_articles || 0
 
     // 5. 最近注册会员
     try {

@@ -16,7 +16,7 @@
             <div class="org-name">{{ item.org?.name || '未知机构' }}</div>
             <div class="card-meta">
               <el-tag type="warning" effect="plain" size="small">
-                {{ memberLevel || '-' }}
+                {{ itemLevelName(item) }}
               </el-tag>
               <el-tag
                 :type="item._type === 'application' ? 'success' : 'info'"
@@ -373,6 +373,16 @@ async function leaveOrg(row: any) {
 }
 
 function formatDate(d: string) { return d ? d.replace('T', ' ').slice(0, 16) : '' }
+
+// 每条加入记录的会员级别：优先记录自带的 level_name，其次按 level_id 反查，最后回退全局级别
+function itemLevelName(item: any) {
+  if (item.level_name) return item.level_name
+  if (item.level_id) {
+    const lvl = allLevels.value.find((l: any) => l.id === item.level_id)
+    if (lvl) return lvl.name
+  }
+  return memberLevel.value || '-'
+}
 </script>
 
 <style scoped lang="scss">

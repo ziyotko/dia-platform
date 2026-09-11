@@ -129,9 +129,18 @@ async function createMsg() {
   } catch {}
 }
 
-function viewDetail(row: any) {
+async function viewDetail(row: any) {
   detailItem.value = row
   showDetail.value = true
+  // 查看即标记已读
+  if (row.status === 'unread') {
+    try {
+      const res = await messageApi.getMessage(row.id)
+      detailItem.value = res.data || row
+      const local = messages.value.find((m: any) => m.id === row.id)
+      if (local) local.status = detailItem.value.status
+    } catch {}
+  }
 }
 
 function formatDate(d: string) { return d ? d.replace('T', ' ').slice(0, 16) : '' }

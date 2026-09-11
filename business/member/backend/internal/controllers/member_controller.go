@@ -216,6 +216,7 @@ func (ctrl *MemberController) DeleteMember(c *gin.Context) {
 // GetMemberStats returns member statistics (admin)
 func (ctrl *MemberController) GetMemberStats(c *gin.Context) {
 	var total, active, pending, rejected, pendingPayment, todayNew int64
+	var pendingApplications, pendingFees, pendingMessages, pendingArticles int64
 
 	now := time.Now()
 	todayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
@@ -228,12 +229,22 @@ func (ctrl *MemberController) GetMemberStats(c *gin.Context) {
 	db.DB.Model(&models.Member{}).Where("is_admin = ? AND status = ?", false, "pending_payment").Count(&pendingPayment)
 	db.DB.Model(&models.Member{}).Where("is_admin = ? AND created_at >= ?", false, todayStart).Count(&todayNew)
 
+	// 待办事项统计
+	db.DB.Model(&models.Application{}).Where("status = ?", models.AppStatusPendingReview).Count(&pendingApplications)
+	db.DB.Model(&models.FeeRecord{}).Where("status = ?", models.FeeStatusPending).Count(&pendingFees)
+	db.DB.Model(&models.MemberMessage{}).Where("status <> ?", models.MessageStatusReplied).Count(&pendingMessages)
+	db.DB.Model(&models.Article{}).Where("status = ?", models.ArticleStatusPending).Count(&pendingArticles)
+
 	response.Success(c, gin.H{
-		"total":           total,
-		"active":          active,
-		"pending":         pending,
-		"rejected":        rejected,
-		"pending_payment": pendingPayment,
-		"today_new":       todayNew,
+		"total":                total,
+		"active":               active,
+		"pending":              pending,
+		"rejected":             rejected,
+		"pending_payment":      pendingPayment,
+		"today_new":            todayNew,
+		"pending_applications": pendingApplications,
+		"pending_fees":         pendingFees,
+		"pending_messages":     pendingMessages,
+		"pending_articles":     pendingArticles,
 	})
 }

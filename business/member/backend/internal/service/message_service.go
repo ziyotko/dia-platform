@@ -38,11 +38,18 @@ func (s *MessageService) GetMyMessages(memberID uint64, page, size int) ([]model
 	return msgs, total, nil
 }
 
-// GetMessage returns a message by ID (owner only)
+// GetMessage returns a message by ID (owner only).
+// 会员查看留言时自动标记为“已读”（已回复的消息保持 replied）。
 func (s *MessageService) GetMessage(id, memberID uint64) (*models.MemberMessage, error) {
 	var msg models.MemberMessage
 	if err := db.DB.Preload("Member").Where("id = ? AND member_id = ?", id, memberID).First(&msg).Error; err != nil {
 		return nil, errors.New("消息不存在")
+	}
+	if msg.Status == models.MessageStatusUnread {
+		if err := db.DB.Model(&models.MemberMessage{}).Where("id = ?", msg.ID).
+			Update("status", models.MessageStatusRead).Error; err == nil {
+			msg.Status = models.MessageStatusRead
+		}
 	}
 	return &msg, nil
 }
