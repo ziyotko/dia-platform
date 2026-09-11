@@ -30,7 +30,7 @@
           </div>
           <div class="card-right">
             <el-button
-              v-if="item._type === 'org' && item.org?.parent_id !== 0"
+              v-if="item._canLeave && item.org?.parent_id !== 0"
               text
               type="danger"
               size="small"
@@ -132,9 +132,13 @@ const searchQuery = ref('')
 const treeRef = ref<any>(null)
 
 const combinedList = computed(() => {
-  // 同一组织机构可能同时存在多条加入记录（如“已批准入会申请 + 已缴费费用记录”，
-  // 或“已缴费费用记录 + 主动加入记录”），按组织 ID 去重，避免重复展示。
-  // 优先级与后台仪表盘一致：入会申请 > 已缴费记录 > 主动加入。
+  // 分类与后台「加入机构」保持一致：
+  //   缴费加入 = 已缴费（含免缴）的费用记录所属机构（总会会籍）；
+  //   主动加入 = member_user_orgs 中的加入记录（分会/代表机构、自主加入）。
+  // 同一组织机构可能同时存在多条记录，按组织 ID 去重，
+  // 优先级：已缴费费用记录 > member_user_orgs > 已批准入会申请（历史数据兜底）。
+  // 注意：审批通过的分会/代表机构已写入 member_user_orgs，应显示为「主动加入」，
+  // 不能再被入会申请覆盖成「缴费加入」。
   const seen = new Set<number>()
   const list: any[] = []
   const pushUnique = (orgId: any, item: any) => {
@@ -146,12 +150,7 @@ const combinedList = computed(() => {
     list.push(item)
   }
 
-  // 1. 缴费加入：已批准的入会申请
-  approvedApps.value.forEach((a: any) => {
-    pushUnique(a.org_id ?? a.org?.id, { ...a, _type: 'application', _key: 'app-' + a.id })
-  })
-
-  // 2. 缴费加入：已缴费（含免缴）的费用记录（同一组织已存在则跳过）
+  // 1. 缴费加入：已缴费（含免缴）的费用记录
   paidFees.value.forEach((f: any) => {
     pushUnique(f.org_id, {
       ...f,
@@ -162,9 +161,26 @@ const combinedList = computed(() => {
     })
   })
 
-  // 3. 主动加入：直接加入的组织（同一组织已存在则跳过）
+  // 2. 主动加入：member_user_orgs 加入记录
   myOrgs.value.forEach((o: any) => {
-    pushUnique(o.org_id ?? o.org?.id, { ...o, _type: 'org', _key: 'org-' + o.id })
+    pushUnique(o.org_id ?? o.org?.id, {
+      ...o,
+      _type: 'org',
+      _canLeave: true,
+      _key: 'org-' + o.id
+    })
+  })
+
+  // 3. 兜底：已批准的入会申请（历史数据可能尚无 member_user_orgs 记录）。
+  //    申请总会（一级组织）仍按缴费加入展示，申请分会/代表机构按主动加入展示。
+  approvedApps.value.forEach((a: any) => {
+    const isRoot = (a.org?.parent_id ?? 0) === 0
+    pushUnique(a.org_id ?? a.org?.id, {
+      ...a,
+      _type: isRoot ? 'application' : 'org',
+      _key: 'app-' + a.id,
+      joined_at: a.joined_at || a.created_at
+    })
   })
 
   return list

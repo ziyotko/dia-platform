@@ -30,7 +30,7 @@ type DashboardOrgInfo struct {
 	OrgName    string `json:"org_name"`
 	LevelName  string `json:"level_name"`
 	JoinedAt   string `json:"joined_at"`
-	IsFeeBased bool   `json:"is_fee_based"` // true if from approved application (paid join)
+	IsFeeBased bool   `json:"is_fee_based"` // true if 缴费加入（来自已缴费费用记录）
 }
 
 type AppSummary struct {
@@ -102,36 +102,19 @@ func (s *DashboardService) GetMemberDashboard(memberID uint64) (*MemberDashboard
 		dash.LatestFeeLevel = latestFee.LevelName
 	}
 
-	// Organizations — query all from member_user_orgs, mark fee-based if has approved application
+	// Organizations — 分类规则与后台「加入机构」/会员端「加入的组织机构」一致：
+	//   缴费加入 = 已缴费（含免缴）的费用记录所属机构（is_fee_based = true）；
+	//   主动加入 = member_user_orgs 记录（分会/代表机构、自主加入）；
+	//   已批准入会申请仅作为历史数据的兜底（不再直接判定为缴费加入）。
+	// 同一机构只展示一次，优先级：费用记录 > member_user_orgs > 入会申请。
 	var orgInfos []DashboardOrgInfo
 
-	// Collect approved applications (fee-based joins)
-	approvedOrgIDs := make(map[uint64]bool)
-	var approvedApps []models.Application
-	db.DB.Where("member_id = ? AND status = ?", memberID, models.AppStatusApproved).
-		Preload("Org").Find(&approvedApps)
-	for _, a := range approvedApps {
-		if a.Org.ID == 0 {
-			continue
-		}
-		approvedOrgIDs[a.OrgID] = true
-		orgInfos = append(orgInfos, DashboardOrgInfo{
-			ID:         a.ID,
-			Key:        "app-" + strconv.FormatUint(a.ID, 10),
-			OrgID:      a.OrgID,
-			OrgName:    a.Org.Name,
-			LevelName:  latestFee.LevelName,
-			JoinedAt:   a.CreatedAt.Local().Format("2006-01-02"),
-			IsFeeBased: true,
-		})
-	}
-
-	// Collect paid fee records (fee-based joins, e.g. admin 新增会员的免缴总会)
+	// 1) 缴费加入：已缴费（含免缴）的费用记录，如新增会员的免缴总会
 	feeOrgIDs := make(map[uint64]bool)
 	var paidFees []models.FeeRecord
 	db.DB.Where("member_id = ? AND status = ? AND org_name <> ''", memberID, models.FeeStatusPaid).Find(&paidFees)
 	for _, f := range paidFees {
-		if f.OrgID == 0 || approvedOrgIDs[f.OrgID] || feeOrgIDs[f.OrgID] {
+		if f.OrgID == 0 || feeOrgIDs[f.OrgID] {
 			continue
 		}
 		feeOrgIDs[f.OrgID] = true
@@ -152,17 +135,15 @@ func (s *DashboardService) GetMemberDashboard(memberID uint64) (*MemberDashboard
 		})
 	}
 
-	// Query all org memberships from member_user_orgs (direct joins)
+	// 2) 主动加入：member_user_orgs 加入记录（分会/代表机构、自主加入）
+	directOrgIDs := make(map[uint64]bool)
 	var memberOrgs []models.MemberOrganization
 	db.DB.Where("member_id = ?", memberID).Preload("Org").Find(&memberOrgs)
 	for _, mo := range memberOrgs {
-		if mo.Org.ID == 0 {
+		if mo.Org.ID == 0 || feeOrgIDs[mo.OrgID] || directOrgIDs[mo.OrgID] {
 			continue
 		}
-		// Skip orgs already added via approved application or paid fee record (avoid duplicates)
-		if approvedOrgIDs[mo.OrgID] || feeOrgIDs[mo.OrgID] {
-			continue
-		}
+		directOrgIDs[mo.OrgID] = true
 		// Resolve level name from LevelID
 		levelName := ""
 		if mo.LevelID > 0 {
@@ -178,6 +159,26 @@ func (s *DashboardService) GetMemberDashboard(memberID uint64) (*MemberDashboard
 			OrgName:    mo.Org.Name,
 			LevelName:  levelName,
 			JoinedAt:   mo.JoinedAt.Local().Format("2006-01-02"),
+			IsFeeBased: false,
+		})
+	}
+
+	// 3) 兜底：已批准入会申请（历史数据可能尚无 member_user_orgs 记录）
+	var approvedApps []models.Application
+	db.DB.Where("member_id = ? AND status = ?", memberID, models.AppStatusApproved).
+		Preload("Org").Find(&approvedApps)
+	for _, a := range approvedApps {
+		if a.Org.ID == 0 || feeOrgIDs[a.OrgID] || directOrgIDs[a.OrgID] {
+			continue
+		}
+		directOrgIDs[a.OrgID] = true
+		orgInfos = append(orgInfos, DashboardOrgInfo{
+			ID:         a.ID,
+			Key:        "app-" + strconv.FormatUint(a.ID, 10),
+			OrgID:      a.OrgID,
+			OrgName:    a.Org.Name,
+			LevelName:  latestFee.LevelName,
+			JoinedAt:   a.CreatedAt.Local().Format("2006-01-02"),
 			IsFeeBased: false,
 		})
 	}
