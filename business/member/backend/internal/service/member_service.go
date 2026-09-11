@@ -432,6 +432,7 @@ func (s *MemberService) GetMemberJoinedOrgs(memberID uint64) (*MemberJoinedOrgIn
 }
 
 // DeleteMember soft-deletes a member (admin)
+// 仅“注册中”状态的会员可删除，防止误删正式会员。
 func (s *MemberService) DeleteMember(id uint64) error {
 	var m models.Member
 	if err := db.DB.First(&m, id).Error; err != nil {
@@ -439,6 +440,9 @@ func (s *MemberService) DeleteMember(id uint64) error {
 			return errors.New("会员不存在")
 		}
 		return err
+	}
+	if m.Status != models.MemberStatusRegistering {
+		return errors.New("仅“注册中”状态的会员可删除")
 	}
 	return db.DB.Delete(&m).Error
 }

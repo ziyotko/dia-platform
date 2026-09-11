@@ -30,6 +30,20 @@ func (s *AuthService) Register(req RegisterRequest) (*LoginResponse, error) {
 		return nil, errors.New("用户名已存在")
 	}
 
+	// Check mobile/email uniqueness (backend-level safeguard)
+	if req.Mobile != "" {
+		var m models.Member
+		if err := db.DB.Where("mobile = ?", req.Mobile).First(&m).Error; err == nil {
+			return nil, errors.New("手机号已被注册")
+		}
+	}
+	if req.Email != "" {
+		var e models.Member
+		if err := db.DB.Where("email = ?", req.Email).First(&e).Error; err == nil {
+			return nil, errors.New("邮箱已被注册")
+		}
+	}
+
 	// Hash password
 	hashed, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {

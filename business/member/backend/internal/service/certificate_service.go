@@ -71,12 +71,34 @@ func (s *CertificateService) GenerateCertificateForMember(memberID uint64) (*mod
 	return &cert, nil
 }
 
-// RenewMyCertificate marks old certificates as expired and creates a new one (member self-service)
+// RenewMyCertificate marks old certificates as expired and creates a new one (member self-service).
+// 仅正式会员且当年已缴费方可续证，防止任意会员刷证。
 func (s *CertificateService) RenewMyCertificate(memberID uint64) (*models.Certificate, error) {
+	var member models.Member
+	if err := db.DB.First(&member, memberID).Error; err != nil {
+		return nil, errors.New("会员不存在")
+	}
+	if member.Status != models.MemberStatusActive {
+		return nil, errors.New("仅正式会员可续证")
+	}
+
+	// 校验当年已缴费
+	var paidCount int64
+	if err := db.DB.Model(&models.FeeRecord{}).
+		Where("member_id = ? AND year = ? AND status = ?", memberID, time.Now().Year(), models.FeeStatusPaid).
+		Count(&paidCount).Error; err != nil {
+		return nil, err
+	}
+	if paidCount == 0 {
+		return nil, errors.New("当年尚未缴费，暂不能续证")
+	}
+
 	// Expire all active certificates for this member
-	db.DB.Model(&models.Certificate{}).
+	if err := db.DB.Model(&models.Certificate{}).
 		Where("member_id = ? AND status = 'active'", memberID).
-		Update("status", "expired")
+		Update("status", "expired").Error; err != nil {
+		return nil, err
+	}
 
 	// Create a new certificate
 	return s.GenerateCertificateForMember(memberID)
