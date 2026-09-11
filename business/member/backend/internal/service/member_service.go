@@ -4,7 +4,9 @@ import (
 	"errors"
 	"member/internal/models"
 	"member/pkg/db"
+	"member/pkg/utils"
 	"strconv"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -498,6 +500,35 @@ func (s *MemberService) CreateMember(req CreateMemberRequest, operator string) (
 	if req.MemberType != models.MemberTypeUnit && req.MemberType != models.MemberTypePersonal {
 		return nil, errors.New("无效的会员类型")
 	}
+
+	// 规范化并校验基础信息
+	req.Username = strings.TrimSpace(req.Username)
+	req.Mobile = strings.TrimSpace(req.Mobile)
+	req.Email = strings.TrimSpace(req.Email)
+	req.ContactMobile = strings.TrimSpace(req.ContactMobile)
+	req.CreditCode = strings.ToUpper(strings.TrimSpace(req.CreditCode))
+
+	if req.Username == "" {
+		return nil, errors.New("请输入用户名")
+	}
+	if !utils.IsValidMobile(req.Mobile) {
+		return nil, errors.New("请输入合法手机号")
+	}
+	if !utils.IsValidEmail(req.Email) {
+		return nil, errors.New("请输入合法邮箱")
+	}
+	if req.MemberType == models.MemberTypeUnit {
+		if !utils.IsValidPhone(req.ContactMobile) {
+			return nil, errors.New("请输入合法联系电话")
+		}
+		if !utils.IsValidCreditCode(req.CreditCode) {
+			return nil, errors.New("请输入合法的统一社会信用代码")
+		}
+	} else {
+		req.CreditCode = ""
+		req.ContactMobile = ""
+	}
+
 	if req.Status == "" {
 		req.Status = models.MemberStatusActive
 	}

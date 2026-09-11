@@ -214,10 +214,10 @@
             <el-form-item label="密码" prop="password"><el-input v-model="createForm.password" type="password" show-password maxlength="32" placeholder="留空则默认 Abcd@1234" /></el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="手机号" prop="mobile"><el-input v-model="createForm.mobile" maxlength="11" /></el-form-item>
+            <el-form-item label="手机号" prop="mobile"><el-input v-model="createForm.mobile" maxlength="11" placeholder="请输入11位手机号" /></el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="邮箱" prop="email"><el-input v-model="createForm.email" maxlength="64" /></el-form-item>
+            <el-form-item label="邮箱" prop="email"><el-input v-model="createForm.email" maxlength="64" placeholder="请输入邮箱" /></el-form-item>
           </el-col>
           <el-col :span="24">
             <el-form-item label="会员类型">
@@ -232,11 +232,11 @@
         <template v-if="createForm.member_type === 'unit'">
           <el-divider content-position="left">单位信息</el-divider>
           <el-row :gutter="16">
-            <el-col :span="12"><el-form-item label="公司名称"><el-input v-model="createForm.company_name" maxlength="100" /></el-form-item></el-col>
-            <el-col :span="12"><el-form-item label="统一社会信用代码"><el-input v-model="createForm.credit_code" maxlength="18" /></el-form-item></el-col>
+            <el-col :span="12"><el-form-item label="公司名称" prop="company_name"><el-input v-model="createForm.company_name" maxlength="100" /></el-form-item></el-col>
+            <el-col :span="12"><el-form-item label="统一社会信用代码" prop="credit_code"><el-input v-model="createForm.credit_code" maxlength="18" placeholder="请输入18位统一社会信用代码" /></el-form-item></el-col>
             <el-col :span="12"><el-form-item label="法定代表人"><el-input v-model="createForm.legal_person" maxlength="32" /></el-form-item></el-col>
             <el-col :span="12"><el-form-item label="联系人"><el-input v-model="createForm.contact_person" maxlength="32" /></el-form-item></el-col>
-            <el-col :span="12"><el-form-item label="联系电话"><el-input v-model="createForm.contact_mobile" maxlength="11" /></el-form-item></el-col>
+            <el-col :span="12"><el-form-item label="联系电话" prop="contact_mobile"><el-input v-model="createForm.contact_mobile" maxlength="20" placeholder="手机号或固定电话" /></el-form-item></el-col>
             <el-col :span="12"><el-form-item label="单位地址"><el-input v-model="createForm.address" maxlength="100" /></el-form-item></el-col>
           </el-row>
         </template>
@@ -347,23 +347,57 @@ const createForm = reactive<any>({
   name: '',
   id_card: ''
 })
+// 手机号：必填 + 11位手机号格式
+function validateCreateMobile(_r: any, v: string, cb: any) {
+  const val = (v || '').trim()
+  if (!val) return cb(new Error('请输入手机号'))
+  if (!/^1[3-9]\d{9}$/.test(val)) return cb(new Error('请输入合法手机号'))
+  cb()
+}
+
+// 邮箱：必填 + 邮箱格式
+function validateCreateEmail(_r: any, v: string, cb: any) {
+  const val = (v || '').trim()
+  if (!val) return cb(new Error('请输入邮箱'))
+  if (val.length > 64) return cb(new Error('邮箱不能超过64位'))
+  if (!/^[\w.+-]+@[\w-]+(\.[\w-]+)+$/.test(val)) return cb(new Error('请输入合法邮箱'))
+  cb()
+}
+
+// 联系电话：必填，手机号或固定电话（可带区号/连字符）
+function validateCreateContactMobile(_r: any, v: string, cb: any) {
+  const val = (v || '').trim()
+  if (!val) return cb(new Error('请输入联系电话'))
+  if (!/^(1[3-9]\d{9}|0\d{2,3}-?\d{7,8})$/.test(val)) return cb(new Error('请输入合法联系电话（手机号或固定电话）'))
+  cb()
+}
+
+// 统一社会信用代码：必填 + GB 32100-2015 校验码算法（与注册/资料页一致）
+function validateCreateCreditCode(_r: any, v: string, cb: any) {
+  const val = (v || '').trim()
+  if (!val) return cb(new Error('请输入统一社会信用代码'))
+  const code = val.toUpperCase()
+  const charSet = '0123456789ABCDEFGHJKLMNPQRTUWXY'
+  const weights = [1, 3, 9, 27, 19, 26, 16, 17, 20, 29, 25, 13, 8, 24, 10, 30, 28]
+  if (!/^[0-9A-HJ-NPQRTUWXY]{2}[0-9]{6}[0-9A-HJ-NPQRTUWXY]{10}$/.test(code)) {
+    return cb(new Error('统一社会信用代码格式不正确'))
+  }
+  let sum = 0
+  for (let i = 0; i < 17; i++) sum += charSet.indexOf(code[i]) * weights[i]
+  if (charSet[(31 - (sum % 31)) % 31] !== code[17]) {
+    return cb(new Error('统一社会信用代码校验不通过'))
+  }
+  cb()
+}
+
 const createRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ min: 6, message: '密码至少6位', trigger: 'blur' }],
-  mobile: [{
-    validator: (_r: any, v: string, cb: any) => {
-      if (!v) return cb()
-      if (!/^1[3-9]\d{9}$/.test(v)) return cb(new Error('请输入合法手机号'))
-      cb()
-    }, trigger: 'blur'
-  }],
-  email: [{
-    validator: (_r: any, v: string, cb: any) => {
-      if (!v) return cb()
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return cb(new Error('请输入合法邮箱'))
-      cb()
-    }, trigger: 'blur'
-  }]
+  mobile: [{ required: true, validator: validateCreateMobile, trigger: 'blur' }],
+  email: [{ required: true, validator: validateCreateEmail, trigger: 'blur' }],
+  // 以下两项仅单位会员渲染，字段未渲染时不会参与校验
+  credit_code: [{ required: true, validator: validateCreateCreditCode, trigger: 'blur' }],
+  contact_mobile: [{ required: true, validator: validateCreateContactMobile, trigger: 'blur' }]
 }
 
 const statusMap: Record<string, { l: string; t: string }> = {
@@ -492,7 +526,17 @@ async function submitCreate() {
   }
   createLoading.value = true
   try {
-    await adminApi.createMember({ ...createForm, password: createForm.password || undefined, root_org_id: selectedRootOrgId.value, org_ids: selectedOrgIds.value, level_id: selectedLevelId.value })
+    await adminApi.createMember({
+      ...createForm,
+      mobile: createForm.mobile.trim(),
+      email: createForm.email.trim(),
+      contact_mobile: (createForm.contact_mobile || '').trim(),
+      credit_code: createForm.member_type === 'unit' ? (createForm.credit_code || '').trim().toUpperCase() : '',
+      password: createForm.password || undefined,
+      root_org_id: selectedRootOrgId.value,
+      org_ids: selectedOrgIds.value,
+      level_id: selectedLevelId.value
+    })
     ElMessage.success('新增会员成功')
     createVisible.value = false
     fetchData()
