@@ -47,6 +47,14 @@
               入会章程
             </el-link>
           </div>
+          <el-alert
+            v-if="isBranchSelected"
+            class="join-root-hint"
+            type="info"
+            show-icon
+            :closable="false"
+            title="加入任何一个分会默认都会加入总会"
+          />
         </el-form-item>
         <template v-if="memberType === 'unit'">
         <el-form-item label="单位名称"><el-input v-model="appForm.companyName" /></el-form-item>
@@ -59,6 +67,15 @@
       <!-- Step 2: Confirm & Download -->
       <div v-if="createStep === 1" class="confirm-section">
         <el-alert title="请确认填写信息是否正确" type="info" show-icon :closable="false" style="margin-bottom:20px" />
+        <el-alert
+          v-if="isBranchSelected"
+          class="join-root-hint"
+          type="success"
+          show-icon
+          :closable="false"
+          title="加入任何一个分会默认都会加入总会"
+          style="margin-bottom:20px"
+        />
         <el-descriptions :column="1" border size="small">
           <el-descriptions-item label="申请入会">{{ selectedOrgName }}</el-descriptions-item>
           <template v-if="memberType === 'unit'">
@@ -171,10 +188,10 @@ const uploadUrl = computed(() => `${import.meta.env.VITE_API_BASE_URL || '/membe
 const uploadHeaders = computed(() => ({ Authorization: `Bearer ${userStore.token}` }))
 
 const hasPending = computed(() => applications.value.some((a: any) => !['rejected', 'draft'].includes(a.status)))
-const selectedOrgName = computed(() => {
-  const org = orgs.value.find((o: any) => o.id === appForm.orgId)
-  return org?.name || ''
-})
+const selectedOrg = computed(() => orgs.value.find((o: any) => o.id === appForm.orgId) || null)
+const selectedOrgName = computed(() => selectedOrg.value?.name || '')
+// 总会为一级组织（parent_id 为 0），分会/代表机构为其下级组织
+const isBranchSelected = computed(() => !!selectedOrg.value && !!selectedOrg.value.parent_id)
 
 const statusMap: Record<string, { label: string; tag: string }> = {
   draft: { label: '草稿', tag: 'info' },
@@ -298,6 +315,11 @@ function formatDate(d: string) { return d ? d.slice(0, 16).replace('T', ' ') : '
 .charter-hint {
   margin-top: 6px;
   padding-left: 2px;
+}
+
+.join-root-hint {
+  margin-top: 10px;
+  width: 100%;
 }
 
 .confirm-section {

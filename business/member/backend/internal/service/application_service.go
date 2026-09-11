@@ -150,22 +150,39 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 		return err
 	}
 
-	// If approved, auto-create certificate record and first-year fee
+	// 审批通过：会员自动加入总会（一级组织，parent_id = 0）。
+	// 总会会籍以费用记录体现（会费标准按总会等级），
+	// 分支机构/代表机构的关系写入 member_user_orgs。
 	if approved {
 		now := time.Now()
 
-		// Look up the minimum member level for the org and get its fee standard for current year
+		// 定位申请机构及其所属总会
+		var appliedOrg models.Organization
+		if err := db.DB.First(&appliedOrg, app.OrgID).Error; err != nil {
+			// 机构不存在时按申请机构本身处理（兼容历史数据）
+			appliedOrg.ID = app.OrgID
+		}
+		rootOrg := appliedOrg
+		for i := 0; i < 10 && rootOrg.ParentID != 0; i++ {
+			var parent models.Organization
+			if err := db.DB.First(&parent, rootOrg.ParentID).Error; err != nil {
+				break
+			}
+			rootOrg = parent
+		}
+
+		// Look up the minimum member level for the 总会 and get its fee standard for current year;
+		// 分会/代表机构沿用总会等级，总会未配置等级时回退到申请机构自身的配置。
+		orgLevel, lvlErr := findMinOrgLevel(rootOrg.ID)
+		if lvlErr != nil && appliedOrg.ID != rootOrg.ID {
+			orgLevel, lvlErr = findMinOrgLevel(appliedOrg.ID)
+		}
+
 		var feeAmount float64 = 2000.00 // fallback default
 		var feeStandardID, levelID uint64
 		var levelName string
-
-		var orgLevel models.MemberOrgLevel
-		if err := db.DB.Preload("Level").
-			Joins("JOIN member_levels ml ON ml.id = member_org_levels.level_id").
-			Where("member_org_levels.org_id = ?", app.OrgID).
-			Order("ml.level ASC").
-			First(&orgLevel).Error; err == nil {
-			// Found the minimum level for this org
+		if lvlErr == nil {
+			// Found the minimum level for the 总会
 			levelID = orgLevel.LevelID
 			levelName = orgLevel.Level.Name
 
@@ -203,12 +220,7 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 			return err
 		}
 
-		// Create first-year fee record with org's minimum level fee standard
-		var orgName string
-		var org models.Organization
-		if err := db.DB.First(&org, app.OrgID).Error; err == nil {
-			orgName = org.Name
-		}
+		// 首年会费记录：机构为总会，会费标准按总会等级
 		fee := models.FeeRecord{
 			MemberID:      app.MemberID,
 			Year:          now.Year(),
@@ -217,16 +229,46 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 			FeeStandardID: feeStandardID,
 			LevelID:       levelID,
 			LevelName:     levelName,
-			OrgID:         app.OrgID,
-			OrgName:       orgName,
+			OrgID:         rootOrg.ID,
+			OrgName:       rootOrg.Name,
 		}
 		if err := tx.Create(&fee).Error; err != nil {
 			tx.Rollback()
 			return err
 		}
+
+		// 申请的是分支机构/代表机构时，写入 member_user_orgs（总会不写入该表）
+		if appliedOrg.ID != rootOrg.ID {
+			var exists int64
+			tx.Model(&models.MemberOrganization{}).
+				Where("member_id = ? AND org_id = ?", app.MemberID, appliedOrg.ID).Count(&exists)
+			if exists == 0 {
+				mo := models.MemberOrganization{
+					MemberID: app.MemberID,
+					OrgID:    appliedOrg.ID,
+					LevelID:  levelID,
+					JoinedAt: now,
+				}
+				if err := tx.Create(&mo).Error; err != nil {
+					tx.Rollback()
+					return err
+				}
+			}
+		}
 	}
 
 	return tx.Commit().Error
+}
+
+// findMinOrgLevel 返回机构支持的最小会员等级（按等级升序），未配置时返回错误。
+func findMinOrgLevel(orgID uint64) (models.MemberOrgLevel, error) {
+	var orgLevel models.MemberOrgLevel
+	err := db.DB.Preload("Level").
+		Joins("JOIN member_levels ml ON ml.id = member_org_levels.level_id").
+		Where("member_org_levels.org_id = ?", orgID).
+		Order("ml.level ASC").
+		First(&orgLevel).Error
+	return orgLevel, err
 }
 
 // ListApplications lists applications (admin)

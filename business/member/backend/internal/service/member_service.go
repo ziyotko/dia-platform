@@ -48,7 +48,7 @@ func (s *MemberService) fillOrgNames(members []models.Member) error {
 	}
 	err := db.DB.Model(&models.Application{}).
 		Select("member_applications.member_id AS member_id, mo.name AS org_name").
-		Joins("JOIN member_organizations mo ON mo.id = member_applications.org_id AND mo.deleted_at IS NULL").
+		Joins("JOIN member_organizations mo ON mo.id = member_applications.org_id").
 		Where("member_applications.member_id IN ? AND member_applications.status IN ?", ids,
 			[]string{models.AppStatusApproved, models.AppStatusPendingReview}).
 		Order("member_applications.created_at DESC, member_applications.id DESC").
@@ -317,7 +317,7 @@ func parseUint(s string) uint64 {
 func (s *MemberService) GetMemberAvailableLevels(memberID uint64) ([]models.MemberLevel, error) {
 	var levels []models.MemberLevel
 	err := db.DB.Raw(`
-		SELECT DISTINCT ml.id, ml.name, ml.level, ml.description, ml.created_at, ml.updated_at, ml.deleted_at
+		SELECT DISTINCT ml.id, ml.name, ml.level, ml.description, ml.created_at, ml.updated_at
 		FROM member_levels ml
 		JOIN member_org_levels mol ON mol.level_id = ml.id
 		JOIN member_fee_records fr ON fr.org_id = mol.org_id
@@ -432,7 +432,7 @@ func (s *MemberService) GetMemberJoinedOrgs(memberID uint64) (*MemberJoinedOrgIn
 	return info, nil
 }
 
-// DeleteMember soft-deletes a member (admin)
+// DeleteMember 物理删除会员（admin）
 // 仅“注册中”状态的会员可删除，防止误删正式会员。
 func (s *MemberService) DeleteMember(id uint64) error {
 	var m models.Member

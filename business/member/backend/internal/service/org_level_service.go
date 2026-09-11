@@ -20,9 +20,8 @@ func (s *OrgLevelService) GetOrgLevels(orgID uint64) ([]models.MemberOrgLevel, e
 func (s *OrgLevelService) SetOrgLevels(orgID uint64, levelIDs []uint64) error {
 	tx := db.DB.Begin()
 
-	// 物理删除旧关联：GORM 默认 Delete 为软删（写入 deleted_at），而唯一索引
-	// idx_org_level 只含 (org_id, level_id)，软删记录仍占索引导致重新插入重复报错。
-	if err := tx.Unscoped().Where("org_id = ?", orgID).Delete(&models.MemberOrgLevel{}).Error; err != nil {
+	// 物理删除旧关联：本项目统一使用硬删，删除后不会残留索引占用。
+	if err := tx.Where("org_id = ?", orgID).Delete(&models.MemberOrgLevel{}).Error; err != nil {
 		tx.Rollback()
 		return err
 	}

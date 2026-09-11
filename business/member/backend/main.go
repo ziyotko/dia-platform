@@ -56,6 +56,9 @@ func main() {
 		utils.Logger.Fatalf("AutoMigrate failed: %v", err)
 	}
 
+	// 软删 -> 硬删 收尾：物理清除历史软删记录并删除已无用的 deleted_at 列
+	db.PurgeSoftDeleted()
+
 	// Seed default data
 	seed.Run()
 
