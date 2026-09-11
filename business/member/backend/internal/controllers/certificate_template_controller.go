@@ -50,7 +50,7 @@ func (ctrl *CertificateTemplateController) Create(c *gin.Context) {
 // Update updates a certificate template
 func (ctrl *CertificateTemplateController) Update(c *gin.Context) {
 	id := parseUint(c.Param("id"))
-	var req service.CertTemplateRequest
+	var req service.UpdateCertTemplateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "参数错误："+err.Error())
 		return

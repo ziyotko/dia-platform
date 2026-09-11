@@ -50,8 +50,8 @@ func (ctrl *CertificateController) CreateCertificate(c *gin.Context) {
 func (ctrl *CertificateController) UpdateCertificate(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	var req struct {
-		FilePath string `json:"file_path"`
-		Status   string `json:"status"`
+		FilePath *string `json:"file_path"`
+		Status   *string `json:"status"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "参数错误")

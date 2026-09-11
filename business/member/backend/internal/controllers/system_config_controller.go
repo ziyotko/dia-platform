@@ -39,7 +39,7 @@ func (ctrl *SystemConfigController) Create(c *gin.Context) {
 // Update updates a system config
 func (ctrl *SystemConfigController) Update(c *gin.Context) {
 	id := parseUint(c.Param("id"))
-	var req service.SystemConfigRequest
+	var req service.UpdateSystemConfigRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "参数错误")
 		return

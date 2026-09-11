@@ -35,7 +35,7 @@ func (s *CertificateService) CreateCertificate(req CreateCertRequest) (*models.C
 		IssuedAt: req.IssuedAt,
 		ExpireAt: req.ExpireAt,
 		FilePath: req.FilePath,
-		Status:   "active",
+		Status:   models.CertStatusActive,
 	}
 	if err := db.DB.Create(&cert).Error; err != nil {
 		return nil, err
@@ -43,14 +43,18 @@ func (s *CertificateService) CreateCertificate(req CreateCertRequest) (*models.C
 	return &cert, nil
 }
 
-// UpdateCertificate updates a certificate (admin)
-func (s *CertificateService) UpdateCertificate(id uint64, filePath, status string) error {
+// UpdateCertificate updates a certificate (admin).
+// filePath/status 使用指针区分“未提供”（nil）与“清空”（指向空字符串）。
+func (s *CertificateService) UpdateCertificate(id uint64, filePath, status *string) error {
 	updates := map[string]interface{}{}
-	if filePath != "" {
-		updates["file_path"] = filePath
+	if filePath != nil {
+		updates["file_path"] = *filePath
 	}
-	if status != "" {
-		updates["status"] = status
+	if status != nil {
+		updates["status"] = *status
+	}
+	if len(updates) == 0 {
+		return nil
 	}
 	return db.DB.Model(&models.Certificate{}).Where("id = ?", id).Updates(updates).Error
 }
@@ -63,7 +67,7 @@ func (s *CertificateService) GenerateCertificateForMember(memberID uint64) (*mod
 		CertNo:   "XXXXXX-" + now.Format("2006") + "-" + padLeftGen(memberID),
 		IssuedAt: &models.LocalTime{Time: now},
 		ExpireAt: &models.LocalTime{Time: time.Date(now.Year(), 12, 31, 23, 59, 59, 0, now.Location())},
-		Status:   "active",
+		Status:   models.CertStatusActive,
 	}
 	if err := db.DB.Create(&cert).Error; err != nil {
 		return nil, err
@@ -95,8 +99,8 @@ func (s *CertificateService) RenewMyCertificate(memberID uint64) (*models.Certif
 
 	// Expire all active certificates for this member
 	if err := db.DB.Model(&models.Certificate{}).
-		Where("member_id = ? AND status = 'active'", memberID).
-		Update("status", "expired").Error; err != nil {
+		Where("member_id = ? AND status = ?", memberID, models.CertStatusActive).
+		Update("status", models.CertStatusExpired).Error; err != nil {
 		return nil, err
 	}
 

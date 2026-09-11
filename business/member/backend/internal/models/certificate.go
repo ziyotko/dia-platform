@@ -1,5 +1,11 @@
 package models
 
+// CertificateStatus constants
+const (
+	CertStatusActive  = "active"  // 有效
+	CertStatusExpired = "expired" // 已过期
+)
+
 // Certificate represents a membership certificate
 type Certificate struct {
 	BaseModel

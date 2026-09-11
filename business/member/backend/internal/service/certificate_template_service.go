@@ -4,6 +4,7 @@ import (
 	"errors"
 	"member/internal/models"
 	"member/pkg/db"
+	"strings"
 )
 
 type CertificateTemplateService struct{}
@@ -55,25 +56,32 @@ func (s *CertificateTemplateService) Create(req CertTemplateRequest) (*models.Me
 }
 
 // Update updates a certificate template
-func (s *CertificateTemplateService) Update(id uint64, req CertTemplateRequest) error {
+func (s *CertificateTemplateService) Update(id uint64, req UpdateCertTemplateRequest) error {
 	var tpl models.MemberCertificateTemplate
 	if err := db.DB.First(&tpl, id).Error; err != nil {
 		return errors.New("证书样式不存在")
 	}
 
 	updates := map[string]interface{}{}
-	if req.Name != "" {
-		updates["name"] = req.Name
+	if req.Name != nil {
+		name := strings.TrimSpace(*req.Name)
+		if name == "" {
+			return errors.New("请输入样式名称")
+		}
+		updates["name"] = name
 	}
-	if req.LevelID > 0 {
+	if req.LevelID != nil {
 		var level models.MemberLevel
-		if err := db.DB.First(&level, req.LevelID).Error; err != nil {
+		if err := db.DB.First(&level, *req.LevelID).Error; err != nil {
 			return errors.New("会员等级不存在")
 		}
-		updates["level_id"] = req.LevelID
+		updates["level_id"] = *req.LevelID
 	}
-	if req.TemplateFile != "" {
-		updates["template_file"] = req.TemplateFile
+	if req.TemplateFile != nil {
+		updates["template_file"] = *req.TemplateFile
+	}
+	if len(updates) == 0 {
+		return nil
 	}
 	return db.DB.Model(&tpl).Updates(updates).Error
 }
@@ -87,9 +95,17 @@ func (s *CertificateTemplateService) Delete(id uint64) error {
 	return db.DB.Delete(&tpl).Error
 }
 
-// CertTemplateRequest is the request body for creating/updating a template
+// CertTemplateRequest is the request body for creating a template
 type CertTemplateRequest struct {
 	Name         string `json:"name" binding:"required"`
 	LevelID      uint64 `json:"level_id" binding:"required"`
 	TemplateFile string `json:"template_file"`
+}
+
+// UpdateCertTemplateRequest 证书样式更新请求。
+// 字段使用指针以区分“未提供”（nil）与“清空”（指向空字符串）。
+type UpdateCertTemplateRequest struct {
+	Name         *string `json:"name"`
+	LevelID      *uint64 `json:"level_id"`
+	TemplateFile *string `json:"template_file"`
 }

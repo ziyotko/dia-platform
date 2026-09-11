@@ -217,7 +217,7 @@ func (s *MemberService) UpdateMemberLevel(id uint64, levelID uint64, operator st
 
 	// 同步更新该会员生效证书的等级
 	db.DB.Model(&models.Certificate{}).
-		Where("member_id = ? AND status = ?", id, "active").
+		Where("member_id = ? AND status = ?", id, models.CertStatusActive).
 		Updates(map[string]interface{}{"level_id": lvl.ID, "level_name": lvl.Name})
 
 	// 主入会机构
@@ -742,7 +742,7 @@ func (s *MemberService) CreateMember(req CreateMemberRequest, operator string) (
 			CertNo:         "XXXXXX-" + now.Format("2006") + "-" + padLeftGen(member.ID),
 			IssuedAt:       &models.LocalTime{Time: now},
 			ExpireAt:       &models.LocalTime{Time: time.Date(now.Year(), 12, 31, 23, 59, 59, 0, now.Location())},
-			Status:         "active",
+			Status:         models.CertStatusActive,
 			LevelID:        req.LevelID,
 			LevelName:      levelName,
 			CertTemplateID: tpl.ID,

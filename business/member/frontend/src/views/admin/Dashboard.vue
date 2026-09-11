@@ -317,7 +317,8 @@ const statusMap: Record<string, { l: string; t: string }> = {
   pending_review: { l: '待审核', t: 'warning' },
   pending_payment: { l: '待缴费', t: 'danger' },
   active: { l: '正式会员', t: 'success' },
-  rejected: { l: '已拒绝', t: 'danger' }
+  rejected: { l: '已拒绝', t: 'danger' },
+  expired: { l: '已过期', t: 'info' }
 }
 
 function statusLabel(s: string) { return statusMap[s]?.l || s }

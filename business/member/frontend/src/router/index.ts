@@ -85,12 +85,6 @@ const router = createRouter({
         { path: 'operation-logs', name: 'AdminOperationLogs', meta: { title: '操作日志' }, component: () => import('@/views/admin/OperationLogs.vue') },
         { path: 'profile', name: 'AdminProfile', meta: { title: '我的资料' }, component: () => import('@/views/admin/Profile.vue') }
       ]
-    },
-    {
-      path: '/:pathMatch(.*)*',
-      name: 'NotFound',
-      component: () => import('@/views/error/404.vue'),
-      meta: { public: true }
     }
   ]
 })

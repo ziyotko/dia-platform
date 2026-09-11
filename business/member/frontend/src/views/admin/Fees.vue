@@ -491,6 +491,7 @@ async function saveEdit() {
     await adminApi.updateFee(editForm.id, {
       amount: editForm.amount,
       status: editForm.status,
+      remark: editForm.remark ?? '',
       level_id: editForm.levelId || undefined,
       level_name: editForm.levelName || undefined
     })

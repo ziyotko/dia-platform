@@ -213,7 +213,7 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 			CertNo:         generateCertNo(app.MemberID),
 			IssuedAt:       &models.LocalTime{Time: now},
 			ExpireAt:       &models.LocalTime{Time: time.Date(now.Year(), 12, 31, 23, 59, 59, 0, now.Location())},
-			Status:         "active",
+			Status:         models.CertStatusActive,
 			LevelID:        levelID,
 			LevelName:      levelName,
 			CertTemplateID: certTplID,

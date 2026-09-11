@@ -4,6 +4,7 @@ import (
 	"errors"
 	"member/internal/models"
 	"member/pkg/db"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -52,7 +53,7 @@ func (s *SystemConfigService) Create(req SystemConfigRequest) (*models.SystemCon
 }
 
 // Update updates an existing system config
-func (s *SystemConfigService) Update(id uint64, req SystemConfigRequest) error {
+func (s *SystemConfigService) Update(id uint64, req UpdateSystemConfigRequest) error {
 	var cfg models.SystemConfig
 	if err := db.DB.First(&cfg, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -60,24 +61,29 @@ func (s *SystemConfigService) Update(id uint64, req SystemConfigRequest) error {
 		}
 		return err
 	}
-	if req.Key != "" && req.Key != cfg.Key {
-		var count int64
-		if err := db.DB.Model(&models.SystemConfig{}).Where("`key` = ? AND id <> ?", req.Key, id).Count(&count).Error; err != nil {
-			return err
-		}
-		if count > 0 {
-			return errors.New("配置项名称已存在")
-		}
-	}
+
 	updates := map[string]interface{}{}
-	if req.Key != "" {
-		updates["key"] = req.Key
+	if req.Key != nil {
+		key := strings.TrimSpace(*req.Key)
+		if key == "" {
+			return errors.New("配置项名称不能为空")
+		}
+		if key != cfg.Key {
+			var count int64
+			if err := db.DB.Model(&models.SystemConfig{}).Where("`key` = ? AND id <> ?", key, id).Count(&count).Error; err != nil {
+				return err
+			}
+			if count > 0 {
+				return errors.New("配置项名称已存在")
+			}
+		}
+		updates["key"] = key
 	}
-	if req.Value != "" {
-		updates["value"] = req.Value
+	if req.Value != nil {
+		updates["value"] = *req.Value
 	}
-	if req.Description != "" {
-		updates["description"] = req.Description
+	if req.Description != nil {
+		updates["description"] = *req.Description
 	}
 	if len(updates) == 0 {
 		return nil
@@ -90,9 +96,17 @@ func (s *SystemConfigService) Delete(id uint64) error {
 	return db.DB.Delete(&models.SystemConfig{}, id).Error
 }
 
-// SystemConfigRequest is the create/update payload for system configs
+// SystemConfigRequest is the create payload for system configs
 type SystemConfigRequest struct {
 	Key         string `json:"key"`
 	Value       string `json:"value"`
 	Description string `json:"description"`
+}
+
+// UpdateSystemConfigRequest 配置项更新请求。
+// 字段使用指针以区分“未提供”（nil）与“清空”（指向空字符串）。
+type UpdateSystemConfigRequest struct {
+	Key         *string `json:"key"`
+	Value       *string `json:"value"`
+	Description *string `json:"description"`
 }

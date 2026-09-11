@@ -51,7 +51,7 @@ func (s *FeeService) PayFee(memberID, feeID uint64, receiptFile, paidDate string
 }
 
 // ConfirmFee confirms a pending fee (admin)
-func (s *FeeService) ConfirmFee(id uint64, amount float64, remark string, operator string) error {
+func (s *FeeService) ConfirmFee(id uint64, amount float64, remark *string, operator string) error {
 	var fee models.FeeRecord
 	if err := db.DB.First(&fee, id).Error; err != nil {
 		return errors.New("费用记录不存在")
@@ -67,11 +67,8 @@ func (s *FeeService) ConfirmFee(id uint64, amount float64, remark string, operat
 		"confirmed_at": &models.LocalTime{Time: now},
 		"paid_amount":  amount,
 	}
-	if amount > 0 {
-		updates["paid_amount"] = amount
-	}
-	if remark != "" {
-		updates["remark"] = remark
+	if remark != nil {
+		updates["remark"] = *remark
 	}
 	if err := db.DB.Model(&fee).Updates(updates).Error; err != nil {
 		return err
@@ -126,29 +123,37 @@ func (s *FeeService) CreateFeeRecord(req CreateFeeRequest) (*models.FeeRecord, e
 }
 
 // UpdateFeeRecord updates a fee record (admin)
-func (s *FeeService) UpdateFeeRecord(id uint64, status, invoiceNo string, amount float64, remark string, levelID uint64, levelName string, operator string) error {
+func (s *FeeService) UpdateFeeRecord(id uint64, req UpdateFeeRequest, operator string) error {
+	var exist models.FeeRecord
+	if err := db.DB.First(&exist, id).Error; err != nil {
+		return errors.New("费用记录不存在")
+	}
+
 	updates := map[string]interface{}{}
-	if status != "" {
-		updates["status"] = status
-		if status == models.FeeStatusPaid {
+	if req.Status != nil {
+		updates["status"] = *req.Status
+		if *req.Status == models.FeeStatusPaid {
 			now := time.Now()
 			updates["paid_at"] = &models.LocalTime{Time: now}
 		}
 	}
-	if invoiceNo != "" {
-		updates["invoice_no"] = invoiceNo
+	if req.InvoiceNo != nil {
+		updates["invoice_no"] = *req.InvoiceNo
 	}
-	if amount > 0 {
-		updates["amount"] = amount
+	if req.Amount != nil {
+		updates["amount"] = *req.Amount
 	}
-	if remark != "" {
-		updates["remark"] = remark
+	if req.Remark != nil {
+		updates["remark"] = *req.Remark
 	}
-	if levelID > 0 {
-		updates["level_id"] = levelID
+	if req.LevelID != nil {
+		updates["level_id"] = *req.LevelID
 	}
-	if levelName != "" {
-		updates["level_name"] = levelName
+	if req.LevelName != nil {
+		updates["level_name"] = *req.LevelName
+	}
+	if len(updates) == 0 {
+		return nil
 	}
 
 	if err := db.DB.Model(&models.FeeRecord{}).Where("id = ?", id).Updates(updates).Error; err != nil {
@@ -156,9 +161,11 @@ func (s *FeeService) UpdateFeeRecord(id uint64, status, invoiceNo string, amount
 	}
 
 	// If confirmed as paid, activate member and update certificate
-	if status == models.FeeStatusPaid {
+	if req.Status != nil && *req.Status == models.FeeStatusPaid {
 		var fee models.FeeRecord
-		db.DB.First(&fee, id)
+		if err := db.DB.First(&fee, id).Error; err != nil {
+			return err
+		}
 		db.DB.Model(&models.Member{}).Where("id = ? AND status = ?", fee.MemberID, models.MemberStatusPendingPay).
 			Update("status", models.MemberStatusActive)
 
@@ -291,6 +298,18 @@ type CreateFeeRequest struct {
 	LevelName string  `json:"level_name"`
 }
 
+// UpdateFeeRequest 会费记录更新请求。
+// 字段使用指针，以区分“未提供”（nil）与“清空”（指向零值），
+// 否则编辑时无法把备注、票据号等清空。
+type UpdateFeeRequest struct {
+	Status    *string  `json:"status"`
+	InvoiceNo *string  `json:"invoice_no"`
+	Amount    *float64 `json:"amount"`
+	Remark    *string  `json:"remark"`
+	LevelID   *uint64  `json:"level_id"`
+	LevelName *string  `json:"level_name"`
+}
+
 // ApplyInvoice submits an invoice application for a paid fee record (member)
 func (s *FeeService) ApplyInvoice(memberID, feeID uint64, req ApplyInvoiceRequest) error {
 	var fee models.FeeRecord
@@ -382,7 +401,7 @@ type ApplyInvoiceRequest struct {
 func (s *FeeService) updateCertificateWithLevelAndTemplate(memberID, levelID uint64, levelName string) {
 	// Find the active certificate for this member
 	var cert models.Certificate
-	if err := db.DB.Where("member_id = ? AND status = 'active'", memberID).First(&cert).Error; err != nil {
+	if err := db.DB.Where("member_id = ? AND status = ?", memberID, models.CertStatusActive).First(&cert).Error; err != nil {
 		return // no active certificate found, skip
 	}
 
