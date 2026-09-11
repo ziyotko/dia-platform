@@ -14,7 +14,6 @@
 
     <el-card>
       <el-table :data="list" stripe style="width: 100%">
-        <el-table-column prop="id" label="ID" min-width="70" />
         <el-table-column prop="username" label="变更用户名" min-width="120" />
         <el-table-column prop="member_name" label="公司名称/姓名" min-width="180" />
         <el-table-column label="类型" min-width="90">
