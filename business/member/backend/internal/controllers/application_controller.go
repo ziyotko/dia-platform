@@ -29,23 +29,6 @@ func (ctrl *ApplicationController) CreateApplication(c *gin.Context) {
 	response.SuccessWithMessage(c, "申请提交成功", app)
 }
 
-// SaveDraft saves application as draft
-func (ctrl *ApplicationController) SaveDraft(c *gin.Context) {
-	memberID := middleware.GetMemberID(c)
-	var req service.CreateAppRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "参数错误")
-		return
-	}
-
-	app, err := ctrl.appService.SaveDraft(memberID, req)
-	if err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-	response.SuccessWithMessage(c, "草稿保存成功", app)
-}
-
 // WithdrawApplication withdraws a pending application
 func (ctrl *ApplicationController) WithdrawApplication(c *gin.Context) {
 	memberID := middleware.GetMemberID(c)

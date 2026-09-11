@@ -17,8 +17,8 @@ func (s *ApplicationService) CreateApplication(memberID uint64, req CreateAppReq
 
 	// Check if member already has a pending/approved application
 	var existing models.Application
-	if err := db.DB.Where("member_id = ? AND status NOT IN (?, ?)",
-		memberID, models.AppStatusRejected, models.AppStatusDraft).First(&existing).Error; err == nil {
+	if err := db.DB.Where("member_id = ? AND status <> ?",
+		memberID, models.AppStatusRejected).First(&existing).Error; err == nil {
 		return nil, errors.New("您已有进行中的入会申请")
 	}
 
@@ -65,22 +65,7 @@ func (s *ApplicationService) CreateApplication(memberID uint64, req CreateAppReq
 	return &app, nil
 }
 
-// SaveDraft saves an application as draft
-func (s *ApplicationService) SaveDraft(memberID uint64, req CreateAppRequest) (*models.Application, error) {
-	app := models.Application{
-		MemberID:   memberID,
-		OrgID:      req.OrgID,
-		Status:     models.AppStatusDraft,
-		FormData:   req.FormData,
-		SignedFile: req.SignedFile,
-	}
-	if err := db.DB.Create(&app).Error; err != nil {
-		return nil, err
-	}
-	return &app, nil
-}
-
-// WithdrawApplication withdraws a pending application (sets back to draft)
+// WithdrawApplication withdraws a pending application (deletes the record)
 func (s *ApplicationService) WithdrawApplication(id, memberID uint64) error {
 	var app models.Application
 	if err := db.DB.First(&app, id).Error; err != nil {
@@ -93,7 +78,8 @@ func (s *ApplicationService) WithdrawApplication(id, memberID uint64) error {
 		return errors.New("仅待审核状态的申请可以撤回")
 	}
 
-	if err := db.DB.Model(&app).Update("status", models.AppStatusDraft).Error; err != nil {
+	// 撤回即删除该待审核申请（不再保留草稿状态）
+	if err := db.DB.Delete(&models.Application{}, app.ID).Error; err != nil {
 		return err
 	}
 

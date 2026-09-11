@@ -74,7 +74,7 @@ const showMemberDetail = ref(false)
 const currentMember = ref<any>(null)
 const currentRow = ref<any>(null)
 
-const sm: Record<string,string> = { draft:'草稿', pending_review:'待审核', approved:'已通过', rejected:'已拒绝' }
+const sm: Record<string,string> = { pending_review:'待审核', approved:'已通过', rejected:'已拒绝' }
 function statusLabel(s: string) { return sm[s] || s }
 
 onMounted(() => fetchData())

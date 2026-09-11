@@ -81,7 +81,6 @@ func Register(r *gin.Engine) {
 
 		// Applications
 		member.POST("/applications", appCtrl.CreateApplication)
-		member.POST("/applications/draft", appCtrl.SaveDraft)
 		member.POST("/applications/:id/withdraw", appCtrl.WithdrawApplication)
 		member.GET("/applications", appCtrl.GetMyApplications)
 		member.GET("/applications/:id", appCtrl.GetApplication)

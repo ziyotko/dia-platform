@@ -199,7 +199,6 @@ func (s *DashboardService) GetMemberDashboard(memberID uint64) (*MemberDashboard
 
 func statusLabel(status string) string {
 	labels := map[string]string{
-		models.AppStatusDraft:         "草稿",
 		models.AppStatusPendingReview: "待审核",
 		models.AppStatusApproved:      "已通过",
 		models.AppStatusRejected:      "已拒绝",

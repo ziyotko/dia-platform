@@ -187,14 +187,13 @@ watch(showCreate, async (val) => {
 const uploadUrl = computed(() => `${import.meta.env.VITE_API_BASE_URL || '/member/api'}/upload`)
 const uploadHeaders = computed(() => ({ Authorization: `Bearer ${userStore.token}` }))
 
-const hasPending = computed(() => applications.value.some((a: any) => !['rejected', 'draft'].includes(a.status)))
+const hasPending = computed(() => applications.value.some((a: any) => a.status !== 'rejected'))
 const selectedOrg = computed(() => orgs.value.find((o: any) => o.id === appForm.orgId) || null)
 const selectedOrgName = computed(() => selectedOrg.value?.name || '')
 // 总会为一级组织（parent_id 为 0），分会/代表机构为其下级组织
 const isBranchSelected = computed(() => !!selectedOrg.value && !!selectedOrg.value.parent_id)
 
 const statusMap: Record<string, { label: string; tag: string }> = {
-  draft: { label: '草稿', tag: 'info' },
   pending_review: { label: '待审核', tag: 'warning' },
   approved: { label: '已通过', tag: 'success' },
   rejected: { label: '已拒绝', tag: 'danger' }
