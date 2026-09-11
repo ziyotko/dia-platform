@@ -616,18 +616,23 @@ func (s *MemberService) CreateMember(req CreateMemberRequest) (*models.Member, e
 		var rootOrg models.Organization
 		if err := db.DB.Where("id = ? AND parent_id = ?", req.RootOrgID, 0).First(&rootOrg).Error; err == nil {
 			now := time.Now()
+			// 会费金额 = 该总会所选会员等级对应年度的会费标准
+			var amount float64
+			var fs models.MemberFeeStandard
+			if err := db.DB.Where("level_id = ? AND year = ?", req.LevelID, now.Year()).First(&fs).Error; err == nil {
+				amount = fs.Amount
+			}
 			fee := models.FeeRecord{
-				MemberID:    member.ID,
-				Year:        now.Year(),
-				Amount:      0,
-				Status:      models.FeeStatusPaid,
-				PaidAt:      &models.LocalTime{Time: now},
-				ConfirmedAt: &models.LocalTime{Time: now},
-				Remark:      "免缴",
-				OrgID:       rootOrg.ID,
-				OrgName:     rootOrg.Name,
-				LevelID:     req.LevelID,
-				LevelName:   levelName,
+				MemberID:  member.ID,
+				Year:      now.Year(),
+				Amount:    amount,
+				Status:    models.FeeStatusPaid,
+				PaidAt:    &models.LocalTime{Time: now},
+				Remark:    "免缴",
+				OrgID:     rootOrg.ID,
+				OrgName:   rootOrg.Name,
+				LevelID:   req.LevelID,
+				LevelName: levelName,
 			}
 			db.DB.Create(&fee)
 		}
