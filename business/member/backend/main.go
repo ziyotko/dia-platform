@@ -44,7 +44,6 @@ func main() {
 		&models.ArticleCategory{},
 		&models.Announcement{},
 		&models.SystemConfig{},
-		&models.PasswordReset{},
 		&models.MemberLevel{},
 		&models.MemberOrgLevel{},
 		&models.MemberFeeStandard{},

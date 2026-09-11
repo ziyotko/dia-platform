@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -432,43 +431,6 @@ func (s *AuthService) ChangePassword(memberID uint64, oldPwd, newPwd string) err
 	return db.DB.Model(&member).Update("password", string(hashed)).Error
 }
 
-// RequestPasswordReset creates a reset token
-func (s *AuthService) RequestPasswordReset(email string) error {
-	var member models.Member
-	if err := db.DB.Where("email = ?", email).First(&member).Error; err != nil {
-		// 无论邮箱是否注册都返回成功，防止用户枚举
-		return nil
-	}
-	token := uuid.New().String()
-	expire := time.Now().Add(1 * time.Hour)
-	reset := models.PasswordReset{
-		MemberID: member.ID,
-		Token:    token,
-		ExpireAt: &models.LocalTime{Time: expire},
-	}
-	db.DB.Create(&reset)
-	// TODO: 生产环境必须真正发送邮件，这里仅持久化 token 供后续实现
-	return nil
-}
-
-// ResetPassword resets password with token
-func (s *AuthService) ResetPassword(token, newPwd string) error {
-	var reset models.PasswordReset
-	if err := db.DB.Where("token = ? AND used = ?", token, false).First(&reset).Error; err != nil {
-		return errors.New("无效的重置链接")
-	}
-	if reset.ExpireAt.Before(time.Now()) {
-		return errors.New("重置链接已过期")
-	}
-	hashed, err := bcrypt.GenerateFromPassword([]byte(newPwd), bcrypt.DefaultCost)
-	if err != nil {
-		return errors.New("密码加密失败")
-	}
-	db.DB.Model(&models.Member{}).Where("id = ?", reset.MemberID).Update("password", string(hashed))
-	db.DB.Model(&reset).Update("used", true)
-	return nil
-}
-
 // --- Request/Response types ---
 
 type CheckExistsRequest struct {
@@ -546,11 +508,6 @@ type UpdateProfileRequest struct {
 type ChangePasswordRequest struct {
 	OldPassword string `json:"old_password" binding:"required"`
 	NewPassword string `json:"new_password" binding:"required,min=8"`
-}
-
-type ResetPasswordRequest struct {
-	Token       string `json:"token" binding:"required"`
-	NewPassword string `json:"new_password" binding:"required,min=6"`
 }
 
 func (s *AuthService) GetSiteConfig() map[string]string {

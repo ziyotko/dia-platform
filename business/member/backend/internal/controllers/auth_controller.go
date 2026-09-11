@@ -122,36 +122,6 @@ func (ctrl *AuthController) ChangePassword(c *gin.Context) {
 	response.SuccessWithMessage(c, "密码修改成功", nil)
 }
 
-// RequestPasswordReset sends reset email
-func (ctrl *AuthController) RequestPasswordReset(c *gin.Context) {
-	var req struct {
-		Email string `json:"email" binding:"required"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "请输入邮箱")
-		return
-	}
-	if err := ctrl.authService.RequestPasswordReset(req.Email); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-	response.SuccessWithMessage(c, "重置链接已发送至邮箱", nil)
-}
-
-// ResetPassword resets the password
-func (ctrl *AuthController) ResetPassword(c *gin.Context) {
-	var req service.ResetPasswordRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "参数错误")
-		return
-	}
-	if err := ctrl.authService.ResetPassword(req.Token, req.NewPassword); err != nil {
-		response.BadRequest(c, err.Error())
-		return
-	}
-	response.SuccessWithMessage(c, "密码重置成功", nil)
-}
-
 // GetSiteInfo returns site configuration
 func (ctrl *AuthController) GetSiteInfo(c *gin.Context) {
 	config := ctrl.authService.GetSiteConfig()

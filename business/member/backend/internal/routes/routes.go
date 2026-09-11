@@ -16,8 +16,6 @@ func Register(r *gin.Engine) {
 	authRateLimiter := middleware.NewIPRateLimiter(10, time.Minute)
 	// check-exists 枚举接口限速（每分钟最多 30 次）
 	checkLimiter := middleware.NewIPRateLimiter(30, time.Minute)
-	// 密码重置相关接口限速（每分钟最多 5 次）
-	resetLimiter := middleware.NewIPRateLimiter(5, time.Minute)
 
 	// Controllers
 	authCtrl := controllers.AuthController{}
@@ -45,8 +43,6 @@ func Register(r *gin.Engine) {
 		public.POST("/auth/register", middleware.RateLimitByIP(authRateLimiter, "请求过于频繁，请稍后再试"), authCtrl.Register)
 		public.POST("/auth/check-exists", middleware.RateLimitByIP(checkLimiter, "请求过于频繁，请稍后再试"), authCtrl.CheckExists)
 		public.POST("/auth/login", middleware.RateLimitByIP(authRateLimiter, "请求过于频繁，请稍后再试"), authCtrl.Login)
-		public.POST("/auth/send-reset-email", middleware.RateLimitByIP(resetLimiter, "请求过于频繁，请稍后再试"), authCtrl.RequestPasswordReset)
-		public.POST("/auth/reset-password", middleware.RateLimitByIP(resetLimiter, "请求过于频繁，请稍后再试"), authCtrl.ResetPassword)
 
 		// Site info
 		public.GET("/site-info", authCtrl.GetSiteInfo)

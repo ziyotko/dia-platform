@@ -75,7 +75,6 @@
           </el-form>
           <div class="login-links">
             <router-link to="/register">还没有账号？立即注册</router-link>
-            <a class="forgot-link" @click="showResetTip">忘记密码？</a>
           </div>
         </div>
       </div>
@@ -141,10 +140,6 @@ async function handleLogin() {
   } finally {
     loading.value = false
   }
-}
-
-function showResetTip() {
-  ElMessage.info('请联系管理员进行操作')
 }
 </script>
 
@@ -326,7 +321,7 @@ $primary-gradient: linear-gradient(160deg, #2f5ed6 0%, #001b5e 100%);
 
 .login-links {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   margin-top: 16px;
 
   a {
