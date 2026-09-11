@@ -176,7 +176,7 @@
               <template #default="{row}">{{ fmtMoney(row.paid_amount > 0 ? row.paid_amount : row.amount) }}</template>
             </el-table-column>
             <el-table-column label="缴费日期" min-width="150">
-              <template #default="{row}">{{ fmt(row.paid_date || row.paid_at) }}</template>
+              <template #default="{row}">{{ fmt(row.paid_date) }}</template>
             </el-table-column>
           </el-table>
           <el-empty v-else description="暂无付费加入记录" image-size="60" />

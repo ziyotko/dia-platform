@@ -638,5 +638,28 @@ func (s *MemberService) CreateMember(req CreateMemberRequest) (*models.Member, e
 		}
 	}
 
+	// 生成会员证书（带等级与证书模板）
+	if req.LevelID > 0 {
+		now := time.Now()
+		var tpl models.MemberCertificateTemplate
+		if err := db.DB.Where("level_id = ?", req.LevelID).First(&tpl).Error; err != nil {
+			// 未配置该等级证书样式时，回退到最低等级样式
+			db.DB.Joins("JOIN member_levels ml ON ml.id = member_certificate_templates.level_id").
+				Order("ml.level ASC").
+				First(&tpl)
+		}
+		cert := models.Certificate{
+			MemberID:       member.ID,
+			CertNo:         "XXXXXX-" + now.Format("2006") + "-" + padLeftGen(member.ID),
+			IssuedAt:       &models.LocalTime{Time: now},
+			ExpireAt:       &models.LocalTime{Time: time.Date(now.Year(), 12, 31, 23, 59, 59, 0, now.Location())},
+			Status:         "active",
+			LevelID:        req.LevelID,
+			LevelName:      levelName,
+			CertTemplateID: tpl.ID,
+		}
+		db.DB.Create(&cert)
+	}
+
 	return &member, nil
 }
