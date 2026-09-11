@@ -132,16 +132,42 @@ const searchQuery = ref('')
 const treeRef = ref<any>(null)
 
 const combinedList = computed(() => {
-  const apps = approvedApps.value.map((a: any) => ({ ...a, _type: 'application', _key: 'app-' + a.id }))
-  const feeOrgs = paidFees.value.map((f: any) => ({
-    ...f,
-    _type: 'application',
-    _key: 'fee-' + f.id,
-    org: { id: f.org_id, name: f.org_name, parent_id: 0 },
-    created_at: f.paid_date || f.paid_at
-  }))
-  const orgs = myOrgs.value.map((o: any) => ({ ...o, _type: 'org', _key: 'org-' + o.id }))
-  return [...feeOrgs, ...apps, ...orgs]
+  // 同一组织机构可能同时存在多条加入记录（如“已批准入会申请 + 已缴费费用记录”，
+  // 或“已缴费费用记录 + 主动加入记录”），按组织 ID 去重，避免重复展示。
+  // 优先级与后台仪表盘一致：入会申请 > 已缴费记录 > 主动加入。
+  const seen = new Set<number>()
+  const list: any[] = []
+  const pushUnique = (orgId: any, item: any) => {
+    const id = Number(orgId)
+    if (id > 0) {
+      if (seen.has(id)) return
+      seen.add(id)
+    }
+    list.push(item)
+  }
+
+  // 1. 缴费加入：已批准的入会申请
+  approvedApps.value.forEach((a: any) => {
+    pushUnique(a.org_id ?? a.org?.id, { ...a, _type: 'application', _key: 'app-' + a.id })
+  })
+
+  // 2. 缴费加入：已缴费（含免缴）的费用记录（同一组织已存在则跳过）
+  paidFees.value.forEach((f: any) => {
+    pushUnique(f.org_id, {
+      ...f,
+      _type: 'application',
+      _key: 'fee-' + f.id,
+      org: { id: f.org_id, name: f.org_name, parent_id: 0 },
+      created_at: f.paid_date || f.paid_at
+    })
+  })
+
+  // 3. 主动加入：直接加入的组织（同一组织已存在则跳过）
+  myOrgs.value.forEach((o: any) => {
+    pushUnique(o.org_id ?? o.org?.id, { ...o, _type: 'org', _key: 'org-' + o.id })
+  })
+
+  return list
 })
 
 // 是否有通过缴费加入的组织（已批准入会申请，或已缴费/免缴的会费记录）
