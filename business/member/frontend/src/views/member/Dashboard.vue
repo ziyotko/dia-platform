@@ -12,7 +12,7 @@
           <div class="hero-top">
             <h2 class="hero-greeting">{{ greeting }}，{{ displayName }}</h2>
             <!-- 机构徽章统一显示：机构名称 + 级别标签，避免重复展示 -->
-            <template v-for="org in dash?.organizations" :key="org.id">
+            <template v-for="org in dash?.organizations" :key="org.key || org.id">
               <div class="org-badge" :class="org.is_fee_based ? 'org-badge-fee' : 'org-badge-join'">
                 <span class="org-badge-name">{{ org.org_name }}</span>
                 <el-tag v-if="org.level_name" size="small" effect="plain" class="org-badge-level">{{ org.level_name }}</el-tag>

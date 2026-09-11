@@ -2,6 +2,7 @@ package service
 
 import (
 	"sort"
+	"strconv"
 
 	"member/internal/models"
 	"member/pkg/db"
@@ -24,6 +25,7 @@ type MemberDashboard struct {
 // DashboardOrgInfo holds org display info for the dashboard
 type DashboardOrgInfo struct {
 	ID         uint64 `json:"id"`
+	Key        string `json:"key"`
 	OrgID      uint64 `json:"org_id"`
 	OrgName    string `json:"org_name"`
 	LevelName  string `json:"level_name"`
@@ -115,10 +117,37 @@ func (s *DashboardService) GetMemberDashboard(memberID uint64) (*MemberDashboard
 		approvedOrgIDs[a.OrgID] = true
 		orgInfos = append(orgInfos, DashboardOrgInfo{
 			ID:         a.ID,
+			Key:        "app-" + strconv.FormatUint(a.ID, 10),
 			OrgID:      a.OrgID,
 			OrgName:    a.Org.Name,
 			LevelName:  latestFee.LevelName,
 			JoinedAt:   a.CreatedAt.Local().Format("2006-01-02"),
+			IsFeeBased: true,
+		})
+	}
+
+	// Collect paid fee records (fee-based joins, e.g. admin 新增会员的免缴总会)
+	feeOrgIDs := make(map[uint64]bool)
+	var paidFees []models.FeeRecord
+	db.DB.Where("member_id = ? AND status = ? AND org_name <> ''", memberID, models.FeeStatusPaid).Find(&paidFees)
+	for _, f := range paidFees {
+		if f.OrgID == 0 || approvedOrgIDs[f.OrgID] || feeOrgIDs[f.OrgID] {
+			continue
+		}
+		feeOrgIDs[f.OrgID] = true
+		joinedAt := ""
+		if f.PaidAt != nil && !f.PaidAt.IsZero() {
+			joinedAt = f.PaidAt.Local().Format("2006-01-02")
+		} else if f.PaidDate != "" {
+			joinedAt = f.PaidDate
+		}
+		orgInfos = append(orgInfos, DashboardOrgInfo{
+			ID:         f.ID,
+			Key:        "fee-" + strconv.FormatUint(f.ID, 10),
+			OrgID:      f.OrgID,
+			OrgName:    f.OrgName,
+			LevelName:  f.LevelName,
+			JoinedAt:   joinedAt,
 			IsFeeBased: true,
 		})
 	}
@@ -130,8 +159,8 @@ func (s *DashboardService) GetMemberDashboard(memberID uint64) (*MemberDashboard
 		if mo.Org.ID == 0 {
 			continue
 		}
-		// Skip orgs already added via approved application (avoid duplicates)
-		if approvedOrgIDs[mo.OrgID] {
+		// Skip orgs already added via approved application or paid fee record (avoid duplicates)
+		if approvedOrgIDs[mo.OrgID] || feeOrgIDs[mo.OrgID] {
 			continue
 		}
 		// Resolve level name from LevelID
@@ -144,6 +173,7 @@ func (s *DashboardService) GetMemberDashboard(memberID uint64) (*MemberDashboard
 		}
 		orgInfos = append(orgInfos, DashboardOrgInfo{
 			ID:         mo.ID,
+			Key:        "org-" + strconv.FormatUint(mo.ID, 10),
 			OrgID:      mo.OrgID,
 			OrgName:    mo.Org.Name,
 			LevelName:  levelName,
