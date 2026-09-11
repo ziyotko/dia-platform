@@ -2,7 +2,9 @@ package utils
 
 import (
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 )
 
 const creditCodeCharset = "0123456789ABCDEFGHJKLMNPQRTUWXY"
@@ -12,6 +14,7 @@ var (
 	phoneRe      = regexp.MustCompile(`^(1[3-9]\d{9}|0\d{2,3}-?\d{7,8})$`)
 	emailRe      = regexp.MustCompile(`^[\w.+-]+@[\w-]+(\.[\w-]+)+$`)
 	creditCodeRe = regexp.MustCompile(`^[0-9A-HJ-NPQRTUWXY]{2}[0-9]{6}[0-9A-HJ-NPQRTUWXY]{10}$`)
+	idCardRe     = regexp.MustCompile(`^\d{17}[\dX]$`)
 )
 
 // IsValidMobile 校验11位手机号
@@ -39,4 +42,26 @@ func IsValidCreditCode(v string) bool {
 		sum += idx * weights[i]
 	}
 	return creditCodeCharset[(31-sum%31)%31] == code[17]
+}
+
+// IsValidIDCard 校验18位身份证号（出生日期 + 校验码），与前端一致
+func IsValidIDCard(v string) bool {
+	id := strings.ToUpper(strings.TrimSpace(v))
+	if !idCardRe.MatchString(id) {
+		return false
+	}
+	year, _ := strconv.Atoi(id[6:10])
+	month, _ := strconv.Atoi(id[10:12])
+	day, _ := strconv.Atoi(id[12:14])
+	t := time.Date(year, time.Month(month), day, 0, 0, 0, 0, time.UTC)
+	if t.Year() != year || int(t.Month()) != month || t.Day() != day {
+		return false
+	}
+	weights := []int{7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2}
+	const codes = "10X98765432"
+	sum := 0
+	for i := 0; i < 17; i++ {
+		sum += int(id[i]-'0') * weights[i]
+	}
+	return codes[sum%11] == id[17]
 }

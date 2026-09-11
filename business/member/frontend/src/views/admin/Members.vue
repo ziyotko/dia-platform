@@ -244,8 +244,8 @@
         <template v-else>
           <el-divider content-position="left">个人信息</el-divider>
           <el-row :gutter="16">
-            <el-col :span="12"><el-form-item label="姓名"><el-input v-model="createForm.name" maxlength="32" /></el-form-item></el-col>
-            <el-col :span="12"><el-form-item label="身份证号"><el-input v-model="createForm.id_card" maxlength="18" /></el-form-item></el-col>
+            <el-col :span="12"><el-form-item label="姓名" prop="name"><el-input v-model="createForm.name" maxlength="32" placeholder="请输入姓名" /></el-form-item></el-col>
+            <el-col :span="12"><el-form-item label="身份证号" prop="id_card"><el-input v-model="createForm.id_card" maxlength="18" placeholder="请输入18位身份证号" /></el-form-item></el-col>
           </el-row>
         </template>
 
@@ -390,14 +390,36 @@ function validateCreateCreditCode(_r: any, v: string, cb: any) {
   cb()
 }
 
+// 身份证号：必填 + 18位/出生日期/校验码（与注册/资料页一致）
+function validateCreateIdCard(_r: any, v: string, cb: any) {
+  const id = (v || '').trim().toUpperCase()
+  if (!id) return cb(new Error('请输入身份证号'))
+  if (!/^\d{17}[\dX]$/.test(id)) return cb(new Error('身份证号应为18位，末位可为X'))
+  const year = +id.slice(6, 10)
+  const month = +id.slice(10, 12)
+  const day = +id.slice(12, 14)
+  const date = new Date(year, month - 1, day)
+  if (date.getFullYear() !== year || date.getMonth() + 1 !== month || date.getDate() !== day) {
+    return cb(new Error('身份证号出生日期不合法'))
+  }
+  const weights = [7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2]
+  const codes = '10X98765432'
+  let sum = 0
+  for (let i = 0; i < 17; i++) sum += +id[i] * weights[i]
+  if (codes[sum % 11] !== id[17]) return cb(new Error('身份证号校验不通过'))
+  cb()
+}
+
 const createRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ min: 6, message: '密码至少6位', trigger: 'blur' }],
   mobile: [{ required: true, validator: validateCreateMobile, trigger: 'blur' }],
   email: [{ required: true, validator: validateCreateEmail, trigger: 'blur' }],
-  // 以下两项仅单位会员渲染，字段未渲染时不会参与校验
+  // 以下四项仅对应会员类型渲染，字段未渲染时不会参与校验
   credit_code: [{ required: true, validator: validateCreateCreditCode, trigger: 'blur' }],
-  contact_mobile: [{ required: true, validator: validateCreateContactMobile, trigger: 'blur' }]
+  contact_mobile: [{ required: true, validator: validateCreateContactMobile, trigger: 'blur' }],
+  name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+  id_card: [{ required: true, validator: validateCreateIdCard, trigger: 'blur' }]
 }
 
 const statusMap: Record<string, { l: string; t: string }> = {
@@ -532,6 +554,8 @@ async function submitCreate() {
       email: createForm.email.trim(),
       contact_mobile: (createForm.contact_mobile || '').trim(),
       credit_code: createForm.member_type === 'unit' ? (createForm.credit_code || '').trim().toUpperCase() : '',
+      name: (createForm.name || '').trim(),
+      id_card: createForm.member_type === 'personal' ? (createForm.id_card || '').trim().toUpperCase() : '',
       password: createForm.password || undefined,
       root_org_id: selectedRootOrgId.value,
       org_ids: selectedOrgIds.value,

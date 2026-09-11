@@ -507,6 +507,8 @@ func (s *MemberService) CreateMember(req CreateMemberRequest, operator string) (
 	req.Email = strings.TrimSpace(req.Email)
 	req.ContactMobile = strings.TrimSpace(req.ContactMobile)
 	req.CreditCode = strings.ToUpper(strings.TrimSpace(req.CreditCode))
+	req.IDCard = strings.ToUpper(strings.TrimSpace(req.IDCard))
+	req.Name = strings.TrimSpace(req.Name)
 
 	if req.Username == "" {
 		return nil, errors.New("请输入用户名")
@@ -527,6 +529,12 @@ func (s *MemberService) CreateMember(req CreateMemberRequest, operator string) (
 	} else {
 		req.CreditCode = ""
 		req.ContactMobile = ""
+		if req.Name == "" {
+			return nil, errors.New("请输入姓名")
+		}
+		if !utils.IsValidIDCard(req.IDCard) {
+			return nil, errors.New("请输入合法身份证号")
+		}
 	}
 
 	if req.Status == "" {
