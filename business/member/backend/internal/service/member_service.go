@@ -466,3 +466,97 @@ func (s *MemberService) ResetMemberPassword(id uint64) error {
 	}
 	return db.DB.Model(&models.Member{}).Where("id = ?", id).Update("password", string(hashed)).Error
 }
+
+// CreateMemberRequest is the admin request for creating a member directly.
+type CreateMemberRequest struct {
+	Username      string `json:"username" binding:"required"`
+	Password      string `json:"password"`
+	Mobile        string `json:"mobile"`
+	Email         string `json:"email"`
+	MemberType    string `json:"member_type"`
+	Status        string `json:"status"`
+	CompanyName   string `json:"company_name"`
+	CreditCode    string `json:"credit_code"`
+	LegalPerson   string `json:"legal_person"`
+	ContactPerson string `json:"contact_person"`
+	ContactTitle  string `json:"contact_title"`
+	ContactMobile string `json:"contact_mobile"`
+	Industry      string `json:"industry"`
+	Address       string `json:"address"`
+	Name          string `json:"name"`
+	IDCard        string `json:"id_card"`
+}
+
+// CreateMember creates a new member directly (admin).
+func (s *MemberService) CreateMember(req CreateMemberRequest) (*models.Member, error) {
+	if req.MemberType == "" {
+		req.MemberType = models.MemberTypeUnit
+	}
+	if req.MemberType != models.MemberTypeUnit && req.MemberType != models.MemberTypePersonal {
+		return nil, errors.New("无效的会员类型")
+	}
+	if req.Status == "" {
+		req.Status = models.MemberStatusActive
+	}
+	validStatuses := map[string]bool{
+		models.MemberStatusRegistering:   true,
+		models.MemberStatusPendingReview: true,
+		models.MemberStatusPendingPay:    true,
+		models.MemberStatusActive:        true,
+		models.MemberStatusRejected:      true,
+		models.MemberStatusExpired:       true,
+	}
+	if !validStatuses[req.Status] {
+		return nil, errors.New("无效的会员状态")
+	}
+
+	// 唯一性校验
+	var exist models.Member
+	if err := db.DB.Where("username = ?", req.Username).First(&exist).Error; err == nil {
+		return nil, errors.New("用户名已存在")
+	}
+	if req.Mobile != "" {
+		var m models.Member
+		if err := db.DB.Where("mobile = ?", req.Mobile).First(&m).Error; err == nil {
+			return nil, errors.New("手机号已被注册")
+		}
+	}
+	if req.Email != "" {
+		var e models.Member
+		if err := db.DB.Where("email = ?", req.Email).First(&e).Error; err == nil {
+			return nil, errors.New("邮箱已被注册")
+		}
+	}
+
+	password := req.Password
+	if password == "" {
+		password = DefaultPassword
+	}
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, errors.New("密码加密失败")
+	}
+
+	member := models.Member{
+		Username:      req.Username,
+		Password:      string(hashed),
+		Mobile:        req.Mobile,
+		Email:         req.Email,
+		MemberType:    req.MemberType,
+		Status:        req.Status,
+		CompanyName:   req.CompanyName,
+		CreditCode:    req.CreditCode,
+		LegalPerson:   req.LegalPerson,
+		ContactPerson: req.ContactPerson,
+		ContactTitle:  req.ContactTitle,
+		ContactMobile: req.ContactMobile,
+		Industry:      req.Industry,
+		Address:       req.Address,
+		Name:          req.Name,
+		IDCard:        req.IDCard,
+	}
+	if err := db.DB.Create(&member).Error; err != nil {
+		return nil, err
+	}
+	return &member, nil
+}

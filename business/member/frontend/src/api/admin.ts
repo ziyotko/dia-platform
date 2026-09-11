@@ -3,6 +3,7 @@ import request from '@/utils/request'
 export const adminApi = {
   // Member management
   getMembers: (params?: any) => request.get('/admin/members', { params }),
+  createMember: (data: any) => request.post('/admin/members', data),
   getMember: (id: number) => request.get(`/admin/members/${id}`),
   updateMemberStatus: (id: number, status: string) => request.put(`/admin/members/${id}/status`, { status }),
   updateMemberLevel: (id: number, levelId: number, reason: string) => request.put(`/admin/members/${id}/level`, { level_id: levelId, reason }),

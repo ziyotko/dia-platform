@@ -97,6 +97,21 @@ func (ctrl *MemberController) ResetMemberPassword(c *gin.Context) {
 	response.SuccessWithMessage(c, "密码已重置为默认密码", nil)
 }
 
+// CreateMember creates a new member directly (admin)
+func (ctrl *MemberController) CreateMember(c *gin.Context) {
+	var req service.CreateMemberRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "请填写完整信息")
+		return
+	}
+	member, err := ctrl.memberService.CreateMember(req)
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.SuccessWithMessage(c, "新增会员成功", member)
+}
+
 // GetMemberLevelChanges lists a single member's level change history (admin)
 func (ctrl *MemberController) GetMemberLevelChanges(c *gin.Context) {
 	id := parseUint(c.Param("id"))

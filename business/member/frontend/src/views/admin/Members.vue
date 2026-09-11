@@ -13,6 +13,7 @@
           <el-option label="单位会员" value="unit" /><el-option label="个人会员" value="personal" />
         </el-select>
         <el-button type="primary" @click="search">查询</el-button>
+        <el-button type="success" @click="openCreate">新增会员</el-button>
       </div>
     </div>
 
@@ -52,7 +53,7 @@
               <span class="name">{{ displayName(detail) }}</span>
               <el-tag :type="statusTag(detail.status)" size="large">{{ statusLabel(detail.status) }}</el-tag>
             </div>
-            <div class="sub">{{ detail.username }} · {{ typeLabel(detail.member_type) }}<template v-if="detail.member_level"> · 等级 {{ detail.member_level }}</template></div>
+            <div class="sub">{{ detail.username }} · {{ typeLabel(detail.member_type) }}<template v-if="detail.member_level"> · 等级 {{ levelName(detail.member_level) }}</template></div>
           </div>
         </div>
       </template>
@@ -64,7 +65,7 @@
             <div class="grid">
               <div class="item"><span class="label">会员类型</span><span class="value">{{ typeLabel(detail.member_type) }}</span></div>
               <div class="item"><span class="label">入会机构</span><span class="value">{{ detail.org_name || '-' }}</span></div>
-              <div class="item"><span class="label">会员等级</span><span class="value">{{ detail.member_level || '-' }}</span></div>
+              <div class="item"><span class="label">会员等级</span><span class="value">{{ levelName(detail.member_level) }}</span></div>
               <div class="item"><span class="label">注册时间</span><span class="value">{{ fmt(detail.created_at) }}</span></div>
               <div class="item"><span class="label">最近更新</span><span class="value">{{ fmt(detail.updated_at) }}</span></div>
               <div class="item"><span class="label">手机号</span><span class="value">{{ detail.mobile || '-' }}</span></div>
@@ -201,11 +202,63 @@
         </div>
       </div>
     </el-dialog>
+
+    <!-- 新增会员弹窗 -->
+    <el-dialog v-model="createVisible" title="新增会员" width="680px" :close-on-click-modal="false" append-to-body>
+      <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="110px" size="large">
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="用户名" prop="username"><el-input v-model="createForm.username" maxlength="32" placeholder="登录用户名" /></el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="密码" prop="password"><el-input v-model="createForm.password" type="password" show-password maxlength="32" placeholder="留空则默认 Abcd@1234" /></el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="手机号" prop="mobile"><el-input v-model="createForm.mobile" maxlength="11" /></el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="邮箱" prop="email"><el-input v-model="createForm.email" maxlength="64" /></el-form-item>
+          </el-col>
+          <el-col :span="24">
+            <el-form-item label="会员类型">
+              <el-radio-group v-model="createForm.member_type">
+                <el-radio value="unit">单位会员</el-radio>
+                <el-radio value="personal">个人会员</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <template v-if="createForm.member_type === 'unit'">
+          <el-divider content-position="left">单位信息</el-divider>
+          <el-row :gutter="16">
+            <el-col :span="12"><el-form-item label="公司名称"><el-input v-model="createForm.company_name" maxlength="100" /></el-form-item></el-col>
+            <el-col :span="12"><el-form-item label="信用代码"><el-input v-model="createForm.credit_code" maxlength="18" /></el-form-item></el-col>
+            <el-col :span="12"><el-form-item label="法定代表人"><el-input v-model="createForm.legal_person" maxlength="32" /></el-form-item></el-col>
+            <el-col :span="12"><el-form-item label="联系人"><el-input v-model="createForm.contact_person" maxlength="32" /></el-form-item></el-col>
+            <el-col :span="12"><el-form-item label="联系电话"><el-input v-model="createForm.contact_mobile" maxlength="11" /></el-form-item></el-col>
+            <el-col :span="12"><el-form-item label="单位地址"><el-input v-model="createForm.address" maxlength="100" /></el-form-item></el-col>
+          </el-row>
+        </template>
+
+        <template v-else>
+          <el-divider content-position="left">个人信息</el-divider>
+          <el-row :gutter="16">
+            <el-col :span="12"><el-form-item label="姓名"><el-input v-model="createForm.name" maxlength="32" /></el-form-item></el-col>
+            <el-col :span="12"><el-form-item label="身份证号"><el-input v-model="createForm.id_card" maxlength="18" /></el-form-item></el-col>
+          </el-row>
+        </template>
+      </el-form>
+      <template #footer>
+        <el-button @click="createVisible = false">取消</el-button>
+        <el-button type="primary" :loading="createLoading" @click="submitCreate">确定新增</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { adminApi } from '@/api/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Right } from '@element-plus/icons-vue'
@@ -241,6 +294,43 @@ const orgsVisible = ref(false)
 const orgsTarget = ref<any>(null)
 const orgsLoading = ref(false)
 const orgsInfo = ref<{ paid: any[]; voluntary: any[] }>({ paid: [], voluntary: [] })
+
+const createVisible = ref(false)
+const createLoading = ref(false)
+const createFormRef = ref()
+const createForm = reactive<any>({
+  username: '',
+  password: '',
+  mobile: '',
+  email: '',
+  member_type: 'unit',
+  company_name: '',
+  credit_code: '',
+  legal_person: '',
+  contact_person: '',
+  contact_mobile: '',
+  address: '',
+  name: '',
+  id_card: ''
+})
+const createRules = {
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  password: [{ min: 6, message: '密码至少6位', trigger: 'blur' }],
+  mobile: [{
+    validator: (_r: any, v: string, cb: any) => {
+      if (!v) return cb()
+      if (!/^1[3-9]\d{9}$/.test(v)) return cb(new Error('请输入合法手机号'))
+      cb()
+    }, trigger: 'blur'
+  }],
+  email: [{
+    validator: (_r: any, v: string, cb: any) => {
+      if (!v) return cb()
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return cb(new Error('请输入合法邮箱'))
+      cb()
+    }, trigger: 'blur'
+  }]
+}
 
 const statusMap: Record<string, { l: string; t: string }> = {
   registering: { l: '注册中', t: 'info' }, pending_review: { l: '待审核', t: 'warning' },
@@ -317,6 +407,37 @@ async function resetPassword(row: any) {
     await adminApi.resetMemberPassword(row.id)
     ElMessage.success('密码已重置为 Abcd@1234，请提醒会员及时修改密码')
   } catch {}
+}
+
+function openCreate() {
+  Object.assign(createForm, {
+    username: '',
+    password: '',
+    mobile: '',
+    email: '',
+    member_type: 'unit',
+    company_name: '',
+    credit_code: '',
+    legal_person: '',
+    contact_person: '',
+    contact_mobile: '',
+    address: '',
+    name: '',
+    id_card: ''
+  })
+  createVisible.value = true
+}
+
+async function submitCreate() {
+  const valid = await createFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+  createLoading.value = true
+  try {
+    await adminApi.createMember({ ...createForm, password: createForm.password || undefined })
+    ElMessage.success('新增会员成功')
+    createVisible.value = false
+    fetchData()
+  } catch {} finally { createLoading.value = false }
 }
 
 async function openLevelDialog(row: any) {

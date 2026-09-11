@@ -49,7 +49,7 @@
               <span class="name">{{ displayName(detail) }}</span>
               <el-tag :type="statusTag(detail.status)" size="large">{{ statusLabel(detail.status) }}</el-tag>
             </div>
-            <div class="sub">{{ detail.username }} · {{ typeLabel(detail.member_type) }}<template v-if="detail.member_level"> · 等级 {{ detail.member_level }}</template></div>
+            <div class="sub">{{ detail.username }} · {{ typeLabel(detail.member_type) }}<template v-if="detail.member_level"> · 等级 {{ levelName(detail.member_level) }}</template></div>
           </div>
         </div>
       </template>
@@ -61,7 +61,7 @@
             <div class="grid">
               <div class="item"><span class="label">会员类型</span><span class="value">{{ typeLabel(detail.member_type) }}</span></div>
               <div class="item"><span class="label">入会机构</span><span class="value">{{ detail.org_name || '-' }}</span></div>
-              <div class="item"><span class="label">会员等级</span><span class="value">{{ detail.member_level || '-' }}</span></div>
+              <div class="item"><span class="label">会员等级</span><span class="value">{{ levelName(detail.member_level) }}</span></div>
               <div class="item"><span class="label">注册时间</span><span class="value">{{ fmt(detail.created_at) }}</span></div>
               <div class="item"><span class="label">最近更新</span><span class="value">{{ fmt(detail.updated_at) }}</span></div>
               <div class="item"><span class="label">手机号</span><span class="value">{{ detail.mobile || '-' }}</span></div>
@@ -112,6 +112,7 @@ const list = ref<any[]>([])
 const loading = ref(true)
 const page = ref(1); const size = ref(10); const total = ref(0)
 const keyword = ref('')
+const levels = ref<any[]>([])
 
 const detailVisible = ref(false)
 const detail = ref<any>(null)
@@ -131,6 +132,11 @@ function displayName(m: any) {
   return m.member_type === 'unit' ? (m.company_name || m.username || '-') : (m.name || m.username || '-')
 }
 function initial(m: any) { return ((displayName(m) || '?').trim()[0] || '?').toUpperCase() }
+function levelName(id: any) {
+  if (id === null || id === undefined || id === '') return '-'
+  const lvl = levels.value.find((l: any) => String(l.id) === String(id))
+  return lvl ? lvl.name : String(id)
+}
 function fmt(d: string) { return d ? d.replace('T', ' ').slice(0, 16) : '-' }
 function fileUrl(path?: string) {
   if (!path) return ''
@@ -139,7 +145,14 @@ function fileUrl(path?: string) {
 }
 function tableRowClassName() { return 'profile-changes-row' }
 
-onMounted(() => fetchData())
+onMounted(() => { fetchData(); fetchLevels() })
+
+async function fetchLevels() {
+  try {
+    const res = await adminApi.getMemberLevels()
+    levels.value = res.data || []
+  } catch {}
+}
 
 async function openDetail(row: any) {
   detailLoading.value = true

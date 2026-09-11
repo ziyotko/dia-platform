@@ -128,6 +128,7 @@ func Register(r *gin.Engine) {
 	admin.Use(middleware.Auth(), middleware.AdminOnly(), middleware.OperationLog())
 	{
 		// Member management
+		admin.POST("/admin/members", memberCtrl.CreateMember)
 		admin.GET("/admin/members", memberCtrl.ListMembers)
 		admin.GET("/admin/members/:id", memberCtrl.GetMember)
 		admin.PUT("/admin/members/:id/status", memberCtrl.UpdateMemberStatus)
