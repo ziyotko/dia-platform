@@ -104,7 +104,7 @@ func (ctrl *MemberController) CreateMember(c *gin.Context) {
 		response.BadRequest(c, "请填写完整信息")
 		return
 	}
-	member, err := ctrl.memberService.CreateMember(req)
+	member, err := ctrl.memberService.CreateMember(req, middleware.GetUsername(c))
 	if err != nil {
 		response.BadRequest(c, err.Error())
 		return

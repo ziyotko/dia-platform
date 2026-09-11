@@ -491,7 +491,7 @@ type CreateMemberRequest struct {
 }
 
 // CreateMember creates a new member directly (admin).
-func (s *MemberService) CreateMember(req CreateMemberRequest) (*models.Member, error) {
+func (s *MemberService) CreateMember(req CreateMemberRequest, operator string) (*models.Member, error) {
 	if req.MemberType == "" {
 		req.MemberType = models.MemberTypeUnit
 	}
@@ -612,9 +612,11 @@ func (s *MemberService) CreateMember(req CreateMemberRequest) (*models.Member, e
 	}
 
 	// 将加入总会的信息写入缴费表（免缴、已缴费）
+	rootOrgName := ""
 	if req.RootOrgID > 0 && req.LevelID > 0 {
 		var rootOrg models.Organization
 		if err := db.DB.Where("id = ? AND parent_id = ?", req.RootOrgID, 0).First(&rootOrg).Error; err == nil {
+			rootOrgName = rootOrg.Name
 			now := time.Now()
 			// 会费金额 = 该总会所选会员等级对应年度的会费标准
 			var amount float64
@@ -659,6 +661,24 @@ func (s *MemberService) CreateMember(req CreateMemberRequest) (*models.Member, e
 			CertTemplateID: tpl.ID,
 		}
 		db.DB.Create(&cert)
+	}
+
+	// 插入会籍变更记录（按所选总会新增入会）
+	if req.LevelID > 0 {
+		change := models.MemberLevelChange{
+			MemberID:     member.ID,
+			Username:     member.Username,
+			MemberName:   memberDisplayName(&member),
+			MemberType:   member.MemberType,
+			ChangeYear:   time.Now().Year(),
+			OrgID:        req.RootOrgID,
+			OrgName:      rootOrgName,
+			NewLevelID:   req.LevelID,
+			NewLevelName: levelName,
+			Reason:       "新增会员",
+			Operator:     operator,
+		}
+		db.DB.Create(&change)
 	}
 
 	return &member, nil
