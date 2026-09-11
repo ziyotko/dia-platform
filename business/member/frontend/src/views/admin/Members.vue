@@ -204,8 +204,8 @@
     </el-dialog>
 
     <!-- 新增会员弹窗 -->
-    <el-dialog v-model="createVisible" title="新增会员" width="680px" :close-on-click-modal="false" append-to-body>
-      <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="110px" size="large">
+    <el-dialog v-model="createVisible" title="新增会员" width="960px" :close-on-click-modal="false" append-to-body>
+      <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="130px" size="large">
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="用户名" prop="username"><el-input v-model="createForm.username" maxlength="32" placeholder="登录用户名" /></el-form-item>
@@ -233,7 +233,7 @@
           <el-divider content-position="left">单位信息</el-divider>
           <el-row :gutter="16">
             <el-col :span="12"><el-form-item label="公司名称"><el-input v-model="createForm.company_name" maxlength="100" /></el-form-item></el-col>
-            <el-col :span="12"><el-form-item label="信用代码"><el-input v-model="createForm.credit_code" maxlength="18" /></el-form-item></el-col>
+            <el-col :span="12"><el-form-item label="统一社会信用代码"><el-input v-model="createForm.credit_code" maxlength="18" /></el-form-item></el-col>
             <el-col :span="12"><el-form-item label="法定代表人"><el-input v-model="createForm.legal_person" maxlength="32" /></el-form-item></el-col>
             <el-col :span="12"><el-form-item label="联系人"><el-input v-model="createForm.contact_person" maxlength="32" /></el-form-item></el-col>
             <el-col :span="12"><el-form-item label="联系电话"><el-input v-model="createForm.contact_mobile" maxlength="11" /></el-form-item></el-col>
@@ -248,6 +248,22 @@
             <el-col :span="12"><el-form-item label="身份证号"><el-input v-model="createForm.id_card" maxlength="18" /></el-form-item></el-col>
           </el-row>
         </template>
+
+        <el-divider content-position="left">加入的组织机构</el-divider>
+        <el-form-item label="总会">
+          <span class="root-org-name">{{ rootOrgs.map(o => o.name).join('、') || '-' }}<span class="root-org-tip">（默认加入）</span></span>
+        </el-form-item>
+        <el-form-item label="会员等级" required>
+          <el-select v-model="selectedLevelId" placeholder="请选择总会默认会员等级" style="width:100%">
+            <el-option v-for="lvl in rootLevelOptions" :key="lvl.level_id" :label="lvl.level?.name || lvl.name || ('等级' + lvl.level_id)" :value="lvl.level_id" />
+          </el-select>
+          <div v-if="!rootLevelOptions.length" class="root-level-tip">总会尚未关联会员等级，请先在「组织机构」中配置</div>
+        </el-form-item>
+        <el-form-item label="其他机构">
+          <el-select v-model="selectedOrgIds" multiple placeholder="可多选分支机构/代表机构，自动沿用总会等级" style="width:100%">
+            <el-option v-for="org in childOrgs" :key="org.id" :label="org.name" :value="org.id" />
+          </el-select>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="createVisible = false">取消</el-button>
@@ -258,8 +274,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { adminApi } from '@/api/admin'
+import { orgApi } from '@/api/index'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Right } from '@element-plus/icons-vue'
 
@@ -298,6 +315,29 @@ const orgsInfo = ref<{ paid: any[]; voluntary: any[] }>({ paid: [], voluntary: [
 const createVisible = ref(false)
 const createLoading = ref(false)
 const createFormRef = ref()
+const orgTree = ref<any[]>([])
+const selectedOrgIds = ref<number[]>([])
+const selectedLevelId = ref<number | null>(null)
+
+const rootOrgs = computed(() => orgTree.value.filter((n: any) => (n.parent_id ?? 0) === 0))
+const childOrgs = computed(() => {
+  const result: any[] = []
+  orgTree.value.forEach((n: any) => {
+    if (n.children?.length) result.push(...n.children)
+  })
+  return result
+})
+const rootLevelOptions = computed(() => {
+  const map = new Map<number, any>()
+  rootOrgs.value.forEach((o: any) => {
+    ;(o.levels || []).forEach((l: any) => {
+      const id = l.level_id || l.id
+      if (id) map.set(id, l)
+    })
+  })
+  return Array.from(map.values())
+})
+
 const createForm = reactive<any>({
   username: '',
   password: '',
@@ -425,15 +465,31 @@ function openCreate() {
     name: '',
     id_card: ''
   })
+  selectedOrgIds.value = []
+  selectedLevelId.value = null
   createVisible.value = true
+  loadOrgTree()
+}
+
+async function loadOrgTree() {
+  try {
+    const res = await orgApi.getTree()
+    orgTree.value = res.data || []
+  } catch {
+    orgTree.value = []
+  }
 }
 
 async function submitCreate() {
   const valid = await createFormRef.value?.validate().catch(() => false)
   if (!valid) return
+  if (!selectedLevelId.value) {
+    ElMessage.warning('请选择总会默认会员等级')
+    return
+  }
   createLoading.value = true
   try {
-    await adminApi.createMember({ ...createForm, password: createForm.password || undefined })
+    await adminApi.createMember({ ...createForm, password: createForm.password || undefined, org_ids: selectedOrgIds.value, level_id: selectedLevelId.value })
     ElMessage.success('新增会员成功')
     createVisible.value = false
     fetchData()
@@ -564,6 +620,20 @@ function fmtMoney(n: any) {
 }
 .members-table :deep(.members-row:hover td) {
   background: #f5f7fb !important;
+}
+.root-org-name {
+  color: #303133;
+  line-height: 32px;
+}
+.root-org-tip {
+  margin-left: 8px;
+  color: #909399;
+  font-size: 12px;
+}
+.root-level-tip {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #f56c6c;
 }
 </style>
 

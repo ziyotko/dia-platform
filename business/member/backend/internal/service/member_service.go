@@ -469,22 +469,24 @@ func (s *MemberService) ResetMemberPassword(id uint64) error {
 
 // CreateMemberRequest is the admin request for creating a member directly.
 type CreateMemberRequest struct {
-	Username      string `json:"username" binding:"required"`
-	Password      string `json:"password"`
-	Mobile        string `json:"mobile"`
-	Email         string `json:"email"`
-	MemberType    string `json:"member_type"`
-	Status        string `json:"status"`
-	CompanyName   string `json:"company_name"`
-	CreditCode    string `json:"credit_code"`
-	LegalPerson   string `json:"legal_person"`
-	ContactPerson string `json:"contact_person"`
-	ContactTitle  string `json:"contact_title"`
-	ContactMobile string `json:"contact_mobile"`
-	Industry      string `json:"industry"`
-	Address       string `json:"address"`
-	Name          string `json:"name"`
-	IDCard        string `json:"id_card"`
+	Username      string   `json:"username" binding:"required"`
+	Password      string   `json:"password"`
+	Mobile        string   `json:"mobile"`
+	Email         string   `json:"email"`
+	MemberType    string   `json:"member_type"`
+	Status        string   `json:"status"`
+	CompanyName   string   `json:"company_name"`
+	CreditCode    string   `json:"credit_code"`
+	LegalPerson   string   `json:"legal_person"`
+	ContactPerson string   `json:"contact_person"`
+	ContactTitle  string   `json:"contact_title"`
+	ContactMobile string   `json:"contact_mobile"`
+	Industry      string   `json:"industry"`
+	Address       string   `json:"address"`
+	Name          string   `json:"name"`
+	IDCard        string   `json:"id_card"`
+	LevelID       uint64   `json:"level_id"`
+	OrgIDs        []uint64 `json:"org_ids"`
 }
 
 // CreateMember creates a new member directly (admin).
@@ -537,6 +539,16 @@ func (s *MemberService) CreateMember(req CreateMemberRequest) (*models.Member, e
 		return nil, errors.New("密码加密失败")
 	}
 
+	// 加入总会必须选择默认会员等级；分会自动沿用总会等级
+	memberLevel := ""
+	if req.LevelID > 0 {
+		var lvl models.MemberLevel
+		if err := db.DB.First(&lvl, req.LevelID).Error; err != nil {
+			return nil, errors.New("会员等级不存在")
+		}
+		memberLevel = strconv.FormatUint(lvl.ID, 10)
+	}
+
 	member := models.Member{
 		Username:      req.Username,
 		Password:      string(hashed),
@@ -544,6 +556,7 @@ func (s *MemberService) CreateMember(req CreateMemberRequest) (*models.Member, e
 		Email:         req.Email,
 		MemberType:    req.MemberType,
 		Status:        req.Status,
+		MemberLevel:   memberLevel,
 		CompanyName:   req.CompanyName,
 		CreditCode:    req.CreditCode,
 		LegalPerson:   req.LegalPerson,
@@ -558,5 +571,30 @@ func (s *MemberService) CreateMember(req CreateMemberRequest) (*models.Member, e
 	if err := db.DB.Create(&member).Error; err != nil {
 		return nil, err
 	}
+
+	// 自动加入总会（根组织，parent_id=0），并加入管理员额外选择的组织机构
+	joined := make(map[uint64]bool)
+	var roots []models.Organization
+	if err := db.DB.Where("parent_id = ?", 0).Find(&roots).Error; err == nil {
+		for _, root := range roots {
+			if root.ID == 0 || joined[root.ID] {
+				continue
+			}
+			db.DB.Create(&models.MemberOrganization{MemberID: member.ID, OrgID: root.ID, LevelID: req.LevelID})
+			joined[root.ID] = true
+		}
+	}
+	for _, orgID := range req.OrgIDs {
+		if orgID == 0 || joined[orgID] {
+			continue
+		}
+		var org models.Organization
+		if err := db.DB.First(&org, orgID).Error; err != nil {
+			continue
+		}
+		db.DB.Create(&models.MemberOrganization{MemberID: member.ID, OrgID: orgID, LevelID: req.LevelID})
+		joined[orgID] = true
+	}
+
 	return &member, nil
 }
