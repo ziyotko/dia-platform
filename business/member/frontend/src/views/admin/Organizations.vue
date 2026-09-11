@@ -2,7 +2,7 @@
   <div class="admin-orgs" v-loading="loading">
     <div class="page-header">
       <h3>机构管理</h3>
-      <div class="header-actions">
+      <div class="header-actions" v-if="!loading && roots.length === 0">
         <el-button type="primary" @click="openAddRoot">新增上级机构</el-button>
       </div>
     </div>

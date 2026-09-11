@@ -43,6 +43,17 @@ func (s *OrganizationService) CreateOrganization(req CreateOrgRequest) (*models.
 		}
 	}
 
+	// 只允许一个顶级机构（总会）
+	if req.ParentID == 0 {
+		var rootCount int64
+		if err := db.DB.Model(&models.Organization{}).Where("parent_id = ?", 0).Count(&rootCount).Error; err != nil {
+			return nil, err
+		}
+		if rootCount > 0 {
+			return nil, errors.New("已存在上级机构，只允许一个顶级机构")
+		}
+	}
+
 	// Validate 2-level max
 	if req.ParentID > 0 {
 		var parent models.Organization
@@ -73,6 +84,16 @@ func (s *OrganizationService) CreateOrganization(req CreateOrgRequest) (*models.
 
 // UpdateOrganization updates an org (admin)
 func (s *OrganizationService) UpdateOrganization(id uint64, req UpdateOrgRequest) error {
+	// 只允许一个顶级机构：禁止把下级机构提升为顶级机构
+	if req.ParentID != nil && *req.ParentID == 0 {
+		var org models.Organization
+		if err := db.DB.First(&org, id).Error; err != nil {
+			return errors.New("组织不存在")
+		}
+		if org.ParentID != 0 {
+			return errors.New("只允许一个顶级机构，无法将下级机构提升为顶级机构")
+		}
+	}
 	updates := map[string]interface{}{
 		"name":         req.Name,
 		"description":  req.Description,
