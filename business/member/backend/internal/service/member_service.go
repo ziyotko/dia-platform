@@ -486,6 +486,7 @@ type CreateMemberRequest struct {
 	Name          string   `json:"name"`
 	IDCard        string   `json:"id_card"`
 	LevelID       uint64   `json:"level_id"`
+	RootOrgID     uint64   `json:"root_org_id"`
 	OrgIDs        []uint64 `json:"org_ids"`
 }
 
@@ -546,6 +547,14 @@ func (s *MemberService) CreateMember(req CreateMemberRequest) (*models.Member, e
 		if err := db.DB.First(&lvl, req.LevelID).Error; err != nil {
 			return nil, errors.New("会员等级不存在")
 		}
+		// 校验所选等级属于所选总会
+		if req.RootOrgID > 0 {
+			var cnt int64
+			db.DB.Model(&models.MemberOrgLevel{}).Where("org_id = ? AND level_id = ?", req.RootOrgID, req.LevelID).Count(&cnt)
+			if cnt == 0 {
+				return nil, errors.New("所选会员等级不属于所选总会")
+			}
+		}
 		memberLevel = strconv.FormatUint(lvl.ID, 10)
 	}
 
@@ -572,16 +581,25 @@ func (s *MemberService) CreateMember(req CreateMemberRequest) (*models.Member, e
 		return nil, err
 	}
 
-	// 自动加入总会（根组织，parent_id=0），并加入管理员额外选择的组织机构
+	// 加入所选总会（根组织，parent_id=0），并加入管理员额外选择的组织机构
 	joined := make(map[uint64]bool)
-	var roots []models.Organization
-	if err := db.DB.Where("parent_id = ?", 0).Find(&roots).Error; err == nil {
-		for _, root := range roots {
-			if root.ID == 0 || joined[root.ID] {
-				continue
-			}
+	if req.RootOrgID > 0 {
+		var root models.Organization
+		if err := db.DB.Where("id = ? AND parent_id = ?", req.RootOrgID, 0).First(&root).Error; err == nil {
 			db.DB.Create(&models.MemberOrganization{MemberID: member.ID, OrgID: root.ID, LevelID: req.LevelID})
 			joined[root.ID] = true
+		}
+	} else {
+		// 向后兼容：未指定总会时自动加入所有根组织
+		var roots []models.Organization
+		if err := db.DB.Where("parent_id = ?", 0).Find(&roots).Error; err == nil {
+			for _, root := range roots {
+				if root.ID == 0 || joined[root.ID] {
+					continue
+				}
+				db.DB.Create(&models.MemberOrganization{MemberID: member.ID, OrgID: root.ID, LevelID: req.LevelID})
+				joined[root.ID] = true
+			}
 		}
 	}
 	for _, orgID := range req.OrgIDs {

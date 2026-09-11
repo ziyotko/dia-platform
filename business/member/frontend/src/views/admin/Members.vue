@@ -250,17 +250,19 @@
         </template>
 
         <el-divider content-position="left">加入的组织机构</el-divider>
-        <el-form-item label="总会">
-          <span class="root-org-name">{{ rootOrgs.map(o => o.name).join('、') || '-' }}<span class="root-org-tip">（默认加入）</span></span>
+        <el-form-item label="总会" required>
+          <el-select v-model="selectedRootOrgId" placeholder="请选择总会" style="width:100%" @change="onRootOrgChange">
+            <el-option v-for="org in rootOrgs" :key="org.id" :label="org.name" :value="org.id" />
+          </el-select>
         </el-form-item>
         <el-form-item label="会员等级" required>
-          <el-select v-model="selectedLevelId" placeholder="请选择总会默认会员等级" style="width:100%">
+          <el-select v-model="selectedLevelId" placeholder="请选择该总会默认会员等级" style="width:100%">
             <el-option v-for="lvl in rootLevelOptions" :key="lvl.level_id" :label="lvl.level?.name || lvl.name || ('等级' + lvl.level_id)" :value="lvl.level_id" />
           </el-select>
-          <div v-if="!rootLevelOptions.length" class="root-level-tip">总会尚未关联会员等级，请先在「组织机构」中配置</div>
+          <div v-if="selectedRootOrgId && !rootLevelOptions.length" class="root-level-tip">该总会尚未关联会员等级，请先在「组织机构」中配置</div>
         </el-form-item>
         <el-form-item label="其他机构">
-          <el-select v-model="selectedOrgIds" multiple placeholder="可多选分支机构/代表机构，自动沿用总会等级" style="width:100%">
+          <el-select v-model="selectedOrgIds" multiple :disabled="!selectedRootOrgId" :placeholder="selectedRootOrgId ? '可多选该总会下的分支机构/代表机构，自动沿用总会等级' : '请先选择总会'" style="width:100%">
             <el-option v-for="org in childOrgs" :key="org.id" :label="org.name" :value="org.id" />
           </el-select>
         </el-form-item>
@@ -317,26 +319,18 @@ const createLoading = ref(false)
 const createFormRef = ref()
 const orgTree = ref<any[]>([])
 const selectedOrgIds = ref<number[]>([])
+const selectedRootOrgId = ref<number | null>(null)
 const selectedLevelId = ref<number | null>(null)
 
 const rootOrgs = computed(() => orgTree.value.filter((n: any) => (n.parent_id ?? 0) === 0))
-const childOrgs = computed(() => {
-  const result: any[] = []
-  orgTree.value.forEach((n: any) => {
-    if (n.children?.length) result.push(...n.children)
-  })
-  return result
-})
-const rootLevelOptions = computed(() => {
-  const map = new Map<number, any>()
-  rootOrgs.value.forEach((o: any) => {
-    ;(o.levels || []).forEach((l: any) => {
-      const id = l.level_id || l.id
-      if (id) map.set(id, l)
-    })
-  })
-  return Array.from(map.values())
-})
+const selectedRootOrg = computed(() => rootOrgs.value.find((o: any) => o.id === selectedRootOrgId.value))
+const childOrgs = computed(() => selectedRootOrg.value?.children || [])
+const rootLevelOptions = computed(() => selectedRootOrg.value?.levels || [])
+
+function onRootOrgChange() {
+  selectedLevelId.value = null
+  selectedOrgIds.value = []
+}
 
 const createForm = reactive<any>({
   username: '',
@@ -466,6 +460,7 @@ function openCreate() {
     id_card: ''
   })
   selectedOrgIds.value = []
+  selectedRootOrgId.value = null
   selectedLevelId.value = null
   createVisible.value = true
   loadOrgTree()
@@ -478,18 +473,26 @@ async function loadOrgTree() {
   } catch {
     orgTree.value = []
   }
+  // 默认选中第一个总会
+  if (!selectedRootOrgId.value && orgTree.value.length) {
+    selectedRootOrgId.value = orgTree.value[0].id
+  }
 }
 
 async function submitCreate() {
   const valid = await createFormRef.value?.validate().catch(() => false)
   if (!valid) return
+  if (!selectedRootOrgId.value) {
+    ElMessage.warning('请选择总会')
+    return
+  }
   if (!selectedLevelId.value) {
     ElMessage.warning('请选择总会默认会员等级')
     return
   }
   createLoading.value = true
   try {
-    await adminApi.createMember({ ...createForm, password: createForm.password || undefined, org_ids: selectedOrgIds.value, level_id: selectedLevelId.value })
+    await adminApi.createMember({ ...createForm, password: createForm.password || undefined, root_org_id: selectedRootOrgId.value, org_ids: selectedOrgIds.value, level_id: selectedLevelId.value })
     ElMessage.success('新增会员成功')
     createVisible.value = false
     fetchData()
