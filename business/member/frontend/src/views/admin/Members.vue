@@ -204,8 +204,8 @@
     </el-dialog>
 
     <!-- 新增会员弹窗 -->
-    <el-dialog v-model="createVisible" title="新增会员" width="960px" :close-on-click-modal="false" append-to-body>
-      <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="130px" size="large">
+    <el-dialog v-model="createVisible" title="新增会员" width="960px" class="member-create-dialog" :close-on-click-modal="false" append-to-body>
+      <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="160px" size="large">
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="用户名" prop="username"><el-input v-model="createForm.username" maxlength="32" placeholder="登录用户名" /></el-form-item>
@@ -233,11 +233,11 @@
           <el-divider content-position="left">单位信息</el-divider>
           <el-row :gutter="16">
             <el-col :span="12"><el-form-item label="公司名称" prop="company_name"><el-input v-model="createForm.company_name" maxlength="100" /></el-form-item></el-col>
-            <el-col :span="12"><el-form-item label="统一社会信用代码" prop="credit_code"><el-input v-model="createForm.credit_code" maxlength="18" placeholder="请输入18位统一社会信用代码" /></el-form-item></el-col>
             <el-col :span="12"><el-form-item label="法定代表人"><el-input v-model="createForm.legal_person" maxlength="32" /></el-form-item></el-col>
+            <el-col :span="24"><el-form-item label="统一社会信用代码" prop="credit_code"><el-input v-model="createForm.credit_code" maxlength="18" placeholder="请输入18位统一社会信用代码" /></el-form-item></el-col>
             <el-col :span="12"><el-form-item label="联系人"><el-input v-model="createForm.contact_person" maxlength="32" /></el-form-item></el-col>
             <el-col :span="12"><el-form-item label="联系电话" prop="contact_mobile"><el-input v-model="createForm.contact_mobile" maxlength="20" placeholder="手机号或固定电话" /></el-form-item></el-col>
-            <el-col :span="12"><el-form-item label="单位地址"><el-input v-model="createForm.address" maxlength="100" /></el-form-item></el-col>
+            <el-col :span="24"><el-form-item label="单位地址"><el-input v-model="createForm.address" maxlength="100" /></el-form-item></el-col>
           </el-row>
         </template>
 
@@ -347,32 +347,83 @@ const createForm = reactive<any>({
   name: '',
   id_card: ''
 })
-// 手机号：必填 + 11位手机号格式
+// 防抖：避免输入过程中频繁请求后端查重
+function debounce<A extends any[]>(fn: (...args: A) => void, delay = 400) {
+  let timer: ReturnType<typeof setTimeout> | null = null
+  return (...args: A) => {
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(() => fn(...args), delay)
+  }
+}
+
+// 查重字段 -> 提示名称
+const dupFieldLabels: Record<string, string> = {
+  username: '用户名',
+  mobile: '手机号',
+  email: '邮箱',
+  contact_mobile: '联系电话',
+  company_name: '公司名称',
+  credit_code: '统一社会信用代码'
+}
+
+// 后端查重（admin）：值已存在则提示；按字段各自防抖，避免多字段共用定时器互相取消
+const dupCheckers: Record<string, (value: string, cb: any) => void> = {}
+function checkDup(field: string, value: string, cb: any) {
+  if (!dupCheckers[field]) {
+    dupCheckers[field] = debounce(async (v: string, c: any) => {
+      if (!v) return c()
+      try {
+        const res = await adminApi.checkMemberExists(field, v)
+        if (res.data?.exists) c(new Error(`该${dupFieldLabels[field]}已存在`))
+        else c()
+      } catch {
+        c()
+      }
+    })
+  }
+  dupCheckers[field](value, cb)
+}
+
+// 用户名：必填 + 查重
+function validateCreateUsername(_r: any, v: string, cb: any) {
+  const val = (v || '').trim()
+  if (!val) return cb(new Error('请输入用户名'))
+  checkDup('username', val, cb)
+}
+
+// 公司名称：选填，填写时查重
+function validateCreateCompanyName(_r: any, v: string, cb: any) {
+  const val = (v || '').trim()
+  if (!val) return cb()
+  checkDup('company_name', val, cb)
+}
+
+// 手机号：必填 + 11位手机号格式 + 查重
 function validateCreateMobile(_r: any, v: string, cb: any) {
   const val = (v || '').trim()
   if (!val) return cb(new Error('请输入手机号'))
   if (!/^1[3-9]\d{9}$/.test(val)) return cb(new Error('请输入合法手机号'))
-  cb()
+  checkDup('mobile', val, cb)
 }
 
-// 邮箱：必填 + 邮箱格式
+// 邮箱：必填 + 邮箱格式 + 查重
 function validateCreateEmail(_r: any, v: string, cb: any) {
   const val = (v || '').trim()
   if (!val) return cb(new Error('请输入邮箱'))
   if (val.length > 64) return cb(new Error('邮箱不能超过64位'))
   if (!/^[\w.+-]+@[\w-]+(\.[\w-]+)+$/.test(val)) return cb(new Error('请输入合法邮箱'))
-  cb()
+  checkDup('email', val, cb)
 }
 
-// 联系电话：必填，手机号或固定电话（可带区号/连字符）
+// 联系电话：必填，手机号或固定电话（可带区号/连字符）+ 查重
 function validateCreateContactMobile(_r: any, v: string, cb: any) {
   const val = (v || '').trim()
   if (!val) return cb(new Error('请输入联系电话'))
   if (!/^(1[3-9]\d{9}|0\d{2,3}-?\d{7,8})$/.test(val)) return cb(new Error('请输入合法联系电话（手机号或固定电话）'))
-  cb()
+  checkDup('contact_mobile', val, cb)
 }
 
-// 统一社会信用代码：必填 + GB 32100-2015 校验码算法（与注册/资料页一致）
+// 统一社会信用代码：必填 + GB 32100-2015 校验码算法（与注册/资料页一致）+ 查重
 function validateCreateCreditCode(_r: any, v: string, cb: any) {
   const val = (v || '').trim()
   if (!val) return cb(new Error('请输入统一社会信用代码'))
@@ -387,7 +438,7 @@ function validateCreateCreditCode(_r: any, v: string, cb: any) {
   if (charSet[(31 - (sum % 31)) % 31] !== code[17]) {
     return cb(new Error('统一社会信用代码校验不通过'))
   }
-  cb()
+  checkDup('credit_code', code, cb)
 }
 
 // 身份证号：必填 + 18位/出生日期/校验码（与注册/资料页一致）
@@ -411,10 +462,11 @@ function validateCreateIdCard(_r: any, v: string, cb: any) {
 }
 
 const createRules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  username: [{ required: true, validator: validateCreateUsername, trigger: 'blur' }],
   password: [{ min: 6, message: '密码至少6位', trigger: 'blur' }],
   mobile: [{ required: true, validator: validateCreateMobile, trigger: 'blur' }],
   email: [{ required: true, validator: validateCreateEmail, trigger: 'blur' }],
+  company_name: [{ validator: validateCreateCompanyName, trigger: 'blur' }],
   // 以下四项仅对应会员类型渲染，字段未渲染时不会参与校验
   credit_code: [{ required: true, validator: validateCreateCreditCode, trigger: 'blur' }],
   contact_mobile: [{ required: true, validator: validateCreateContactMobile, trigger: 'blur' }],
@@ -710,6 +762,13 @@ function fmtMoney(n: any) {
 
 <!-- 详情弹窗样式（dialog 使用 teleport，故使用非 scoped 样式并以类名限定作用域） -->
 <style lang="scss">
+/* 新增会员弹窗：标签不换行（dialog teleport 到 body，需非 scoped 样式） */
+.member-create-dialog {
+  .el-form-item__label {
+    white-space: nowrap;
+  }
+}
+
 .member-detail-dialog {
   border-radius: 14px;
   overflow: hidden;

@@ -139,6 +139,7 @@ func Register(r *gin.Engine) {
 		admin.GET("/admin/members/:id/orgs", memberCtrl.GetMemberJoinedOrgs)
 		admin.DELETE("/admin/members/:id", memberCtrl.DeleteMember)
 		admin.GET("/admin/member-stats", memberCtrl.GetMemberStats)
+		admin.GET("/admin/member-exists", memberCtrl.CheckMemberExists)
 		admin.GET("/admin/member-level-changes", memberCtrl.ListLevelChanges)
 		admin.GET("/admin/member-profile-changes", memberCtrl.ListProfileChanges)
 

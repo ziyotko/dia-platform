@@ -4,6 +4,8 @@ export const adminApi = {
   // Member management
   getMembers: (params?: any) => request.get('/admin/members', { params }),
   createMember: (data: any) => request.post('/admin/members', data),
+  // 查重：field 支持 username/mobile/email/contact_mobile/company_name/credit_code
+  checkMemberExists: (field: string, value: string) => request.get('/admin/member-exists', { params: { field, value } }),
   getMember: (id: number) => request.get(`/admin/members/${id}`),
   updateMemberStatus: (id: number, status: string) => request.put(`/admin/members/${id}/status`, { status }),
   updateMemberLevel: (id: number, levelId: number, reason: string) => request.put(`/admin/members/${id}/level`, { level_id: levelId, reason }),

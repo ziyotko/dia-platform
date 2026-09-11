@@ -15,6 +15,35 @@ import (
 
 type MemberService struct{}
 
+// checkableMemberFields 允许查重的会员字段（防止 SQL 注入）
+var checkableMemberFields = map[string]bool{
+	"username":       true,
+	"mobile":         true,
+	"email":          true,
+	"contact_mobile": true,
+	"company_name":   true,
+	"credit_code":    true,
+}
+
+// CheckFieldExists 校验会员字段值是否已被占用（admin 新增会员查重）
+func (s *MemberService) CheckFieldExists(field, value string) (bool, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return false, nil
+	}
+	if !checkableMemberFields[field] {
+		return false, errors.New("不支持的字段")
+	}
+	if field == "credit_code" {
+		value = strings.ToUpper(value)
+	}
+	var count int64
+	if err := db.DB.Model(&models.Member{}).Where(field+" = ?", value).Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 // GetMember returns a member by ID
 func (s *MemberService) GetMember(id uint64) (*models.Member, error) {
 	var m models.Member
@@ -509,6 +538,7 @@ func (s *MemberService) CreateMember(req CreateMemberRequest, operator string) (
 	req.CreditCode = strings.ToUpper(strings.TrimSpace(req.CreditCode))
 	req.IDCard = strings.ToUpper(strings.TrimSpace(req.IDCard))
 	req.Name = strings.TrimSpace(req.Name)
+	req.CompanyName = strings.TrimSpace(req.CompanyName)
 
 	if req.Username == "" {
 		return nil, errors.New("请输入用户名")
@@ -567,6 +597,24 @@ func (s *MemberService) CreateMember(req CreateMemberRequest, operator string) (
 		var e models.Member
 		if err := db.DB.Where("email = ?", req.Email).First(&e).Error; err == nil {
 			return nil, errors.New("邮箱已被注册")
+		}
+	}
+	if req.ContactMobile != "" {
+		var cm models.Member
+		if err := db.DB.Where("contact_mobile = ?", req.ContactMobile).First(&cm).Error; err == nil {
+			return nil, errors.New("该联系电话已被使用")
+		}
+	}
+	if req.CompanyName != "" {
+		var cn models.Member
+		if err := db.DB.Where("company_name = ?", req.CompanyName).First(&cn).Error; err == nil {
+			return nil, errors.New("该公司名称已存在")
+		}
+	}
+	if req.CreditCode != "" {
+		var cc models.Member
+		if err := db.DB.Where("credit_code = ?", req.CreditCode).First(&cc).Error; err == nil {
+			return nil, errors.New("该统一社会信用代码已存在")
 		}
 	}
 

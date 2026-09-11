@@ -112,6 +112,17 @@ func (ctrl *MemberController) CreateMember(c *gin.Context) {
 	response.SuccessWithMessage(c, "新增会员成功", member)
 }
 
+// CheckMemberExists checks whether a member field value is already in use (admin)
+// 支持字段：username/mobile/email/contact_mobile/company_name/credit_code
+func (ctrl *MemberController) CheckMemberExists(c *gin.Context) {
+	exists, err := ctrl.memberService.CheckFieldExists(c.Query("field"), c.Query("value"))
+	if err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.Success(c, gin.H{"exists": exists})
+}
+
 // GetMemberLevelChanges lists a single member's level change history (admin)
 func (ctrl *MemberController) GetMemberLevelChanges(c *gin.Context) {
 	id := parseUint(c.Param("id"))
