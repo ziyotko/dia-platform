@@ -5,6 +5,7 @@ import (
 	"member/internal/models"
 	"member/pkg/db"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -360,31 +361,118 @@ func (s *FeeService) IssueInvoice(id uint64, invoiceNo, invoiceFile string) erro
 	return db.DB.Model(&fee).Updates(updates).Error
 }
 
-// GetMemberFeeInfo returns a member's org and level info from their approved application
+// GetMemberFeeInfo returns a member's org and level info used when creating a fee record.
+// 解析优先级：
+//  1. 已通过的入会申请 —— 申请机构 + 该机构最低等级；
+//  2. 已缴费（含免缴）费用记录 —— 费用机构（通常是总会）+ 费用等级，覆盖管理员直录会员；
+//  3. member_user_orgs 加入记录 —— 分会/代表机构 + 其等级；
+//  4. 仅 member_users.member_level（无机构信息）。
 func (s *FeeService) GetMemberFeeInfo(memberID uint64) (orgID, levelID uint64, orgName, levelName string, err error) {
+	var member models.Member
+	if err := db.DB.First(&member, memberID).Error; err != nil {
+		return 0, 0, "", "", errors.New("会员不存在")
+	}
+	// member_level 存等级 ID 字符串（兼容历史名称），作为各分支的等级兑底
+	memberLevelID, memberLevelName := resolveMemberLevel(member.MemberLevel)
+
+	// 1) 已通过的入会申请
 	var app models.Application
 	if err := db.DB.Preload("Org").Where("member_id = ? AND status = ?", memberID, models.AppStatusApproved).
-		Order("created_at DESC").First(&app).Error; err != nil {
-		return 0, 0, "", "", errors.New("未找到该会员的入会申请")
-	}
-
-	orgID = app.OrgID
-	if app.Org.ID > 0 {
+		Order("created_at DESC").First(&app).Error; err == nil {
+		orgID = app.OrgID
 		orgName = app.Org.Name
+		levelID, levelName = orgMinLevelInfo(app.OrgID)
+		if levelID == 0 {
+			levelID, levelName = memberLevelID, memberLevelName
+		}
+		return orgID, levelID, orgName, levelName, nil
 	}
 
-	// Look up the member's level from their org's lowest level
-	var orgLevel models.MemberOrgLevel
-	if err := db.DB.Preload("Level").
-		Joins("JOIN member_levels ml ON ml.id = member_org_levels.level_id").
-		Where("member_org_levels.org_id = ?", app.OrgID).
-		Order("ml.level ASC").
-		First(&orgLevel).Error; err == nil {
-		levelID = orgLevel.LevelID
-		levelName = orgLevel.Level.Name
+	// 2) 最近一条已缴费（含免缴）费用记录
+	var fee models.FeeRecord
+	if err := db.DB.Where("member_id = ? AND status = ? AND org_name <> ''", memberID, models.FeeStatusPaid).
+		Order("year DESC, id DESC").First(&fee).Error; err == nil {
+		orgID, orgName = fee.OrgID, fee.OrgName
+		levelID, levelName = fee.LevelID, fee.LevelName
+		if levelID == 0 {
+			if lvID, lvName := orgMinLevelInfo(orgID); lvID > 0 {
+				levelID, levelName = lvID, lvName
+			} else {
+				levelID, levelName = memberLevelID, memberLevelName
+			}
+		}
+		return orgID, levelID, orgName, levelName, nil
 	}
 
-	return orgID, levelID, orgName, levelName, nil
+	// 3) 会员加入的组织（member_user_orgs，分会/代表机构）
+	var mo models.MemberOrganization
+	if err := db.DB.Preload("Org").Where("member_id = ?", memberID).
+		Order("joined_at DESC, id DESC").First(&mo).Error; err == nil {
+		orgID = mo.OrgID
+		orgName = mo.Org.Name
+		if mo.LevelID > 0 {
+			levelID = mo.LevelID
+			levelName = memberLevelNameByID(mo.LevelID)
+		}
+		if levelID == 0 {
+			if lvID, lvName := orgMinLevelInfo(orgID); lvID > 0 {
+				levelID, levelName = lvID, lvName
+			} else {
+				levelID, levelName = memberLevelID, memberLevelName
+			}
+		}
+		return orgID, levelID, orgName, levelName, nil
+	}
+
+	// 4) 仅有会员等级，无机构
+	if memberLevelID > 0 || memberLevelName != "" {
+		return 0, memberLevelID, "", memberLevelName, nil
+	}
+
+	return 0, 0, "", "", errors.New("未找到该会员的机构/等级信息，请先完善入会信息")
+}
+
+// orgMinLevelInfo 返回机构支持的最小等级（id + 名称），未配置时返回 (0, "")。
+func orgMinLevelInfo(orgID uint64) (uint64, string) {
+	if orgID == 0 {
+		return 0, ""
+	}
+	ol, err := findMinOrgLevel(orgID)
+	if err != nil || ol.LevelID == 0 {
+		return 0, ""
+	}
+	return ol.LevelID, ol.Level.Name
+}
+
+// memberLevelNameByID 按等级 ID 取名称。
+func memberLevelNameByID(levelID uint64) string {
+	if levelID == 0 {
+		return ""
+	}
+	var lvl models.MemberLevel
+	if err := db.DB.First(&lvl, levelID).Error; err != nil {
+		return ""
+	}
+	return lvl.Name
+}
+
+// resolveMemberLevel 兼容 member_users.member_level 既可能是等级 ID 字符串、也可能是历史等级名称。
+func resolveMemberLevel(value string) (uint64, string) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return 0, ""
+	}
+	if id := parseUint(value); id > 0 {
+		if name := memberLevelNameByID(id); name != "" {
+			return id, name
+		}
+		return id, value
+	}
+	var lvl models.MemberLevel
+	if err := db.DB.Where("name = ?", value).First(&lvl).Error; err == nil {
+		return lvl.ID, lvl.Name
+	}
+	return 0, value
 }
 
 // ApplyInvoiceRequest represents invoice application data submitted by member

@@ -179,8 +179,8 @@
           </el-select>
         </el-form-item>
         <el-form-item label="入会信息">
-          <div v-if="selectedMemberInfo.orgName" class="member-info-tag">
-            <el-tag type="info" round>{{ selectedMemberInfo.orgName }}</el-tag>
+          <div v-if="selectedMemberInfo.orgName || selectedMemberInfo.levelName" class="member-info-tag">
+            <el-tag v-if="selectedMemberInfo.orgName" type="info" round>{{ selectedMemberInfo.orgName }}</el-tag>
             <el-tag v-if="selectedMemberInfo.levelName" type="primary" round effect="plain">{{ selectedMemberInfo.levelName }}</el-tag>
           </div>
           <span v-else class="form-hint">选择会员后自动带出</span>
