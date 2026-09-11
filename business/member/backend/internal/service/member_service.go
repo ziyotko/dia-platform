@@ -542,6 +542,7 @@ func (s *MemberService) CreateMember(req CreateMemberRequest) (*models.Member, e
 
 	// 加入总会必须选择默认会员等级；分会自动沿用总会等级
 	memberLevel := ""
+	levelName := ""
 	if req.LevelID > 0 {
 		var lvl models.MemberLevel
 		if err := db.DB.First(&lvl, req.LevelID).Error; err != nil {
@@ -556,6 +557,7 @@ func (s *MemberService) CreateMember(req CreateMemberRequest) (*models.Member, e
 			}
 		}
 		memberLevel = strconv.FormatUint(lvl.ID, 10)
+		levelName = lvl.Name
 	}
 
 	member := models.Member{
@@ -581,15 +583,10 @@ func (s *MemberService) CreateMember(req CreateMemberRequest) (*models.Member, e
 		return nil, err
 	}
 
-	// 加入所选总会（根组织，parent_id=0），并加入管理员额外选择的组织机构
+	// 总会通过缴费表记录（免缴、已缴费），不再写入 member_user_orgs；
+	// 分会/代表机构直接写入 member_user_orgs。
 	joined := make(map[uint64]bool)
-	if req.RootOrgID > 0 {
-		var root models.Organization
-		if err := db.DB.Where("id = ? AND parent_id = ?", req.RootOrgID, 0).First(&root).Error; err == nil {
-			db.DB.Create(&models.MemberOrganization{MemberID: member.ID, OrgID: root.ID, LevelID: req.LevelID})
-			joined[root.ID] = true
-		}
-	} else {
+	if req.RootOrgID == 0 {
 		// 向后兼容：未指定总会时自动加入所有根组织
 		var roots []models.Organization
 		if err := db.DB.Where("parent_id = ?", 0).Find(&roots).Error; err == nil {
@@ -612,6 +609,28 @@ func (s *MemberService) CreateMember(req CreateMemberRequest) (*models.Member, e
 		}
 		db.DB.Create(&models.MemberOrganization{MemberID: member.ID, OrgID: orgID, LevelID: req.LevelID})
 		joined[orgID] = true
+	}
+
+	// 将加入总会的信息写入缴费表（免缴、已缴费）
+	if req.RootOrgID > 0 && req.LevelID > 0 {
+		var rootOrg models.Organization
+		if err := db.DB.Where("id = ? AND parent_id = ?", req.RootOrgID, 0).First(&rootOrg).Error; err == nil {
+			now := time.Now()
+			fee := models.FeeRecord{
+				MemberID:    member.ID,
+				Year:        now.Year(),
+				Amount:      0,
+				Status:      models.FeeStatusPaid,
+				PaidAt:      &models.LocalTime{Time: now},
+				ConfirmedAt: &models.LocalTime{Time: now},
+				Remark:      "免缴",
+				OrgID:       rootOrg.ID,
+				OrgName:     rootOrg.Name,
+				LevelID:     req.LevelID,
+				LevelName:   levelName,
+			}
+			db.DB.Create(&fee)
+		}
 	}
 
 	return &member, nil
