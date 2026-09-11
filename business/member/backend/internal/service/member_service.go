@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -445,4 +446,23 @@ func (s *MemberService) DeleteMember(id uint64) error {
 		return errors.New("仅“注册中”状态的会员可删除")
 	}
 	return db.DB.Delete(&m).Error
+}
+
+// DefaultPassword is the default password set when an admin resets a member's password.
+const DefaultPassword = "Abcd@1234"
+
+// ResetMemberPassword resets a member's password to the default (admin).
+func (s *MemberService) ResetMemberPassword(id uint64) error {
+	var m models.Member
+	if err := db.DB.First(&m, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("会员不存在")
+		}
+		return err
+	}
+	hashed, err := bcrypt.GenerateFromPassword([]byte(DefaultPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return errors.New("密码加密失败")
+	}
+	return db.DB.Model(&models.Member{}).Where("id = ?", id).Update("password", string(hashed)).Error
 }

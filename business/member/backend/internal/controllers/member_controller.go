@@ -87,6 +87,16 @@ func (ctrl *MemberController) UpdateMemberLevel(c *gin.Context) {
 	response.SuccessWithMessage(c, "等级更新成功", nil)
 }
 
+// ResetMemberPassword resets a member's password to the default (admin)
+func (ctrl *MemberController) ResetMemberPassword(c *gin.Context) {
+	id := parseUint(c.Param("id"))
+	if err := ctrl.memberService.ResetMemberPassword(id); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.SuccessWithMessage(c, "密码已重置为默认密码", nil)
+}
+
 // GetMemberLevelChanges lists a single member's level change history (admin)
 func (ctrl *MemberController) GetMemberLevelChanges(c *gin.Context) {
 	id := parseUint(c.Param("id"))

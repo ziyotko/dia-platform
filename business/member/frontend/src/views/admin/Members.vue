@@ -1,7 +1,7 @@
 <template>
   <div class="admin-members" v-loading="loading">
     <div class="page-header">
-      <h3>会籍管理</h3>
+      <h3>会员管理</h3>
       <div class="filters">
         <el-input v-model="keyword" placeholder="搜索用户名/公司名" clearable style="width:200px" @clear="search" @keyup.enter="search" />
         <el-select v-model="filterStatus" placeholder="状态" clearable style="width:130px" @change="search">
@@ -29,11 +29,12 @@
         <el-table-column prop="status" label="状态" min-width="120">
           <template #default="{row}"><el-tag :type="statusTag(row.status)">{{ statusLabel(row.status) }}</el-tag></template>
         </el-table-column>
-        <el-table-column label="操作" min-width="340">
+        <el-table-column label="操作" min-width="420">
           <template #default="{row}">
             <el-button text size="small" type="primary" @click.stop="openOrgs(row)">所有会籍</el-button>
             <el-button text size="small" type="warning" :disabled="row.status !== 'active'" @click.stop="openLevelDialog(row)">变更等级</el-button>
             <el-button text size="small" type="primary" @click.stop="openHistory(row)">会籍历史</el-button>
+            <el-button text size="small" type="info" @click.stop="resetPassword(row)">重置密码</el-button>
             <el-button text size="small" type="danger" :disabled="row.status !== 'registering'" @click.stop="delMember(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -303,6 +304,18 @@ async function delMember(row: any) {
   try {
     await ElMessageBox.confirm('确认删除该会员？', '警告', { type: 'warning' })
     await adminApi.deleteMember(row.id); ElMessage.success('已删除'); fetchData()
+  } catch {}
+}
+
+async function resetPassword(row: any) {
+  try {
+    await ElMessageBox.confirm(
+      `将重置「${displayName(row)}」的登录密码为默认密码 Abcd@1234，重置后请提醒会员及时修改密码。确认继续？`,
+      '重置密码',
+      { type: 'warning', confirmButtonText: '确定重置', cancelButtonText: '取消' }
+    )
+    await adminApi.resetMemberPassword(row.id)
+    ElMessage.success('密码已重置为 Abcd@1234，请提醒会员及时修改密码')
   } catch {}
 }
 

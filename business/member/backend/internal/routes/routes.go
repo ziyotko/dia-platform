@@ -132,6 +132,7 @@ func Register(r *gin.Engine) {
 		admin.GET("/admin/members/:id", memberCtrl.GetMember)
 		admin.PUT("/admin/members/:id/status", memberCtrl.UpdateMemberStatus)
 		admin.PUT("/admin/members/:id/level", memberCtrl.UpdateMemberLevel)
+		admin.PUT("/admin/members/:id/reset-password", memberCtrl.ResetMemberPassword)
 		admin.GET("/admin/members/:id/level-options", memberCtrl.GetMemberLevelOptions)
 		admin.GET("/admin/members/:id/level-changes", memberCtrl.GetMemberLevelChanges)
 		admin.GET("/admin/members/:id/orgs", memberCtrl.GetMemberJoinedOrgs)
