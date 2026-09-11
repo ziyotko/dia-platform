@@ -261,7 +261,7 @@ func (s *MemberService) ListProfileChanges(page, size int, keyword string) ([]mo
 	query := db.DB.Model(&models.ProfileChange{})
 	if keyword != "" {
 		kw := "%" + keyword + "%"
-		query = query.Where("operator LIKE ? OR old_name LIKE ? OR new_name LIKE ?", kw, kw, kw)
+		query = query.Where("operator LIKE ? OR name LIKE ?", kw, kw)
 	}
 
 	if err := query.Count(&total).Error; err != nil {

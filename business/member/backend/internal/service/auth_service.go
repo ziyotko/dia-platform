@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"member/config"
@@ -9,7 +8,6 @@ import (
 	"member/pkg/captcha"
 	"member/pkg/db"
 	mjwt "member/pkg/jwt"
-	"reflect"
 	"time"
 
 	"github.com/google/uuid"
@@ -173,7 +171,7 @@ func (s *AuthService) GetProfile(memberID uint64) (*models.Member, error) {
 }
 
 // UpdateProfile updates the member profile and records a profile change
-// (资料变更记录) when any tracked field changes. Passwords are never recorded.
+// (资料变更记录) for every tracked field that changed. Passwords are never recorded.
 func (s *AuthService) UpdateProfile(memberID uint64, req UpdateProfileRequest) error {
 	var member models.Member
 	if err := db.DB.First(&member, memberID).Error; err != nil {
@@ -231,26 +229,55 @@ func (s *AuthService) UpdateProfile(memberID uint64, req UpdateProfileRequest) e
 	oldSnapshot := profileSnapshot(&member)
 	newSnapshot := profileSnapshot(&newMember)
 
-	if !reflect.DeepEqual(oldSnapshot, newSnapshot) {
-		change := models.ProfileChange{
-			MemberID:   member.ID,
-			ChangedAt:  &models.LocalTime{Time: time.Now()},
-			OldName:    memberDisplayName(&member),
-			OldContent: profileSnapshotJSON(oldSnapshot),
-			NewName:    memberDisplayName(&newMember),
-			NewContent: profileSnapshotJSON(newSnapshot),
-			Operator:   member.Username,
-		}
-		return db.DB.Transaction(func(tx *gorm.DB) error {
-			if err := tx.Model(&models.Member{}).Where("id = ?", memberID).Updates(updates).Error; err != nil {
-				return err
-			}
-			return tx.Create(&change).Error
-		})
+	changes := s.collectProfileChanges(oldSnapshot, newSnapshot)
+	if len(changes) == 0 {
+		// Nothing changed; still apply (idempotent) so the API behaves as before.
+		return db.DB.Model(&models.Member{}).Where("id = ?", memberID).Updates(updates).Error
 	}
 
-	// Nothing changed; still apply (idempotent) so the API behaves as before.
-	return db.DB.Model(&models.Member{}).Where("id = ?", memberID).Updates(updates).Error
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.Member{}).Where("id = ?", memberID).Updates(updates).Error; err != nil {
+			return err
+		}
+		for _, c := range changes {
+			rec := models.ProfileChange{
+				MemberID:   member.ID,
+				Username:   member.Username,
+				Name:       c.Name,
+				OldContent: c.OldValue,
+				NewContent: c.NewValue,
+				Operator:   member.Username,
+			}
+			if err := tx.Create(&rec).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// profileFields lists the Chinese titles of tracked profile fields, in a stable order.
+var profileFields = []string{
+	"手机号",
+	"邮箱",
+	"姓名",
+	"身份证号",
+	"单位名称",
+	"组织机构代码证",
+	"法定代表人",
+	"联系人",
+	"联系人职务",
+	"联系人手机号",
+	"所属行业",
+	"成立日期",
+	"注册资本",
+	"员工规模",
+	"经营范围",
+	"邮编",
+	"单位地址",
+	"网站",
+	"简介",
+	"组织机构证",
 }
 
 // profileSnapshot returns the tracked profile fields (excluding password and
@@ -280,13 +307,32 @@ func profileSnapshot(m *models.Member) map[string]interface{} {
 	}
 }
 
-// profileSnapshotJSON serializes a profile snapshot for storage.
-func profileSnapshotJSON(snapshot map[string]interface{}) string {
-	b, err := json.Marshal(snapshot)
-	if err != nil {
+// profileChange is one changed profile field.
+type profileChange struct {
+	Name     string
+	OldValue string
+	NewValue string
+}
+
+// collectProfileChanges returns one entry per tracked field whose value changed.
+func (s *AuthService) collectProfileChanges(oldS, newS map[string]interface{}) []profileChange {
+	var changes []profileChange
+	for _, name := range profileFields {
+		oldV := profileValueString(oldS[name])
+		newV := profileValueString(newS[name])
+		if oldV != newV {
+			changes = append(changes, profileChange{Name: name, OldValue: oldV, NewValue: newV})
+		}
+	}
+	return changes
+}
+
+// profileValueString converts a profile field value to its stored string form.
+func profileValueString(v interface{}) string {
+	if v == nil {
 		return ""
 	}
-	return string(b)
+	return fmt.Sprint(v)
 }
 
 // ChangePassword changes the member password
