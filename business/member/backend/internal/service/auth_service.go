@@ -8,6 +8,7 @@ import (
 	"member/pkg/captcha"
 	"member/pkg/db"
 	mjwt "member/pkg/jwt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -41,6 +42,24 @@ func (s *AuthService) Register(req RegisterRequest) (*LoginResponse, error) {
 		var e models.Member
 		if err := db.DB.Where("email = ?", req.Email).First(&e).Error; err == nil {
 			return nil, errors.New("邮箱已被注册")
+		}
+	}
+
+	// 单位会员：公司名称/统一社会信用代码查重
+	req.CompanyName = strings.TrimSpace(req.CompanyName)
+	req.CreditCode = strings.ToUpper(strings.TrimSpace(req.CreditCode))
+	if req.MemberType == models.MemberTypeUnit {
+		if req.CompanyName != "" {
+			var cn models.Member
+			if err := db.DB.Where("company_name = ?", req.CompanyName).First(&cn).Error; err == nil {
+				return nil, errors.New("该公司名称已存在")
+			}
+		}
+		if req.CreditCode != "" {
+			var cc models.Member
+			if err := db.DB.Where("credit_code = ?", req.CreditCode).First(&cc).Error; err == nil {
+				return nil, errors.New("该统一社会信用代码已存在")
+			}
 		}
 	}
 
@@ -99,12 +118,19 @@ func (s *AuthService) Register(req RegisterRequest) (*LoginResponse, error) {
 }
 
 // CheckExists checks if the given field value is already in use
+// 支持 username/mobile/email/company_name/credit_code（单位会员信息查重）
 func (s *AuthService) CheckExists(field, value string) (bool, error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return false, nil
+	}
 	var count int64
 	query := db.DB.Model(&models.Member{})
 	switch field {
-	case "username", "mobile", "email":
+	case "username", "mobile", "email", "company_name":
 		query = query.Where(field+" = ?", value)
+	case "credit_code":
+		query = query.Where("credit_code = ?", strings.ToUpper(value))
 	default:
 		return false, errors.New("不支持的字段")
 	}
@@ -112,6 +138,38 @@ func (s *AuthService) CheckExists(field, value string) (bool, error) {
 		return false, err
 	}
 	return count > 0, nil
+}
+
+// ensureProfileUnique 校验资料变更后的手机号/邮箱/单位名称/统一社会信用代码
+// 是否已被其他会员占用（排除自己）
+func ensureProfileUnique(memberID uint64, req UpdateProfileRequest) error {
+	type uniqueCheck struct {
+		column  string
+		value   string
+		message string
+	}
+	checks := []uniqueCheck{
+		{"mobile", req.Mobile, "该手机号已被其他用户使用"},
+		{"email", req.Email, "该邮箱已被其他用户使用"},
+		{"company_name", req.CompanyName, "该公司名称已被其他会员使用"},
+		{"credit_code", req.CreditCode, "该统一社会信用代码已被其他会员使用"},
+	}
+	for _, c := range checks {
+		if c.value == "" {
+			continue
+		}
+		var count int64
+		err := db.DB.Model(&models.Member{}).
+			Where(c.column+" = ? AND id <> ?", c.value, memberID).
+			Count(&count).Error
+		if err != nil {
+			return err
+		}
+		if count > 0 {
+			return errors.New(c.message)
+		}
+	}
+	return nil
 }
 
 // Login authenticates a member
@@ -190,6 +248,15 @@ func (s *AuthService) UpdateProfile(memberID uint64, req UpdateProfileRequest) e
 	var member models.Member
 	if err := db.DB.First(&member, memberID).Error; err != nil {
 		return errors.New("会员不存在")
+	}
+
+	// 规范化后查重（排除自己）：手机号/邮箱/单位名称/统一社会信用代码
+	req.Mobile = strings.TrimSpace(req.Mobile)
+	req.Email = strings.TrimSpace(req.Email)
+	req.CompanyName = strings.TrimSpace(req.CompanyName)
+	req.CreditCode = strings.ToUpper(strings.TrimSpace(req.CreditCode))
+	if err := ensureProfileUnique(memberID, req); err != nil {
+		return err
 	}
 
 	updates := map[string]interface{}{
@@ -405,7 +472,7 @@ func (s *AuthService) ResetPassword(token, newPwd string) error {
 // --- Request/Response types ---
 
 type CheckExistsRequest struct {
-	Field string `json:"field" binding:"required,oneof=username mobile email"`
+	Field string `json:"field" binding:"required,oneof=username mobile email company_name credit_code"`
 	Value string `json:"value" binding:"required"`
 }
 

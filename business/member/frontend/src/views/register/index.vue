@@ -394,11 +394,41 @@ const validateCreditCode = (_rule: any, value: string, callback: any) => {
   if (charSet[check] !== code[17]) {
     return callback(new Error('统一社会信用代码校验不通过'))
   }
-  callback()
+  checkCreditCodeAvailable(code, callback)
 }
 
+// 公司名称：必填 + 查重
+const checkCompanyAvailable = debounce(async (value: string, callback: any) => {
+  if (!value) return callback()
+  try {
+    const res = await authApi.checkExists({ field: 'company_name', value })
+    if (res.data.exists) callback(new Error('该公司名称已存在'))
+    else callback()
+  } catch {
+    callback()
+  }
+})
+
+const validateCompanyName = (_rule: any, value: string, callback: any) => {
+  const val = (value || '').trim()
+  if (!val) return callback(new Error('请输入单位名称'))
+  checkCompanyAvailable(val, callback)
+}
+
+// 统一社会信用代码：查重（校验码通过后调用）
+const checkCreditCodeAvailable = debounce(async (value: string, callback: any) => {
+  if (!value) return callback()
+  try {
+    const res = await authApi.checkExists({ field: 'credit_code', value })
+    if (res.data.exists) callback(new Error('该统一社会信用代码已存在'))
+    else callback()
+  } catch {
+    callback()
+  }
+})
+
 const rules2 = {
-  companyName: [{ required: true, message: '请输入单位名称' }],
+  companyName: [{ required: true, validator: validateCompanyName, trigger: 'blur' }],
   creditCode: [{ validator: validateCreditCode, trigger: 'blur' }],
   legalPerson: [{ required: true, message: '请输入法定代表人姓名' }]
 }
@@ -478,8 +508,8 @@ async function handleSubmit() {
     }
     // For unit members, also send company info with registration
     if (form1.memberType === 'unit') {
-      registerData.company_name = form2.companyName
-      registerData.credit_code = form2.creditCode
+      registerData.company_name = form2.companyName.trim()
+      registerData.credit_code = form2.creditCode.trim().toUpperCase()
       registerData.legal_person = form2.legalPerson
       registerData.contact_person = form2.contactPerson
       registerData.contact_mobile = form1.mobile

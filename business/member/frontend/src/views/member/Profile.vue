@@ -20,7 +20,7 @@
 
           <el-col :span="8">
             <template v-if="form.member_type === 'unit'">
-              <el-form-item label="单位名称"><el-input v-model="form.company_name" /></el-form-item>
+              <el-form-item label="单位名称" prop="company_name"><el-input v-model="form.company_name" /></el-form-item>
               <el-form-item label="组织机构代码证" prop="credit_code"><el-input v-model="form.credit_code" maxlength="18" placeholder="统一社会信用代码" /></el-form-item>
               <el-form-item label="法定代表人"><el-input v-model="form.legal_person" /></el-form-item>
               <el-form-item label="所属行业"><el-input v-model="form.industry" placeholder="如：电气机械制造" /></el-form-item>
@@ -157,6 +157,37 @@ const validateEmail = (_rule: any, value: string, callback: any) => {
   checkEmailAvailable(value, callback)
 }
 
+// 单位名称：查重（未改动时跳过，避免误报自己）
+const checkCompanyAvailable = debounce(async (value: string, callback: any) => {
+  if (!value) return callback()
+  try {
+    const res = await authApi.checkExists({ field: 'company_name', value })
+    if (res.data.exists) callback(new Error('该公司名称已被其他会员使用'))
+    else callback()
+  } catch {
+    callback()
+  }
+})
+
+const validateCompanyName = (_rule: any, value: string, callback: any) => {
+  const val = (value || '').trim()
+  if (!val) return callback()
+  if (val === (original.company_name || '')) return callback()
+  checkCompanyAvailable(val, callback)
+}
+
+// 统一社会信用代码：查重（校验码通过后调用，未改动时跳过）
+const checkCreditCodeAvailable = debounce(async (value: string, callback: any) => {
+  if (!value) return callback()
+  try {
+    const res = await authApi.checkExists({ field: 'credit_code', value })
+    if (res.data.exists) callback(new Error('该统一社会信用代码已被其他会员使用'))
+    else callback()
+  } catch {
+    callback()
+  }
+})
+
 // 统一社会信用代码合法性校验（GB 32100-2015：18位，含校验码算法），与注册页面一致
 const validateCreditCode = (_rule: any, value: string, callback: any) => {
   if (!value) return callback(new Error('请输入统一社会信用代码'))
@@ -176,7 +207,8 @@ const validateCreditCode = (_rule: any, value: string, callback: any) => {
   if (charSet[check] !== code[17]) {
     return callback(new Error('统一社会信用代码校验不通过'))
   }
-  callback()
+  if (code === (original.credit_code || '').toUpperCase()) return callback()
+  checkCreditCodeAvailable(code, callback)
 }
 
 // 身份证号校验（18位，出生日期 + 校验码）
@@ -208,6 +240,7 @@ const validateIdCard = (_rule: any, value: string, callback: any) => {
 const rules = {
   mobile: [{ validator: validateMobile, trigger: 'blur' }],
   email: [{ validator: validateEmail, trigger: 'blur' }],
+  company_name: [{ validator: validateCompanyName, trigger: 'blur' }],
   id_card: [{ validator: validateIdCard, trigger: 'blur' }],
   credit_code: [{ validator: validateCreditCode, trigger: 'blur' }]
 }
@@ -236,6 +269,11 @@ async function saveProfile() {
   if (!valid) return
   saving.value = true
   try {
+    // 规范化后再提交（与注册/新增会员一致）
+    form.mobile = (form.mobile || '').trim()
+    form.email = (form.email || '').trim()
+    if (form.company_name) form.company_name = form.company_name.trim()
+    if (form.credit_code) form.credit_code = form.credit_code.trim().toUpperCase()
     await authApi.updateProfile(form)
     Object.assign(original, form)
     ElMessage.success('保存成功')
