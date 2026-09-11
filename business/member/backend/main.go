@@ -58,6 +58,9 @@ func main() {
 	// 软删 -> 硬删 收尾：物理清除历史软删记录并删除已无用的 deleted_at 列
 	db.PurgeSoftDeleted()
 
+	// 清理已废弃的 ensureRootOrgMembership 遗留的“总会 member_user_orgs”脏数据
+	db.CleanupLegacyRootOrgMembership()
+
 	// Seed default data
 	seed.Run()
 

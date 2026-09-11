@@ -85,3 +85,47 @@ func PurgeSoftDeleted() {
 	}
 	log.Printf("PurgeSoftDeleted: 已处理 %d/%d 张表（软删记录已物理清除）", processed, len(rows))
 }
+
+// CleanupLegacyRootOrgMembership 清理历史遗留的“总会 member_user_orgs”脏数据。
+//
+// 背景：已删除的 FeeService.ensureRootOrgMembership 曾在“分会/代表机构费用确认”时
+// 往 member_user_orgs 补写一条总会记录，违背“总会只写费用记录、不写 member_user_orgs”的约定。
+// 新流程不再产生此类数据，此函数负责清理历史残留。
+//
+// 判定条件（精确匹配该函数当年写入的行）：
+//   - 记录指向的机构是根组织（member_organizations.parent_id = 0）；
+//   - 该会员存在一条“已缴费”且机构为非根组织的费用记录（即当年触发补偿的分会费用）；
+//   - 该会员没有指向该总会的已通过入会申请（当年该函数遇到这种情况会跳过）。
+//
+// 幂等：执行一次后不再有匹配行，重复启动不会重复删除。失败仅记录日志，不影响启动。
+func CleanupLegacyRootOrgMembership() {
+	const cond = `
+		FROM member_user_orgs mo
+		JOIN member_organizations o ON o.id = mo.org_id
+		WHERE o.parent_id = 0
+		  AND NOT EXISTS (
+			SELECT 1 FROM member_applications a
+			WHERE a.member_id = mo.member_id AND a.org_id = mo.org_id AND a.status = 'approved'
+		  )
+		  AND EXISTS (
+			SELECT 1 FROM member_fee_records f
+			JOIN member_organizations fo ON fo.id = f.org_id
+			WHERE f.member_id = mo.member_id AND f.status = 'paid' AND fo.parent_id <> 0
+		  )`
+
+	var count int64
+	if err := DB.Raw("SELECT COUNT(*) " + cond).Scan(&count).Error; err != nil {
+		log.Printf("CleanupLegacyRootOrgMembership: 统计失败: %v", err)
+		return
+	}
+	if count == 0 {
+		return
+	}
+
+	res := DB.Exec("DELETE mo " + cond)
+	if res.Error != nil {
+		log.Printf("CleanupLegacyRootOrgMembership: 清理失败: %v", res.Error)
+		return
+	}
+	log.Printf("CleanupLegacyRootOrgMembership: 已清理 %d 条遗留的总会 member_user_orgs 记录", res.RowsAffected)
+}
