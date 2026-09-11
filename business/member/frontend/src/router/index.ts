@@ -95,7 +95,7 @@ const router = createRouter({
   ]
 })
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const userStore = useUserStore()
 
   if (to.meta.public) {
@@ -108,7 +108,20 @@ router.beforeEach((to, _from, next) => {
     return
   }
 
-  if (to.meta.admin && userStore.userInfo !== null && !userStore.isAdmin) {
+  // userInfo 不持久化，刷新后需重新拉取，否则用户名显示、会员状态
+  // （如证书下载）以及管理员守卫都会失效
+  if (!userStore.userInfo) {
+    try {
+      await userStore.fetchUserInfo()
+    } catch {
+      userStore.token = ''
+      localStorage.removeItem('member-token')
+      next('/login')
+      return
+    }
+  }
+
+  if (to.meta.admin && !userStore.isAdmin) {
     next('/member/dashboard')
     return
   }

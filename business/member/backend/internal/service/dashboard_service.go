@@ -91,8 +91,9 @@ func (s *DashboardService) GetMemberDashboard(memberID uint64) (*MemberDashboard
 	fs := &FeeSummary{}
 	db.DB.Model(&models.FeeRecord{}).Where("member_id = ? AND status = ?", memberID, models.FeeStatusPaid).Count(&fs.PaidCount)
 	db.DB.Model(&models.FeeRecord{}).Where("member_id = ? AND status = ?", memberID, models.FeeStatusUnpaid).Count(&fs.UnpaidCount)
+	// 累计缴费按“实缴金额”统计：免缴记录 amount 为应缴标准但未实际缴费
 	db.DB.Model(&models.FeeRecord{}).Where("member_id = ? AND status = ?", memberID, models.FeeStatusPaid).
-		Select("COALESCE(SUM(amount), 0)").Scan(&fs.TotalPaid)
+		Select("COALESCE(SUM(paid_amount), 0)").Scan(&fs.TotalPaid)
 	dash.FeeSummary = fs
 
 	// Latest paid fee level — level name from the newest (most recent year) paid fee record

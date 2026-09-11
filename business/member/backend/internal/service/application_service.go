@@ -22,6 +22,13 @@ func (s *ApplicationService) CreateApplication(memberID uint64, req CreateAppReq
 		return nil, errors.New("您已有进行中的入会申请")
 	}
 
+	// 载入会员：正式会员（active）再次申请加入其它机构时不改变其会员状态，
+	// 仅对尚未成为正式会员的账号推进为“待审核”，避免申请把正式会员降级。
+	var member models.Member
+	if err := db.DB.First(&member, memberID).Error; err != nil {
+		return nil, errors.New("会员不存在")
+	}
+
 	app := models.Application{
 		MemberID:   memberID,
 		OrgID:      req.OrgID,
@@ -35,8 +42,9 @@ func (s *ApplicationService) CreateApplication(memberID uint64, req CreateAppReq
 
 	// Update member status to pending review
 	// Only update fields actually provided; preserve member_type, legal_person, member_level
-	updates := map[string]interface{}{
-		"status": models.MemberStatusPendingReview,
+	updates := map[string]interface{}{}
+	if member.Status != models.MemberStatusActive {
+		updates["status"] = models.MemberStatusPendingReview
 	}
 	if req.CompanyName != "" {
 		updates["company_name"] = req.CompanyName
@@ -50,7 +58,9 @@ func (s *ApplicationService) CreateApplication(memberID uint64, req CreateAppReq
 	if req.Address != "" {
 		updates["address"] = req.Address
 	}
-	db.DB.Model(&models.Member{}).Where("id = ?", memberID).Updates(updates)
+	if len(updates) > 0 {
+		db.DB.Model(&models.Member{}).Where("id = ?", memberID).Updates(updates)
+	}
 
 	return &app, nil
 }
@@ -143,11 +153,18 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 		return err
 	}
 
-	// Update member status
-	if err := tx.Model(&models.Member{}).Where("id = ?", app.MemberID).
-		Update("status", newMemberStatus).Error; err != nil {
+	// Update member status — 正式会员不因新的入会申请审批而改变状态
+	var member models.Member
+	if err := tx.First(&member, app.MemberID).Error; err != nil {
 		tx.Rollback()
-		return err
+		return errors.New("会员不存在")
+	}
+	if member.Status != models.MemberStatusActive {
+		if err := tx.Model(&models.Member{}).Where("id = ?", app.MemberID).
+			Update("status", newMemberStatus).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
 	}
 
 	// 审批通过：会员自动加入总会（一级组织，parent_id = 0）。

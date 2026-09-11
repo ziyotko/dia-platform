@@ -4,6 +4,7 @@ import (
 	"errors"
 	"member/internal/models"
 	"member/pkg/db"
+	"strconv"
 
 	"gorm.io/gorm"
 )
@@ -57,21 +58,47 @@ func (s *MemberLevelService) Update(id uint64, req MemberLevelRequest) error {
 	}).Error
 }
 
-// Delete deletes a member level
+// Delete deletes a member level.
+// 会员等级 ID 以字符串形式保存在 member_users.member_level 中，
+// 会费记录/证书/机构等级配置/证书模板也通过 level_id 引用该等级，
+// 删除前必须校验是否仍被占用，避免产生悬空引用。
 func (s *MemberLevelService) Delete(id uint64) error {
-	// Check no members are using this level
-	var count int64
-	db.DB.Model(&models.Member{}).Where("member_level = ?",
-		db.DB.Table("member_levels").Select("name").Where("id = ?", id)).Count(&count)
-	// Actually get the level name first
 	var l models.MemberLevel
 	if err := db.DB.First(&l, id).Error; err != nil {
 		return errors.New("会员等级不存在")
 	}
-	db.DB.Model(&models.Member{}).Where("member_level = ?", l.Name).Count(&count)
-	if count > 0 {
+
+	// 1) 会员正在使用该等级（member_level 存的是等级 ID 字符串）
+	var memberCount int64
+	if err := db.DB.Model(&models.Member{}).
+		Where("member_level = ?", strconv.FormatUint(l.ID, 10)).
+		Count(&memberCount).Error; err != nil {
+		return err
+	}
+	if memberCount > 0 {
 		return errors.New("该等级下有会员，无法删除")
 	}
+
+	// 2) 其它引用该等级的记录
+	refs := []struct {
+		model interface{}
+		msg   string
+	}{
+		{&models.FeeRecord{}, "该等级已被会费记录使用，无法删除"},
+		{&models.Certificate{}, "该等级已被会员证书使用，无法删除"},
+		{&models.MemberOrgLevel{}, "该等级已被机构等级配置使用，无法删除"},
+		{&models.MemberCertificateTemplate{}, "该等级已被证书模板使用，无法删除"},
+	}
+	for _, r := range refs {
+		var cnt int64
+		if err := db.DB.Model(r.model).Where("level_id = ?", l.ID).Count(&cnt).Error; err != nil {
+			return err
+		}
+		if cnt > 0 {
+			return errors.New(r.msg)
+		}
+	}
+
 	return db.DB.Delete(&models.MemberLevel{}, id).Error
 }
 
