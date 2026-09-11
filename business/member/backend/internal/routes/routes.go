@@ -35,6 +35,7 @@ func Register(r *gin.Engine) {
 	dashCtrl := controllers.DashboardController{}
 	certTplCtrl := controllers.CertificateTemplateController{}
 	sysConfigCtrl := controllers.SystemConfigController{}
+	opLogCtrl := controllers.OperationLogController{}
 
 	// === Public routes (no auth) ===
 	public := r.Group(prefix)
@@ -124,7 +125,7 @@ func Register(r *gin.Engine) {
 
 	// === Admin routes (auth + admin role) ===
 	admin := r.Group(prefix)
-	admin.Use(middleware.Auth(), middleware.AdminOnly())
+	admin.Use(middleware.Auth(), middleware.AdminOnly(), middleware.OperationLog())
 	{
 		// Member management
 		admin.GET("/admin/members", memberCtrl.ListMembers)
@@ -209,5 +210,8 @@ func Register(r *gin.Engine) {
 		admin.POST("/admin/system-configs", sysConfigCtrl.Create)
 		admin.PUT("/admin/system-configs/:id", sysConfigCtrl.Update)
 		admin.DELETE("/admin/system-configs/:id", sysConfigCtrl.Delete)
+
+		// Operation logs
+		admin.GET("/admin/operation-logs", opLogCtrl.List)
 	}
 }

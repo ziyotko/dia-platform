@@ -88,6 +88,7 @@ const router = createRouter({
         { path: 'articles', name: 'AdminArticles', meta: { title: '文章管理' }, component: () => import('@/views/admin/Articles.vue') },
         { path: 'announcements', name: 'AdminAnnouncements', meta: { title: '公告管理' }, component: () => import('@/views/admin/Announcements.vue') },
         { path: 'system-config', name: 'AdminSystemConfig', meta: { title: '系统管理' }, component: () => import('@/views/admin/SystemConfig.vue') },
+        { path: 'operation-logs', name: 'AdminOperationLogs', meta: { title: '操作日志' }, component: () => import('@/views/admin/OperationLogs.vue') },
         { path: 'profile', name: 'AdminProfile', meta: { title: '我的资料' }, component: () => import('@/views/admin/Profile.vue') }
       ]
     },

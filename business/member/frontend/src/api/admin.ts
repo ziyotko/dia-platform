@@ -77,5 +77,8 @@ export const adminApi = {
   getSystemConfigs: () => request.get('/admin/system-configs'),
   createSystemConfig: (data: { key: string; value: string; description?: string }) => request.post('/admin/system-configs', data),
   updateSystemConfig: (id: number, data: { key?: string; value?: string; description?: string }) => request.put(`/admin/system-configs/${id}`, data),
-  deleteSystemConfig: (id: number) => request.delete(`/admin/system-configs/${id}`)
+  deleteSystemConfig: (id: number) => request.delete(`/admin/system-configs/${id}`),
+
+  // Operation logs
+  getOperationLogs: (params?: any) => request.get('/admin/operation-logs', { params })
 }

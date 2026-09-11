@@ -30,6 +30,7 @@
         <el-menu-item index="/admin/profile"><el-icon><User /></el-icon><span>我的资料</span></el-menu-item>
         <el-menu-item index="/admin/member-level-changes"><el-icon><Switch /></el-icon><span>会籍记录</span></el-menu-item>
         <el-menu-item index="/admin/profile-changes"><el-icon><EditPen /></el-icon><span>资料记录</span></el-menu-item>
+        <el-menu-item index="/admin/operation-logs"><el-icon><Tickets /></el-icon><span>操作日志</span></el-menu-item>
       </el-menu>
     </el-aside>
     <el-container>

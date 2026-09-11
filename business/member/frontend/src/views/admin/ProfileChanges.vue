@@ -131,7 +131,7 @@ function displayName(m: any) {
   return m.member_type === 'unit' ? (m.company_name || m.username || '-') : (m.name || m.username || '-')
 }
 function initial(m: any) { return ((displayName(m) || '?').trim()[0] || '?').toUpperCase() }
-function fmt(d: string) { return d ? d.replace('T', ' ').slice(0, 19) : '-' }
+function fmt(d: string) { return d ? d.replace('T', ' ').slice(0, 16) : '-' }
 function fileUrl(path?: string) {
   if (!path) return ''
   if (/^https?:\/\//i.test(path)) return path
