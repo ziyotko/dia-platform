@@ -125,7 +125,7 @@ func (c *AuthController) GetProfile(ctx *gin.Context) {
 	userID := ctx.GetUint("userID")
 	user, err := c.userService.GetUserByID(userID)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SafeErrText(err)))
 		return
 	}
 
@@ -170,13 +170,13 @@ func (c *AuthController) UpdateProfile(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 
 	err := c.userService.UpdateProfile(userID, req.Email, req.Phone, req.Bio, req.Avatar)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "更新失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("更新失败", err)))
 		return
 	}
 
@@ -191,7 +191,7 @@ func (c *AuthController) ChangePassword(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 
@@ -209,7 +209,7 @@ func (c *AuthController) ChangePassword(ctx *gin.Context) {
 
 	err = c.userService.ChangePassword(userID, req.OldPassword, req.NewPassword)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SafeErrText(err)))
 		return
 	}
 

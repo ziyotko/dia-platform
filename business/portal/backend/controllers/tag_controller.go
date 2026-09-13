@@ -67,12 +67,12 @@ func (c *TagController) GetAllTags(ctx *gin.Context) {
 func (c *TagController) CreateTag(ctx *gin.Context) {
 	var req models.Tag
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 	err := c.tagService.CreateTag(&req)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "创建标签失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("创建标签失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("创建标签成功", nil))
@@ -87,12 +87,12 @@ func (c *TagController) UpdateTag(ctx *gin.Context) {
 	}
 	var req models.Tag
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 	err = c.tagService.UpdateTag(uint(id), &req)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "更新标签失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("更新标签失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("更新标签成功", nil))
@@ -129,7 +129,7 @@ func (c *TagController) DeleteTag(ctx *gin.Context) {
 	}
 	err = c.tagService.DeleteTag(uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "删除标签失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("删除标签失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("删除标签成功", nil))

@@ -140,8 +140,12 @@ func (s *UserService) GetUserList(page, pageSize int, username, account string, 
 		return nil, err
 	}
 
-	offset := (page - 1) * pageSize
-	err = query.Order("id DESC").Offset(offset).Limit(pageSize).Find(&users).Error
+	// pageSize <= 0 表示不限制（用于下拉选项等需要全量的场景），避免数据量超过分页上限时被静默截断
+	listQuery := query.Order("id DESC")
+	if pageSize > 0 {
+		listQuery = listQuery.Offset((page - 1) * pageSize).Limit(pageSize)
+	}
+	err = listQuery.Find(&users).Error
 	if err != nil {
 		return nil, err
 	}

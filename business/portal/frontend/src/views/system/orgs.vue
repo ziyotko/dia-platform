@@ -392,7 +392,7 @@ import {
   createDepartment,
   type DepartmentForm
 } from '@/api/department'
-import { getUserList } from '@/api/user'
+import { getAllUsers } from '@/api/user'
 
 interface UserItem {
   id: number
@@ -832,7 +832,7 @@ watch(userSearch, () => {
 
 const fetchDialogUsers = async () => {
   try {
-    const res: any = await getUserList({ page: 1, pageSize: 1000, status: 1 })
+    const res: any = await getAllUsers(1)
     if (res && res.code === 0) {
       dialogUserOptions.value = (res.data.list || []).map((u: any) => ({
         id: u.id,
@@ -858,7 +858,7 @@ const handleAssignUsers = async (row: OrgItem) => {
   userOptions.value = []
   try {
     const [usersRes, orgUsersRes]: any[] = await Promise.all([
-      getUserList({ page: 1, pageSize: 1000 }),
+      getAllUsers(),
       getOrgUsers(row.id)
     ])
     const allUsers = usersRes?.data?.list || []

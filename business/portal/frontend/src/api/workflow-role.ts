@@ -5,6 +5,7 @@ export interface WorkflowRoleQuery {
   pageSize?: number
   name?: string
   status?: number
+  all?: boolean
 }
 
 export interface WorkflowRoleForm {
@@ -17,6 +18,11 @@ export interface WorkflowRoleForm {
 
 export function getWorkflowRoleList(params: WorkflowRoleQuery) {
   return request.get('/workflow-roles', { params })
+}
+
+/** 获取全部流程角色（供审批人下拉使用，不分页） */
+export function getAllWorkflowRoles(status?: number) {
+  return request.get('/workflow-roles', { params: { all: 1, status } })
 }
 
 export function getWorkflowRoleById(id: number) {

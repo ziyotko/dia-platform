@@ -73,13 +73,13 @@ func (c *SettingsController) UpdateSettings(ctx *gin.Context) {
 	// 解析请求体中实际包含的字段，只更新这些字段，避免覆盖表中其他设置项
 	var raw map[string]json.RawMessage
 	if err := json.Unmarshal(body, &raw); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 
 	var req models.Setting
 	if err := json.Unmarshal(body, &req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 
@@ -90,7 +90,7 @@ func (c *SettingsController) UpdateSettings(ctx *gin.Context) {
 	}
 
 	if err := c.settingsService.UpdateSettings(&req, fields...); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "保存设置失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("保存设置失败", err)))
 		return
 	}
 

@@ -312,7 +312,7 @@ import {
   assignDepartmentUsers,
   importDepartments
 } from '@/api/department'
-import { getUserList } from '@/api/user'
+import { getAllUsers } from '@/api/user'
 import { getOrgTree, getOrgUsers, type OrgItem } from '@/api/org'
 
 interface DeptItem {
@@ -631,7 +631,10 @@ const handleImportSubmit = async () => {
       const data = res.data || {}
       ElMessage.success(`导入完成，成功 ${data.successCount || 0} 条，失败 ${data.failCount || 0} 条`)
       if (data.failDetails && data.failDetails.length > 0) {
-        console.warn('导入失败详情:', data.failDetails)
+        ElMessageBox.alert(data.failDetails.join('\n'), '导入失败详情', {
+          confirmButtonText: '知道了',
+          customStyle: { whiteSpace: 'pre-line', maxHeight: '60vh', overflow: 'auto' }
+        })
       }
       importDialogVisible.value = false
       fetchData()
@@ -675,7 +678,7 @@ const handleViewUsers = async (row: DeptItem) => {
   viewUserOptions.value = []
   try {
     const [usersRes, deptUsersRes]: any[] = await Promise.all([
-      getUserList({ page: 1, pageSize: 1000 }),
+      getAllUsers(),
       getDepartmentUsers(row.id)
     ])
     const allUsers = usersRes?.data?.list || []
@@ -699,7 +702,7 @@ const handleViewUsers = async (row: DeptItem) => {
 
 const fetchDialogUsers = async () => {
   try {
-    const res: any = await getUserList({ page: 1, pageSize: 1000, status: 1 })
+    const res: any = await getAllUsers(1)
     if (res && res.code === 0) {
       allDialogUsers.value = (res.data.list || []).map((u: any) => ({
         id: u.id,
@@ -746,7 +749,7 @@ const handleAssignUsers = async (row: DeptItem) => {
   selectedUserIds.value = []
   try {
     const [usersRes, orgUsersRes, deptUsersRes]: any[] = await Promise.all([
-      getUserList({ page: 1, pageSize: 1000 }),
+      getAllUsers(),
       getOrgUsers(row.orgId),
       getDepartmentUsers(row.id)
     ])

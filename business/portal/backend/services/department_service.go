@@ -174,6 +174,9 @@ func (s *DepartmentService) ImportDepartments(file multipart.File, fileSize int6
 }
 
 func (s *DepartmentService) UpdateDepartment(id uint, dept *models.Department) error {
+	if err := validateTreeParent("department", id, dept.ParentID); err != nil {
+		return err
+	}
 	return utils.DB.Model(&models.Department{}).Where("id = ?", id).UpdateColumns(map[string]any{
 		"parent_id":   dept.ParentID,
 		"org_id":      dept.OrgID,

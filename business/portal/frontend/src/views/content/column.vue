@@ -343,8 +343,8 @@ import {
   updateColumn,
   deleteColumn
 } from '@/api/column'
-import { getTemplateList } from '@/api/template'
-import { getWorkflows } from '@/api/workflow'
+import { getAllTemplates } from '@/api/template'
+import { getAllWorkflows } from '@/api/workflow'
 import pinyin from 'js-pinyin'
 
 interface PageItem {
@@ -463,7 +463,7 @@ const workflowList = ref<any[]>([])
 
 const fetchWorkflows = async () => {
   try {
-    const res: any = await getWorkflows({ pageSize: 1000 })
+    const res: any = await getAllWorkflows()
     workflowList.value = (res.data.list || []).filter((w: any) => w.status === 1)
   } catch (error) {
     ElMessage.error('获取流程列表失败')
@@ -572,7 +572,7 @@ const fetchData = async () => {
 
 const fetchTemplates = async () => {
   try {
-    const res: any = await getTemplateList({ pageSize: 100 })
+    const res: any = await getAllTemplates()
     templateList.value = res.data.list || []
   } catch (error) {
     ElMessage.error('获取模板列表失败')

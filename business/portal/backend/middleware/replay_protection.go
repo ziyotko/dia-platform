@@ -174,12 +174,12 @@ func ReplayProtectionMiddleware() gin.HandlerFunc {
 // verifyMultipartBodyHash 重算 multipart 请求体中各文件内容（按上传顺序拼接）的 SHA-256，
 // 与客户端上报的 X-Body-Hash-Value 比对，从而对上传文件内容提供真实的完整性校验。
 //
-// 为避免超大视频整体读入内存，仅当 Content-Length 已知且不超过 maxMultipartHashVerify 时执行；
-// 否则返回 true（跳过），此时仍依赖签名绑定声明哈希 + 控制器层的文件类型/大小校验。
+// 规则：
+//   - Content-Length 未知或超过 maxMultipartHashVerify 时跳过（超大文件无法在内存中重算），
+//     此时仍依赖签名绑定声明哈希 + 控制器层的文件类型/大小校验；
+//   - 仅含普通字段、不含文件的 multipart 直接放行（无内容可校验）；
+//   - 含文件但未上报 X-Body-Hash-Value 时**拒绝**，防止客户端“降级”跳过文件完整性校验。
 func verifyMultipartBodyHash(c *gin.Context, declared string) bool {
-	if declared == "" {
-		return true
-	}
 	if cl := c.Request.ContentLength; cl == -1 || cl > maxMultipartHashVerify {
 		return true
 	}
@@ -197,6 +197,7 @@ func verifyMultipartBodyHash(c *gin.Context, declared string) bool {
 	}
 
 	h := sha256.New()
+	hasFile := false
 	reader := multipart.NewReader(bytes.NewReader(bodyBytes), params["boundary"])
 	for {
 		part, err := reader.NextPart()
@@ -208,6 +209,7 @@ func verifyMultipartBodyHash(c *gin.Context, declared string) bool {
 		}
 		// 仅对文件部分（含 filename）计算内容哈希，与前端 FormData 顺序保持一致
 		if part.FileName() != "" {
+			hasFile = true
 			if _, err := io.Copy(h, part); err != nil {
 				return false
 			}
@@ -215,5 +217,13 @@ func verifyMultipartBodyHash(c *gin.Context, declared string) bool {
 		part.Close()
 	}
 
+	// 无文件的 multipart：无内容可校验，放行
+	if !hasFile {
+		return true
+	}
+	// 含文件但缺失声明哈希：拒绝，避免通过不带上报头绕过内容校验
+	if declared == "" {
+		return false
+	}
 	return hex.EncodeToString(h.Sum(nil)) == declared
 }

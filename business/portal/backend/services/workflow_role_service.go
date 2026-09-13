@@ -15,7 +15,7 @@ type WorkflowRoleListResult struct {
 	List  []models.WorkflowRole `json:"list"`
 }
 
-func (s *WorkflowRoleService) GetWorkflowRoleList(page, pageSize int, name string) (*WorkflowRoleListResult, error) {
+func (s *WorkflowRoleService) GetWorkflowRoleList(page, pageSize int, name string, status *int) (*WorkflowRoleListResult, error) {
 	var roles []models.WorkflowRole
 	var total int64
 
@@ -23,14 +23,21 @@ func (s *WorkflowRoleService) GetWorkflowRoleList(page, pageSize int, name strin
 	if name != "" {
 		query = query.Where("name LIKE ?", "%"+name+"%")
 	}
+	if status != nil {
+		query = query.Where("status = ?", *status)
+	}
 
 	err := query.Count(&total).Error
 	if err != nil {
 		return nil, err
 	}
 
-	offset := (page - 1) * pageSize
-	err = query.Order("id ASC").Offset(offset).Limit(pageSize).Find(&roles).Error
+	// pageSize <= 0 表示不限制（供下拉选项使用，避免被分页截断）
+	listQuery := query.Order("id ASC")
+	if pageSize > 0 {
+		listQuery = listQuery.Offset((page - 1) * pageSize).Limit(pageSize)
+	}
+	err = listQuery.Find(&roles).Error
 	if err != nil {
 		return nil, err
 	}

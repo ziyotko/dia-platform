@@ -115,7 +115,6 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 			"title":        a.Title,
 			"type":         a.Type,
 			"summary":      a.Summary,
-			"content":      a.Content,
 			"status":       a.Status,
 			"auditStatus":  a.AuditStatus,
 			"isTop":        a.IsTop,
@@ -304,7 +303,7 @@ func (c *ArticleController) CreateArticle(ctx *gin.Context) {
 		CategoryIds []uint `json:"categoryIds"`
 	}
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 
@@ -317,7 +316,7 @@ func (c *ArticleController) CreateArticle(ctx *gin.Context) {
 
 	err = c.articleService.CreateArticle(&req.Article, req.TagIds, req.CategoryIds)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "创建文章失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("创建文章失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("创建文章成功", nil))
@@ -336,7 +335,7 @@ func (c *ArticleController) UpdateArticle(ctx *gin.Context) {
 		CategoryIds []uint `json:"categoryIds"`
 	}
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 
@@ -358,7 +357,7 @@ func (c *ArticleController) UpdateArticle(ctx *gin.Context) {
 
 	err = c.articleService.UpdateArticle(uint(id), &req.Article, req.TagIds, req.CategoryIds)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "更新文章失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("更新文章失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("更新文章成功", nil))
@@ -428,7 +427,7 @@ func (c *ArticleController) RestartArticleAudit(ctx *gin.Context) {
 	}
 	err = c.articleService.RestartArticleAudit(uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SafeErrText(err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("重新提交审核成功", nil))
@@ -453,7 +452,7 @@ func (c *ArticleController) WithdrawArticleAudit(ctx *gin.Context) {
 	}
 	err = c.articleService.WithdrawArticleAudit(uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SafeErrText(err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("撤回审核成功", nil))
@@ -567,7 +566,7 @@ func (c *ArticleController) AdvanceArticleAudit(ctx *gin.Context) {
 	userID := ctx.GetUint("userID")
 	err = c.articleService.AdvanceArticleAudit(uint(id), req.ColumnID, userID, req.Remark)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SafeErrText(err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("推进审核成功", nil))
@@ -591,7 +590,7 @@ func (c *ArticleController) RejectArticleAudit(ctx *gin.Context) {
 	userID := ctx.GetUint("userID")
 	err = c.articleService.RejectArticleAudit(uint(id), req.ColumnID, userID, req.Remark)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SafeErrText(err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("驳回审核成功", nil))
@@ -671,7 +670,7 @@ func (c *ArticleController) DeleteArticle(ctx *gin.Context) {
 	}
 	err = c.articleService.DeleteArticle(uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "删除文章失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("删除文章失败", err)))
 		return
 	}
 

@@ -23,11 +23,12 @@ func (s *WorkflowService) GetWorkflows(name string, page int, pageSize int) ([]m
 	if page < 1 {
 		page = 1
 	}
-	if pageSize < 1 {
-		pageSize = 10
+	// pageSize <= 0 表示不限制（供下拉选项使用，避免被分页截断）
+	listQuery := query.Preload("Nodes").Order("id DESC")
+	if pageSize > 0 {
+		listQuery = listQuery.Limit(pageSize).Offset((page - 1) * pageSize)
 	}
-	offset := (page - 1) * pageSize
-	err = query.Preload("Nodes").Order("id DESC").Limit(pageSize).Offset(offset).Find(&workflows).Error
+	err = listQuery.Find(&workflows).Error
 	return workflows, total, err
 }
 

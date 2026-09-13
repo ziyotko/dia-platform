@@ -49,12 +49,12 @@ func (c *PageController) GetPages(ctx *gin.Context) {
 func (c *PageController) CreatePage(ctx *gin.Context) {
 	var req models.Page
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 	err := c.pageService.CreatePage(&req)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "创建页面失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("创建页面失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("创建页面成功", nil))
@@ -69,12 +69,12 @@ func (c *PageController) UpdatePage(ctx *gin.Context) {
 	}
 	var req models.Page
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 	err = c.pageService.UpdatePage(uint(id), &req)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "更新页面失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("更新页面失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("更新页面成功", nil))
@@ -93,7 +93,7 @@ func (c *PageController) DeletePage(ctx *gin.Context) {
 			ctx.JSON(http.StatusOK, utils.Error(1, "该页面下存在已发布文章的栏目，无法直接删除，请先解除关联"))
 			return
 		}
-		ctx.JSON(http.StatusOK, utils.Error(1, "删除页面失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("删除页面失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("删除页面成功", nil))

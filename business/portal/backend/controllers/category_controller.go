@@ -67,12 +67,12 @@ func (c *CategoryController) GetAllCategories(ctx *gin.Context) {
 func (c *CategoryController) CreateCategory(ctx *gin.Context) {
 	var req models.Category
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 	err := c.categoryService.CreateCategory(&req)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "创建分类失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("创建分类失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("创建分类成功", nil))
@@ -87,12 +87,12 @@ func (c *CategoryController) UpdateCategory(ctx *gin.Context) {
 	}
 	var req models.Category
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 	err = c.categoryService.UpdateCategory(uint(id), &req)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "更新分类失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("更新分类失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("更新分类成功", nil))
@@ -129,7 +129,7 @@ func (c *CategoryController) DeleteCategory(ctx *gin.Context) {
 	}
 	err = c.categoryService.DeleteCategory(uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "删除分类失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("删除分类失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("删除分类成功", nil))

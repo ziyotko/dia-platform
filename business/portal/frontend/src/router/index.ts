@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { devWarn } from '@/utils/logger'
 import type { MenuItem } from '@/api/menus'
 
 // 预加载所有视图组件（供动态路由匹配使用）
@@ -54,7 +55,7 @@ function loadComponent(componentPath: string) {
   const module = componentModules[path] || componentModulesAlias[path] || componentModules[aliasPath] || componentModulesAlias[aliasPath]
 
   if (!module) {
-    console.warn(`[动态路由] 组件未找到: ${componentPath} (尝试: ${path}, ${aliasPath})`)
+    devWarn(`[动态路由] 组件未找到: ${componentPath} (尝试: ${path}, ${aliasPath})`)
     return undefined
   }
   return module as () => Promise<any>

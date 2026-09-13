@@ -240,8 +240,8 @@ import {
   ArrowDown,
   Bottom
 } from '@element-plus/icons-vue'
-import { getUserList } from '@/api/user'
-import { getWorkflowRoleList } from '@/api/workflow-role'
+import { getAllUsers } from '@/api/user'
+import { getAllWorkflowRoles } from '@/api/workflow-role'
 import {
   getWorkflows,
   createWorkflow,
@@ -314,20 +314,16 @@ const fetchData = async () => {
 
 const fetchUsers = async () => {
   try {
-    const res: any = await getUserList({ page: 1, pageSize: 1000, status: 1 })
+    const res: any = await getAllUsers(1)
     userList.value = res.data?.list || []
   } catch {
-    userList.value = [
-      { id: 1, username: 'admin' },
-      { id: 2, username: 'editor' },
-      { id: 3, username: 'reviewer' }
-    ]
+    userList.value = []
   }
 }
 
 const fetchWorkflowRoles = async () => {
   try {
-    const res: any = await getWorkflowRoleList({ page: 1, pageSize: 9999, status: 1 })
+    const res: any = await getAllWorkflowRoles(1)
     workflowRoleList.value = res.data?.list || []
   } catch {
     workflowRoleList.value = []

@@ -66,7 +66,7 @@ func (c *RoleController) GetRoleByID(ctx *gin.Context) {
 
 	role, err := c.roleService.GetRoleByID(uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SafeErrText(err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("获取角色成功", role))
@@ -75,11 +75,11 @@ func (c *RoleController) GetRoleByID(ctx *gin.Context) {
 func (c *RoleController) CreateRole(ctx *gin.Context) {
 	var req models.Role
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 	if err := c.roleService.CreateRole(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "创建角色失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("创建角色失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("创建角色成功", nil))
@@ -95,12 +95,12 @@ func (c *RoleController) UpdateRole(ctx *gin.Context) {
 
 	var req models.Role
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 
 	if err := c.roleService.UpdateRole(uint(id), &req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "更新角色失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("更新角色失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("更新角色成功", nil))
@@ -115,7 +115,7 @@ func (c *RoleController) DeleteRole(ctx *gin.Context) {
 	}
 
 	if err := c.roleService.DeleteRole(uint(id)); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "删除角色失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("删除角色失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("删除角色成功", nil))
@@ -131,7 +131,7 @@ func (c *RoleController) GetRolePermissions(ctx *gin.Context) {
 
 	perms, err := c.roleService.GetRolePermissions(uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "获取角色权限失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("获取角色权限失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("获取角色权限成功", perms))
@@ -172,12 +172,12 @@ func (c *RoleController) UpdateRolePermissions(ctx *gin.Context) {
 		Permissions []uint `json:"permissions"`
 	}
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 
 	if err := c.roleService.UpdateRolePermissions(uint(id), req.Permissions); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "更新角色权限失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("更新角色权限失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("更新角色权限成功", nil))

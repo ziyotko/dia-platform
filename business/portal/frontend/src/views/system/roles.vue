@@ -126,6 +126,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { formatDateTime } from '@/utils/format'
 import {
   Search,
   RefreshRight,
@@ -211,13 +212,6 @@ const getLeafNodeIds = (nodes: any[]): number[] => {
   return result
 }
 
-const formatTime = (dateStr: string) => {
-  if (!dateStr) return ''
-  const d = new Date(dateStr)
-  const pad = (n: number) => n.toString().padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-}
-
 const handleSearch = () => {
   queryForm.page = 1
   fetchData()
@@ -237,7 +231,7 @@ const fetchData = async () => {
       const list = res.data.list || []
       tableData.value = list.map((item: any) => ({
         ...item,
-        createTime: formatTime(item.createdAt)
+        createTime: formatDateTime(item.createdAt)
       }))
       total.value = res.data.total || 0
     } else {

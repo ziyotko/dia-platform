@@ -16,8 +16,20 @@ export interface WorkflowNode {
   sortOrder?: number
 }
 
-export function getWorkflows(params: { name?: string; page?: number; pageSize?: number }) {
+export interface WorkflowQuery {
+  name?: string
+  page?: number
+  pageSize?: number
+  all?: boolean
+}
+
+export function getWorkflows(params: WorkflowQuery) {
   return request.get('/workflows', { params })
+}
+
+/** 获取全部流程（供栏目绑定流程等下拉使用，不分页） */
+export function getAllWorkflows() {
+  return request.get('/workflows', { params: { all: 1 } })
 }
 
 export function getWorkflowByID(id: number) {

@@ -152,7 +152,7 @@ func (c *LinkController) GetLinkByID(ctx *gin.Context) {
 func (c *LinkController) CreateLink(ctx *gin.Context) {
 	var req models.Link
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 	userID := ctx.GetUint("userID")
@@ -163,7 +163,7 @@ func (c *LinkController) CreateLink(ctx *gin.Context) {
 	}
 	err = c.linkService.CreateLink(&req)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "创建友链失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("创建友链失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("创建友链成功", nil))
@@ -178,7 +178,7 @@ func (c *LinkController) UpdateLink(ctx *gin.Context) {
 	}
 	var req models.Link
 	if err = ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 	userID := ctx.GetUint("userID")
@@ -189,7 +189,7 @@ func (c *LinkController) UpdateLink(ctx *gin.Context) {
 	}
 	err = c.linkService.UpdateLink(uint(id), &req)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "更新友链失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("更新友链失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("更新友链成功", nil))
@@ -226,7 +226,7 @@ func (c *LinkController) DeleteLink(ctx *gin.Context) {
 	}
 	err = c.linkService.DeleteLink(uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "删除友链失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("删除友链失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("删除友链成功", nil))

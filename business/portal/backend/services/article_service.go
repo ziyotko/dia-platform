@@ -66,7 +66,9 @@ func (s *ArticleService) GetArticles(title string, categoryID int, tagID int, co
 	}
 
 	var articles []models.Article
-	err := utils.DB.Where("id IN ?", ids).
+	// 列表不返回正文（longtext）：Omit 避免逐行加载大字段，详情接口再单独加载
+	err := utils.DB.Omit("Content").
+		Where("id IN ?", ids).
 		Order("is_top DESC, created_at DESC").
 		Preload("Categories").Preload("Tags").Preload("Columns").Preload("Attachments").
 		Find(&articles).Error

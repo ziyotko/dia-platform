@@ -24,6 +24,14 @@ export function getUserList(params: UserQuery) {
   return request.get('/users', { params })
 }
 
+/**
+ * 获取全部用户（供下拉选项使用）。
+ * 走后端 all=1 不分页，避免用户数超过 pageSize 上限时被静默截断。
+ */
+export function getAllUsers(status?: number) {
+  return request.get('/users', { params: { all: 1, status } })
+}
+
 export function createUser(data: UserForm) {
   return request.post('/users', data)
 }

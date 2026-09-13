@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -40,11 +41,17 @@ func (c *TemplateController) GetTemplates(ctx *gin.Context) {
 	name := ctx.Query("name")
 	ttype := ctx.Query("type")
 
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 {
-		pageSize = 10
+	// all=1 时不分页返回全量（供栏目绑定模板等下拉使用）
+	all := ctx.Query("all") == "1" || strings.EqualFold(ctx.Query("all"), "true")
+	if all {
+		page, pageSize = 1, 0
+	} else {
+		if page < 1 {
+			page = 1
+		}
+		if pageSize < 1 {
+			pageSize = 10
+		}
 	}
 
 	result, err := c.templateService.GetTemplateList(page, pageSize, name, ttype)
@@ -77,13 +84,13 @@ func (c *TemplateController) GetTemplates(ctx *gin.Context) {
 func (c *TemplateController) CreateTemplate(ctx *gin.Context) {
 	var req models.Template
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 
 	err := c.templateService.CreateTemplate(&req)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "创建模板失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("创建模板失败", err)))
 		return
 	}
 
@@ -100,7 +107,7 @@ func (c *TemplateController) UpdateTemplate(ctx *gin.Context) {
 
 	var req models.Template
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 
@@ -113,7 +120,7 @@ func (c *TemplateController) UpdateTemplate(ctx *gin.Context) {
 
 	err = c.templateService.UpdateTemplate(uint(id), updates)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "更新模板失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("更新模板失败", err)))
 		return
 	}
 
@@ -130,7 +137,7 @@ func (c *TemplateController) DeleteTemplate(ctx *gin.Context) {
 
 	err = c.templateService.DeleteTemplate(uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "删除模板失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("删除模板失败", err)))
 		return
 	}
 
@@ -155,7 +162,7 @@ func (c *TemplateController) UpdateTemplateStatus(ctx *gin.Context) {
 
 	err = c.templateService.UpdateTemplate(uint(id), map[string]any{"status": req.Status})
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "更新状态失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("更新状态失败", err)))
 		return
 	}
 
@@ -184,7 +191,7 @@ func (c *TemplateController) SaveTemplateDesign(ctx *gin.Context) {
 		"layout":      req.Layout,
 	})
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "保存设计失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("保存设计失败", err)))
 		return
 	}
 

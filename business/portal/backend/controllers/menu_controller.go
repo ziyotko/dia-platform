@@ -52,11 +52,11 @@ func (c *MenuController) GetUserMenus(ctx *gin.Context) {
 func (c *MenuController) CreateMenu(ctx *gin.Context) {
 	var req models.Menu
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 	if err := c.menuService.CreateMenu(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "创建菜单失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("创建菜单失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("创建菜单成功", nil))
@@ -72,12 +72,12 @@ func (c *MenuController) UpdateMenu(ctx *gin.Context) {
 
 	var req models.Menu
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 
 	if err := c.menuService.UpdateMenu(uint(id), &req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "更新菜单失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("更新菜单失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("更新菜单成功", nil))
@@ -92,7 +92,7 @@ func (c *MenuController) DeleteMenu(ctx *gin.Context) {
 	}
 
 	if err := c.menuService.DeleteMenu(uint(id)); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "删除菜单失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("删除菜单失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("删除菜单成功", nil))

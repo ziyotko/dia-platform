@@ -31,8 +31,12 @@ func (s *TemplateService) GetTemplateList(page, pageSize int, name, ttype string
 		return nil, err
 	}
 
-	offset := (page - 1) * pageSize
-	err = query.Order("type,id DESC").Offset(offset).Limit(pageSize).Find(&list).Error
+	// pageSize <= 0 表示不限制（供下拉选项使用，避免被分页截断）
+	listQuery := query.Order("type,id DESC")
+	if pageSize > 0 {
+		listQuery = listQuery.Offset((page - 1) * pageSize).Limit(pageSize)
+	}
+	err = listQuery.Find(&list).Error
 	if err != nil {
 		return nil, err
 	}

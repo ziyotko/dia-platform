@@ -165,7 +165,7 @@ func (c *AdController) CreateAd(ctx *gin.Context) {
 		EndTime   string `json:"endTime"`
 	}
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 	startTime, err := parseTime(req.StartTime)
@@ -197,7 +197,7 @@ func (c *AdController) CreateAd(ctx *gin.Context) {
 	}
 	err = c.adService.CreateAd(ad)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "创建广告失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("创建广告失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("创建广告成功", nil))
@@ -222,7 +222,7 @@ func (c *AdController) UpdateAd(ctx *gin.Context) {
 		EndTime   string `json:"endTime"`
 	}
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 	startTime, err := parseTime(req.StartTime)
@@ -254,7 +254,7 @@ func (c *AdController) UpdateAd(ctx *gin.Context) {
 	}
 	err = c.adService.UpdateAd(uint(id), ad)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "更新广告失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("更新广告失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("更新广告成功", nil))
@@ -291,7 +291,7 @@ func (c *AdController) DeleteAd(ctx *gin.Context) {
 	}
 	err = c.adService.DeleteAd(uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "删除广告失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("删除广告失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("删除广告成功", nil))

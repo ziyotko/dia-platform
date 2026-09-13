@@ -78,6 +78,9 @@ func (s *OrganizationService) CreateOrganization(org *models.Organization) error
 }
 
 func (s *OrganizationService) UpdateOrganization(id uint, org *models.Organization) error {
+	if err := validateTreeParent("organization", id, org.ParentID); err != nil {
+		return err
+	}
 	return utils.DB.Model(&models.Organization{}).Where("id = ?", id).UpdateColumns(map[string]any{
 		"parent_id":    org.ParentID,
 		"name":         org.Name,

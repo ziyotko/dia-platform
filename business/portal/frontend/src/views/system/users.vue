@@ -491,7 +491,10 @@ const handleImportSubmit = async () => {
       const data = res.data || {}
       ElMessage.success(`导入完成，成功 ${data.successCount || 0} 条，失败 ${data.failCount || 0} 条`)
       if (data.failDetails && data.failDetails.length > 0) {
-        console.warn('导入失败详情:', data.failDetails)
+        ElMessageBox.alert(data.failDetails.join('\n'), '导入失败详情', {
+          confirmButtonText: '知道了',
+          customStyle: { whiteSpace: 'pre-line', maxHeight: '60vh', overflow: 'auto' }
+        })
       }
       importDialogVisible.value = false
       fetchData()

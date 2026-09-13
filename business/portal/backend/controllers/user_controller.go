@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -69,11 +70,17 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 	account := ctx.Query("account")
 	statusStr := ctx.Query("status")
 
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 {
-		pageSize = 10
+	// all=1 时不分页返回全量（供下拉选项使用，避免大数据量被分页截断）
+	all := ctx.Query("all") == "1" || strings.EqualFold(ctx.Query("all"), "true")
+	if all {
+		page, pageSize = 1, 0
+	} else {
+		if page < 1 {
+			page = 1
+		}
+		if pageSize < 1 {
+			pageSize = 10
+		}
 	}
 
 	var status *int
@@ -141,7 +148,7 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 
@@ -152,7 +159,7 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 
 	password, err := c.userService.CreateUser(req.Username, req.Account, req.Email, req.Password, req.Phone, req.Status, req.Sex, req.RoleIds, req.OrgIds)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "创建用户失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("创建用户失败", err)))
 		return
 	}
 
@@ -162,20 +169,20 @@ func (c *UserController) CreateUser(ctx *gin.Context) {
 func (c *UserController) ImportUsers(ctx *gin.Context) {
 	fileHeader, err := ctx.FormFile("file")
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "上传文件失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("上传文件失败", err)))
 		return
 	}
 
 	file, err := fileHeader.Open()
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "打开文件失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("打开文件失败", err)))
 		return
 	}
 	defer file.Close()
 
 	result, err := c.userService.ImportUsers(file, fileHeader.Size)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "导入失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("导入失败", err)))
 		return
 	}
 
@@ -203,7 +210,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 	}
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 
@@ -214,7 +221,7 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 
 	err = c.userService.UpdateUser(uint(id), req.Username, req.Account, req.Email, req.Password, req.Phone, req.Status, req.Sex, req.RoleIds, req.OrgIds)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "更新用户失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("更新用户失败", err)))
 		return
 	}
 
@@ -231,7 +238,7 @@ func (c *UserController) DeleteUser(ctx *gin.Context) {
 
 	err = c.userService.DeleteUser(uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "删除用户失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("删除用户失败", err)))
 		return
 	}
 
@@ -257,7 +264,7 @@ func (c *UserController) UpdateUserStatus(ctx *gin.Context) {
 
 	err = c.userService.UpdateUserStatus(uint(id), req.Status)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "更新状态失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("更新状态失败", err)))
 		return
 	}
 
@@ -284,7 +291,7 @@ func (c *UserController) CheckFieldUnique(ctx *gin.Context) {
 
 	unique, err := c.userService.CheckFieldUnique(field, value, excludeID)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SafeErrText(err)))
 		return
 	}
 
@@ -303,7 +310,7 @@ func (c *UserController) GetUserByID(ctx *gin.Context) {
 
 	user, err := c.userService.GetUserByID(uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SafeErrText(err)))
 		return
 	}
 

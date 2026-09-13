@@ -34,51 +34,32 @@ func buildOrgNameMap(orgs []models.Organization) map[uint]string {
 }
 
 func buildDeptTree(list []models.Department, orgNameMap map[uint]string) []gin.H {
-	nodeMap := make(map[uint]*gin.H)
-	var roots []gin.H
-
-	for i := range list {
-		item := list[i]
-		orgName := ""
-		if item.OrgID > 0 {
-			orgName = orgNameMap[item.OrgID]
-		}
-		node := gin.H{
-			"id":          item.ID,
-			"parentId":    item.ParentID,
-			"orgId":       item.OrgID,
-			"orgName":     orgName,
-			"name":        item.Name,
-			"code":        item.Code,
-			"leader":      item.Leader,
-			"leaderCode":  item.LeaderCode,
-			"sort":        item.Sort,
-			"status":      item.Status,
-			"description": item.Description,
-			"userCount":   item.UserCount,
-			"createTime":  item.CreatedAt.Format("2006-01-02 15:04:05"),
-			"children":    []gin.H{},
-			"hasChildren": false,
-		}
-		nodeMap[item.ID] = &node
-	}
-
-	for i := range list {
-		item := list[i]
-		node := nodeMap[item.ID]
-		if item.ParentID == 0 {
-			roots = append(roots, *node)
-		} else {
-			if parent, ok := nodeMap[item.ParentID]; ok {
-				children := (*parent)["children"].([]gin.H)
-				children = append(children, *node)
-				(*parent)["children"] = children
-				(*parent)["hasChildren"] = true
+	return buildFlatTree(list,
+		func(item models.Department) uint { return item.ID },
+		func(item models.Department) uint { return item.ParentID },
+		func(item models.Department) gin.H {
+			orgName := ""
+			if item.OrgID > 0 {
+				orgName = orgNameMap[item.OrgID]
 			}
-		}
-	}
-
-	return roots
+			return gin.H{
+				"id":          item.ID,
+				"parentId":    item.ParentID,
+				"orgId":       item.OrgID,
+				"orgName":     orgName,
+				"name":        item.Name,
+				"code":        item.Code,
+				"leader":      item.Leader,
+				"leaderCode":  item.LeaderCode,
+				"sort":        item.Sort,
+				"status":      item.Status,
+				"description": item.Description,
+				"userCount":   item.UserCount,
+				"createTime":  item.CreatedAt.Format("2006-01-02 15:04:05"),
+				"children":    []gin.H{},
+				"hasChildren": false,
+			}
+		})
 }
 
 func (c *DepartmentController) GetDepartments(ctx *gin.Context) {
@@ -119,11 +100,11 @@ func (c *DepartmentController) GetDepartmentTree(ctx *gin.Context) {
 func (c *DepartmentController) CreateDepartment(ctx *gin.Context) {
 	var req models.Department
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 	if err := c.deptService.CreateDepartment(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "创建部门失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("创建部门失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("创建部门成功", nil))
@@ -132,20 +113,20 @@ func (c *DepartmentController) CreateDepartment(ctx *gin.Context) {
 func (c *DepartmentController) ImportDepartments(ctx *gin.Context) {
 	fileHeader, err := ctx.FormFile("file")
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "上传文件失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("上传文件失败", err)))
 		return
 	}
 
 	file, err := fileHeader.Open()
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "打开文件失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("打开文件失败", err)))
 		return
 	}
 	defer file.Close()
 
 	result, err := c.deptService.ImportDepartments(file, fileHeader.Size)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "导入失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("导入失败", err)))
 		return
 	}
 
@@ -162,12 +143,12 @@ func (c *DepartmentController) UpdateDepartment(ctx *gin.Context) {
 
 	var req models.Department
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 
 	if err := c.deptService.UpdateDepartment(uint(id), &req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "更新部门失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("更新部门失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("更新部门成功", nil))
@@ -182,7 +163,7 @@ func (c *DepartmentController) DeleteDepartment(ctx *gin.Context) {
 	}
 
 	if err := c.deptService.DeleteDepartment(uint(id)); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "删除部门失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("删除部门失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("删除部门成功", nil))
@@ -198,7 +179,7 @@ func (c *DepartmentController) GetDepartmentUsers(ctx *gin.Context) {
 
 	userIds, err := c.deptService.GetDepartmentUsers(uint(id))
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SafeErrText(err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("获取部门用户成功", userIds))
@@ -221,7 +202,7 @@ func (c *DepartmentController) AssignDepartmentUsers(ctx *gin.Context) {
 	}
 
 	if err := c.deptService.AssignDepartmentUsers(uint(id), req.UserIds); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "分配用户失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("分配用户失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("分配用户成功", nil))

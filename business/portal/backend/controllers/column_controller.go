@@ -67,12 +67,12 @@ func (c *ColumnController) GetColumnPublishes(ctx *gin.Context) {
 func (c *ColumnController) CreateColumn(ctx *gin.Context) {
 	var req models.Column
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 	err := c.columnService.CreateColumn(&req)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "创建栏目失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("创建栏目失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("创建栏目成功", nil))
@@ -87,12 +87,12 @@ func (c *ColumnController) UpdateColumn(ctx *gin.Context) {
 	}
 	var req models.Column
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
 	err = c.columnService.UpdateColumn(uint(id), &req)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "更新栏目失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("更新栏目失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("更新栏目成功", nil))
@@ -111,7 +111,7 @@ func (c *ColumnController) DeleteColumn(ctx *gin.Context) {
 			ctx.JSON(http.StatusOK, utils.Error(1, "该栏目存在关联数据（子栏目或已发布文章），无法直接删除，请先解除关联"))
 			return
 		}
-		ctx.JSON(http.StatusOK, utils.Error(1, "删除栏目失败: "+err.Error()))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("删除栏目失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("删除栏目成功", nil))

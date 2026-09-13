@@ -105,6 +105,9 @@ func (s *MenuService) CreateMenu(menu *models.Menu) error {
 }
 
 func (s *MenuService) UpdateMenu(id uint, menu *models.Menu) error {
+	if err := validateTreeParent("menu", id, menu.ParentID); err != nil {
+		return err
+	}
 	return utils.DB.Model(&models.Menu{}).Where("id = ?", id).Updates(map[string]any{
 		"parent_id":  menu.ParentID,
 		"name":       menu.Name,
@@ -127,17 +130,48 @@ func (s *MenuService) DeleteMenu(id uint) error {
 	return utils.DB.Unscoped().Delete(&models.Menu{}, id).Error
 }
 
+// buildMenuTree 将扁平菜单列表组装为层级树。
+// 使用「按父节点分组 + 访问标记」迭代实现：既避免重复遍历，也能防御脏数据成环导致的无限递归；
+// 父节点缺失的“孤儿”节点会被提升为根节点，避免从树中静默消失。
 func buildMenuTree(menus []models.Menu, parentID uint) []models.Menu {
-	var tree []models.Menu
+	childrenByParent := make(map[uint][]models.Menu, len(menus))
 	for _, menu := range menus {
-		if menu.ParentID == parentID {
-			children := buildMenuTree(menus, menu.ID)
-			menu.Children = children
+		childrenByParent[menu.ParentID] = append(childrenByParent[menu.ParentID], menu)
+	}
+
+	visited := make(map[uint]bool, len(menus))
+	var build func(pid uint) []models.Menu
+	build = func(pid uint) []models.Menu {
+		var tree []models.Menu
+		for _, menu := range childrenByParent[pid] {
+			if visited[menu.ID] {
+				continue // 脏数据成环，跳过已访问节点，防止无限递归
+			}
+			visited[menu.ID] = true
+			menu.Children = build(menu.ID)
 			tree = append(tree, menu)
 		}
+		sortMenusBySort(tree)
+		return tree
 	}
-	sort.Slice(tree, func(i, j int) bool {
-		return tree[i].Sort < tree[j].Sort
-	})
+
+	tree := build(parentID)
+
+	// 兜底：父节点不存在的孤儿节点提升为根，保证不因数据异常而整体丢失
+	for _, menu := range menus {
+		if menu.ParentID == parentID || visited[menu.ID] {
+			continue
+		}
+		visited[menu.ID] = true
+		menu.Children = build(menu.ID)
+		tree = append(tree, menu)
+	}
+	sortMenusBySort(tree)
 	return tree
+}
+
+func sortMenusBySort(menus []models.Menu) {
+	sort.Slice(menus, func(i, j int) bool {
+		return menus[i].Sort < menus[j].Sort
+	})
 }

@@ -5,7 +5,7 @@ server:
   mode: release
   api_prefix: /caamm/api
   upload_dir_prefix: "/caamm"
-  max_concurrent_ips: 10
+  max_concurrent_ips: 50
   # 可信反向代理地址，决定 gin 是否信任 X-Forwarded-For / X-Real-IP。
   # 生产环境若经 Nginx 等反向代理，请填入代理实际地址；本机回环保留 127.0.0.1。
   # 若为空白列表，main.go 会回退为 ["127.0.0.1"]。

@@ -2,10 +2,9 @@ package controllers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -238,32 +237,6 @@ func (c *StaticJobController) writePageDoneLog(ctx *gin.Context, statusCode int,
 	}
 }
 
-// staticProgramBaseURL 规范化静态化程序访问地址（缺失协议时默认 http，并去除末尾斜杠）
-func (c *StaticJobController) staticProgramBaseURL(params *services.StaticParams) string {
-	addr := strings.TrimSpace(params.StaticProgramAddr)
-	if addr == "" {
-		return ""
-	}
-	if !strings.HasPrefix(addr, "http://") && !strings.HasPrefix(addr, "https://") {
-		addr = "http://" + addr
-	}
-	return strings.TrimRight(addr, "/")
-}
-
-// staticProgramToken 获取静态化程序访问令牌（全局变量）
-// 静态化程序访问令牌名配置项存放的是环境变量（全局变量）的名称，例如 CAAM_STATIC_TOKEN；
-// 实际令牌值从该环境变量中读取。若环境变量未配置，则回退直接使用令牌名本身作为令牌。
-func (c *StaticJobController) staticProgramToken(params *services.StaticParams) string {
-	name := strings.TrimSpace(params.StaticProgramTokenName)
-	if name == "" {
-		return ""
-	}
-	if v := os.Getenv(name); v != "" {
-		return v
-	}
-	return name
-}
-
 // resolveStaticParams 读取静态化参数（优先缓存，缓存未命中回源数据库）
 func (c *StaticJobController) resolveStaticParams(ctx *gin.Context) (*services.StaticParams, bool) {
 	params, err := c.settingsService.GetStaticParamsFromCache()
@@ -300,59 +273,33 @@ func (c *StaticJobController) resolveGray(ctx *gin.Context, params *services.Sta
 
 // proxyToStaticProgram 代理转发请求到静态化程序，返回状态码与响应体（调用方负责写回客户端并记录静态化日志）
 func (c *StaticJobController) proxyToStaticProgram(ctx *gin.Context, params *services.StaticParams, method, targetPath string, query map[string]string) (int, []byte) {
-	base := c.staticProgramBaseURL(params)
-	if base == "" {
-		ctx.JSON(http.StatusOK, utils.Error(1, "静态化程序访问地址未配置，请先在「基础配置-静态化设置」中配置"))
-		return 0, nil
-	}
-
-	target := base + targetPath
-	req, err := http.NewRequestWithContext(ctx.Request.Context(), method, target, nil)
+	res, err := c.staticJobService.CallWithParams(ctx.Request.Context(), params, method, targetPath, query)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, utils.Error(1, "构造静态化请求失败: "+err.Error()))
+		var progErr *services.StaticProgramError
+		if errors.As(err, &progErr) {
+			switch progErr.Kind {
+			case services.StaticErrConfigNotSet:
+				// 参数未配置属业务提示，统一 200 + code=1
+				ctx.JSON(http.StatusOK, utils.Error(1, progErr.Message))
+			case services.StaticErrBuildRequest:
+				ctx.JSON(http.StatusInternalServerError, utils.Error(1, utils.SanitizeError(progErr.Message, progErr.Err)))
+			case services.StaticErrReadBody:
+				ctx.JSON(http.StatusBadGateway, utils.Error(1, utils.SanitizeError(progErr.Message, progErr.Err)))
+			default:
+				// 无法连接静态化程序：保持既有 502 + code=1 透传
+				ctx.JSON(http.StatusBadGateway, utils.Error(1, progErr.Message))
+			}
+		} else {
+			ctx.JSON(http.StatusBadGateway, utils.Error(1, "静态化服务调用失败"))
+		}
 		return 0, nil
 	}
-
-	// 请求头增加 Authorization: Bearer 静态化程序访问令牌
-	if token := c.staticProgramToken(params); token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-
-	// 组装查询参数
-	q := req.URL.Query()
-	for k, v := range query {
-		q.Set(k, v)
-	}
-	req.URL.RawQuery = q.Encode()
-
-	client := &http.Client{Timeout: 120 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		utils.Logger.Warnf("调用静态化程序失败: %s, url=%s", err, target)
-		ctx.JSON(http.StatusBadGateway, utils.Error(1, "无法连接静态化程序，请检查「静态化程序访问地址」配置及服务运行状态"))
-		return 0, nil
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		ctx.JSON(http.StatusBadGateway, utils.Error(1, "读取静态化程序响应失败: "+err.Error()))
-		return 0, nil
-	}
-
-	utils.Logger.Infof("静态化任务请求: method=%s url=%s status=%d", method, target, resp.StatusCode)
 
 	// 透传状态码与响应体：
 	// - 发起任务（site/pages/lists/articles）成功返回 202 及任务信息，代表请求已发送，请等待处理结果
 	// - 查询任务状态（jobs/:id）返回 200 及任务状态结构
-	contentType := resp.Header.Get("Content-Type")
-	if contentType == "" {
-		contentType = "application/json"
-	}
-	ctx.Data(resp.StatusCode, contentType, body)
-	return resp.StatusCode, body
+	ctx.Data(res.StatusCode, res.ContentType, res.Body)
+	return res.StatusCode, res.Body
 }
 
 // SiteStatic 全站静态化：POST /static/site?path={输出目录}&gray={1或2}
@@ -554,44 +501,22 @@ func (c *StaticJobController) DeleteArticleStaticByID(ctx *gin.Context, id strin
 		utils.Logger.Warnf("删除文章[%s]静态文件失败：获取静态化参数失败: %s", id, err)
 		return
 	}
-	base := c.staticProgramBaseURL(params)
-	if base == "" {
-		utils.Logger.Warnf("删除文章[%s]静态文件失败：静态化程序访问地址未配置", id)
-		return
-	}
 	path := strings.TrimSpace(params.StaticPath)
 	if path == "" {
 		utils.Logger.Warnf("删除文章[%s]静态文件失败：静态化输出路径未配置", id)
 		return
 	}
 
-	target := base + "/api/static/article"
-	req, err := http.NewRequestWithContext(ctx.Request.Context(), http.MethodDelete, target, nil)
+	res, err := c.staticJobService.CallWithParams(ctx.Request.Context(), params, http.MethodDelete, "/api/static/article", map[string]string{
+		"id":   id,
+		"path": path,
+	})
 	if err != nil {
-		utils.Logger.Warnf("构造静态化删除请求失败: %s", err)
+		utils.Logger.Warnf("删除文章[%s]静态文件失败: %s", id, err)
 		return
 	}
-	if token := c.staticProgramToken(params); token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-	q := req.URL.Query()
-	q.Set("id", id)
-	q.Set("path", path)
-	req.URL.RawQuery = q.Encode()
 
-	client := &http.Client{Timeout: 120 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		utils.Logger.Warnf("调用静态化程序删除文章[%s]静态文件失败: %s, url=%s", id, err, target)
-		return
-	}
-	defer resp.Body.Close()
-	body, _ := io.ReadAll(resp.Body)
-	utils.Logger.Infof("删除文章静态文件: id=%s url=%s status=%d", id, target, resp.StatusCode)
-
-	c.writeArticleDeleteLog(ctx, resp.StatusCode, body, id)
+	c.writeArticleDeleteLog(ctx, res.StatusCode, res.Body, id)
 }
 
 // GenerateArticleStaticByID 生成指定文章ID的详情页静态文件（供审核通过/文章发布时复用）。
@@ -601,11 +526,11 @@ func (c *StaticJobController) GenerateArticleStaticByID(ctx *gin.Context, id str
 	if strings.TrimSpace(id) == "" {
 		return
 	}
-	statusCode, body := c.staticJobService.GenerateArticleStaticByID(ctx.Request.Context(), id)
-	if len(body) == 0 {
+	res, err := c.staticJobService.GenerateArticleStaticByID(ctx.Request.Context(), id)
+	if err != nil || res == nil {
 		return
 	}
-	c.writePageDoneLog(ctx, statusCode, body, "生成详情页任务完成", id)
+	c.writePageDoneLog(ctx, res.StatusCode, res.Body, "生成详情页任务完成", id)
 }
 
 // GetJob 查询任务状态：GET /static/jobs/{任务ID}

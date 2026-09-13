@@ -138,6 +138,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { formatDateTime } from '@/utils/format'
 import {
   Search,
   RefreshRight,
@@ -154,7 +155,7 @@ import {
   getWorkflowRoleUsers,
   updateWorkflowRoleUsers
 } from '@/api/workflow-role'
-import { getUserList } from '@/api/user'
+import { getAllUsers } from '@/api/user'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -201,13 +202,6 @@ const filterUser = (query: string, item: any) => {
   return item.label.toLowerCase().includes(query.toLowerCase())
 }
 
-const formatTime = (dateStr: string) => {
-  if (!dateStr) return ''
-  const d = new Date(dateStr)
-  const pad = (n: number) => n.toString().padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
-}
-
 const handleSearch = () => {
   queryForm.page = 1
   fetchData()
@@ -227,7 +221,7 @@ const fetchData = async () => {
       const list = res.data.list || []
       tableData.value = list.map((item: any) => ({
         ...item,
-        createTime: formatTime(item.createdAt)
+        createTime: formatDateTime(item.createdAt)
       }))
       total.value = res.data.total || 0
     } else {
@@ -242,7 +236,7 @@ const fetchData = async () => {
 
 const fetchUsers = async () => {
   try {
-    const res: any = await getUserList({ page: 1, pageSize: 9999, status: 1 })
+    const res: any = await getAllUsers(1)
     if (res && res.code === 0) {
       userList.value = res.data.list || []
     } else {

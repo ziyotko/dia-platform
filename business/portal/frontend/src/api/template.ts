@@ -5,6 +5,7 @@ export interface TemplateQuery {
   pageSize?: number
   name?: string
   type?: string
+  all?: boolean
 }
 
 export interface TemplateForm {
@@ -23,6 +24,11 @@ export interface DesignForm {
 
 export function getTemplateList(params: TemplateQuery) {
   return request.get('/templates', { params })
+}
+
+/** 获取全部模板（供栏目绑定模板等下拉使用，不分页） */
+export function getAllTemplates(type?: string) {
+  return request.get('/templates', { params: { all: 1, type } })
 }
 
 export function createTemplate(data: TemplateForm) {

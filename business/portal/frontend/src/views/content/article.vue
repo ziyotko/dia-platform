@@ -1022,8 +1022,8 @@ import {
   getArticleAuditHistory
 } from '@/api/article'
 import { getWorkflowByID } from '@/api/workflow'
-import { getUserList } from '@/api/user'
-import { getWorkflowRoleList } from '@/api/workflow-role'
+import { getAllUsers } from '@/api/user'
+import { getAllWorkflowRoles } from '@/api/workflow-role'
 import { getAllCategories } from '@/api/category'
 import { getAllTags } from '@/api/tag'
 import { getPages } from '@/api/page'
@@ -1914,7 +1914,7 @@ const handleShowAuditFlow = async (row: any) => {
     // 加载用户/角色列表，用于显示审批人名称
     if (auditFlowUserList.value.length === 0) {
       try {
-        const userRes: any = await getUserList({ page: 1, pageSize: 9999 })
+        const userRes: any = await getAllUsers()
         auditFlowUserList.value = userRes.data?.list || userRes.data || []
       } catch {
         auditFlowUserList.value = []
@@ -1922,7 +1922,7 @@ const handleShowAuditFlow = async (row: any) => {
     }
     if (auditFlowRoleList.value.length === 0) {
       try {
-        const roleRes: any = await getWorkflowRoleList({ page: 1, pageSize: 9999 })
+        const roleRes: any = await getAllWorkflowRoles()
         auditFlowRoleList.value = roleRes.data?.list || []
       } catch {
         auditFlowRoleList.value = []
@@ -2180,14 +2180,24 @@ const previewData = reactive({
   attachments: [] as any[]
 })
 
-const handlePreview = (row: any) => {
+const handlePreview = async (row: any) => {
+  // 列表不再返回正文（大字段），预览时按需拉取详情
+  let content = row.content || ''
+  if (!content) {
+    try {
+      const res: any = await getArticleByID(row.id)
+      content = res.data?.content || ''
+    } catch {
+      content = ''
+    }
+  }
   Object.assign(previewData, {
     title: row.title,
     author: row.author,
     source: row.source || '',
     createTime: row.createTime,
     summary: row.summary || '',
-    content: noReferrerContent(row.content || ''),
+    content: noReferrerContent(content),
     url: row.url || '',
     cover: row.cover || '',
     attachments: row.attachments || []
