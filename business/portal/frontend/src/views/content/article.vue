@@ -888,7 +888,15 @@
     </el-dialog>
 
     <!-- 审核流程预览 -->
-    <el-dialog v-model="auditFlowDialogVisible" title="栏目审核流程" width="640px" destroy-on-close>
+    <el-dialog
+      v-model="auditFlowDialogVisible"
+      title="栏目审核流程"
+      width="640px"
+      destroy-on-close
+      :close-on-click-modal="false"
+      :close-on-press-escape="!auditFlowSubmitting"
+      :show-close="!auditFlowSubmitting"
+    >
       <div v-if="auditFlowArticleTitle" class="audit-flow-subtitle">
         文章：{{ auditFlowArticleTitle }}
       </div>
@@ -952,10 +960,23 @@
             </div>
             <div v-if="item.auditStatus === 0 && item.workflow && item.workflow.nodes && item.workflow.nodes.length > 0">
               <div v-if="item.canApprove" class="audit-flow-actions">
-                <el-button type="primary" size="small" @click="handleAdvanceAuditNode(item.columnId)">
+                <el-button
+                  type="primary"
+                  size="small"
+                  :disabled="auditFlowSubmitting"
+                  :loading="isAuditActionLoading(item.columnId, 'advance')"
+                  @click="handleAdvanceAuditNode(item.columnId)"
+                >
                   <el-icon><CircleCheck /></el-icon>通过当前节点
                 </el-button>
-                <el-button type="danger" size="small" plain @click="handleRejectAuditNode(item.columnId)">
+                <el-button
+                  type="danger"
+                  size="small"
+                  plain
+                  :disabled="auditFlowSubmitting"
+                  :loading="isAuditActionLoading(item.columnId, 'reject')"
+                  @click="handleRejectAuditNode(item.columnId)"
+                >
                   <el-icon><CircleClose /></el-icon>驳回
                 </el-button>
               </div>
@@ -968,7 +989,7 @@
         </div>
       </div>
       <template #footer>
-        <el-button @click="auditFlowDialogVisible = false">关闭</el-button>
+        <el-button :disabled="auditFlowSubmitting" @click="auditFlowDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
   </div>
@@ -1172,6 +1193,13 @@ const auditFlowList = ref<any[]>([])
 const auditFlowArticleTitle = ref('')
 const auditFlowUserList = ref<any[]>([])
 const auditFlowRoleList = ref<any[]>([])
+// 审核节点操作进行中：用于禁用弹窗内其他操作，避免重复提交/并发提交
+const auditFlowSubmitting = ref(false)
+// 当前进行中的操作标识：`${columnId}:advance` 或 `${columnId}:reject`
+const auditFlowSubmittingKey = ref('')
+
+const isAuditActionLoading = (columnId: number, action: 'advance' | 'reject') =>
+  auditFlowSubmittingKey.value === `${columnId}:${action}`
 
 const queryForm = reactive({
   page: 1,
@@ -2002,7 +2030,9 @@ const handleShowAuditFlow = async (row: any) => {
 }
 
 const handleAdvanceAuditNode = async (columnId: number) => {
-  if (!currentAuditRow.value) return
+  // 处理中或已有其他审核操作进行时，忽略重复点击
+  if (!currentAuditRow.value || auditFlowSubmitting.value) return
+  let remark = ''
   try {
     const { value } = await ElMessageBox.prompt('请输入审核通过原因（可选）', '审核通过', {
       confirmButtonText: '确定通过',
@@ -2010,19 +2040,30 @@ const handleAdvanceAuditNode = async (columnId: number) => {
       inputPattern: /^.{0,500}$/,
       inputErrorMessage: '原因最多500字'
     })
-    await advanceArticleAudit(currentAuditRow.value.id, columnId, value || '')
+    remark = value || ''
+  } catch {
+    return // 用户取消
+  }
+  const row = currentAuditRow.value
+  auditFlowSubmitting.value = true
+  auditFlowSubmittingKey.value = `${columnId}:advance`
+  try {
+    await advanceArticleAudit(row.id, columnId, remark)
     ElMessage.success('已通过当前节点')
-    handleShowAuditFlow(currentAuditRow.value)
-    fetchData()
+    await handleShowAuditFlow(row)
+    await fetchData()
   } catch (error: any) {
-    if (error !== 'cancel') {
-      ElMessage.error(error?.message || '操作失败')
-    }
+    ElMessage.error(error?.message || '操作失败')
+  } finally {
+    auditFlowSubmitting.value = false
+    auditFlowSubmittingKey.value = ''
   }
 }
 
 const handleRejectAuditNode = async (columnId: number) => {
-  if (!currentAuditRow.value) return
+  // 处理中或已有其他审核操作进行时，忽略重复点击
+  if (!currentAuditRow.value || auditFlowSubmitting.value) return
+  let remark = ''
   try {
     const { value } = await ElMessageBox.prompt('请输入驳回原因', '审核驳回', {
       confirmButtonText: '确定驳回',
@@ -2030,14 +2071,23 @@ const handleRejectAuditNode = async (columnId: number) => {
       inputPattern: /\S+/,
       inputErrorMessage: '驳回原因不能为空'
     })
-    await rejectArticleAudit(currentAuditRow.value.id, columnId, value || '')
+    remark = value || ''
+  } catch {
+    return // 用户取消
+  }
+  const row = currentAuditRow.value
+  auditFlowSubmitting.value = true
+  auditFlowSubmittingKey.value = `${columnId}:reject`
+  try {
+    await rejectArticleAudit(row.id, columnId, remark)
     ElMessage.success('已驳回')
-    handleShowAuditFlow(currentAuditRow.value)
-    fetchData()
+    await handleShowAuditFlow(row)
+    await fetchData()
   } catch (error: any) {
-    if (error !== 'cancel') {
-      ElMessage.error(error?.message || '操作失败')
-    }
+    ElMessage.error(error?.message || '操作失败')
+  } finally {
+    auditFlowSubmitting.value = false
+    auditFlowSubmittingKey.value = ''
   }
 }
 
