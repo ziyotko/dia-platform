@@ -1,72 +1,94 @@
 package middleware
 
 import (
+	"fmt"
+	"net/http"
 	"sync"
 	"time"
 
+	"member/pkg/redis"
 	"member/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
 
-// IPRateLimiter 基于 IP 的固定窗口限速器，带周期清理防止内存泄漏。
-type IPRateLimiter struct {
-	mu      sync.Mutex
-	entries map[string]*rateEntry
-	limit   int
-	window  time.Duration
-	cleanAt time.Time
+// localRateLimitEntry 进程内固定窗口限流条目
+type localRateLimitEntry struct {
+	windowStart int64
+	count       int64
 }
 
-type rateEntry struct {
-	count     int
-	windowEnd time.Time
-}
+var (
+	localRateLimitMu    sync.Mutex
+	localRateLimitStore = make(map[string]*localRateLimitEntry)
+)
 
-func NewIPRateLimiter(limit int, window time.Duration) *IPRateLimiter {
-	return &IPRateLimiter{
-		entries: make(map[string]*rateEntry),
-		limit:   limit,
-		window:  window,
-		cleanAt: time.Now().Add(time.Minute),
+// allowLocalRateLimit 进程内固定窗口限流兜底：Redis 不可用时防止限流完全失效（fail-closed）。
+// 仅在单实例内生效，作为降级方案，达不到分布式精确限流的效果但可挡住脚本刷量。
+func allowLocalRateLimit(key string, limit int, window time.Duration) bool {
+	windowSec := int64(window.Seconds())
+	if windowSec <= 0 {
+		windowSec = 60
 	}
-}
+	now := time.Now().Unix()
+	windowStart := now - now%windowSec
 
-// Allow 判断该 IP 是否允许继续请求。
-func (l *IPRateLimiter) Allow(ip string) bool {
-	l.mu.Lock()
-	defer l.mu.Unlock()
+	localRateLimitMu.Lock()
+	defer localRateLimitMu.Unlock()
 
-	now := time.Now()
-	l.cleanup(now)
-
-	e, ok := l.entries[ip]
-	if !ok || now.After(e.windowEnd) {
-		l.entries[ip] = &rateEntry{count: 1, windowEnd: now.Add(l.window)}
-		return true
+	entry, ok := localRateLimitStore[key]
+	if !ok || entry.windowStart != windowStart {
+		entry = &localRateLimitEntry{windowStart: windowStart}
+		localRateLimitStore[key] = entry
 	}
-	e.count++
-	return e.count <= l.limit
-}
+	entry.count++
 
-// cleanup 每分钟清理一次已过期的记录，避免 map 无限增长。
-func (l *IPRateLimiter) cleanup(now time.Time) {
-	if now.Before(l.cleanAt) {
-		return
-	}
-	l.cleanAt = now.Add(time.Minute)
-	for ip, e := range l.entries {
-		if now.After(e.windowEnd) {
-			delete(l.entries, ip)
+	// 机会式清理：避免 map 无限增长（仅在条目较多时触发）
+	if len(localRateLimitStore) > 10000 {
+		for k, e := range localRateLimitStore {
+			if e.windowStart != windowStart {
+				delete(localRateLimitStore, k)
+			}
 		}
 	}
+	return entry.count <= int64(limit)
 }
 
-// RateLimitByIP 生成按 IP 限速的中间件。
-func RateLimitByIP(limiter *IPRateLimiter, msg string) gin.HandlerFunc {
+// RateLimitMiddleware 基于 Redis 的固定窗口限流，按客户端真实 IP 计数（与 portal 的 middleware/rate_limit.go 保持一致）。
+// 用于验证码等公开接口，防止被脚本刷量/防暴力破解。
+//
+// 窗口 key 以 IP + 当前时间窗口段生成，便于多实例共享计数；Redis 不可用时退化为进程内限流（fail-closed）。
+func RateLimitMiddleware(limit int, window time.Duration) gin.HandlerFunc {
+	if limit <= 0 {
+		limit = 60
+	}
+	if window <= 0 {
+		window = time.Minute
+	}
 	return func(c *gin.Context) {
-		if !limiter.Allow(c.ClientIP()) {
-			response.Error(c, 429, msg)
+		ip := c.ClientIP()
+		windowSec := int64(window.Seconds())
+		key := fmt.Sprintf("ratelimit:%s:%d", ip, time.Now().Unix()/windowSec)
+
+		count, err := redis.AntiReplayClient.Incr(redis.Ctx, key).Result()
+		if err != nil {
+			// Redis 不可用：退化为进程内限流兜底（fail-closed），避免限流组件故障时被无限刷量
+			if !allowLocalRateLimit("ratelimit:"+ip, limit, window) {
+				response.Error(c, http.StatusTooManyRequests, "请求过于频繁，请稍后再试")
+				c.Abort()
+				return
+			}
+			c.Next()
+			return
+		}
+		if count == 1 {
+			redis.AntiReplayClient.Expire(redis.Ctx, key, window)
+		} else if redis.AntiReplayClient.TTL(redis.Ctx, key).Val() < 0 {
+			// 兜底：进程中途异常可能留下无 TTL 的 key，避免其永久驻留
+			redis.AntiReplayClient.Expire(redis.Ctx, key, window)
+		}
+		if count > int64(limit) {
+			response.Error(c, http.StatusTooManyRequests, "请求过于频繁，请稍后再试")
 			c.Abort()
 			return
 		}

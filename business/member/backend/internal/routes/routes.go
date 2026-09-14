@@ -12,10 +12,7 @@ import (
 func Register(r *gin.Engine) {
 	prefix := "/member/api"
 
-	// 登录/注册 IP 级限速（每分钟最多 10 次）
-	authRateLimiter := middleware.NewIPRateLimiter(10, time.Minute)
-	// check-exists 枚举接口限速（每分钟最多 30 次）
-	checkLimiter := middleware.NewIPRateLimiter(30, time.Minute)
+	// 限流统一走 Redis 版 middleware.RateLimitMiddleware（与 portal 一致：多实例共享计数，Redis 不可用时进程内兜底）
 
 	// Controllers
 	authCtrl := controllers.AuthController{}
@@ -41,9 +38,12 @@ func Register(r *gin.Engine) {
 		// Auth
 		// 验证码接口独立限流：30 次/分钟（对齐 portal 的 captcha_rate_limit），防刷验证码
 		public.GET("/captcha", middleware.RateLimitMiddleware(30, time.Minute), authCtrl.GetCaptcha)
-		public.POST("/auth/register", middleware.RateLimitByIP(authRateLimiter, "请求过于频繁，请稍后再试"), authCtrl.Register)
-		public.POST("/auth/check-exists", middleware.RateLimitByIP(checkLimiter, "请求过于频繁，请稍后再试"), authCtrl.CheckExists)
-		public.POST("/auth/login", middleware.RateLimitByIP(authRateLimiter, "请求过于频繁，请稍后再试"), authCtrl.Login)
+		// 注册限流：10 次/分钟，防刷账号
+		public.POST("/auth/register", middleware.RateLimitMiddleware(10, time.Minute), authCtrl.Register)
+		// check-exists 枚举接口限流：30 次/分钟，防止探测已注册账号
+		public.POST("/auth/check-exists", middleware.RateLimitMiddleware(30, time.Minute), authCtrl.CheckExists)
+		// 登录限流：10 次/分钟，防暴力破解
+		public.POST("/auth/login", middleware.RateLimitMiddleware(10, time.Minute), authCtrl.Login)
 
 		// Site info
 		public.GET("/site-info", authCtrl.GetSiteInfo)
