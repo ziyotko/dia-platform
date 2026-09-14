@@ -32,7 +32,7 @@
           <div class="stat-body">
             <div class="stat-info">
               <div class="stat-label">我的草稿文章</div>
-              <div class="stat-value">{{ stats.todayStaticCount.toLocaleString() }}</div>
+              <div class="stat-value">{{ stats.myDraftCount.toLocaleString() }}</div>
             </div>
             <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
               <el-icon :size="26"><Document /></el-icon>
@@ -185,8 +185,8 @@ const stats = reactive({
   adCount: 0,
   articleCount: 0,
   todayVisit: 0,
-  todayStaticCount: 0,
-  todayAuditCount: 0,
+  myDraftCount: 0,
+  myPendingAuditCount: 0,
   myArticleCount: 0
 })
 
@@ -197,8 +197,8 @@ const fetchStats = async () => {
       stats.adCount = res.data.adCount || 0
       stats.articleCount = res.data.articleCount || 0
       stats.todayVisit = res.data.todayVisit || 0
-      stats.todayStaticCount = res.data.todayStaticCount || 0
-      stats.todayAuditCount = res.data.todayAuditCount || 0
+      stats.myDraftCount = res.data.myDraftCount || 0
+      stats.myPendingAuditCount = res.data.myPendingAuditCount || 0
       stats.myArticleCount = res.data.myArticleCount || 0
     }
   } catch (error) {

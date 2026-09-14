@@ -150,6 +150,10 @@ func (c *LinkController) CreateLink(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
+	if err := services.ValidatePageColumn(req.PageID, req.ColumnID); err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SafeErrText(err)))
+		return
+	}
 	userID := ctx.GetUint("userID")
 	user, err := c.userService.GetUserByID(userID)
 	if err == nil && user != nil {
@@ -174,6 +178,10 @@ func (c *LinkController) UpdateLink(ctx *gin.Context) {
 	var req models.Link
 	if err = ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
+		return
+	}
+	if err := services.ValidatePageColumn(req.PageID, req.ColumnID); err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SafeErrText(err)))
 		return
 	}
 	userID := ctx.GetUint("userID")

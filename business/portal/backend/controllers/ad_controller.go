@@ -163,6 +163,10 @@ func (c *AdController) CreateAd(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
+	if err := services.ValidatePageColumn(req.PageID, req.ColumnID); err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SafeErrText(err)))
+		return
+	}
 	startTime, err := parseTime(req.StartTime)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "开始时间格式错误"))
@@ -218,6 +222,10 @@ func (c *AdController) UpdateAd(ctx *gin.Context) {
 	}
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
+		return
+	}
+	if err := services.ValidatePageColumn(req.PageID, req.ColumnID); err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SafeErrText(err)))
 		return
 	}
 	startTime, err := parseTime(req.StartTime)

@@ -31,8 +31,8 @@ func (c *DashboardController) GetStats(ctx *gin.Context) {
 	articleCount := c.articleService.GetArticleCount()
 
 	var todayVisit int64
-	var todayStaticCount int64
-	var todayAuditCount int64
+	var myDraftCount int64
+	var myPendingAuditCount int64
 	var myArticleCount int64
 	now := time.Now()
 	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
@@ -41,17 +41,18 @@ func (c *DashboardController) GetStats(ctx *gin.Context) {
 
 	userID := ctx.GetUint("userID")
 	userIDStr := strconv.FormatUint(uint64(userID), 10)
-	utils.DB.Model(&models.Article{}).Where("author_code = ? AND status = ?", userIDStr, 1).Count(&myArticleCount)
-	utils.DB.Model(&models.Article{}).Where("author_code = ? AND status = ?", userIDStr, 0).Count(&todayStaticCount)
-	utils.DB.Model(&models.Article{}).Where("author_code = ? AND audit_status = ?", userIDStr, 0).Count(&todayAuditCount)
+	// 以下三项均为「我的」维度，与日期无关，字段名不再使用误导性的 today* 前缀
+	utils.DB.Model(&models.Article{}).Where("author_code = ? AND status = ?", userIDStr, models.ArticleStatusPublished).Count(&myArticleCount)
+	utils.DB.Model(&models.Article{}).Where("author_code = ? AND status = ?", userIDStr, models.ArticleStatusDraft).Count(&myDraftCount)
+	utils.DB.Model(&models.Article{}).Where("author_code = ? AND audit_status = ?", userIDStr, 0).Count(&myPendingAuditCount)
 
 	ctx.JSON(http.StatusOK, utils.Success("获取成功", gin.H{
-		"adCount":          adCount,
-		"articleCount":     articleCount,
-		"todayVisit":       todayVisit,
-		"todayStaticCount": todayStaticCount,
-		"todayAuditCount":  todayAuditCount,
-		"myArticleCount":   myArticleCount,
+		"adCount":             adCount,
+		"articleCount":        articleCount,
+		"todayVisit":          todayVisit,
+		"myDraftCount":        myDraftCount,
+		"myPendingAuditCount": myPendingAuditCount,
+		"myArticleCount":      myArticleCount,
 	}))
 }
 

@@ -73,10 +73,14 @@ func (s *CategoryService) GetCategoryArticleStats() ([]CategoryArticleStat, int6
 	var results []CategoryArticleStat
 	var total int64
 
+	// 统计口径与文章列表/作者统计一致：只统计已发布（status=1）且未删除的文章；
+	// 用 INNER JOIN article 保留原有“只出现有文章的分类”的语义。
 	err := utils.DB.Model(&models.ArticleCategory{}).
-		Select("article_category.category_id as category_id, category.name as category_name, COUNT(DISTINCT article_category.article_id) as count").
+		Select("article_category.category_id as category_id, category.name as category_name, COUNT(DISTINCT article.id) as count").
 		Joins("LEFT JOIN category ON article_category.category_id = category.id").
+		Joins("JOIN article ON article.id = article_category.article_id AND article.status = ? AND article.deleted_at IS NULL", models.ArticleStatusPublished).
 		Group("article_category.category_id, category.name").
+		Order("count DESC, article_category.category_id ASC").
 		Scan(&results).Error
 	if err != nil {
 		return nil, 0, err

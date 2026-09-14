@@ -22,7 +22,7 @@
             <span class="legend-dot" :style="{ background: colors[index % colors.length] }"></span>
             <span class="legend-name">{{ item.categoryName || '未分类' }}</span>
             <span class="legend-value">{{ item.count }} 篇</span>
-            <span class="legend-percent">{{ ((item.count / totalCount) * 100).toFixed(1) }}%</span>
+            <span class="legend-percent">{{ percentOf(item.count) }}%</span>
           </div>
         </div>
       </div>
@@ -42,6 +42,10 @@ let chartInstance: ECharts | null = null
 
 const chartData = ref<any[]>([])
 const totalCount = ref(0)
+
+/** 百分比：总文章数为 0（暂无已发布文章）时返回 0.0，避免出现 NaN% */
+const percentOf = (count: number) =>
+  totalCount.value > 0 ? ((count / totalCount.value) * 100).toFixed(1) : '0.0'
 
 const colors = [
   '#002fa7',

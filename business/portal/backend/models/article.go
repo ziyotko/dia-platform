@@ -94,6 +94,13 @@ type Article struct {
 	Attachments  []ArticleAttachment `gorm:"foreignKey:ArticleID;constraint:OnDelete:CASCADE;" json:"attachments,omitempty"`
 }
 
+// Article 状态取值（列表筛选、统计口径统一引用，避免各处散落魔法数字）
+const (
+	ArticleStatusDraft     = 0 // 草稿
+	ArticleStatusPublished = 1 // 已发布
+	ArticleStatusOffline   = 2 // 已下线
+)
+
 func (a Article) MarshalJSON() ([]byte, error) {
 	type Alias Article
 	return json.Marshal(&struct {

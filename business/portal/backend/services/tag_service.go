@@ -70,11 +70,14 @@ type TagArticleStat struct {
 
 func (s *TagService) GetTagArticleStats() ([]TagArticleStat, error) {
 	var results []TagArticleStat
+	// 统计口径与文章列表/作者统计一致：只统计已发布（status=1）且未删除的文章；
+	// 保留 LEFT JOIN，使未被引用的标签仍以 0 出现在标签云中。
 	err := utils.DB.Model(&models.Tag{}).
-		Select("tag.id as tag_id, tag.name, tag.color, COUNT(article_tag.article_id) as count").
+		Select("tag.id as tag_id, tag.name, tag.color, COUNT(article.id) as count").
 		Joins("LEFT JOIN article_tag ON article_tag.tag_id = tag.id").
-		Group("tag.id").
-		Order("count DESC").
+		Joins("LEFT JOIN article ON article.id = article_tag.article_id AND article.status = ? AND article.deleted_at IS NULL", models.ArticleStatusPublished).
+		Group("tag.id, tag.name, tag.color").
+		Order("count DESC, tag.id ASC").
 		Scan(&results).Error
 	return results, err
 }
