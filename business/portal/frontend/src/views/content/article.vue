@@ -170,7 +170,7 @@
             <el-button v-if="isAuthor(row) && row.auditStatus === 1" link type="warning" @click="handleWithdrawAudit(row)">
               <el-icon><CircleClose /></el-icon>撤回审核
             </el-button>
-            <el-button v-if="row.status === 1" link type="danger" @click="handleOffShelf(row)">
+            <el-button v-if="(isAuthor(row) || isAdmin) && row.status === 1" link type="danger" @click="handleOffShelf(row)">
               <el-icon><CircleClose /></el-icon>下线
             </el-button>
             <el-button v-if="isAuthor(row) || isAdmin" link type="danger" @click="handleDelete(row)">

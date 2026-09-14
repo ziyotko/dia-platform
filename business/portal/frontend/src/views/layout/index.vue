@@ -98,6 +98,7 @@ import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
 import type { MenuItem } from '@/api/menus'
 import { getPublicSiteInfo, getMinPasswordLengthSettings } from '@/api/settings'
+import { logout as logoutApi } from '@/api/auth'
 import type { Settings } from '@/api/settings'
 import Breadcrumb from '@/components/Breadcrumb.vue'
 import TagsView from '@/components/TagsView.vue'
@@ -205,7 +206,13 @@ const handleCommand = (command: string) => {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
-      }).then(() => {
+      }).then(async () => {
+        // 先通知后端将当前 Token 加入黑名单，避免登出后旧 Token 仍可使用；失败也继续清理本地会话
+        try {
+          await logoutApi()
+        } catch {
+          // 忽略：网络异常或 Token 已失效时仍需完成本地登出
+        }
         userStore.logout()
         ElMessage.success('已退出登录')
         router.push('/login')

@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -66,7 +68,20 @@ func (c *StaticMonitorController) GetStaticMonitor(ctx *gin.Context) {
 	}
 	defer resp.Body.Close()
 
+	// 成功条件：HTTP 200 且响应体为 {"ok": true}；
+	// 仅判状态码会把上游返回 200 + {"ok": false} 误报为“运行正常”，进而放行高危操作。
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	healthy := false
 	if resp.StatusCode == http.StatusOK {
+		var payload struct {
+			OK bool `json:"ok"`
+		}
+		if err := json.Unmarshal(body, &payload); err == nil && payload.OK {
+			healthy = true
+		}
+	}
+
+	if healthy {
 		ctx.JSON(http.StatusOK, utils.Success("静态化服务监控", gin.H{
 			"online":        true,
 			"address":       healthURL,
@@ -82,6 +97,6 @@ func (c *StaticMonitorController) GetStaticMonitor(ctx *gin.Context) {
 		"address":       healthURL,
 		"httpStatus":    resp.StatusCode,
 		"lastCheckTime": checkTime,
-		"message":       "静态化服务响应异常，HTTP 状态码: " + strconv.Itoa(resp.StatusCode),
+		"message":       "静态化服务响应异常（HTTP 状态码: " + strconv.Itoa(resp.StatusCode) + "，期望 200 且 {\"ok\": true}）",
 	}))
 }

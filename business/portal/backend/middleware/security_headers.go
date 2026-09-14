@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+
+	"server/config"
 )
 
 // 可能被浏览器解析执行从而导致存储型 XSS 的扩展名，强制以附件下载。
@@ -24,7 +26,9 @@ func SecurityHeaders() gin.HandlerFunc {
 		c.Header("X-Frame-Options", "SAMEORIGIN")
 		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
 
-		if strings.HasPrefix(c.Request.URL.Path, "/uploads") {
+		// 上传目录实际挂载路径带全局前缀（如 /caamm/uploads），需与之匹配，否则危险类型强制下载失效
+		uploadPrefix := config.AppConfig.Server.UploadDirPrefix + "/uploads"
+		if strings.HasPrefix(c.Request.URL.Path, uploadPrefix) {
 			ext := strings.ToLower(filepath.Ext(c.Request.URL.Path))
 			if portalDangerousExts[ext] {
 				c.Header("Content-Disposition", "attachment")

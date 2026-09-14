@@ -108,6 +108,7 @@ import { useUserStore } from '@/stores/user'
 import { useRouter } from 'vue-router'
 import { getSettings, updateSettings } from '@/api/settings'
 import type { Settings } from '@/api/settings'
+import { logout as logoutApi } from '@/api/auth'
 import { uploadFile } from '@/api/upload'
 
 const appStore = useAppStore()
@@ -244,6 +245,12 @@ const doSave = async (data: Partial<Settings>) => {
 
     await updateSettings(payload)
     ElMessage.success('保存成功，请重新登录')
+    // 通知后端将当前 Token 加入黑名单，避免登出后旧 Token 仍可使用
+    try {
+      await logoutApi()
+    } catch {
+      // 忽略：即使后端登出失败也要清理本地会话
+    }
     userStore.logout()
     router.push('/login')
   } catch {

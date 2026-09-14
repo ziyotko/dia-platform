@@ -103,11 +103,6 @@ func countAnalyticsSeries(model any, timeCol string, windows []analyticsWindow) 
 		return values
 	}
 
-	indexByDate := make(map[string]int, len(windows))
-	for i, w := range windows {
-		indexByDate[w.Start.Format("2006-01-02")] = i
-	}
-
 	var rows []struct {
 		At time.Time `gorm:"column:at"`
 	}
@@ -118,9 +113,13 @@ func countAnalyticsSeries(model any, timeCol string, windows []analyticsWindow) 
 		Where(timeCol+" >= ? AND "+timeCol+" < ?", start, end).
 		Scan(&rows)
 
+	// 按记录时间落入的窗口计数：直接用时间区间判断，兼容“按天/按月”等不同粒度的窗口
 	for _, row := range rows {
-		if idx, ok := indexByDate[row.At.Format("2006-01-02")]; ok {
-			values[idx]++
+		for i := range windows {
+			if !row.At.Before(windows[i].Start) && row.At.Before(windows[i].End) {
+				values[i]++
+				break
+			}
 		}
 	}
 	return values

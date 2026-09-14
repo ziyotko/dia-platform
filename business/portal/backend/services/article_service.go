@@ -472,6 +472,9 @@ func (s *ArticleService) StartArticleAudit(articleID uint) error {
 	if err := utils.DB.Preload("Columns").First(&article, articleID).Error; err != nil {
 		return err
 	}
+	if len(article.Columns) == 0 {
+		return fmt.Errorf("请先为文章选择栏目后再提交审核")
+	}
 	err := utils.DB.Transaction(func(tx *gorm.DB) error {
 		// 更新文章状态为审核中
 		if err := tx.Model(&article).Update("audit_status", 1).Error; err != nil {
@@ -848,15 +851,42 @@ func (s *ArticleService) GetArticleAuditHistory(articleID uint, columnID uint) (
 	return histories, err
 }
 
-// tryCompleteArticleAudit 检查文章所有栏目流程是否都已结束（通过或驳回），若是则自动完成文章审核
+// tryCompleteArticleAudit 检查文章各栏目的审核流程是否都已结束：
+//   - 仍有栏目在审核中：不做处理；
+//   - 存在被驳回的栏目：不发布，回退为未提交状态，供作者修改后重新提审；
+//   - 全部栏目通过：完成审核并发布。
 func (s *ArticleService) tryCompleteArticleAudit(articleID uint) {
-	var pendingCount int64
+	var pendingCount, rejectedCount int64
 	utils.DB.Model(&models.ArticleColumnAudit{}).
 		Where("article_id = ? AND status = ?", articleID, 0).
 		Count(&pendingCount)
-	if pendingCount == 0 {
-		s.CompleteArticleAudit(articleID)
+	if pendingCount > 0 {
+		return
 	}
+	utils.DB.Model(&models.ArticleColumnAudit{}).
+		Where("article_id = ? AND status = ?", articleID, 2).
+		Count(&rejectedCount)
+	if rejectedCount > 0 {
+		if err := s.rejectArticleAudit(articleID); err != nil {
+			utils.Logger.Errorf("回退文章[%d]审核状态失败: %s", articleID, err)
+		}
+		return
+	}
+	if err := s.CompleteArticleAudit(articleID); err != nil {
+		utils.Logger.Errorf("完成文章[%d]审核失败: %s", articleID, err)
+	}
+}
+
+// rejectArticleAudit 存在被驳回栏目时回退文章状态：不发布，标记为未提交（audit_status=0），
+// 并清理可能残留的发布记录，供作者修改后重新提交审核。
+func (s *ArticleService) rejectArticleAudit(articleID uint) error {
+	return utils.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.Article{}).Where("id = ?", articleID).
+			Update("audit_status", 0).Error; err != nil {
+			return err
+		}
+		return tx.Where("article_id = ?", articleID).Unscoped().Delete(&models.ArticleColumnPublish{}).Error
+	})
 }
 
 // ArticleColumnPublishItem 文章栏目发布列表项

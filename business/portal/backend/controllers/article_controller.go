@@ -3,12 +3,12 @@ package controllers
 import (
 	"fmt"
 	"net/http"
-	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 
+	"server/middleware"
 	"server/models"
 	"server/services"
 	"server/utils"
@@ -378,6 +378,12 @@ func (c *ArticleController) UpdateArticleStatus(ctx *gin.Context) {
 		return
 	}
 
+	// 仅允许草稿(0)/下线(2)；发布(1) 必须走审核流程（CompleteArticleAudit），防止绕过审核直接发布
+	if req.Status != 0 && req.Status != 2 {
+		ctx.JSON(http.StatusOK, utils.Error(1, "不支持的状态变更，文章发布请通过审核流程"))
+		return
+	}
+
 	// 权限校验：仅作者本人或管理员可以修改文章发布状态
 	userID := ctx.GetUint("userID")
 	article, err := c.articleService.GetArticleByID(uint(id))
@@ -386,7 +392,7 @@ func (c *ArticleController) UpdateArticleStatus(ctx *gin.Context) {
 		return
 	}
 	roleIds, _ := c.userService.GetUserRoleIds(userID)
-	isAdmin := slices.Contains(roleIds, 1)
+	isAdmin := middleware.HasAdminRoleIDs(roleIds)
 	if !isAdmin && strconv.FormatUint(uint64(userID), 10) != article.AuthorCode {
 		ctx.JSON(http.StatusOK, utils.Error(1, "无权操作"))
 		return
@@ -476,7 +482,8 @@ func (c *ArticleController) AuditArticle(ctx *gin.Context) {
 	switch req.AuditStatus {
 	case 1:
 		// 提交审核：仅作者本人
-		article, err := c.articleService.GetArticleByID(uint(id))
+		var article *models.Article
+		article, err = c.articleService.GetArticleByID(uint(id))
 		if err != nil {
 			ctx.JSON(http.StatusOK, utils.Error(1, "文章不存在"))
 			return
@@ -489,7 +496,7 @@ func (c *ArticleController) AuditArticle(ctx *gin.Context) {
 	case 2:
 		// 完成审核：仅管理员
 		roleIds, _ := c.userService.GetUserRoleIds(userID)
-		if !slices.Contains(roleIds, 1) {
+		if !middleware.HasAdminRoleIDs(roleIds) {
 			ctx.JSON(http.StatusOK, utils.Error(1, "无权限执行该操作"))
 			return
 		}
@@ -497,14 +504,14 @@ func (c *ArticleController) AuditArticle(ctx *gin.Context) {
 	default:
 		// 直接设置审核状态：仅管理员
 		roleIds, _ := c.userService.GetUserRoleIds(userID)
-		if !slices.Contains(roleIds, 1) {
+		if !middleware.HasAdminRoleIDs(roleIds) {
 			ctx.JSON(http.StatusOK, utils.Error(1, "无权限执行该操作"))
 			return
 		}
 		err = c.articleService.UpdateAuditStatus(uint(id), req.AuditStatus)
 	}
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "审核文章失败"))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("审核文章失败", err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("审核文章成功", nil))
@@ -663,7 +670,7 @@ func (c *ArticleController) DeleteArticle(ctx *gin.Context) {
 		return
 	}
 	roleIds, _ := c.userService.GetUserRoleIds(userID)
-	isAdmin := slices.Contains(roleIds, 1)
+	isAdmin := middleware.HasAdminRoleIDs(roleIds)
 	if !isAdmin && strconv.FormatUint(uint64(userID), 10) != article.AuthorCode {
 		ctx.JSON(http.StatusOK, utils.Error(1, "无权操作"))
 		return

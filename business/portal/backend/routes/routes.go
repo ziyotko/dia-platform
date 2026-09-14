@@ -78,6 +78,14 @@ func SetupRoutes(router *gin.Engine) {
 	member := router.Group(apiPrefix)
 	member.Use(middleware.AuthMiddleware(), middleware.MenuAPIPrefixMiddleware(), middleware.ReplayProtectionMiddleware(), middleware.OperationLog(), ipLimiter.Limit())
 	{
+		member.GET("/users", userController.GetUsers)
+		member.GET("/templates", templateController.GetTemplates)
+		// 仪表盘
+		member.GET("/dashboard/stats", dashboardController.GetStats)
+		member.GET("/dashboard/article-trend", dashboardController.GetArticleTrend)
+		member.GET("/dashboard/visit-trend", dashboardController.GetVisitTrend)
+		member.GET("/dashboard/login-logs", dashboardController.GetLoginLogs)
+
 		member.GET("/minPasswordLengthSettings", settingsController.GetMinPasswordLengthSettings)
 
 		member.POST("/logout", authController.Logout)
@@ -136,7 +144,6 @@ func SetupRoutes(router *gin.Engine) {
 	admin.Use(middleware.AuthMiddleware(), middleware.AdminMiddleware(), middleware.ReplayProtectionMiddleware(), middleware.OperationLog(), ipLimiter.Limit())
 	{
 		// 用户管理
-		admin.GET("/users", userController.GetUsers)
 		admin.POST("/users", userController.CreateUser)
 		admin.POST("/users/import", userController.ImportUsers)
 		admin.GET("/users/:id", userController.GetUserByID)
@@ -202,7 +209,6 @@ func SetupRoutes(router *gin.Engine) {
 		admin.GET("/settings", settingsController.GetSettings)
 
 		// 模板管理
-		admin.GET("/templates", templateController.GetTemplates)
 		admin.POST("/templates", templateController.CreateTemplate)
 		admin.PUT("/templates/:id", templateController.UpdateTemplate)
 		admin.DELETE("/templates/:id", templateController.DeleteTemplate)
@@ -262,10 +268,5 @@ func SetupRoutes(router *gin.Engine) {
 		admin.PUT("/organizations/:id", orgController.UpdateOrganization)
 		admin.DELETE("/organizations/:id", orgController.DeleteOrganization)
 
-		// 仪表盘
-		admin.GET("/dashboard/stats", dashboardController.GetStats)
-		admin.GET("/dashboard/login-logs", dashboardController.GetLoginLogs)
-		admin.GET("/dashboard/visit-trend", dashboardController.GetVisitTrend)
-		admin.GET("/dashboard/article-trend", dashboardController.GetArticleTrend)
 	}
 }

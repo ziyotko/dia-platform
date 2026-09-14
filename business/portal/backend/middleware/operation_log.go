@@ -126,6 +126,50 @@ func (w *customResponseWriter) WriteString(s string) (int, error) {
 	return w.ResponseWriter.WriteString(s)
 }
 
+// sensitiveParamKeys 请求体中需要脱敏的字段名（小写匹配），避免密码/令牌被明文写入操作日志
+var sensitiveParamKeys = map[string]bool{
+	"password":      true,
+	"oldpassword":   true,
+	"newpassword":   true,
+	"emailpassword": true,
+	"token":         true,
+	"signkey":       true,
+}
+
+// formatParamsForLog 将请求体格式化为便于阅读的 JSON 字符串，并对敏感字段脱敏。
+func formatParamsForLog(body []byte) string {
+	var data any
+	if err := json.Unmarshal(body, &data); err == nil {
+		maskSensitiveFields(data)
+		if b, err := json.MarshalIndent(data, "", "  "); err == nil {
+			return string(b)
+		}
+	}
+	var prettyJSON bytes.Buffer
+	if err := json.Indent(&prettyJSON, body, "", "  "); err == nil {
+		return prettyJSON.String()
+	}
+	return string(body)
+}
+
+// maskSensitiveFields 递归将 map/数组中敏感字段的值替换为 ******。
+func maskSensitiveFields(v any) {
+	switch t := v.(type) {
+	case map[string]any:
+		for k, val := range t {
+			if sensitiveParamKeys[strings.ToLower(k)] {
+				t[k] = "******"
+				continue
+			}
+			maskSensitiveFields(val)
+		}
+	case []any:
+		for _, item := range t {
+			maskSensitiveFields(item)
+		}
+	}
+}
+
 func OperationLog() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		startTime := time.Now()
@@ -141,12 +185,7 @@ func OperationLog() gin.HandlerFunc {
 			} else {
 				bodyBytes, _ := c.GetRawData()
 				if len(bodyBytes) > 0 {
-					var prettyJSON bytes.Buffer
-					if err := json.Indent(&prettyJSON, bodyBytes, "", "  "); err == nil {
-						params = prettyJSON.String()
-					} else {
-						params = string(bodyBytes)
-					}
+					params = formatParamsForLog(bodyBytes)
 					c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 				}
 			}

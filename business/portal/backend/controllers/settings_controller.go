@@ -18,6 +18,9 @@ type SettingsController struct {
 	settingsService *services.SettingsService
 }
 
+// maskedSecret 敏感字段的脱敏占位值：读取设置时返回该值，提交时若原样回传则不更新该字段。
+const maskedSecret = "******"
+
 func NewSettingsController() *SettingsController {
 	return &SettingsController{
 		settingsService: &services.SettingsService{},
@@ -38,6 +41,10 @@ func (c *SettingsController) GetSettings(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取设置失败"))
 		return
+	}
+	// 邮件授权码等敏感字段不返回明文，避免抓包/前端缓存泄露（未配置时返回空）
+	if settings.EmailPassword != "" {
+		settings.EmailPassword = maskedSecret
 	}
 	ctx.JSON(http.StatusOK, utils.Success("获取设置成功", settings))
 }
@@ -83,6 +90,11 @@ func (c *SettingsController) UpdateSettings(ctx *gin.Context) {
 		return
 	}
 
+	// 敏感字段原样回传脱敏占位值时，视为未修改，不参与更新
+	if req.EmailPassword == maskedSecret {
+		delete(raw, "emailPassword")
+	}
+
 	fields := settingFieldsFromKeys(raw)
 	if len(fields) == 0 {
 		ctx.JSON(http.StatusOK, utils.Error(1, "没有可更新的设置项"))
@@ -94,9 +106,13 @@ func (c *SettingsController) UpdateSettings(ctx *gin.Context) {
 		return
 	}
 
-	// 设置更新后同步刷新静态化参数缓存，保证读取接口返回最新值
+	// 设置更新后同步刷新静态化参数缓存，保证读取接口返回最新值；
+	// 刷新失败时清除缓存，下次读取自动回源，避免 DB/缓存长期不一致
 	if err := c.settingsService.LoadStaticParamsToCache(); err != nil {
-		utils.Logger.Warnf("保存设置后刷新静态化参数缓存失败: %s", err)
+		utils.Logger.Warnf("保存设置后刷新静态化参数缓存失败，已清除缓存待下次回源: %s", err)
+		if delErr := c.settingsService.InvalidateStaticParamsCache(); delErr != nil {
+			utils.Logger.Warnf("清除静态化参数缓存失败: %s", delErr)
+		}
 	}
 
 	ctx.JSON(http.StatusOK, utils.Success("保存设置成功", nil))
@@ -119,8 +135,17 @@ func settingFieldsFromKeys(raw map[string]json.RawMessage) []string {
 		jsonToField[name] = field.Name
 	}
 
+	// 主键与时间戳等系统字段禁止通过请求体覆盖
+	// （Setting 未内嵌 gorm.Model，Anonymous 恒为 false，需显式排除）
+	skipFields := map[string]bool{
+		"id": true, "createdAt": true, "updatedAt": true, "deletedAt": true,
+	}
+
 	fields := make([]string, 0, len(raw))
 	for key := range raw {
+		if skipFields[key] {
+			continue
+		}
 		if fieldName, ok := jsonToField[key]; ok {
 			fields = append(fields, fieldName)
 		}

@@ -107,8 +107,16 @@ func (s *UserService) Logout(token string) error {
 		return err
 	}
 
-	err = utils.Redis.Set(utils.Ctx, "blacklist:"+claims.ID, token, 0).Err()
-	return err
+	// 黑名单 TTL 取 Token 剩余有效期，避免 key 永久驻留导致 Redis 无限增长
+	if claims.ExpiresAt == nil {
+		return utils.Redis.Set(utils.Ctx, "blacklist:"+claims.ID, token, 24*time.Hour).Err()
+	}
+	ttl := time.Until(claims.ExpiresAt.Time)
+	if ttl <= 0 {
+		// Token 本身已过期，无需再拉黑
+		return nil
+	}
+	return utils.Redis.Set(utils.Ctx, "blacklist:"+claims.ID, token, ttl).Err()
 }
 
 func (s *UserService) GetUserByID(userID uint) (*models.User, error) {
@@ -275,7 +283,7 @@ func (s *UserService) ImportUsers(file multipart.File, fileSize int64) (*ImportU
 		}
 
 		pwd := utils.GenerateRandomPassword(12)
-		if _, err := s.CreateUser(username, account, email, pwd, phone, 1, 0, []int{6}, nil); err != nil {
+		if _, err := s.CreateUser(username, account, email, pwd, phone, 1, 0, []int{defaultImportedUserRoleID}, nil); err != nil {
 			result.FailCount++
 			result.FailDetails = append(result.FailDetails, fmt.Sprintf("第 %d 行 (%s): %s", lineNum, account, err.Error()))
 			continue
@@ -297,20 +305,25 @@ func (s *UserService) UpdateUser(id uint, username, account, email, password, ph
 		"account":  account,
 		"email":    email,
 		"mobile":   phone,
-		"status":   status,
 		"sex":      sex,
 	}
 
-	if password != "" {
-		updates["password"] = password
+	// 内置超级管理员：忽略状态与角色变更，避免被降权或禁用（其余资料仍可修改）
+	if id == builtinSuperAdminUserID {
+		updates["status"] = 1
+	} else {
+		updates["status"] = status
+		// 角色始终写入（空数组表示清空角色），修复“无法清空角色”的问题
+		roleIdStrs := make([]string, len(roleIds))
+		for i, rid := range roleIds {
+			roleIdStrs[i] = strconv.Itoa(rid)
+		}
+		updates["role_ids"] = strings.Join(roleIdStrs, ",")
 	}
 
-	if len(roleIds) > 0 {
-		roleIdsStr := make([]string, len(roleIds))
-		for i, id := range roleIds {
-			roleIdsStr[i] = strconv.Itoa(id)
-		}
-		updates["role_ids"] = strings.Join(roleIdsStr, ",")
+	// 密码需显式做 SM3 加盐哈希后再入库：map 更新不会触发模型 BeforeUpdate 钩子（否则会写入明文）
+	if password != "" {
+		updates["password"] = utils.SM3HashPassword(password)
 	}
 
 	if err := utils.DB.Model(&models.User{}).Where("id = ?", id).Updates(updates).Error; err != nil {
@@ -350,6 +363,9 @@ func (s *UserService) UpdateUser(id uint, username, account, email, password, ph
 
 // 内置超级管理员用户 ID（与前端 users.vue 及 models/seed.go 保持一致），不可删除、不可禁用
 const builtinSuperAdminUserID uint = 1
+
+// 导入用户默认角色 ID（内容作者）。系统仅内置角色 1-4，不可引用不存在的角色。
+const defaultImportedUserRoleID = 4
 
 func (s *UserService) DeleteUser(id uint) error {
 	if id == builtinSuperAdminUserID {

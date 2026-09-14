@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"errors"
+	"time"
 
 	"server/models"
 	"server/utils"
@@ -94,6 +95,10 @@ type StaticParams struct {
 // StaticParamsCacheKey 静态化参数在缓存（Redis2）中的 Key
 const StaticParamsCacheKey = "db:static:params"
 
+// staticParamsCacheTTL 静态化参数缓存有效期。
+// 设置 TTL 可保证即使某次刷新失败，缓存也会过期回源，避免 DB 与缓存长期不一致。
+const staticParamsCacheTTL = 24 * time.Hour
+
 // GetStaticParams 从数据库读取静态化相关参数
 func (s *SettingsService) GetStaticParams() (*StaticParams, error) {
 	settings, err := s.GetSettings()
@@ -118,7 +123,12 @@ func (s *SettingsService) LoadStaticParamsToCache() error {
 	if err != nil {
 		return err
 	}
-	return utils.Redis2.Set(utils.Ctx, StaticParamsCacheKey, data, 0).Err()
+	return utils.Redis2.Set(utils.Ctx, StaticParamsCacheKey, data, staticParamsCacheTTL).Err()
+}
+
+// InvalidateStaticParamsCache 删除静态化参数缓存，下次读取时将回源数据库。
+func (s *SettingsService) InvalidateStaticParamsCache() error {
+	return utils.Redis2.Del(utils.Ctx, StaticParamsCacheKey).Err()
 }
 
 // GetStaticParamsFromCache 从缓存读取静态化参数；缓存未命中或解析失败时回源数据库并刷新缓存
