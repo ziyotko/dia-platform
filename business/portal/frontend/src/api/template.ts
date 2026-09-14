@@ -11,7 +11,6 @@ export interface TemplateQuery {
 export interface TemplateForm {
   id?: number
   name: string
-  code: string
   type: string
   description?: string
   status: number

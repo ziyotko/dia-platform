@@ -262,9 +262,13 @@
                     <el-button link type="primary" :loading="row.generating" :disabled="!monitorData.online" @click="handleGenerateSingle(row)">
                       <el-icon><Refresh /></el-icon>重新生成
                     </el-button>
-                    <el-button link type="success" @click="handlePreview(row)">
-                      <el-icon><View /></el-icon>预览
-                    </el-button>
+                    <el-tooltip content="预览功能暂未启用" placement="top">
+                      <span>
+                        <el-button link type="success" :disabled="!STATIC_PREVIEW_ENABLED" @click="handlePreview(row)">
+                          <el-icon><View /></el-icon>预览
+                        </el-button>
+                      </span>
+                    </el-tooltip>
                   </template>
                 </el-table-column>
               </el-table>
@@ -295,9 +299,13 @@
                     <el-button link type="primary" :loading="row.generating" :disabled="!monitorData.online" @click="handleGenerateSingle(row)">
                       <el-icon><Refresh /></el-icon>重新生成
                     </el-button>
-                    <el-button link type="success" @click="handlePreview(row)">
-                      <el-icon><View /></el-icon>预览
-                    </el-button>
+                    <el-tooltip content="预览功能暂未启用" placement="top">
+                      <span>
+                        <el-button link type="success" :disabled="!STATIC_PREVIEW_ENABLED" @click="handlePreview(row)">
+                          <el-icon><View /></el-icon>预览
+                        </el-button>
+                      </span>
+                    </el-tooltip>
                   </template>
                 </el-table-column>
               </el-table>
@@ -330,9 +338,13 @@
                     <el-button link type="primary" :loading="row.generating" :disabled="!monitorData.online" @click="handleGenerateSingle(row)">
                       <el-icon><Refresh /></el-icon>重新生成
                     </el-button>
-                    <el-button link type="success" @click="handlePreview(row)">
-                      <el-icon><View /></el-icon>预览
-                    </el-button>
+                    <el-tooltip content="预览功能暂未启用" placement="top">
+                      <span>
+                        <el-button link type="success" :disabled="!STATIC_PREVIEW_ENABLED" @click="handlePreview(row)">
+                          <el-icon><View /></el-icon>预览
+                        </el-button>
+                      </span>
+                    </el-tooltip>
                     <el-button link type="danger" :loading="row.deleting" :disabled="!monitorData.online" @click="handleDeleteArticle(row)">
                       <el-icon><Delete /></el-icon>删除
                     </el-button>
@@ -366,9 +378,13 @@
                     <el-button link type="primary" :loading="row.generating" :disabled="!monitorData.online" @click="handleGenerateSingle(row)">
                       <el-icon><Refresh /></el-icon>重新生成
                     </el-button>
-                    <el-button link type="success" @click="handlePreview(row)">
-                      <el-icon><View /></el-icon>预览
-                    </el-button>
+                    <el-tooltip content="预览功能暂未启用" placement="top">
+                      <span>
+                        <el-button link type="success" :disabled="!STATIC_PREVIEW_ENABLED" @click="handlePreview(row)">
+                          <el-icon><View /></el-icon>预览
+                        </el-button>
+                      </span>
+                    </el-tooltip>
                   </template>
                 </el-table-column>
               </el-table>
@@ -1034,8 +1050,18 @@ const handleDeleteArticle = (row: any) => {
   }).catch(() => {})
 }
 
+// 预览功能暂未启用：静态化列表（静态页面/栏目发布/详情发布）返回的是 routePath（站内路由路径），
+// 且需结合「静态化输出路径」才能拼出可访问的静态文件 URL；
+// 原实现直接打开 row.path（三处数据源均无该字段）会得到空白页，故暂时禁用按钮。
+// TODO: 实现 「静态化输出路径/访问地址 + routePath」→ 可访问 URL 的拼接后，将开关置为 true。
+const STATIC_PREVIEW_ENABLED = false
+
 const handlePreview = (row: any) => {
-  window.open(row.path, '_blank')
+  if (!STATIC_PREVIEW_ENABLED) {
+    ElMessage.warning('预览功能暂未启用')
+    return
+  }
+  window.open(row.routePath || '', '_blank')
 }
 
 const clearLogs = () => {

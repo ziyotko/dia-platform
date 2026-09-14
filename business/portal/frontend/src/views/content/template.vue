@@ -246,7 +246,6 @@ import { getPages } from '@/api/page'
 interface TemplateItem {
   id: number
   name: string
-  code: string
   type: 'home' | 'column' | 'detail' | 'special'
   description?: string
   status: number
@@ -282,7 +281,6 @@ const queryForm = reactive({
 const form = reactive<Partial<TemplateItem>>({
   id: undefined,
   name: '',
-  code: '',
   type: 'home',
   description: '',
   status: 1
@@ -290,7 +288,6 @@ const form = reactive<Partial<TemplateItem>>({
 
 const formRules = {
   name: [{ required: true, message: '请输入模板名称', trigger: 'blur' }],
-  code: [{ required: true, message: '请输入模板编码', trigger: 'blur' }],
   type: [{ required: true, message: '请选择模板类型', trigger: 'change' }]
 }
 
@@ -450,7 +447,6 @@ const handleEdit = (row: TemplateItem) => {
   Object.assign(form, {
     id: row.id,
     name: row.name,
-    code: row.code,
     type: row.type,
     description: row.description,
     status: row.status
@@ -495,7 +491,6 @@ const handleSubmit = async () => {
     if (form.id) {
       await updateTemplate(form.id, {
         name: form.name || '',
-        code: form.code || '',
         type: form.type || 'home',
         description: form.description,
         status: form.status ?? 1
@@ -504,7 +499,6 @@ const handleSubmit = async () => {
     } else {
       await createTemplate({
         name: form.name || '',
-        code: form.code || '',
         type: form.type || 'home',
         description: form.description,
         status: form.status ?? 1
@@ -523,7 +517,6 @@ const handleSubmit = async () => {
 const resetForm = () => {
   form.id = undefined
   form.name = ''
-  form.code = ''
   form.type = 'home'
   form.description = ''
   form.status = 1
@@ -532,7 +525,7 @@ const resetForm = () => {
 const handleDesign = (row: TemplateItem) => {
   designForm.id = row.id
   designForm.name = row.name
-  designForm.sourceCode = row.sourceCode || `<template>\n  <!-- ${row.name} -->\n  <div class="template-${row.code}">\n    \n  </div>\n</template>\n`
+  designForm.sourceCode = row.sourceCode || `<template>\n  <!-- ${row.name} -->\n  <div class="template-${row.id}">\n    \n  </div>\n</template>\n`
   designDialogVisible.value = true
 }
 

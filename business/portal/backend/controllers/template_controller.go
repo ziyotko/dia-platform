@@ -19,7 +19,6 @@ type TemplateController struct {
 type TemplateListItem struct {
 	ID          uint   `json:"id"`
 	Name        string `json:"name"`
-	Code        string `json:"code"`
 	Type        string `json:"type"`
 	Description string `json:"description"`
 	Status      int    `json:"status"`
