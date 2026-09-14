@@ -19,17 +19,17 @@ type UserController struct {
 }
 
 type UserListItem struct {
-	ID         uint     `json:"id"`
-	Username   string   `json:"username"`
-	Account    string   `json:"account"`
-	OrgIds     []uint   `json:"orgIds"`
-	OrgNames   []string `json:"orgNames"`
-	Email      string   `json:"email"`
-	Phone      string   `json:"phone"`
-	Status     int      `json:"status"`
-	Sex        int      `json:"sex"`
-	RoleIds    []int    `json:"roleIds"`
-	CreateTime string   `json:"createTime"`
+	ID        uint     `json:"id"`
+	Username  string   `json:"username"`
+	Account   string   `json:"account"`
+	OrgIds    []uint   `json:"orgIds"`
+	OrgNames  []string `json:"orgNames"`
+	Email     string   `json:"email"`
+	Phone     string   `json:"phone"`
+	Status    int      `json:"status"`
+	Sex       int      `json:"sex"`
+	RoleIds   []int    `json:"roleIds"`
+	CreatedAt string   `json:"createdAt"`
 }
 
 func NewUserController() *UserController {
@@ -98,14 +98,14 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 	list := make([]UserListItem, 0, len(result.List))
 	for _, user := range result.List {
 		item := UserListItem{
-			ID:         user.ID,
-			Username:   user.Username,
-			Account:    user.Account,
-			Email:      user.Email,
-			Phone:      user.Mobile,
-			Status:     user.Status,
-			Sex:        user.Sex,
-			CreateTime: user.CreatedAt.Format("2006-01-02 15:04:05"),
+			ID:        user.ID,
+			Username:  user.Username,
+			Account:   user.Account,
+			Email:     user.Email,
+			Phone:     user.Mobile,
+			Status:    user.Status,
+			Sex:       user.Sex,
+			CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
 		}
 
 		roleIds, err := c.userService.GetUserRoleIds(user.ID)
@@ -128,10 +128,7 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 		list = append(list, item)
 	}
 
-	ctx.JSON(http.StatusOK, utils.Success("获取用户列表成功", gin.H{
-		"list":  list,
-		"total": result.Total,
-	}))
+	ctx.JSON(http.StatusOK, utils.Success("获取用户列表成功", utils.PageData(list, result.Total, page, pageSize)))
 }
 
 func (c *UserController) CreateUser(ctx *gin.Context) {
@@ -315,13 +312,13 @@ func (c *UserController) GetUserByID(ctx *gin.Context) {
 	}
 
 	item := UserListItem{
-		ID:         user.ID,
-		Username:   user.Username,
-		Account:    user.Account,
-		Email:      user.Email,
-		Phone:      user.Mobile,
-		Status:     user.Status,
-		CreateTime: user.CreatedAt.Format("2006-01-02 15:04:05"),
+		ID:        user.ID,
+		Username:  user.Username,
+		Account:   user.Account,
+		Email:     user.Email,
+		Phone:     user.Mobile,
+		Status:    user.Status,
+		CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
 	}
 
 	roleIds, err := c.userService.GetUserRoleIds(user.ID)
@@ -344,7 +341,7 @@ func (c *UserController) GetUserByID(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("获取用户信息成功", gin.H{"user": item}))
 }
 
-func (c *UserController) formatCreateTime(t time.Time) string {
+func (c *UserController) formatCreatedAt(t time.Time) string {
 	return t.Format("2006-01-02 15:04:05")
 }
 
@@ -352,13 +349,13 @@ func (c *UserController) convertUsers(users []models.User) []UserListItem {
 	list := make([]UserListItem, len(users))
 	for i, user := range users {
 		list[i] = UserListItem{
-			ID:         user.ID,
-			Username:   user.Username,
-			Account:    user.Account,
-			Email:      user.Email,
-			Phone:      user.Mobile,
-			Status:     user.Status,
-			CreateTime: c.formatCreateTime(user.CreatedAt),
+			ID:        user.ID,
+			Username:  user.Username,
+			Account:   user.Account,
+			Email:     user.Email,
+			Phone:     user.Mobile,
+			Status:    user.Status,
+			CreatedAt: c.formatCreatedAt(user.CreatedAt),
 		}
 	}
 	return list

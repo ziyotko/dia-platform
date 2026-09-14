@@ -41,10 +41,7 @@ func (c *RoleController) GetRoles(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, utils.Success("获取角色列表成功", gin.H{
-		"list":  result.List,
-		"total": result.Total,
-	}))
+	ctx.JSON(http.StatusOK, utils.Success("获取角色列表成功", utils.PageData(result.List, result.Total, page, pageSize)))
 }
 
 func (c *RoleController) GetAllRoles(ctx *gin.Context) {

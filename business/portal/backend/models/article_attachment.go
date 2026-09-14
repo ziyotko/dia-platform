@@ -10,5 +10,5 @@ type ArticleAttachment struct {
 	Name      string    `gorm:"size:255;not null" json:"name"`
 	URL       string    `gorm:"size:500;not null" json:"url"`
 	Size      int64     `json:"size"`
-	CreatedAt time.Time `json:"createTime"`
+	CreatedAt time.Time `json:"createdAt"`
 }

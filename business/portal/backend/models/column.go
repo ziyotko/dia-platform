@@ -29,7 +29,7 @@ type Column struct {
 func (c Column) MarshalJSON() ([]byte, error) {
 	type Alias Column
 	return json.Marshal(&struct {
-		CreatedAt string `json:"createTime"`
+		CreatedAt string `json:"createdAt"`
 		UpdatedAt string `json:"updatedAt"`
 		Alias
 	}{

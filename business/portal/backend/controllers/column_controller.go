@@ -59,9 +59,7 @@ func (c *ColumnController) GetColumnPublishes(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取栏目发布列表失败"))
 		return
 	}
-	ctx.JSON(http.StatusOK, utils.Success("获取栏目发布列表成功", gin.H{
-		"list": columns,
-	}))
+	ctx.JSON(http.StatusOK, utils.Success("获取栏目发布列表成功", utils.AllData(columns, int64(len(columns)))))
 }
 
 func (c *ColumnController) CreateColumn(ctx *gin.Context) {

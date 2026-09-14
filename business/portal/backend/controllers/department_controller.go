@@ -55,7 +55,7 @@ func buildDeptTree(list []models.Department, orgNameMap map[uint]string) []gin.H
 				"status":      item.Status,
 				"description": item.Description,
 				"userCount":   item.UserCount,
-				"createTime":  item.CreatedAt.Format("2006-01-02 15:04:05"),
+				"createdAt":   item.CreatedAt.Format("2006-01-02 15:04:05"),
 				"children":    []gin.H{},
 				"hasChildren": false,
 			}
@@ -80,10 +80,7 @@ func (c *DepartmentController) GetDepartments(ctx *gin.Context) {
 
 	orgs, _ := c.orgService.GetOrganizationTree()
 	tree := buildDeptTree(result.List, buildOrgNameMap(orgs))
-	ctx.JSON(http.StatusOK, utils.Success("获取部门列表成功", gin.H{
-		"list":  tree,
-		"total": result.Total,
-	}))
+	ctx.JSON(http.StatusOK, utils.Success("获取部门列表成功", utils.AllData(tree, result.Total)))
 }
 
 func (c *DepartmentController) GetDepartmentTree(ctx *gin.Context) {

@@ -106,7 +106,7 @@
             >
               <el-tag type="warning" size="small">审核</el-tag>
               <span class="notice-title">文章《{{ item.title }}》待审核</span>
-              <span class="notice-time">{{ item.createTime }}</span>
+              <span class="notice-time">{{ item.createdAt }}</span>
             </div>
           </div>
         </el-card>

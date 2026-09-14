@@ -22,7 +22,7 @@ type Category struct {
 func (c Category) MarshalJSON() ([]byte, error) {
 	type Alias Category
 	return json.Marshal(&struct {
-		CreatedAt string `json:"createTime"`
+		CreatedAt string `json:"createdAt"`
 		UpdatedAt string `json:"updatedAt"`
 		*Alias
 	}{

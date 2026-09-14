@@ -55,16 +55,11 @@ func (c *WorkflowController) GetWorkflows(ctx *gin.Context) {
 			"status":      w.Status,
 			"description": w.Description,
 			"nodeCount":   nodeCount,
-			"createTime":  w.CreatedAt.Format("2006-01-02 15:04:05"),
+			"createdAt":   w.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
 
-	ctx.JSON(http.StatusOK, utils.Success("获取流程列表成功", gin.H{
-		"list":     list,
-		"total":    total,
-		"page":     page,
-		"pageSize": pageSize,
-	}))
+	ctx.JSON(http.StatusOK, utils.Success("获取流程列表成功", utils.PageData(list, total, page, pageSize)))
 }
 
 func (c *WorkflowController) GetWorkflowByID(ctx *gin.Context) {

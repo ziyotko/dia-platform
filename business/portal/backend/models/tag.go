@@ -20,7 +20,7 @@ type Tag struct {
 func (t Tag) MarshalJSON() ([]byte, error) {
 	type Alias Tag
 	return json.Marshal(&struct {
-		CreatedAt string `json:"createTime"`
+		CreatedAt string `json:"createdAt"`
 		UpdatedAt string `json:"updatedAt"`
 		*Alias
 	}{

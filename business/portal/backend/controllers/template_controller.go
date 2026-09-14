@@ -25,7 +25,7 @@ type TemplateListItem struct {
 	SourceCode  string `json:"sourceCode"`
 	Layout      string `json:"layout"`
 	PageCount   int    `json:"pageCount"`
-	CreateTime  string `json:"createTime"`
+	CreatedAt   string `json:"createdAt"`
 }
 
 func NewTemplateController() *TemplateController {
@@ -70,14 +70,11 @@ func (c *TemplateController) GetTemplates(ctx *gin.Context) {
 			SourceCode:  t.SourceCode,
 			Layout:      t.Layout,
 			PageCount:   result.PageCounts[t.ID],
-			CreateTime:  t.CreatedAt.Format("2006-01-02 15:04:05"),
+			CreatedAt:   t.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
 
-	ctx.JSON(http.StatusOK, utils.Success("获取模板列表成功", gin.H{
-		"list":  list,
-		"total": result.Total,
-	}))
+	ctx.JSON(http.StatusOK, utils.Success("获取模板列表成功", utils.PageData(list, result.Total, page, pageSize)))
 }
 
 func (c *TemplateController) CreateTemplate(ctx *gin.Context) {

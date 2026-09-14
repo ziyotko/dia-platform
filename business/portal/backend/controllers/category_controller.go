@@ -47,12 +47,7 @@ func (c *CategoryController) GetCategories(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取分类列表失败"))
 		return
 	}
-	ctx.JSON(http.StatusOK, utils.Success("获取分类列表成功", gin.H{
-		"list":     categories,
-		"total":    total,
-		"page":     page,
-		"pageSize": pageSize,
-	}))
+	ctx.JSON(http.StatusOK, utils.Success("获取分类列表成功", utils.PageData(categories, total, page, pageSize)))
 }
 
 func (c *CategoryController) GetAllCategories(ctx *gin.Context) {
@@ -141,8 +136,5 @@ func (c *CategoryController) GetCategoryArticleStats(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取分类文章统计失败"))
 		return
 	}
-	ctx.JSON(http.StatusOK, utils.Success("获取成功", gin.H{
-		"list":  stats,
-		"total": total,
-	}))
+	ctx.JSON(http.StatusOK, utils.Success("获取成功", utils.AllData(stats, total)))
 }

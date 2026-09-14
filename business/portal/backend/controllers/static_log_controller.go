@@ -21,16 +21,16 @@ func NewStaticLogController() *StaticLogController {
 }
 
 type StaticLogListItem struct {
-	ID         uint   `json:"id"`
-	Operation  string `json:"operation"`
-	PageName   string `json:"pageName"`
-	Path       string `json:"path"`
-	Duration   string `json:"duration"`
-	FileSize   string `json:"fileSize"`
-	Operator   string `json:"operator"`
-	Status     string `json:"status"`
-	Message    string `json:"message"`
-	CreateTime string `json:"createTime"`
+	ID        uint   `json:"id"`
+	Operation string `json:"operation"`
+	PageName  string `json:"pageName"`
+	Path      string `json:"path"`
+	Duration  string `json:"duration"`
+	FileSize  string `json:"fileSize"`
+	Operator  string `json:"operator"`
+	Status    string `json:"status"`
+	Message   string `json:"message"`
+	CreatedAt string `json:"createdAt"`
 }
 
 func (c *StaticLogController) GetLogs(ctx *gin.Context) {
@@ -53,33 +53,30 @@ func (c *StaticLogController) GetLogs(ctx *gin.Context) {
 	list := make([]StaticLogListItem, 0, len(result.List))
 	for _, log := range result.List {
 		list = append(list, StaticLogListItem{
-			ID:         log.ID,
-			Operation:  log.Operation,
-			PageName:   log.PageName,
-			Path:       log.Path,
-			Duration:   log.Duration,
-			FileSize:   log.FileSize,
-			Operator:   log.Operator,
-			Status:     log.Status,
-			Message:    log.Message,
-			CreateTime: log.CreatedAt.Format("2006-01-02 15:04:05"),
+			ID:        log.ID,
+			Operation: log.Operation,
+			PageName:  log.PageName,
+			Path:      log.Path,
+			Duration:  log.Duration,
+			FileSize:  log.FileSize,
+			Operator:  log.Operator,
+			Status:    log.Status,
+			Message:   log.Message,
+			CreatedAt: log.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
 
-	ctx.JSON(http.StatusOK, utils.Success("获取静态化日志列表成功", gin.H{
-		"list":  list,
-		"total": result.Total,
-	}))
+	ctx.JSON(http.StatusOK, utils.Success("获取静态化日志列表成功", utils.PageData(list, result.Total, page, pageSize)))
 }
 
 func (c *StaticLogController) ClearLogs(ctx *gin.Context) {
-	err := c.staticLogService.Clear()
+	count, err := c.staticLogService.Clear()
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "清空静态化日志失败"))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, utils.Success("清空静态化日志成功", nil))
+	ctx.JSON(http.StatusOK, utils.Success("清空静态化日志成功", gin.H{"count": count}))
 }
 
 // GetLatestTimes 读取各类型页面最后一次静态化成功时间（全站/首页/栏目页/专题页/详情页）

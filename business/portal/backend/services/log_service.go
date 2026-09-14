@@ -108,6 +108,9 @@ func (s *LogService) GetRecentLoginLogs(limit int) ([]models.LoginLog, error) {
 	return logs, err
 }
 
-func (s *LogService) ClearLoginLogs() error {
-	return utils.DB.Where("1 = 1").Unscoped().Delete(&models.LoginLog{}).Error
+// ClearLoginLogs 与 ClearLogs 保持同一语义：仅清空半年前的登录日志，保留最近半年。返回删除条数。
+func (s *LogService) ClearLoginLogs() (int64, error) {
+	cutoff := time.Now().AddDate(0, -6, 0)
+	result := utils.DB.Where("created_at < ?", cutoff).Unscoped().Delete(&models.LoginLog{})
+	return result.RowsAffected, result.Error
 }

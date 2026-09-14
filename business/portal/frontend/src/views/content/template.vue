@@ -67,7 +67,7 @@
             />
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="170" />
+        <el-table-column prop="createdAt" label="创建时间" width="170" />
         <el-table-column label="操作" width="360" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleDesign(row)">
@@ -250,7 +250,7 @@ interface TemplateItem {
   description?: string
   status: number
   pageCount: number
-  createTime: string
+  createdAt: string
   sourceCode?: string
   layout?: string
 }

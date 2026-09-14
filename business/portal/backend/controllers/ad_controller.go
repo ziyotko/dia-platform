@@ -111,16 +111,11 @@ func (c *AdController) GetAds(ctx *gin.Context) {
 			"endTime":    formatTime(a.EndTime),
 			"author":     a.Author,
 			"authorCode": a.AuthorCode,
-			"createTime": a.CreatedAt.Format("2006-01-02 15:04:05"),
+			"createdAt":  a.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
 
-	ctx.JSON(http.StatusOK, utils.Success("获取广告列表成功", gin.H{
-		"list":     list,
-		"total":    total,
-		"page":     page,
-		"pageSize": pageSize,
-	}))
+	ctx.JSON(http.StatusOK, utils.Success("获取广告列表成功", utils.PageData(list, total, page, pageSize)))
 }
 
 func (c *AdController) GetAdByID(ctx *gin.Context) {

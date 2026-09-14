@@ -47,12 +47,7 @@ func (c *TagController) GetTags(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取标签列表失败"))
 		return
 	}
-	ctx.JSON(http.StatusOK, utils.Success("获取标签列表成功", gin.H{
-		"list":     tags,
-		"total":    total,
-		"page":     page,
-		"pageSize": pageSize,
-	}))
+	ctx.JSON(http.StatusOK, utils.Success("获取标签列表成功", utils.PageData(tags, total, page, pageSize)))
 }
 
 func (c *TagController) GetAllTags(ctx *gin.Context) {
@@ -141,5 +136,5 @@ func (c *TagController) GetTagArticleStats(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取标签文章统计失败"))
 		return
 	}
-	ctx.JSON(http.StatusOK, utils.Success("获取成功", stats))
+	ctx.JSON(http.StatusOK, utils.Success("获取成功", utils.AllData(stats, int64(len(stats)))))
 }

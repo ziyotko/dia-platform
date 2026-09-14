@@ -152,7 +152,7 @@
           </template>
         </el-table-column>
       
-        <el-table-column prop="createTime" label="创建时间" width="170" />
+        <el-table-column prop="createdAt" label="创建时间" width="170" />
         <el-table-column label="操作" width="300" align="center" fixed="right">
           <template #default="{ row }">
             <el-button v-if="isAuthor(row) && row.auditStatus !== 1 && (row.auditStatus !== 2 || row.status === 2)" link type="primary" @click="handleEdit(row)">
@@ -732,7 +732,7 @@
         <div class="preview-meta">
           <span>作者：{{ previewData.author }}</span>
           <span>来源：{{ previewData.source }}</span>
-          <span>时间：{{ previewData.createTime }}</span>
+          <span>时间：{{ previewData.createdAt }}</span>
         </div>
         <div class="preview-cover" v-if="previewData.cover">
           <el-image
@@ -938,7 +938,7 @@
                         <CircleCheck v-if="getNodeHistory(item, node.id).action === 1" />
                         <CircleClose v-else />
                       </el-icon>
-                      <span>{{ getNodeHistory(item, node.id).operatorName }} {{ formatAuditTime(getNodeHistory(item, node.id).createTime) }}</span>
+                      <span>{{ getNodeHistory(item, node.id).operatorName }} {{ formatAuditTime(getNodeHistory(item, node.id).createdAt) }}</span>
                     </div>
                   </template>
                 </el-step>
@@ -2224,7 +2224,7 @@ const previewData = reactive({
   author: '',
   authorCode: '',
   source: '',
-  createTime: '',
+  createdAt: '',
   summary: '',
   content: '',
   url: '',
@@ -2247,7 +2247,7 @@ const handlePreview = async (row: any) => {
     title: row.title,
     author: row.author,
     source: row.source || '',
-    createTime: row.createTime,
+    createdAt: row.createdAt,
     summary: row.summary || '',
     content: noReferrerContent(content),
     url: row.url || '',

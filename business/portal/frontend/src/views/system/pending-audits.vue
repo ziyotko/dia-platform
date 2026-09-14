@@ -25,7 +25,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="author" label="作者" width="120" />
-        <el-table-column prop="createTime" label="提交时间" width="170" />
+        <el-table-column prop="createdAt" label="提交时间" width="170" />
         <el-table-column label="操作" width="100" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleAudit(row)">

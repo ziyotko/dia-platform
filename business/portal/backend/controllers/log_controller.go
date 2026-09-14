@@ -34,7 +34,7 @@ type LogListItem struct {
 	UserAgent   string `json:"ua"`
 	Duration    int64  `json:"duration"`
 	StatusCode  int    `json:"statusCode"`
-	CreateTime  string `json:"createTime"`
+	CreatedAt   string `json:"createdAt"`
 }
 
 func (c *LogController) GetLogs(ctx *gin.Context) {
@@ -74,14 +74,11 @@ func (c *LogController) GetLogs(ctx *gin.Context) {
 			UserAgent:   log.UserAgent,
 			Duration:    log.Duration,
 			StatusCode:  log.StatusCode,
-			CreateTime:  log.CreatedAt.Format("2006-01-02 15:04:05"),
+			CreatedAt:   log.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
 
-	ctx.JSON(http.StatusOK, utils.Success("获取日志列表成功", gin.H{
-		"list":  list,
-		"total": result.Total,
-	}))
+	ctx.JSON(http.StatusOK, utils.Success("获取日志列表成功", utils.PageData(list, result.Total, page, pageSize)))
 }
 
 type LoginLogListItem struct {
@@ -93,7 +90,7 @@ type LoginLogListItem struct {
 	Device     string `json:"device"`
 	Status     int    `json:"status"`
 	StatusText string `json:"statusText"`
-	CreateTime string `json:"createTime"`
+	CreatedAt  string `json:"createdAt"`
 }
 
 func (c *LogController) GetLoginLogs(ctx *gin.Context) {
@@ -132,14 +129,11 @@ func (c *LogController) GetLoginLogs(ctx *gin.Context) {
 			Device:     log.Device,
 			Status:     log.Status,
 			StatusText: statusText,
-			CreateTime: log.CreatedAt.Format("2006-01-02 15:04:05"),
+			CreatedAt:  log.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
 
-	ctx.JSON(http.StatusOK, utils.Success("获取登录日志列表成功", gin.H{
-		"list":  list,
-		"total": result.Total,
-	}))
+	ctx.JSON(http.StatusOK, utils.Success("获取登录日志列表成功", utils.PageData(list, result.Total, page, pageSize)))
 }
 
 func (c *LogController) ClearLogs(ctx *gin.Context) {
@@ -153,11 +147,11 @@ func (c *LogController) ClearLogs(ctx *gin.Context) {
 }
 
 func (c *LogController) ClearLoginLogs(ctx *gin.Context) {
-	err := c.logService.ClearLoginLogs()
+	count, err := c.logService.ClearLoginLogs()
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "清空登录日志失败"))
 		return
 	}
 
-	ctx.JSON(http.StatusOK, utils.Success("清空登录日志成功", nil))
+	ctx.JSON(http.StatusOK, utils.Success("清空登录日志成功", gin.H{"count": count}))
 }

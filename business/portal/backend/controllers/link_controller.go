@@ -109,16 +109,11 @@ func (c *LinkController) GetLinks(ctx *gin.Context) {
 			"status":      l.Status,
 			"author":      l.Author,
 			"authorCode":  l.AuthorCode,
-			"createTime":  l.CreatedAt.Format("2006-01-02 15:04:05"),
+			"createdAt":   l.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
 
-	ctx.JSON(http.StatusOK, utils.Success("获取友链列表成功", gin.H{
-		"list":     list,
-		"total":    total,
-		"page":     page,
-		"pageSize": pageSize,
-	}))
+	ctx.JSON(http.StatusOK, utils.Success("获取友链列表成功", utils.PageData(list, total, page, pageSize)))
 }
 
 func (c *LinkController) GetLinkByID(ctx *gin.Context) {

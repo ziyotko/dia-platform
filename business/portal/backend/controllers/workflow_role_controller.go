@@ -52,10 +52,7 @@ func (c *WorkflowRoleController) GetWorkflowRoles(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, utils.Success("获取流程角色列表成功", gin.H{
-		"list":  result.List,
-		"total": result.Total,
-	}))
+	ctx.JSON(http.StatusOK, utils.Success("获取流程角色列表成功", utils.PageData(result.List, result.Total, page, pageSize)))
 }
 
 func (c *WorkflowRoleController) GetWorkflowRoleByID(ctx *gin.Context) {

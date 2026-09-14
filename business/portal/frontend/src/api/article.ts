@@ -5,7 +5,7 @@ export interface ArticleAttachment {
   name: string
   url: string
   size: number
-  createTime?: string
+  createdAt?: string
 }
 
 export interface ArticleForm {

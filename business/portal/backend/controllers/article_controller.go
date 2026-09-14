@@ -103,11 +103,11 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 		attachments := make([]gin.H, 0, len(a.Attachments))
 		for _, att := range a.Attachments {
 			attachments = append(attachments, gin.H{
-				"id":         att.ID,
-				"name":       att.Name,
-				"url":        att.URL,
-				"size":       att.Size,
-				"createTime": att.CreatedAt.Format("2006-01-02 15:04:05"),
+				"id":        att.ID,
+				"name":      att.Name,
+				"url":       att.URL,
+				"size":      att.Size,
+				"createdAt": att.CreatedAt.Format("2006-01-02 15:04:05"),
 			})
 		}
 		list = append(list, gin.H{
@@ -129,17 +129,12 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 			"columnCount":  len(a.Columns),
 			"columnIds":    columnIds,
 			"attachments":  attachments,
-			"createTime":   a.CreatedAt.Format("2006-01-02 15:04:05"),
+			"createdAt":    a.CreatedAt.Format("2006-01-02 15:04:05"),
 			"updatedAt":    a.UpdatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
 
-	ctx.JSON(http.StatusOK, utils.Success("获取文章列表成功", gin.H{
-		"list":     list,
-		"total":    total,
-		"page":     page,
-		"pageSize": pageSize,
-	}))
+	ctx.JSON(http.StatusOK, utils.Success("获取文章列表成功", utils.PageData(list, total, page, pageSize)))
 }
 
 // PublicSearchArticles 开放搜索（无需认证）：按查询条件搜索已发布文章，返回 article 表数据但不含 content 字段
@@ -217,17 +212,12 @@ func (c *ArticleController) PublicSearchArticles(ctx *gin.Context) {
 			"categoryIds":  categoryIds,
 			"tagIds":       tagIds,
 			"columnIds":    columnIds,
-			"createTime":   a.CreatedAt.Format("2006-01-02 15:04:05"),
+			"createdAt":    a.CreatedAt.Format("2006-01-02 15:04:05"),
 			"updatedAt":    a.UpdatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
 
-	ctx.JSON(http.StatusOK, utils.Success("搜索成功", gin.H{
-		"list":     list,
-		"total":    total,
-		"page":     page,
-		"pageSize": pageSize,
-	}))
+	ctx.JSON(http.StatusOK, utils.Success("搜索成功", utils.PageData(list, total, page, pageSize)))
 }
 
 func (c *ArticleController) GetArticleByID(ctx *gin.Context) {
@@ -261,11 +251,11 @@ func (c *ArticleController) GetArticleByID(ctx *gin.Context) {
 	attachments := make([]gin.H, 0, len(article.Attachments))
 	for _, att := range article.Attachments {
 		attachments = append(attachments, gin.H{
-			"id":         att.ID,
-			"name":       att.Name,
-			"url":        att.URL,
-			"size":       att.Size,
-			"createTime": att.CreatedAt.Format("2006-01-02 15:04:05"),
+			"id":        att.ID,
+			"name":      att.Name,
+			"url":       att.URL,
+			"size":      att.Size,
+			"createdAt": att.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
 	ctx.JSON(http.StatusOK, utils.Success("获取文章成功", gin.H{
@@ -291,7 +281,7 @@ func (c *ArticleController) GetArticleByID(ctx *gin.Context) {
 		"tagIds":       tagIds,
 		"columnIds":    columnIds,
 		"attachments":  attachments,
-		"createTime":   article.CreatedAt.Format("2006-01-02 15:04:05"),
+		"createdAt":    article.CreatedAt.Format("2006-01-02 15:04:05"),
 		"updatedAt":    article.UpdatedAt.Format("2006-01-02 15:04:05"),
 	}))
 }
@@ -710,17 +700,14 @@ func (c *ArticleController) GetMyAuditArticles(ctx *gin.Context) {
 	var list []gin.H
 	for _, a := range articles {
 		list = append(list, gin.H{
-			"id":         a.ID,
-			"title":      a.Title,
-			"author":     a.Author,
-			"createTime": a.CreatedAt.Format("2006-01-02 15:04:05"),
+			"id":        a.ID,
+			"title":     a.Title,
+			"author":    a.Author,
+			"createdAt": a.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
 
-	ctx.JSON(http.StatusOK, utils.Success("获取待审核文章成功", gin.H{
-		"list":  list,
-		"total": total,
-	}))
+	ctx.JSON(http.StatusOK, utils.Success("获取待审核文章成功", utils.PageData(list, total, page, pageSize)))
 }
 
 func (c *ArticleController) GetArticleColumnPublishes(ctx *gin.Context) {
@@ -748,23 +735,18 @@ func (c *ArticleController) GetArticleColumnPublishes(ctx *gin.Context) {
 	var result []gin.H
 	for _, a := range articles {
 		result = append(result, gin.H{
-			"id":         a.ID,
-			"title":      a.Title,
-			"routePath":  fmt.Sprintf("%s/%d.html", routePath, a.ID),
-			"name":       name,
-			"author":     a.Author,
-			"source":     a.Source,
-			"createTime": a.CreatedAt.Format("2006-01-02 15:04:05"),
-			"updatedAt":  a.UpdatedAt.Format("2006-01-02 15:04:05"),
+			"id":        a.ID,
+			"title":     a.Title,
+			"routePath": fmt.Sprintf("%s/%d.html", routePath, a.ID),
+			"name":      name,
+			"author":    a.Author,
+			"source":    a.Source,
+			"createdAt": a.CreatedAt.Format("2006-01-02 15:04:05"),
+			"updatedAt": a.UpdatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
 
-	ctx.JSON(http.StatusOK, utils.Success("获取静态化状态列表成功", gin.H{
-		"list":     result,
-		"total":    total,
-		"page":     page,
-		"pageSize": pageSize,
-	}))
+	ctx.JSON(http.StatusOK, utils.Success("获取静态化状态列表成功", utils.PageData(result, total, page, pageSize)))
 }
 
 func (c *ArticleController) GetArticleAuthorStats(ctx *gin.Context) {
@@ -779,10 +761,7 @@ func (c *ArticleController) GetArticleAuthorStats(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, utils.Success("获取成功", gin.H{
-		"list":  stats,
-		"total": total,
-	}))
+	ctx.JSON(http.StatusOK, utils.Success("获取成功", utils.AllData(stats, total)))
 }
 
 func formatLocalTime(t *models.LocalTime) string {

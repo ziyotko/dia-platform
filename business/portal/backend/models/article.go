@@ -97,7 +97,7 @@ type Article struct {
 func (a Article) MarshalJSON() ([]byte, error) {
 	type Alias Article
 	return json.Marshal(&struct {
-		CreatedAt string `json:"createTime"`
+		CreatedAt string `json:"createdAt"`
 		UpdatedAt string `json:"updatedAt"`
 		*Alias
 	}{

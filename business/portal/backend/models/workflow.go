@@ -21,7 +21,7 @@ type Workflow struct {
 func (w Workflow) MarshalJSON() ([]byte, error) {
 	type Alias Workflow
 	return json.Marshal(&struct {
-		CreatedAt string `json:"createTime"`
+		CreatedAt string `json:"createdAt"`
 		UpdatedAt string `json:"updatedAt"`
 		*Alias
 	}{

@@ -11,12 +11,12 @@ type ColumnService struct{}
 
 // ColumnPublishItem 栏目发布（静态化）列表项
 type ColumnPublishItem struct {
-	ID         uint   `json:"id"`
-	Name       string `json:"name"`       // 栏目名称
-	Template   string `json:"template"`   // 模板名称
-	RoutePath  string `json:"routePath"`  // 访问路径 = 栏目 route_path + 模板页 route_path
-	CreateTime string `json:"createTime"` // 模板页创建时间
-	UpdatedAt  string `json:"updatedAt"`  // 模板页修改时间
+	ID        uint   `json:"id"`
+	Name      string `json:"name"`      // 栏目名称
+	Template  string `json:"template"`  // 模板名称
+	RoutePath string `json:"routePath"` // 访问路径 = 栏目 route_path + 模板页 route_path
+	CreatedAt string `json:"createdAt"` // 模板页创建时间
+	UpdatedAt string `json:"updatedAt"` // 模板页修改时间
 }
 
 // GetColumnPublishes 获取栏目发布（静态化）列表：
@@ -59,12 +59,12 @@ func (s *ColumnService) GetColumnPublishes() ([]ColumnPublishItem, error) {
 	result := make([]ColumnPublishItem, 0, len(columns))
 	for _, col := range columns {
 		result = append(result, ColumnPublishItem{
-			ID:         col.ID,
-			Name:       col.Name,
-			Template:   page.Name,
-			RoutePath:  col.RoutePath + page.RoutePath,
-			CreateTime: page.CreatedAt.Format("2006-01-02 15:04:05"),
-			UpdatedAt:  page.UpdatedAt.Format("2006-01-02 15:04:05"),
+			ID:        col.ID,
+			Name:      col.Name,
+			Template:  page.Name,
+			RoutePath: col.RoutePath + page.RoutePath,
+			CreatedAt: page.CreatedAt.Format("2006-01-02 15:04:05"),
+			UpdatedAt: page.UpdatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
 	return result, nil

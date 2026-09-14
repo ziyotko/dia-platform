@@ -36,7 +36,7 @@ func (a Ad) MarshalJSON() ([]byte, error) {
 		endTimeStr = a.EndTime.Format("2006-01-02 15:04:05")
 	}
 	return json.Marshal(&struct {
-		CreatedAt string `json:"createTime"`
+		CreatedAt string `json:"createdAt"`
 		UpdatedAt string `json:"updatedAt"`
 		StartTime string `json:"startTime"`
 		EndTime   string `json:"endTime"`

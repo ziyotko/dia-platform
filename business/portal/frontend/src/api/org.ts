@@ -38,7 +38,7 @@ export interface DepartmentItem {
   status: number
   description: string
   userCount: number
-  createTime: string
+  createdAt: string
   children?: DepartmentItem[]
   hasChildren?: boolean
 }
@@ -62,7 +62,7 @@ export interface OrgItem {
   status: number
   description: string
   userCount: number
-  createTime: string
+  createdAt: string
   children?: OrgItem[]
   hasChildren?: boolean
   departments?: DepartmentItem[]

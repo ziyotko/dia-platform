@@ -49,7 +49,7 @@ func buildOrgTree(list []models.Organization) []gin.H {
 				"status":      item.Status,
 				"description": item.Description,
 				"userCount":   item.UserCount,
-				"createTime":  item.CreatedAt.Format("2006-01-02 15:04:05"),
+				"createdAt":   item.CreatedAt.Format("2006-01-02 15:04:05"),
 				"children":    []gin.H{},
 				"hasChildren": false,
 				"departments": []gin.H{},
@@ -86,10 +86,7 @@ func (c *OrganizationController) GetOrganizations(ctx *gin.Context) {
 			return
 		}
 	}
-	ctx.JSON(http.StatusOK, utils.Success("获取机构列表成功", gin.H{
-		"list":  tree,
-		"total": result.Total,
-	}))
+	ctx.JSON(http.StatusOK, utils.Success("获取机构列表成功", utils.AllData(tree, result.Total)))
 }
 
 func (c *OrganizationController) attachOrgDepartments(node gin.H, orgNameMap map[uint]string) error {

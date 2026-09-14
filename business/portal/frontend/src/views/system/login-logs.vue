@@ -37,7 +37,7 @@
         <div class="card-header">
           <span>登录日志</span>
           <el-button type="danger" plain @click="handleClear">
-            <el-icon><Delete /></el-icon>清空日志
+            <el-icon><Delete /></el-icon>清空历史日志
           </el-button>
         </div>
       </template>
@@ -54,7 +54,7 @@
             <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">{{ row.statusText }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="登录时间" width="170" />
+        <el-table-column prop="createdAt" label="登录时间" width="170" />
       </el-table>
 
       <div class="pagination">
@@ -77,6 +77,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { Search, RefreshRight, Delete } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getLoginLogList, clearLoginLogs } from '@/api/log'
+import { buildClearLogsConfirmText, buildClearLogsSuccessText } from '@/utils/format'
 
 const loading = ref(false)
 const total = ref(0)
@@ -140,7 +141,7 @@ const handleCurrentChange = (val: number) => {
 }
 
 const handleClear = () => {
-  ElMessageBox.confirm('确定要清空所有登录日志吗？此操作不可恢复！', '警告', {
+  ElMessageBox.confirm(buildClearLogsConfirmText(), '警告', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
@@ -148,8 +149,10 @@ const handleClear = () => {
     try {
       const res: any = await clearLoginLogs()
       if (res.code === 0) {
-        ElMessage.success('日志已清空')
+        ElMessage.success(buildClearLogsSuccessText(res.data?.count ?? 0))
         fetchData()
+      } else {
+        ElMessage.error(res.message || '清空日志失败')
       }
     } catch (error) {
       ElMessage.error('清空日志失败')

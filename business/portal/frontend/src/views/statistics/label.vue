@@ -86,7 +86,7 @@ const fetchData = async () => {
   try {
     const res: any = await getTagArticleStats()
     if (res && res.data) {
-      chartData.value = res.data || []
+      chartData.value = res.data.list || []
       updateChart()
     }
   } catch (error) {

@@ -25,7 +25,7 @@ type Page struct {
 func (p Page) MarshalJSON() ([]byte, error) {
 	type Alias Page
 	return json.Marshal(&struct {
-		CreatedAt string `json:"createTime"`
+		CreatedAt string `json:"createdAt"`
 		UpdatedAt string `json:"updatedAt"`
 		Alias
 	}{

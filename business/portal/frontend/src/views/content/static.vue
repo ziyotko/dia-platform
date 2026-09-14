@@ -255,7 +255,7 @@
                 <el-table-column prop="id" label="ID" width="80" align="center" />
                 <el-table-column prop="name" label="名称" min-width="160" />
                 <el-table-column prop="template" label="模板名称" min-width="60" show-overflow-tooltip />
-                <el-table-column prop="createTime" label="创建时间" width="170" />
+                <el-table-column prop="createdAt" label="创建时间" width="170" />
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
                 <el-table-column label="操作" width="280" align="center" fixed="right">
                   <template #default="{ row }">
@@ -292,7 +292,7 @@
                 <el-table-column prop="id" label="ID" width="80" align="center" />
                 <el-table-column prop="name" label="栏目名称" min-width="160" />
                 <el-table-column prop="template" label="模板名称" min-width="120" show-overflow-tooltip />
-                <el-table-column prop="createTime" label="创建时间" width="170" />
+                <el-table-column prop="createdAt" label="创建时间" width="170" />
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
                 <el-table-column label="操作" width="280" align="center" fixed="right">
                   <template #default="{ row }">
@@ -331,7 +331,7 @@
                 <el-table-column prop="name" label="模板名称" min-width="60" show-overflow-tooltip />
                 <el-table-column prop="author" label="作者" min-width="60" />
                 <el-table-column prop="source" label="来源" min-width="100" />
-                <el-table-column prop="createTime" label="创建时间" width="170" />
+                <el-table-column prop="createdAt" label="创建时间" width="170" />
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
                 <el-table-column label="操作" width="340" align="center" fixed="right">
                   <template #default="{ row }">
@@ -371,7 +371,7 @@
                 <el-table-column prop="id" label="ID" width="80" align="center" />
                 <el-table-column prop="name" label="名称" min-width="160" />
                 <el-table-column prop="template" label="模板名称" min-width="60" show-overflow-tooltip />
-                <el-table-column prop="createTime" label="创建时间" width="170" />
+                <el-table-column prop="createdAt" label="创建时间" width="170" />
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
                 <el-table-column label="操作" width="280" align="center" fixed="right">
                   <template #default="{ row }">
@@ -412,7 +412,7 @@
       <div class="log-dialog-body">
         <div class="log-toolbar">
           <el-button type="danger" link @click="clearLogs">
-            <el-icon><Delete /></el-icon>清空日志
+            <el-icon><Delete /></el-icon>清空历史日志
           </el-button>
         </div>
         <div class="log-scroll-container" v-loading="logLoading">
@@ -499,6 +499,7 @@ import { startStaticJob, getStaticJob, startStaticPage, startStaticList, startSt
 import type { StaticJob, StaticJobStatus } from '@/api/static_job'
 import { getSettings } from '@/api/settings'
 import { getErrorMessage } from '@/utils/request'
+import { buildClearLogsConfirmText, buildClearLogsSuccessText } from '@/utils/format'
 
 const loading = ref(false)
 const activeTab = ref('home')
@@ -871,7 +872,7 @@ const fetchLogList = async () => {
         ...item,
         statusText: statusTextMap[item.status] || item.status,
         icon: markRaw(statusIconMap[item.status] || DocumentChecked),
-        time: item.createTime
+        time: item.createdAt
       }))
       logTotal.value = res.data.total || 0
     }
@@ -1065,24 +1066,25 @@ const handlePreview = (row: any) => {
 }
 
 const clearLogs = () => {
-  ElMessageBox.confirm('确定要清空所有静态化日志吗？', '确认清空', {
+  ElMessageBox.confirm(buildClearLogsConfirmText(), '警告', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(async () => {
-    try {
-      const res: any = await clearStaticLogs()
-      if (res.code === 0) {
-        logList.value = []
-        logTotal.value = 0
-        ElMessage.success('日志已清空')
-      } else {
-        ElMessage.error(res.msg || '清空失败')
+  })
+    .then(async () => {
+      try {
+        const res: any = await clearStaticLogs()
+        if (res.code === 0) {
+          ElMessage.success(buildClearLogsSuccessText(res.data?.count ?? 0))
+          fetchLogList()
+        } else {
+          ElMessage.error(res.message || '清空日志失败')
+        }
+      } catch (error) {
+        ElMessage.error('清空日志失败')
       }
-    } catch (error) {
-      ElMessage.error('清空日志失败')
-    }
-  }).catch(() => {})
+    })
+    .catch(() => {})
 }
 
 onMounted(() => {

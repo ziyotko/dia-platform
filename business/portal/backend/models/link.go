@@ -27,7 +27,7 @@ type Link struct {
 func (l Link) MarshalJSON() ([]byte, error) {
 	type Alias Link
 	return json.Marshal(&struct {
-		CreatedAt string `json:"createTime"`
+		CreatedAt string `json:"createdAt"`
 		UpdatedAt string `json:"updatedAt"`
 		Alias
 	}{

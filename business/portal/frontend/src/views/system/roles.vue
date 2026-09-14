@@ -38,7 +38,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="创建时间" width="170" />
+        <el-table-column prop="createdAt" label="创建时间" width="170" />
         <el-table-column label="操作" width="220" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handlePermission(row)">
@@ -231,7 +231,7 @@ const fetchData = async () => {
       const list = res.data.list || []
       tableData.value = list.map((item: any) => ({
         ...item,
-        createTime: formatDateTime(item.createdAt)
+        createdAt: formatDateTime(item.createdAt)
       }))
       total.value = res.data.total || 0
     } else {
