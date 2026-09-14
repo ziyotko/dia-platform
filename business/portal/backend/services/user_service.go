@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"gorm.io/gorm"
+
 	"server/models"
 	"server/utils"
 
@@ -58,18 +60,24 @@ func (s *UserService) Login(email, account, mobile, password, captchaID, captcha
 		}
 
 		if !user.ComparePassword(password) {
-			user.LoginFailCount++
-			if user.LoginFailCount >= settings.MaxFailCount {
+			// 原子自增：并发失败登录不会相互覆盖（原先 "读-加一-写" 会丢计数，导致锁定阈值被拖长）
+			if err := utils.DB.Model(&models.User{}).Where("id = ?", user.ID).
+				UpdateColumn("login_fail_count", gorm.Expr("login_fail_count + 1")).Error; err != nil {
+				utils.Logger.Warnf("累加用户[%d]登录失败次数失败: %s", user.ID, err)
+			}
+
+			var fresh models.User
+			if err := utils.DB.Select("login_fail_count").First(&fresh, user.ID).Error; err == nil &&
+				fresh.LoginFailCount >= settings.MaxFailCount {
 				lockUntil := time.Now().Add(time.Duration(settings.LockDuration) * time.Minute)
-				user.LockedUntil = &lockUntil
-				user.LoginFailCount = 0
-				utils.DB.Model(&user).Updates(map[string]any{
+				if err := utils.DB.Model(&models.User{}).Where("id = ?", user.ID).Updates(map[string]any{
 					"login_fail_count": 0,
 					"locked_until":     lockUntil,
-				})
+				}).Error; err != nil {
+					utils.Logger.Warnf("锁定用户[%d]失败: %s", user.ID, err)
+				}
 				return nil, "", "", fmt.Errorf("登录失败次数过多，账号已锁定 %d 分钟", settings.LockDuration)
 			}
-			utils.DB.Model(&user).Update("login_fail_count", user.LoginFailCount)
 			return nil, "", "", errors.New("密码错误")
 		}
 

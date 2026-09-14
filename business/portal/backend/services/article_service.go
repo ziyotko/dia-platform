@@ -288,7 +288,7 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 
 // takeOffline 文章下线时统一清理发布/审核/栏目关联数据：
 // 下线后不应再残留 article_column_publish（否则列表仍会按栏目命中）、进行中的栏目审核，
-// 以及栏目绑定与 column_count（否则重新上线时与实际栏目不符）。审核状态重置为未提交，便于作者修改后重新送审。
+// 以及栏目绑定（否则重新上线时与实际栏目不符）。审核状态重置为未提交，便于作者修改后重新送审。
 func takeOffline(tx *gorm.DB, article *models.Article) error {
 	if err := tx.Model(article).Association("Columns").Clear(); err != nil {
 		return err
@@ -302,10 +302,7 @@ func takeOffline(tx *gorm.DB, article *models.Article) error {
 	if err := tx.Where("article_id = ?", article.ID).Unscoped().Delete(&models.ArticleColumnPublish{}).Error; err != nil {
 		return err
 	}
-	return tx.Model(article).Updates(map[string]any{
-		"column_count": 0,
-		"audit_status": 0,
-	}).Error
+	return tx.Model(article).Update("audit_status", 0).Error
 }
 
 func (s *ArticleService) UpdateArticleStatus(id uint, status int) error {
@@ -348,9 +345,6 @@ func (s *ArticleService) SetArticleColumns(id uint, columnIDs []uint) error {
 			if err := tx.Model(&article).Association("Columns").Clear(); err != nil {
 				return err
 			}
-		}
-		if err := tx.Model(&article).Update("column_count", len(columnIDs)).Error; err != nil {
-			return err
 		}
 		return nil
 	})

@@ -2,9 +2,12 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"strconv"
-	"strings"
+
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"server/models"
 	"server/utils"
@@ -102,9 +105,19 @@ func (s *OrganizationService) UpdateOrganization(id uint, org *models.Organizati
 
 func (s *OrganizationService) DeleteOrganization(id uint) error {
 	var count int64
-	utils.DB.Model(&models.Organization{}).Where("parent_id = ?", id).Count(&count)
+	if err := utils.DB.Model(&models.Organization{}).Where("parent_id = ?", id).Count(&count).Error; err != nil {
+		return err
+	}
 	if count > 0 {
 		return errors.New("存在子机构，无法删除")
+	}
+	// 机构下仍有部门时不允许删除：否则 department.org_id 变成脏数据（组织名空白、部门在树中不可达）
+	var deptCount int64
+	if err := utils.DB.Model(&models.Department{}).Where("org_id = ?", id).Count(&deptCount).Error; err != nil {
+		return err
+	}
+	if deptCount > 0 {
+		return fmt.Errorf("该机构下存在 %d 个部门，请先移除或调整部门归属", deptCount)
 	}
 	return utils.DB.Unscoped().Delete(&models.Organization{}, id).Error
 }
@@ -114,28 +127,47 @@ func (s *OrganizationService) GetOrganizationUsers(id uint) ([]int, error) {
 	if err != nil {
 		return nil, err
 	}
-	if org.UserIds == "" {
-		return []int{}, nil
-	}
-	parts := strings.Split(org.UserIds, ",")
-	userIds := make([]int, 0, len(parts))
-	for _, p := range parts {
-		if val, err := strconv.Atoi(strings.TrimSpace(p)); err == nil {
-			userIds = append(userIds, val)
-		}
+	userIds := make([]int, 0)
+	for _, uid := range parseMemberIDList(org.UserIds) {
+		userIds = append(userIds, int(uid))
 	}
 	return userIds, nil
 }
 
+// mutateOrganizationMembers 机构的「读-改-写」成员变更：
+// 先对机构行加锁（SELECT ... FOR UPDATE），避免并发分配时相互覆盖（丢更新）；
+// 落库前统一做去重、用户存在性校验与存储长度校验。
+// rejectInvalid 为 true 时（覆盖式分配），请求中若包含不存在的用户则直接报错，避免“静默少了几个成员”。
+func (s *OrganizationService) mutateOrganizationMembers(orgID uint, rejectInvalid bool, mutate func(existing []uint) []uint) error {
+	return utils.DB.Transaction(func(tx *gorm.DB) error {
+		var org models.Organization
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&org, orgID).Error; err != nil {
+			return errors.New("机构不存在")
+		}
+		kept, joined, dropped, err := normalizeMemberIDs(mutate(parseMemberIDList(org.UserIds)), organizationMemberIDsMaxChars)
+		if err != nil {
+			return err
+		}
+		if rejectInvalid && dropped > 0 {
+			return fmt.Errorf("有 %d 个成员不存在（可能已被删除），请刷新后重试", dropped)
+		}
+		return tx.Model(&models.Organization{}).Where("id = ?", orgID).UpdateColumns(map[string]any{
+			"user_ids":   joined,
+			"user_count": len(kept),
+		}).Error
+	})
+}
+
 func (s *OrganizationService) AssignOrganizationUsers(id uint, userIds []int) error {
-	ids := make([]string, len(userIds))
-	for i, uid := range userIds {
-		ids[i] = strconv.Itoa(uid)
-	}
-	return utils.DB.Model(&models.Organization{}).Where("id = ?", id).UpdateColumns(map[string]any{
-		"user_ids":   strings.Join(ids, ","),
-		"user_count": len(userIds),
-	}).Error
+	return s.mutateOrganizationMembers(id, true, func(_ []uint) []uint {
+		out := make([]uint, 0, len(userIds))
+		for _, uid := range userIds {
+			if uid > 0 {
+				out = append(out, uint(uid))
+			}
+		}
+		return out
+	})
 }
 
 func (s *OrganizationService) GetOrganizationByUserId(userId uint) (*models.Organization, error) {
@@ -171,37 +203,30 @@ func (s *OrganizationService) GetOrganizationsByUserId(userId uint) ([]models.Or
 }
 
 func (s *OrganizationService) AddUserToOrganization(orgId uint, userId uint) error {
-	if orgId == 0 {
+	if orgId == 0 || userId == 0 {
 		return nil
 	}
-	userIds, err := s.GetOrganizationUsers(orgId)
-	if err != nil {
-		return err
-	}
-	uid := int(userId)
-	if slices.Contains(userIds, uid) {
-		return nil
-	}
-	userIds = append(userIds, uid)
-	return s.AssignOrganizationUsers(orgId, userIds)
+	return s.mutateOrganizationMembers(orgId, false, func(existing []uint) []uint {
+		if slices.Contains(existing, userId) {
+			return existing
+		}
+		return append(existing, userId)
+	})
 }
 
 func (s *OrganizationService) RemoveUserFromOrganization(orgId uint, userId uint) error {
 	if orgId == 0 {
 		return nil
 	}
-	userIds, err := s.GetOrganizationUsers(orgId)
-	if err != nil {
-		return nil
-	}
-	uid := int(userId)
-	newUserIds := make([]int, 0, len(userIds))
-	for _, id := range userIds {
-		if id != uid {
-			newUserIds = append(newUserIds, id)
+	return s.mutateOrganizationMembers(orgId, false, func(existing []uint) []uint {
+		next := make([]uint, 0, len(existing))
+		for _, id := range existing {
+			if id != userId {
+				next = append(next, id)
+			}
 		}
-	}
-	return s.AssignOrganizationUsers(orgId, newUserIds)
+		return next
+	})
 }
 
 func (s *OrganizationService) RemoveUserFromAllOrganizations(userId uint) error {
@@ -211,9 +236,10 @@ func (s *OrganizationService) RemoveUserFromAllOrganizations(userId uint) error 
 	if err != nil {
 		return err
 	}
+	// 删除用户时的清理动作：单个机构失败不阻断其余机构
 	for _, org := range orgs {
 		if err := s.RemoveUserFromOrganization(org.ID, userId); err != nil {
-			return err
+			utils.Logger.Warnf("将用户[%d]从机构[%d]移除失败: %v", userId, org.ID, err)
 		}
 	}
 	return nil

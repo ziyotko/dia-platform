@@ -87,7 +87,6 @@ type Article struct {
 	Source       string              `gorm:"size:200" json:"source"`
 	PublishTime  *LocalTime          `json:"publishTime"`
 	URL          string              `gorm:"size:500" json:"url"`
-	ColumnCount  int                 `gorm:"column:column_count;default:0" json:"columnCount"`
 	Categories   []Category          `gorm:"many2many:article_category;" json:"categories,omitempty"`
 	Tags         []Tag               `gorm:"many2many:article_tag;" json:"tags,omitempty"`
 	Columns      []Column            `gorm:"many2many:article_column;" json:"columns,omitempty"`

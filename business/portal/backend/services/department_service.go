@@ -7,6 +7,9 @@ import (
 	"strconv"
 	"strings"
 
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+
 	"server/models"
 	"server/utils"
 
@@ -201,20 +204,11 @@ func (s *DepartmentService) DeleteDepartment(id uint) error {
 
 // parseUserIDs 将 department.user_ids（逗号分隔字符串）解析为 int 列表
 func parseUserIDs(raw string) []int {
-	if strings.TrimSpace(raw) == "" {
-		return []int{}
+	ids := make([]int, 0)
+	for _, uid := range parseMemberIDList(raw) {
+		ids = append(ids, int(uid))
 	}
-	parts := strings.Split(raw, ",")
-	userIds := make([]int, 0, len(parts))
-	for _, p := range parts {
-		if p = strings.TrimSpace(p); p == "" {
-			continue
-		}
-		if val, err := strconv.Atoi(p); err == nil {
-			userIds = append(userIds, val)
-		}
-	}
-	return userIds
+	return ids
 }
 
 func (s *DepartmentService) GetDepartmentUsers(id uint) ([]int, error) {
@@ -225,15 +219,40 @@ func (s *DepartmentService) GetDepartmentUsers(id uint) ([]int, error) {
 	return parseUserIDs(dept.UserIds), nil
 }
 
+// mutateDepartmentMembers 部门的「读-改-写」成员变更：
+// 先对部门行加锁（SELECT ... FOR UPDATE），避免并发分配时相互覆盖（丢更新）；
+// 落库前统一做去重、用户存在性校验与存储长度校验。
+// rejectInvalid 为 true 时（覆盖式分配），请求中若包含不存在的用户则直接报错，避免“静默少了几个成员”。
+func (s *DepartmentService) mutateDepartmentMembers(deptID uint, rejectInvalid bool, mutate func(existing []uint) []uint) error {
+	return utils.DB.Transaction(func(tx *gorm.DB) error {
+		var dept models.Department
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&dept, deptID).Error; err != nil {
+			return errors.New("部门不存在")
+		}
+		kept, joined, dropped, err := normalizeMemberIDs(mutate(parseMemberIDList(dept.UserIds)), departmentMemberIDsMaxChars)
+		if err != nil {
+			return err
+		}
+		if rejectInvalid && dropped > 0 {
+			return fmt.Errorf("有 %d 个成员不存在（可能已被删除），请刷新后重试", dropped)
+		}
+		return tx.Model(&models.Department{}).Where("id = ?", deptID).UpdateColumns(map[string]any{
+			"user_ids":   joined,
+			"user_count": len(kept),
+		}).Error
+	})
+}
+
 func (s *DepartmentService) AssignDepartmentUsers(id uint, userIds []int) error {
-	ids := make([]string, len(userIds))
-	for i, uid := range userIds {
-		ids[i] = strconv.Itoa(uid)
-	}
-	return utils.DB.Model(&models.Department{}).Where("id = ?", id).UpdateColumns(map[string]any{
-		"user_ids":   strings.Join(ids, ","),
-		"user_count": len(userIds),
-	}).Error
+	return s.mutateDepartmentMembers(id, true, func(_ []uint) []uint {
+		out := make([]uint, 0, len(userIds))
+		for _, uid := range userIds {
+			if uid > 0 {
+				out = append(out, uint(uid))
+			}
+		}
+		return out
+	})
 }
 
 // RemoveUserFromAllDepartments 从所有部门中移除指定用户，并同步 user_count（删除用户时调用）。
@@ -245,20 +264,18 @@ func (s *DepartmentService) RemoveUserFromAllDepartments(userId uint) error {
 	if err != nil {
 		return err
 	}
-	uid := int(userId)
+	// 删除用户时的清理动作：单个部门失败不阻断其余部门
 	for _, dept := range departments {
-		ids := parseUserIDs(dept.UserIds)
-		newIds := make([]int, 0, len(ids))
-		for _, id := range ids {
-			if id != uid {
-				newIds = append(newIds, id)
+		if err := s.mutateDepartmentMembers(dept.ID, false, func(existing []uint) []uint {
+			next := make([]uint, 0, len(existing))
+			for _, id := range existing {
+				if id != userId {
+					next = append(next, id)
+				}
 			}
-		}
-		if len(newIds) == len(ids) {
-			continue
-		}
-		if err := s.AssignDepartmentUsers(dept.ID, newIds); err != nil {
-			return err
+			return next
+		}); err != nil {
+			utils.Logger.Warnf("将用户[%d]从部门[%d]移除失败: %v", userId, dept.ID, err)
 		}
 	}
 	return nil
