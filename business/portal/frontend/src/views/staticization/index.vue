@@ -34,15 +34,23 @@
           <el-switch v-model="form.homeGray" active-text="开启" inactive-text="关闭" />
         </el-form-item>
 
+        <el-alert
+          type="info"
+          :closable="false"
+          show-icon
+          title="「固定静态化时间」暂未启用：后端尚无定时调度器读取这些配置，为避免误以为已生效，相关设置项暂不可操作。"
+          style="margin-bottom: 18px"
+        />
+
         <el-form-item label="设置首页固定静态化时间">
           <div class="time-row">
-            <el-switch v-model="form.homeStaticTimeEnabled" />
+            <el-switch v-model="form.homeStaticTimeEnabled" :disabled="!staticTimeSchedulerEnabled" />
             <el-time-picker
               v-model="form.homeStaticTime"
               value-format="HH:mm"
               format="HH:mm"
               placeholder="请选择时间"
-              :disabled="!form.homeStaticTimeEnabled"
+              :disabled="!staticTimeSchedulerEnabled"
               class="time-picker"
             />
           </div>
@@ -50,13 +58,13 @@
 
         <el-form-item label="设置栏目页固定静态化时间">
           <div class="time-row">
-            <el-switch v-model="form.columnStaticTimeEnabled" />
+            <el-switch v-model="form.columnStaticTimeEnabled" :disabled="!staticTimeSchedulerEnabled" />
             <el-time-picker
               v-model="form.columnStaticTime"
               value-format="HH:mm"
               format="HH:mm"
               placeholder="请选择时间"
-              :disabled="!form.columnStaticTimeEnabled"
+              :disabled="!staticTimeSchedulerEnabled"
               class="time-picker"
             />
           </div>
@@ -64,13 +72,13 @@
 
         <el-form-item label="设置专题页固定静态化时间">
           <div class="time-row">
-            <el-switch v-model="form.specialStaticTimeEnabled" />
+            <el-switch v-model="form.specialStaticTimeEnabled" :disabled="!staticTimeSchedulerEnabled" />
             <el-time-picker
               v-model="form.specialStaticTime"
               value-format="HH:mm"
               format="HH:mm"
               placeholder="请选择时间"
-              :disabled="!form.specialStaticTimeEnabled"
+              :disabled="!staticTimeSchedulerEnabled"
               class="time-picker"
             />
           </div>
@@ -78,13 +86,13 @@
 
         <el-form-item label="设置详情页固定静态化时间">
           <div class="time-row">
-            <el-switch v-model="form.detailStaticTimeEnabled" />
+            <el-switch v-model="form.detailStaticTimeEnabled" :disabled="!staticTimeSchedulerEnabled" />
             <el-time-picker
               v-model="form.detailStaticTime"
               value-format="HH:mm"
               format="HH:mm"
               placeholder="请选择时间"
-              :disabled="!form.detailStaticTimeEnabled"
+              :disabled="!staticTimeSchedulerEnabled"
               class="time-picker"
             />
           </div>
@@ -106,11 +114,16 @@ import type { Settings } from '@/api/settings'
 
 const loading = ref(false)
 
+// 「固定静态化时间」调度器暂未实现（后端无任何定时任务读取这些配置）。
+// 暂时置为 false，禁用相关设置项；待调度器实现后改回 true 即可恢复。
+const staticTimeSchedulerEnabled = false
+
 const form = reactive({
   staticPath: '',
   staticProgramAddr: '',
   staticProgramTokenName: '',
   homeGray: false,
+  // 固定静态化时间（调度器未实现，仅作受控占位，始终禁用）
   homeStaticTimeEnabled: false,
   homeStaticTime: '',
   columnStaticTimeEnabled: false,
@@ -129,14 +142,7 @@ const loadSettings = async () => {
     form.staticProgramAddr = data.staticProgramAddr || ''
     form.staticProgramTokenName = data.staticProgramTokenName || ''
     form.homeGray = data.homeGray ?? false
-    form.homeStaticTimeEnabled = data.homeStaticTimeEnabled ?? false
-    form.homeStaticTime = data.homeStaticTime || ''
-    form.columnStaticTimeEnabled = data.columnStaticTimeEnabled ?? false
-    form.columnStaticTime = data.columnStaticTime || ''
-    form.specialStaticTimeEnabled = data.specialStaticTimeEnabled ?? false
-    form.specialStaticTime = data.specialStaticTime || ''
-    form.detailStaticTimeEnabled = data.detailStaticTimeEnabled ?? false
-    form.detailStaticTime = data.detailStaticTime || ''
+    // 固定静态化时间调度器暂未实现，不读取/展示这些死配置（保持默认关闭）
   } catch {
     ElMessage.error('获取静态化设置失败')
   }
@@ -149,15 +155,8 @@ const handleSave = async () => {
       staticPath: form.staticPath,
       staticProgramAddr: form.staticProgramAddr,
       staticProgramTokenName: form.staticProgramTokenName,
-      homeGray: form.homeGray,
-      homeStaticTimeEnabled: form.homeStaticTimeEnabled,
-      homeStaticTime: form.homeStaticTimeEnabled ? form.homeStaticTime : '',
-      columnStaticTimeEnabled: form.columnStaticTimeEnabled,
-      columnStaticTime: form.columnStaticTimeEnabled ? form.columnStaticTime : '',
-      specialStaticTimeEnabled: form.specialStaticTimeEnabled,
-      specialStaticTime: form.specialStaticTimeEnabled ? form.specialStaticTime : '',
-      detailStaticTimeEnabled: form.detailStaticTimeEnabled,
-      detailStaticTime: form.detailStaticTimeEnabled ? form.detailStaticTime : ''
+      homeGray: form.homeGray
+      // 固定静态化时间调度器暂未实现，不提交这些死配置
     })
     ElMessage.success('保存成功')
   } catch {
