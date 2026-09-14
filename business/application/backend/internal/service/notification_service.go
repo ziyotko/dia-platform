@@ -17,6 +17,9 @@ func (s *NotificationService) Send(title, content, ntype string, userID uint64) 
 	if title == "" || content == "" {
 		return errors.New("请填写通知标题和内容")
 	}
+	if ntype == "" {
+		ntype = NotifyTypeSystem
+	}
 	if userID > 0 {
 		var user models.User
 		if err := db.DB.First(&user, userID).Error; err != nil {

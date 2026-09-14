@@ -78,10 +78,20 @@
           <el-table-column label="评审人" width="140">
             <template #default="{ row }">{{ row.reviewer?.realName || '-' }}</template>
           </el-table-column>
-          <el-table-column prop="score" label="评分" width="100" />
+          <el-table-column label="状态" width="90">
+            <template #default="{ row }">
+              <el-tag :type="row.status === 'scored' ? 'success' : 'info'" size="small">{{ reviewStatusMap[row.status] || row.status }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="评分" width="90">
+            <template #default="{ row }">{{ row.status === 'scored' ? row.score : '-' }}</template>
+          </el-table-column>
           <el-table-column prop="comment" label="评审意见" min-width="220" />
         </el-table>
-        <div style="margin-top:8px;color:#667085">综合平均分：<b style="color:#002fa7">{{ app.avgScore }}</b></div>
+        <div v-if="scoredReviews.length" style="margin-top:8px;color:#667085">
+          综合平均分：<b style="color:#002fa7">{{ app.avgScore }}</b>（{{ scoredReviews.length }}/{{ app.reviews.length }} 位专家已评分）
+        </div>
+        <div v-else style="margin-top:8px;color:#909399">暂无专家评分</div>
       </template>
 
       <!-- Final opinion -->
@@ -109,7 +119,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { memberApi } from '@/api/member'
-import { applicationStatusMap, applicationStatusType, fileUrl, fmt } from '@/utils/constants'
+import { applicationStatusMap, applicationStatusType, reviewStatusMap, fileUrl, fmt } from '@/utils/constants'
 
 const route = useRoute()
 const id = Number(route.params.id)
@@ -124,6 +134,9 @@ const editForm = reactive({ categoryId: '' as any, title: '', projectBrief: '', 
 
 // Drafts and preliminary-rejected applications can still be edited / resubmitted.
 const isEditable = computed(() => app.value.status === 'draft' || app.value.status === 'preliminary_rejected')
+
+// Only assignments that have actually been scored contribute to the average.
+const scoredReviews = computed(() => (app.value.reviews || []).filter((r: any) => r.status === 'scored'))
 
 const activeStep = computed(() => {
   const map: Record<string, number> = {

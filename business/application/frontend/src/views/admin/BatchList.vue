@@ -47,16 +47,19 @@
       <el-form :model="form" label-width="100px">
         <el-form-item label="批次名称"><el-input v-model="form.title" /></el-form-item>
         <el-form-item label="项目类别">
-          <el-select v-model="form.categoryId" style="width:100%">
+          <el-select v-model="form.categoryId" style="width:100%" :disabled="locked">
             <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="申报开始">
-          <el-date-picker v-model="form.applyStart" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" />
+          <el-date-picker v-model="form.applyStart" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" :disabled="locked" />
         </el-form-item>
         <el-form-item label="申报截止">
-          <el-date-picker v-model="form.applyEnd" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" />
+          <el-date-picker v-model="form.applyEnd" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" :disabled="locked" />
         </el-form-item>
+        <div v-if="locked" style="color:#909399;font-size:12px;margin:-8px 0 12px 100px">
+          批次已发布，项目类别和申报时间不可修改
+        </div>
         <el-form-item label="评审截止">
           <el-date-picker v-model="form.reviewDeadline" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" />
         </el-form-item>
@@ -76,7 +79,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminApi } from '@/api/admin'
 import { batchStatusMap, batchStatusType, fmt } from '@/utils/constants'
@@ -91,6 +94,10 @@ const status = ref('')
 const loading = ref(false)
 const dialogVisible = ref(false)
 const form = reactive<any>({ id: 0, title: '', categoryId: '', applyStart: '', applyEnd: '', reviewDeadline: '', requirements: '', description: '' })
+
+// The backend freezes category + application window once a batch is published;
+// the same fields are locked here so the form never sends a rejected change.
+const locked = computed(() => !!form.id && form.status !== 'draft')
 
 async function fetch() {
   loading.value = true
@@ -126,11 +133,18 @@ function openDialog(row?: any) {
 
 async function save() {
   if (!form.title) return ElMessage.warning('请填写批次名称')
-  if (!form.categoryId) return ElMessage.warning('请选择项目类别')
-  const payload = {
-    title: form.title, categoryId: Number(form.categoryId), applyStart: form.applyStart || null,
-    applyEnd: form.applyEnd || null, reviewDeadline: form.reviewDeadline || null,
-    requirements: form.requirements, description: form.description,
+  if (!locked.value && !form.categoryId) return ElMessage.warning('请选择项目类别')
+  const payload: any = {
+    title: form.title,
+    reviewDeadline: form.reviewDeadline || null,
+    requirements: form.requirements,
+    description: form.description,
+  }
+  // Only a draft batch may change its category / application window.
+  if (!locked.value) {
+    payload.categoryId = Number(form.categoryId)
+    payload.applyStart = form.applyStart || null
+    payload.applyEnd = form.applyEnd || null
   }
   if (form.id) await adminApi.updateBatch(form.id, payload)
   else await adminApi.createBatch(payload)

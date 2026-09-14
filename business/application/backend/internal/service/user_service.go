@@ -7,6 +7,7 @@ import (
 	"application/pkg/db"
 
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type UserService struct{}
@@ -138,7 +139,15 @@ func (s *UserService) DeleteAdmin(id uint64) error {
 	if count > 0 {
 		return errors.New("该账号存在评审任务，无法删除")
 	}
-	return db.DB.Delete(&models.Admin{}, id).Error
+	// A 专家库 account owns a profile row next to its login; deleting only the
+	// login would leave an orphan expert that can never sign in again. Both
+	// entry points (账号管理 / 专家库) therefore remove the pair together.
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("admin_id = ?", id).Delete(&models.Expert{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&models.Admin{}, id).Error
+	})
 }
 
 func (s *UserService) ListRoles() ([]models.Role, error) {

@@ -41,10 +41,20 @@
           <el-table-column label="评审人" width="140">
             <template #default="{ row }">{{ row.reviewer?.realName || '-' }}</template>
           </el-table-column>
-          <el-table-column prop="score" label="评分" width="100" />
+          <el-table-column label="状态" width="90">
+            <template #default="{ row }">
+              <el-tag :type="row.status === 'scored' ? 'success' : 'info'" size="small">{{ reviewStatusMap[row.status] || row.status }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="评分" width="90">
+            <template #default="{ row }">{{ row.status === 'scored' ? row.score : '-' }}</template>
+          </el-table-column>
           <el-table-column prop="comment" label="评审意见" min-width="220" />
         </el-table>
-        <div style="margin-top:8px;color:#667085">综合平均分：<b style="color:#002fa7">{{ app.avgScore }}</b></div>
+        <div v-if="scoredReviews.length" style="margin-top:8px;color:#667085">
+          综合平均分：<b style="color:#002fa7">{{ app.avgScore }}</b>（{{ scoredReviews.length }}/{{ app.reviews.length }} 位专家已评分）
+        </div>
+        <div v-else style="margin-top:8px;color:#909399">暂无专家评分</div>
       </template>
 
       <!-- Final opinion -->
@@ -101,7 +111,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { adminApi } from '@/api/admin'
-import { applicationStatusMap, applicationStatusType, fileUrl, fmt } from '@/utils/constants'
+import { applicationStatusMap, applicationStatusType, reviewStatusMap, fileUrl, fmt } from '@/utils/constants'
 
 const route = useRoute()
 const id = Number(route.params.id)
@@ -119,6 +129,9 @@ const reviewerIds = ref<number[]>([])
 const actionsVisible = computed(() => {
   return ['submitted', 'under_review', 'reviewed', 'passed', 'rejected'].includes(app.value.status)
 })
+
+// Only assignments that have actually been scored contribute to the average.
+const scoredReviews = computed(() => (app.value.reviews || []).filter((r: any) => r.status === 'scored'))
 
 async function fetch() {
   loading.value = true
@@ -156,7 +169,18 @@ async function confirmOpinion() {
 
 async function openAssign() {
   const res = await adminApi.getReviewers()
-  reviewers.value = res.data
+  const options = [...res.data]
+  // Reviewers that are already assigned stay selectable even when their account
+  // was disabled, otherwise the operator could neither see nor remove them and
+  // the assignment request would fail validation.
+  const known = new Set(options.map((r: any) => r.id))
+  for (const r of app.value.reviews || []) {
+    if (r.reviewer && !known.has(r.reviewerId)) {
+      options.push({ ...r.reviewer, realName: `${r.reviewer.realName || r.reviewer.username}（已停用）` })
+      known.add(r.reviewerId)
+    }
+  }
+  reviewers.value = options
   reviewerIds.value = (app.value.reviews || []).map((r: any) => r.reviewerId)
   assignDialog.value = true
 }

@@ -41,7 +41,14 @@
         </el-form-item>
         <el-form-item label="证书名称"><el-input v-model="form.title" /></el-form-item>
         <el-form-item label="持有人"><el-input v-model="form.holder" /></el-form-item>
-        <el-form-item label="证书文件URL"><el-input v-model="form.fileUrl" placeholder="/uploads/xxx.pdf" /></el-form-item>
+        <el-form-item label="证书文件">
+          <div style="display:flex;gap:8px;width:100%">
+            <el-input v-model="form.fileUrl" placeholder="可上传或粘贴文件地址" />
+            <el-upload :show-file-list="false" :http-request="handleUpload" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png">
+              <el-button :loading="uploading">上传</el-button>
+            </el-upload>
+          </div>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -64,6 +71,7 @@ const pageSize = 10
 const keyword = ref('')
 const loading = ref(false)
 const dialogVisible = ref(false)
+const uploading = ref(false)
 const form = reactive<any>({ id: 0, applicationId: '', certNo: '', title: '', holder: '', fileUrl: '' })
 
 async function fetch() {
@@ -105,6 +113,19 @@ async function save() {
   ElMessage.success('保存成功')
   dialogVisible.value = false
   fetch()
+}
+
+// Reuses the shared upload endpoint so a certificate file is picked from disk
+// like every other attachment instead of being pasted in by hand.
+async function handleUpload(option: any) {
+  uploading.value = true
+  try {
+    const res = await adminApi.uploadFile(option.file)
+    form.fileUrl = res.data.fileUrl
+    ElMessage.success('文件已上传')
+  } finally {
+    uploading.value = false
+  }
 }
 
 onMounted(fetch)

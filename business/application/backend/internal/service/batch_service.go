@@ -35,6 +35,17 @@ func (s *BatchService) Update(id uint64, updates map[string]interface{}) error {
 	if err := db.DB.First(&b, id).Error; err != nil {
 		return errors.New("批次不存在")
 	}
+	// A published batch has already frozen the round it defines: its category is
+	// the one every application must match ("项目类别须与申报批次一致") and its
+	// window is what already accepted the submissions. Only a draft may change
+	// them, otherwise existing applications would silently become inconsistent.
+	if b.Status != models.BatchStatusDraft {
+		for _, field := range []string{"category_id", "apply_start", "apply_end"} {
+			if _, ok := clean[field]; ok {
+				return errors.New("批次已发布，不能修改项目类别和申报时间")
+			}
+		}
+	}
 	if raw, ok := clean["title"]; ok {
 		title, _ := raw.(string)
 		if title == "" {

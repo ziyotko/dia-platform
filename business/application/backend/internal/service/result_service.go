@@ -146,6 +146,14 @@ func (s *ResultService) IssueCertificate(c *models.Certificate) error {
 	c.UserID = app.UserID
 	c.BatchID = app.BatchID
 	c.Status = models.CertStatusIssued
+	// Default the holder to the applicant so a certificate is never issued
+	// unnamed when the operator leaves the field empty.
+	if c.Holder == "" {
+		var user models.User
+		if err := db.DB.First(&user, app.UserID).Error; err == nil {
+			c.Holder = user.RealName
+		}
+	}
 	now := time.Now()
 	c.IssuedAt = &now
 	if err := db.DB.Create(c).Error; err != nil {

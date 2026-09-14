@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"strings"
 
 	"application/internal/models"
 	"application/pkg/db"
@@ -10,13 +11,29 @@ import (
 type CategoryService struct{}
 
 func (s *CategoryService) Create(c *models.ProjectCategory) error {
+	name := strings.TrimSpace(c.Name)
+	if name == "" {
+		return errors.New("请填写类别名称")
+	}
+	c.Name = name
 	return db.DB.Create(c).Error
 }
 
 func (s *CategoryService) Update(id uint64, updates map[string]interface{}) error {
 	clean := pickUpdates(updates, "name", "description", "sort")
+	if raw, ok := clean["name"]; ok {
+		name, _ := raw.(string)
+		if strings.TrimSpace(name) == "" {
+			return errors.New("请填写类别名称")
+		}
+	}
 	if len(clean) == 0 {
 		return nil
+	}
+	var count int64
+	db.DB.Model(&models.ProjectCategory{}).Where("id = ?", id).Count(&count)
+	if count == 0 {
+		return errors.New("类别不存在")
 	}
 	return db.DB.Model(&models.ProjectCategory{}).Where("id = ?", id).Updates(clean).Error
 }

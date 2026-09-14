@@ -11,6 +11,7 @@ const (
 	NotifyTypeReview      = "review"
 	NotifyTypeResult      = "result"
 	NotifyTypeCertificate = "certificate"
+	NotifyTypeSystem      = "system"
 )
 
 // notifyUser writes a site message for an applicant. Best effort: failures are
