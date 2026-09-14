@@ -176,7 +176,7 @@ const fetchData = async () => {
       params.endDate = queryForm.dateRange[1]
     }
     const res: any = await getLogList(params)
-    if (res.code === 0 || res.code === 200) {
+    if (res.code === 0) {
       tableData.value = res.data.list || []
       total.value = res.data.total || 0
     }
@@ -205,7 +205,7 @@ const handleClear = () => {
   ).then(async () => {
     try {
       const res: any = await clearLogs()
-      if (res.code === 0 || res.code === 200) {
+      if (res.code === 0) {
         const count = res.data?.count ?? 0
         ElMessage.success(
           count > 0

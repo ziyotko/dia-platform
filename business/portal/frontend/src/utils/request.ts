@@ -51,7 +51,7 @@ function getRequestTarget(config: any): string {
     const parsed = new URL(fullUrl, 'http://local.invalid')
     return parsed.pathname + parsed.search
   } catch {
-    let url = config.url || ''
+    const url = config.url || ''
     if (url.startsWith('http')) {
       const parsed = new URL(url)
       return parsed.pathname + parsed.search
@@ -231,7 +231,8 @@ request.interceptors.response.use(
       return response
     }
     const res = response.data
-    if (res.code !== 0 && res.code !== 200) {
+    // 业务码只有三种：0=成功、1=失败、401=鉴权失效（后端不会把 HTTP 200 当业务成功码返回）
+    if (res.code !== 0) {
       ElMessage.error(res.message || '请求失败')
       if (res.code === 401) {
         const userStore = useUserStore()

@@ -126,7 +126,7 @@ const resolveLogoUrl = (url: string) => {
 const handleLogoUpload = async (options: any) => {
   try {
     const res: any = await uploadFile(options.file, 'setting')
-    if (res.code === 0 || res.code === 200) {
+    if (res.code === 0) {
       basicForm.logo = res.data?.url || res.url || ''
       ElMessage.success('上传成功')
       options.onSuccess(res)

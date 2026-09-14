@@ -35,7 +35,7 @@ business/portal/
 - `server.port`: 8084（对外可改，注意与 Nginx 一致）
 - `server.mode`: 生产用 `release`
 - `server.api_prefix`: `/xxxxx/api`（与前端一致即可，前端依赖）
-- `server.allowed_origins`: 生产环境改为实际前端域名，不要用 `*`
+- `server.allowed_origins`: 生产环境改为实际前端域名，不要用 `*`（开发默认值需与 `frontend/vite.config.ts` 的 `server.port` 一致，当前为 `http://localhost:3000`、`http://127.0.0.1:3000`）
 - `database` / `redis`: 按实际环境修改
 
 ### 2. 敏感信息用环境变量注入（必填）

@@ -575,7 +575,7 @@ const normalizeJob = (job: StaticJob) => {
 const loadStaticSettings = async () => {
   try {
     const res: any = await getSettings()
-    if (res.code === 0 || res.code === 200) {
+    if (res.code === 0) {
       const s = res.data || {}
       staticPath.value = s.staticPath || ''
       grayEnabled.value = !!s.homeGray
@@ -730,7 +730,7 @@ const fetchStaticMonitor = async () => {
   monitorLoading.value = true
   try {
     const res: any = await getStaticMonitor()
-    if (res.code === 0 || res.code === 200) {
+    if (res.code === 0) {
       monitorData.online = !!res.data?.online
       monitorData.address = res.data?.address || ''
       monitorData.httpStatus = res.data?.httpStatus || 0
@@ -759,7 +759,7 @@ const statData = reactive({
 const fetchStaticStat = async () => {
   try {
     const res: any = await getStaticLatestTimes()
-    if (res.code === 0 || res.code === 200) {
+    if (res.code === 0) {
       const d = res.data || {}
       statData.todayCount = d.todayFiles || 0
       statData.lastTime = formatShortTime(d.site)
@@ -866,7 +866,7 @@ const fetchLogList = async () => {
       page: logQueryForm.page,
       pageSize: logQueryForm.pageSize
     })
-    if (res.code === 0 || res.code === 200) {
+    if (res.code === 0) {
       logList.value = (res.data.list || []).map((item: any) => ({
         ...item,
         statusText: statusTextMap[item.status] || item.status,
@@ -1072,7 +1072,7 @@ const clearLogs = () => {
   }).then(async () => {
     try {
       const res: any = await clearStaticLogs()
-      if (res.code === 0 || res.code === 200) {
+      if (res.code === 0) {
         logList.value = []
         logTotal.value = 0
         ElMessage.success('日志已清空')

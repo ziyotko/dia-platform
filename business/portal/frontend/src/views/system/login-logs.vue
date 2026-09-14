@@ -118,7 +118,7 @@ const fetchData = async () => {
       params.endDate = queryForm.dateRange[1]
     }
     const res: any = await getLoginLogList(params)
-    if (res.code === 0 || res.code === 200) {
+    if (res.code === 0) {
       tableData.value = res.data.list || []
       total.value = res.data.total || 0
     }
@@ -147,7 +147,7 @@ const handleClear = () => {
   }).then(async () => {
     try {
       const res: any = await clearLoginLogs()
-      if (res.code === 0 || res.code === 200) {
+      if (res.code === 0) {
         ElMessage.success('日志已清空')
         fetchData()
       }

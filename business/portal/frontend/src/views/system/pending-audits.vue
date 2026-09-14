@@ -75,7 +75,7 @@ const fetchData = async () => {
       page: queryForm.page,
       pageSize: queryForm.pageSize
     })
-    if (res.code === 0 || res.code === 200) {
+    if (res.code === 0) {
       tableData.value = res.data.list || []
       total.value = res.data.total || 0
     }

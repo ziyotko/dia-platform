@@ -28,9 +28,10 @@ server:
   replay_max_fail: 10
   replay_ban_minutes: 15
   # CORS 白名单（前端来源），生产环境请按实际域名配置，不要使用 *
+  # 端口需与 frontend/vite.config.ts 的 server.port 保持一致（当前为 3000）
   allowed_origins:
-    - http://localhost:5173
-    - http://127.0.0.1:5173
+    - http://localhost:3000
+    - http://127.0.0.1:3000
 
 database:
   host: '127.0.0.1'
