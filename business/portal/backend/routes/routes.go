@@ -49,10 +49,11 @@ func SetupRoutes(router *gin.Engine) {
 			config.AppConfig.Server.CaptchaRateLimit,
 			time.Duration(config.AppConfig.Server.CaptchaRateWindowSecs)*time.Second,
 		), authController.GetCaptcha)
+		// 登录接口挂操作日志，使「操作日志-登录」筛选可筛出真实登录记录（请求体密码由日志中间件脱敏）
 		public.POST("/login", middleware.RateLimitMiddleware(
 			config.AppConfig.Server.LoginRateLimit,
 			time.Duration(config.AppConfig.Server.LoginRateWindowSecs)*time.Second,
-		), authController.Login)
+		), middleware.OperationLog(), authController.Login)
 		public.GET("/site-info", settingsController.GetPublicSiteInfo)
 
 		//开放文章搜索（无需认证，仅返回已发布文章，不含正文）
@@ -207,6 +208,7 @@ func SetupRoutes(router *gin.Engine) {
 		// 系统设置（写操作）
 		admin.PUT("/settings", settingsController.UpdateSettings)
 		admin.GET("/settings", settingsController.GetSettings)
+		admin.POST("/settings/test-email", settingsController.TestEmail)
 
 		// 模板管理
 		admin.POST("/templates", templateController.CreateTemplate)

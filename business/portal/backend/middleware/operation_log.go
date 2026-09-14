@@ -23,7 +23,8 @@ func NewOperationLogMiddleware() *OperationLogMiddleware {
 }
 
 func getLogType(method, path string) string {
-	if strings.Contains(path, "/login") {
+	// 仅精确匹配登录接口，避免 /login-logs 等路径被误判为登录操作
+	if strings.Trim(strings.TrimPrefix(path, config.AppConfig.Server.ApiPrefix), "/") == "login" {
 		return "LOGIN"
 	}
 	switch method {

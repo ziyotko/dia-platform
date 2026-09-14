@@ -89,7 +89,7 @@
               <el-switch v-model="emailForm.ssl" />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" @click="handleTestEmail">测试连接</el-button>
+              <el-button type="primary" :loading="testingEmail" @click="handleTestEmail">测试连接</el-button>
               <el-button type="primary" :loading="loading" @click="handleSaveEmail">保存设置</el-button>
             </el-form-item>
           </el-form>
@@ -106,13 +106,14 @@ import { Plus } from '@element-plus/icons-vue'
 import { useAppStore } from '@/stores/app'
 import { useUserStore } from '@/stores/user'
 import { useRouter } from 'vue-router'
-import { getSettings, updateSettings } from '@/api/settings'
+import { getSettings, updateSettings, testEmailConnection } from '@/api/settings'
 import type { Settings } from '@/api/settings'
 import { logout as logoutApi } from '@/api/auth'
 import { uploadFile } from '@/api/upload'
 
 const appStore = useAppStore()
 const userStore = useUserStore()
+const testingEmail = ref(false)
 const router = useRouter()
 const activeTab = ref('basic')
 const loading = ref(false)
@@ -296,8 +297,16 @@ const handleSaveEmail = () => {
   })
 }
 
-const handleTestEmail = () => {
-  ElMessage.success('邮件连接测试成功')
+const handleTestEmail = async () => {
+  testingEmail.value = true
+  try {
+    await testEmailConnection()
+    ElMessage.success('邮件连接测试成功')
+  } catch {
+    // 失败原因由 request 拦截器统一提示
+  } finally {
+    testingEmail.value = false
+  }
 }
 
 watch(() => appStore.refreshKey, () => {

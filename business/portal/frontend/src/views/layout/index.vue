@@ -3,7 +3,6 @@
     <el-aside
       :width="appStore.sidebarCollapsed ? '64px' : '220px'"
       class="sidebar"
-      :class="{ dark: appStore.sidebarStyle === 'dark' }"
     >
       <div class="logo">
         <div class="logo-icon-wrap">
@@ -19,7 +18,7 @@
           :unique-opened="true"
           class="sidebar-menu"
           background-color="transparent"
-          :text-color="appStore.sidebarStyle === 'dark' ? '#bfcbd9' : '#2c3e50'"
+          text-color="#2c3e50"
           :active-text-color="appStore.themeColor"
           @select="handleMenuSelect"
         >
@@ -39,7 +38,7 @@
             <Fold v-if="!appStore.sidebarCollapsed" />
             <Expand v-else />
           </el-icon>
-          <breadcrumb v-if="appStore.breadcrumb" />
+          <breadcrumb />
         </div>
         <div class="header-right">
           <el-tooltip content="全屏" placement="bottom">
@@ -67,7 +66,7 @@
         </div>
       </el-header>
 
-      <tags-view v-if="appStore.tagsView" />
+      <tags-view />
 
       <el-main class="main-content">
         <router-view v-slot="{ Component }">
@@ -232,55 +231,9 @@ const handleCommand = (command: string) => {
   background: #fff;
   border-right: 1px solid var(--app-border);
   box-shadow: 2px 0 12px rgba(16, 24, 40, 0.04);
-  transition: width 0.3s, background 0.3s;
+  transition: width 0.3s;
   display: flex;
   flex-direction: column;
-
-  &.dark {
-    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
-    border-right-color: #0f3460;
-
-    .logo {
-      border-bottom-color: #0f3460;
-
-      .logo-icon-wrap {
-        background: linear-gradient(135deg, rgba(0, 47, 167, 0.25) 0%, rgba(0, 47, 167, 0.15) 100%);
-        box-shadow: 0 2px 8px rgba(0, 47, 167, 0.25);
-      }
-
-      .logo-text {
-        background: linear-gradient(90deg, #ffffff 0%, #bfcbd9 100%);
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
-      }
-    }
-
-    .sidebar-menu {
-      :deep(.el-menu-item) {
-        color: #bfcbd9;
-
-        &:hover {
-          background: rgba(255, 255, 255, 0.05) !important;
-          color: #fff;
-        }
-
-        &.is-active {
-          background: rgba(0, 47, 167, 0.2) !important;
-          color: var(--el-color-primary);
-        }
-      }
-
-      :deep(.el-sub-menu__title) {
-        color: #bfcbd9;
-
-        &:hover {
-          background: rgba(255, 255, 255, 0.05) !important;
-          color: #fff;
-        }
-      }
-    }
-  }
 }
 
 .logo {

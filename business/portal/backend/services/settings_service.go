@@ -1,8 +1,13 @@
 package services
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net"
+	"net/smtp"
+	"strings"
 	"time"
 
 	"server/models"
@@ -65,6 +70,64 @@ func (s *SettingsService) GetSettings() (*models.Setting, error) {
 		return nil, result.Error
 	}
 	return &settings, nil
+}
+
+// TestEmailConnection 测试邮件（SMTP）连接：按当前设置建立连接、按需 TLS/STARTTLS 并尝试认证，
+// 不发送任何邮件。返回的 error 包含具体失败原因，便于管理员定位配置问题。
+func (s *SettingsService) TestEmailConnection() error {
+	settings, err := s.GetSettings()
+	if err != nil {
+		return errors.New("获取系统设置失败")
+	}
+
+	host := strings.TrimSpace(settings.SmtpHost)
+	port := strings.TrimSpace(settings.SmtpPort)
+	if host == "" || port == "" {
+		return errors.New("SMTP 服务器地址或端口未配置")
+	}
+
+	addr := net.JoinHostPort(host, port)
+	const timeout = 10 * time.Second
+
+	var conn net.Conn
+	// 465 端口为隐式 TLS（SSL），其余端口在启用 SSL 时使用 STARTTLS
+	implicitTLS := settings.Ssl && port == "465"
+	if implicitTLS {
+		conn, err = tls.DialWithDialer(&net.Dialer{Timeout: timeout}, "tcp", addr, &tls.Config{ServerName: host})
+	} else {
+		conn, err = net.DialTimeout("tcp", addr, timeout)
+	}
+	if err != nil {
+		return fmt.Errorf("无法连接 SMTP 服务器 %s: %w", addr, err)
+	}
+	defer conn.Close()
+	_ = conn.SetDeadline(time.Now().Add(timeout))
+
+	client, err := smtp.NewClient(conn, host)
+	if err != nil {
+		return fmt.Errorf("初始化 SMTP 客户端失败: %w", err)
+	}
+	defer client.Close()
+
+	if settings.Ssl && !implicitTLS {
+		if ok, _ := client.Extension("STARTTLS"); ok {
+			if err := client.StartTLS(&tls.Config{ServerName: host}); err != nil {
+				return fmt.Errorf("STARTTLS 握手失败: %w", err)
+			}
+		}
+	}
+
+	if settings.EmailPassword != "" {
+		auth := smtp.PlainAuth("", strings.TrimSpace(settings.FromEmail), settings.EmailPassword, host)
+		if err := client.Auth(auth); err != nil {
+			return fmt.Errorf("SMTP 认证失败: %w", err)
+		}
+	}
+
+	if err := client.Quit(); err != nil {
+		return fmt.Errorf("断开 SMTP 连接失败: %w", err)
+	}
+	return nil
 }
 
 // UpdateSettings 只更新 fields 中指定的字段，避免请求中未携带的字段（零值）覆盖表中其他设置项

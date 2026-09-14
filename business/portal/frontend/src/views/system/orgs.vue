@@ -102,7 +102,7 @@
               <el-icon><CirclePlus /></el-icon>内设机构
             </el-button>
             <el-button link type="primary" @click="handleAssignUsers(row)">
-              <el-icon><User /></el-icon>人员查看
+              <el-icon><User /></el-icon>人员分配
             </el-button>
             <el-button link type="primary" @click="handleEdit(row)">
               <el-icon><Edit /></el-icon>编辑
@@ -315,15 +315,17 @@
       </template>
     </el-dialog>
 
-    <!-- 机构人员查看弹窗 -->
+    <!-- 机构人员分配弹窗 -->
     <el-dialog
       v-model="userDialogVisible"
-      title="机构人员"
+      title="机构人员分配"
       width="700px"
       destroy-on-close
+      :close-on-click-modal="false"
     >
       <div class="user-select-header">
         <span>当前机构：{{ currentOrgName }}</span>
+        <span class="selected-count">已选 {{ selectedUserIds.length }} 人</span>
         <el-input
           v-model="userSearch"
           placeholder="搜索用户姓名/账号"
@@ -337,10 +339,27 @@
         border
         stripe
         height="320"
+        row-key="id"
       >
         <el-table-column label="序号" width="60" align="center">
           <template #default="{ $index }">
             {{ (userPage - 1) * userPageSize + $index + 1 }}
+          </template>
+        </el-table-column>
+        <el-table-column width="60" align="center">
+          <template #header>
+            <el-checkbox
+              :model-value="isAllPageSelected"
+              :indeterminate="isPageIndeterminate"
+              :disabled="paginatedUserOptions.length === 0"
+              @change="toggleSelectAllPageUsers"
+            />
+          </template>
+          <template #default="{ row }">
+            <el-checkbox
+              :model-value="selectedUserIds.includes(row.id)"
+              @change="(val: any) => toggleUserSelection(row.id, !!val)"
+            />
           </template>
         </el-table-column>
         <el-table-column prop="username" label="用户名" min-width="120" />
@@ -359,7 +378,8 @@
         />
       </div>
       <template #footer>
-        <el-button @click="userDialogVisible = false">关闭</el-button>
+        <el-button @click="userDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="userSubmitLoading" @click="handleSaveOrgUsers">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -385,6 +405,7 @@ import {
   updateOrg,
   deleteOrg,
   getOrgUsers,
+  assignOrgUsers,
   type OrgItem,
   type OrgForm
 } from '@/api/org'
@@ -411,6 +432,7 @@ const tableData = ref<OrgItem[]>([])
 
 const userDialogVisible = ref(false)
 const userLoading = ref(false)
+const userSubmitLoading = ref(false)
 const userSearch = ref('')
 const userPage = ref(1)
 const userPageSize = ref(6)
@@ -520,6 +542,35 @@ const paginatedUserOptions = computed(() => {
   const start = (userPage.value - 1) * userPageSize.value
   return filteredUserOptions.value.slice(start, start + userPageSize.value)
 })
+
+// 当前页是否全部已选 / 部分已选（用于表头复选框）
+const isAllPageSelected = computed(() => {
+  const list = paginatedUserOptions.value
+  return list.length > 0 && list.every((u) => selectedUserIds.value.includes(u.id))
+})
+
+const isPageIndeterminate = computed(() => {
+  const list = paginatedUserOptions.value
+  const selected = list.filter((u) => selectedUserIds.value.includes(u.id)).length
+  return selected > 0 && selected < list.length
+})
+
+const toggleUserSelection = (id: number, checked: boolean) => {
+  if (checked) {
+    if (!selectedUserIds.value.includes(id)) selectedUserIds.value.push(id)
+  } else {
+    selectedUserIds.value = selectedUserIds.value.filter((uid) => uid !== id)
+  }
+}
+
+const toggleSelectAllPageUsers = (val: any) => {
+  const ids = paginatedUserOptions.value.map((u) => u.id)
+  if (val) {
+    selectedUserIds.value = Array.from(new Set([...selectedUserIds.value, ...ids]))
+  } else {
+    selectedUserIds.value = selectedUserIds.value.filter((id) => !ids.includes(id))
+  }
+}
 
 const hasTopLevelOrg = computed(() => {
   return tableData.value.some((item) => item.parentId === 0)
@@ -862,21 +913,31 @@ const handleAssignUsers = async (row: OrgItem) => {
       getOrgUsers(row.id)
     ])
     const allUsers = usersRes?.data?.list || []
-    selectedUserIds.value = orgUsersRes?.data || []
-    const userMap = new Map(allUsers.map((u: any) => [u.id, u]))
-    userOptions.value = selectedUserIds.value
-      .map((id) => userMap.get(id))
-      .filter((u): u is UserItem => !!u)
-      .map((u: any) => ({
-        id: u.id,
-        username: u.username,
-        account: u.account,
-        phone: u.phone || u.mobile || ''
-      }))
+    selectedUserIds.value = (orgUsersRes?.data || []).map((id: any) => Number(id))
+    // 展示全部用户并勾选已有成员，保存时整体覆盖该机构成员
+    userOptions.value = allUsers.map((u: any) => ({
+      id: u.id,
+      username: u.username,
+      account: u.account,
+      phone: u.phone || u.mobile || ''
+    }))
   } catch (error) {
     ElMessage.error('获取机构用户失败')
   } finally {
     userLoading.value = false
+  }
+}
+
+const handleSaveOrgUsers = async () => {
+  if (!currentOrgId.value) return
+  userSubmitLoading.value = true
+  try {
+    await assignOrgUsers(currentOrgId.value, selectedUserIds.value)
+    ElMessage.success('机构人员保存成功')
+    userDialogVisible.value = false
+    fetchData()
+  } finally {
+    userSubmitLoading.value = false
   }
 }
 

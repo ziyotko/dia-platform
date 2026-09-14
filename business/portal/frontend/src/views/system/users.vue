@@ -191,6 +191,37 @@
         <el-button type="primary" :loading="importLoading" @click="handleImportSubmit">确定导入</el-button>
       </template>
     </el-dialog>
+
+    <!-- 初始密码 / 导入结果 -->
+    <el-dialog v-model="credentialDialogVisible" :title="credentialTitle" width="560px" destroy-on-close>
+      <template v-if="credentialList.length > 0">
+        <el-alert
+          type="warning"
+          :closable="false"
+          show-icon
+          title="初始密码仅显示一次，请及时告知用户并妥善保存"
+          style="margin-bottom: 12px"
+        />
+        <el-table :data="credentialList" border stripe max-height="300">
+          <el-table-column prop="account" label="账号" min-width="140" />
+          <el-table-column prop="password" label="初始密码" min-width="160" />
+        </el-table>
+      </template>
+      <template v-if="importFailDetails.length > 0">
+        <div style="margin-top: 12px; font-weight: 600; color: #2c3e50">
+          失败详情（{{ importFailDetails.length }} 条）
+        </div>
+        <div
+          style="max-height: 240px; overflow: auto; margin-top: 8px; color: #909399; font-size: 13px; line-height: 1.8"
+        >
+          <div v-for="(item, idx) in importFailDetails" :key="idx">{{ item }}</div>
+        </div>
+      </template>
+      <template #footer>
+        <el-button v-if="credentialList.length > 0" @click="copyCredentials">复制账号密码</el-button>
+        <el-button type="primary" @click="credentialDialogVisible = false">知道了</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -221,6 +252,33 @@ const formRef = ref()
 const importDialogVisible = ref(false)
 const importLoading = ref(false)
 const importFile = ref<File | null>(null)
+
+// 新建/导入用户的一次性密码展示
+const credentialDialogVisible = ref(false)
+const credentialTitle = ref('初始密码')
+const credentialList = ref<{ account: string; password: string }[]>([])
+const importFailDetails = ref<string[]>([])
+
+const showCredentials = (
+  list: { account: string; password: string }[],
+  failDetails: string[] = [],
+  title = '初始密码'
+) => {
+  credentialList.value = list
+  importFailDetails.value = failDetails
+  credentialTitle.value = title
+  credentialDialogVisible.value = true
+}
+
+const copyCredentials = async () => {
+  const text = credentialList.value.map((i) => `${i.account}\t${i.password}`).join('\n')
+  try {
+    await navigator.clipboard.writeText(text)
+    ElMessage.success('已复制到剪贴板')
+  } catch {
+    ElMessage.warning('复制失败，请手动选择复制')
+  }
+}
 
 const queryForm = reactive({
   page: 1,
@@ -433,7 +491,7 @@ const handleSubmit = async () => {
       })
       ElMessage.success('修改成功')
     } else {
-      await createUser({
+      const res: any = await createUser({
         username: form.username,
         account: form.account,
         email: form.email,
@@ -444,6 +502,11 @@ const handleSubmit = async () => {
         sex: form.sex
       })
       ElMessage.success('新增成功')
+      // 后端随机生成初始密码，仅在创建响应中返回一次，需展示给管理员
+      const pwd = res?.data?.password
+      if (pwd) {
+        showCredentials([{ account: form.account, password: pwd }], [], '新增用户成功')
+      }
     }
     dialogVisible.value = false
     fetchData()
@@ -490,11 +553,15 @@ const handleImportSubmit = async () => {
     if (res && res.code === 0) {
       const data = res.data || {}
       ElMessage.success(`导入完成，成功 ${data.successCount || 0} 条，失败 ${data.failCount || 0} 条`)
-      if (data.failDetails && data.failDetails.length > 0) {
-        ElMessageBox.alert(data.failDetails.join('\n'), '导入失败详情', {
-          confirmButtonText: '知道了',
-          customStyle: { whiteSpace: 'pre-line', maxHeight: '60vh', overflow: 'auto' }
-        })
+      // 导入时后端为每个成功账号生成随机初始密码（仅本次返回），与失败明细一并展示
+      const generated: Record<string, string> = data.generatedPasswords || {}
+      const credentials = Object.entries(generated).map(([account, password]) => ({
+        account,
+        password: String(password)
+      }))
+      const failDetails: string[] = data.failDetails || []
+      if (credentials.length > 0 || failDetails.length > 0) {
+        showCredentials(credentials, failDetails, '导入结果')
       }
       importDialogVisible.value = false
       fetchData()

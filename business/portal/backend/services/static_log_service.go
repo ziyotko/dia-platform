@@ -1,7 +1,10 @@
 package services
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -70,6 +73,90 @@ func (s *StaticLogService) CreateIfNotExists(log *models.StaticLog) error {
 		}
 	}
 	return utils.DB.Create(log).Error
+}
+
+// StaticPageResult 静态化程序「单页/详情页同步生成」结果结构
+type StaticPageResult struct {
+	GeneratedAt      string  `json:"generated_at"`
+	DurationSeconds  float64 `json:"duration_seconds"`
+	Page             string  `json:"page"`
+	TotalItems       int     `json:"total_items"`
+	GeneratedFiles   int     `json:"generated_files"`
+	GeneratedDetails int     `json:"generated_details"`
+	GeneratedLists   int     `json:"generated_lists"`
+	Output           string  `json:"output"`
+	Gray             string  `json:"gray"`
+}
+
+// StaticPageResponse 单页同步生成统一响应结构
+type StaticPageResponse struct {
+	OK     bool              `json:"ok"`
+	Result *StaticPageResult `json:"result"`
+}
+
+// RecordPageStaticDone 记录单页/详情页同步静态化成功日志。
+// 手动「重新生成」与文章发布/审核通过时的自动生成共用本方法，保证静态化日志、
+// 最后静态化时间（latest-times）与今日文件数口径一致。
+// 去重键取自上游返回的 generated_at（每次生成唯一），避免同一结果被重复记录导致今日文件数虚高。
+func (s *StaticLogService) RecordPageStaticDone(operator, operation, pageName string, statusCode int, body []byte) {
+	if statusCode != http.StatusOK {
+		return
+	}
+	var resp StaticPageResponse
+	if err := json.Unmarshal(body, &resp); err != nil || !resp.OK || resp.Result == nil {
+		return
+	}
+	res := resp.Result
+	duration := "-"
+	if res.DurationSeconds > 0 {
+		duration = fmt.Sprintf("%.0f秒", res.DurationSeconds)
+	}
+	jobID := ""
+	if res.GeneratedAt != "" {
+		jobID = fmt.Sprintf("sync:%s:%s:%s", operation, pageName, res.GeneratedAt)
+	}
+	log := &models.StaticLog{
+		Operation: operation,
+		PageName:  pageName,
+		Path:      res.Output,
+		Duration:  duration,
+		FileSize:  fmt.Sprintf("%d 个文件", res.GeneratedFiles),
+		Operator:  operator,
+		Status:    "success",
+		Message:   fmt.Sprintf("页面：%s｜耗时：%.1f秒", pageName, res.DurationSeconds),
+		JobID:     jobID,
+	}
+	if err := s.CreateIfNotExists(log); err != nil {
+		utils.Logger.Warnf("记录静态化日志失败: %s", err)
+	}
+}
+
+// RecordArticleDeleteLog 记录「删除详情页静态文件」日志。
+// 去重键按 文章ID + 日期 生成，避免同一文章同一天内重复触发（如删除文章时多次调用）产生重复记录。
+func (s *StaticLogService) RecordArticleDeleteLog(operator, articleID string, statusCode int, body []byte) {
+	status, statusText := "danger", "删除失败"
+	if statusCode == http.StatusOK {
+		var resp struct {
+			OK bool `json:"ok"`
+		}
+		if err := json.Unmarshal(body, &resp); err == nil && resp.OK {
+			status, statusText = "success", "删除成功"
+		}
+	}
+	log := &models.StaticLog{
+		Operation: "删除详情页静态文件",
+		PageName:  articleID,
+		Path:      "-",
+		Duration:  "-",
+		FileSize:  "-",
+		Operator:  operator,
+		Status:    status,
+		Message:   fmt.Sprintf("文章ID：%s｜%s", articleID, statusText),
+		JobID:     fmt.Sprintf("delete:%s:%s", articleID, time.Now().Format("2006-01-02")),
+	}
+	if err := s.CreateIfNotExists(log); err != nil {
+		utils.Logger.Warnf("记录静态化日志失败: %s", err)
+	}
 }
 
 // latestSuccessTime 查询指定操作的最近一次成功静态化时间；operation 为空时表示不限操作（全站）

@@ -2,20 +2,10 @@ package utils
 
 import (
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 )
-
-// GenerateSignKey 生成一个 32 字节的随机签名密钥，以 hex 字符串返回
-func GenerateSignKey() (string, error) {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b), nil
-}
 
 // DeriveSignKey 从访问 Token 派生请求签名密钥。
 // 使签名密钥与会话 Token 绑定：随登录轮换、随 Token 过期而失效，

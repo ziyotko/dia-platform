@@ -49,6 +49,15 @@ func (c *SettingsController) GetSettings(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("获取设置成功", settings))
 }
 
+// TestEmail 邮件（SMTP）连接测试：按当前设置尝试建立连接与认证，不发送邮件
+func (c *SettingsController) TestEmail(ctx *gin.Context) {
+	if err := c.settingsService.TestEmailConnection(); err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "邮件连接测试失败: "+utils.SafeErrText(err)))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("邮件连接测试成功", nil))
+}
+
 func (c *SettingsController) GetPublicSiteInfo(ctx *gin.Context) {
 	settings, err := c.settingsService.GetSettings()
 	if err != nil {

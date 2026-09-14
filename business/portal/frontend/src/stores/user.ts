@@ -71,14 +71,6 @@ export const useUserStore = defineStore('user', () => {
     hasFetchedMenus.value = true
   }
 
-  /**
-   * 重置动态路由状态（用于重新登录等场景）
-   */
-  function resetDynamicRoutes() {
-    menuList.value = []
-    hasFetchedMenus.value = false
-  }
-
   function logout() {
     token.value = ''
     userInfo.value = null
@@ -99,7 +91,6 @@ export const useUserStore = defineStore('user', () => {
     setToken,
     setUserInfo,
     fetchUserMenusAndGenerateRoutes,
-    resetDynamicRoutes,
     logout
   }
 })

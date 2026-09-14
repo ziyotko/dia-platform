@@ -1,8 +1,6 @@
 package utils
 
 import (
-	"crypto/rand"
-	"fmt"
 	"time"
 
 	"github.com/mojocn/base64Captcha"
@@ -67,40 +65,6 @@ func VerifyCaptcha(id, code string) bool {
 	}
 
 	return answer == code
-}
-
-func GenerateSmsCaptcha() (string, error) {
-	b := make([]byte, 3)
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
-	}
-	num := (int(b[0])*256*256 + int(b[1])*256 + int(b[2])) % 1000000
-	return fmt.Sprintf("%06d", num), nil
-}
-
-func StoreSmsCaptcha(mobile, code string) error {
-	key := captchaPrefix + "sms:" + mobile
-	return Redis.Set(Ctx, key, code, captchaExpire).Err()
-}
-
-func VerifySmsCaptcha(mobile, code string) bool {
-	if mobile == "" || code == "" {
-		return false
-	}
-
-	key := captchaPrefix + "sms:" + mobile
-	storedCode, err := Redis.Get(Ctx, key).Result()
-	if err != nil {
-		return false
-	}
-
-	err = Redis.Del(Ctx, key).Err()
-	if err != nil {
-		return false
-	}
-
-	return storedCode == code
 }
 
 type redisCaptchaStore struct{}

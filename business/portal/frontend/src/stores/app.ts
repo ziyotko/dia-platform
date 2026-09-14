@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-export type SidebarStyle = 'light' | 'dark'
-
 // 品牌主题色（固定，不再支持后台配置）
 const BRAND_THEME_COLOR = '#002fa7'
 
@@ -33,9 +31,6 @@ const storedCollapsed = localStorage.getItem('sidebar-collapsed')
 export const useAppStore = defineStore('app', () => {
   const sidebarCollapsed = ref(storedCollapsed === 'true')
   const themeColor = ref(BRAND_THEME_COLOR)
-  const sidebarStyle = ref<SidebarStyle>('light')
-  const tagsView = ref(true)
-  const breadcrumb = ref(true)
   const minPasswordLength = ref(parsedSecurity?.minPasswordLength ?? 8)
 
   function toggleSidebar() {
@@ -81,9 +76,6 @@ export const useAppStore = defineStore('app', () => {
   return {
     sidebarCollapsed,
     themeColor,
-    sidebarStyle,
-    tagsView,
-    breadcrumb,
     minPasswordLength,
     refreshKey,
     toggleSidebar,

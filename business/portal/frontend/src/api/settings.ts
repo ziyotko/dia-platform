@@ -54,6 +54,11 @@ export function updateSettings(data: Partial<Settings>) {
   return request.put('/settings', data)
 }
 
+/** 邮件（SMTP）连接测试：后端按当前设置建立连接与认证，不发送邮件 */
+export function testEmailConnection() {
+  return request.post('/settings/test-email')
+}
+
 export function getPublicSiteInfo() {
   return request.get<SiteInfo>('/site-info')
 }
