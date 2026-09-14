@@ -55,6 +55,26 @@ func (c *WorkflowRoleController) GetWorkflowRoles(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("获取流程角色列表成功", utils.PageData(result.List, result.Total, page, pageSize)))
 }
 
+// GetWorkflowRoleOptions 审批人下拉所需的流程角色选项（仅 id/name，启用状态），
+// 供内容编辑/审核页面展示「角色：xxx」使用；不暴露流程角色的成员明细。
+func (c *WorkflowRoleController) GetWorkflowRoleOptions(ctx *gin.Context) {
+	enabled := 1
+	result, err := c.workflowRoleService.GetWorkflowRoleList(1, 0, "", &enabled)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取流程角色选项失败"))
+		return
+	}
+	type roleOption struct {
+		ID   uint   `json:"id"`
+		Name string `json:"name"`
+	}
+	options := make([]roleOption, 0, len(result.List))
+	for _, role := range result.List {
+		options = append(options, roleOption{ID: role.ID, Name: role.Name})
+	}
+	ctx.JSON(http.StatusOK, utils.Success("获取成功", options))
+}
+
 func (c *WorkflowRoleController) GetWorkflowRoleByID(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)

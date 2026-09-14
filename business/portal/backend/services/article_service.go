@@ -137,6 +137,10 @@ func (s *ArticleService) GetArticleByID(id uint) (*models.Article, error) {
 
 func (s *ArticleService) CreateArticle(article *models.Article, tagIDs []uint, categoryIDs []uint) error {
 	return utils.DB.Transaction(func(tx *gorm.DB) error {
+		// 发布/审核状态只能由审核流程或状态接口变更，忽略请求体携带的值，
+		// 防止作者通过 POST /articles {"status":1} 直接发布、绕过审核。
+		article.Status = models.ArticleStatusDraft
+		article.AuditStatus = 0
 		// 先暂存附件，避免 GORM Create 自动关联插入导致重复
 		attachments := article.Attachments
 		article.Attachments = nil
@@ -190,11 +194,16 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 		if err := tx.First(&old, id).Error; err != nil {
 			return err
 		}
-		// 已下线文章重新编辑时，转为草稿（编辑状态），并清理栏目、审核、发布等关联数据
-		isOffline := old.Status == 2 || article.Status == 2
+		// 发布/审核状态不由本接口（编辑内容）变更，防止作者用 PUT {"status":1} 绕过审核：
+		//   - 文章当前为「已下线」：编辑动作将其转回草稿，并清理栏目/审核/发布等关联数据；
+		//   - 其余情况：一律沿用数据库中的当前值（请求体中的 status/auditStatus 被忽略）。
+		isOffline := old.Status == models.ArticleStatusOffline
 		if isOffline {
-			article.Status = 0
+			article.Status = models.ArticleStatusDraft
 			article.AuditStatus = 0
+		} else {
+			article.Status = old.Status
+			article.AuditStatus = old.AuditStatus
 		}
 		updates := map[string]any{
 			"title":         article.Title,
@@ -504,21 +513,15 @@ func (s *ArticleService) StartArticleAudit(articleID uint) error {
 				}
 				continue
 			}
+			// 绑定了审核流程的栏目必须先校验流程节点可用（节点存在且审批人可解析）：
+			// 流程无节点或审批人为空都会让审核永久卡住，这里直接返回可定位的原因。
+			workflowService := WorkflowService{}
+			if err := workflowService.ValidateWorkflowResolvable(*col.WorkflowID); err != nil {
+				return fmt.Errorf("栏目「%s」的审核流程不可用: %s", col.Name, err.Error())
+			}
 			var firstNode models.WorkflowNode
-			err := tx.Where("workflow_id = ?", *col.WorkflowID).Order("sort_order ASC").First(&firstNode).Error
-			if err != nil {
-				// 流程没有节点，视为直接通过
-				audit := models.ArticleColumnAudit{
-					ArticleID:     articleID,
-					ColumnID:      col.ID,
-					WorkflowID:    *col.WorkflowID,
-					CurrentNodeID: 0,
-					Status:        1,
-				}
-				if err := tx.Create(&audit).Error; err != nil {
-					return err
-				}
-				continue
+			if err := tx.Where("workflow_id = ?", *col.WorkflowID).Order("sort_order ASC").First(&firstNode).Error; err != nil {
+				return fmt.Errorf("栏目「%s」的审核流程没有可用节点", col.Name)
 			}
 			audit := models.ArticleColumnAudit{
 				ArticleID:     articleID,
@@ -595,8 +598,9 @@ func (s *ArticleService) getUserDepartmentIDs(userID uint) ([]uint, error) {
 func (s *ArticleService) canUserApproveNode(node *models.WorkflowNode, userID uint, authorCode string) (bool, error) {
 	switch node.ApproverType {
 	case "role":
+		// 未指定审批角色 = 无人可审，必须拒绝：否则任意登录用户（含作者本人）都能审批通过
 		if node.ApproverID == 0 {
-			return true, nil
+			return false, nil
 		}
 		workflowRoleService := WorkflowRoleService{}
 		roleIDs, err := workflowRoleService.GetUserWorkflowRoleIds(userID)
@@ -635,7 +639,8 @@ func (s *ArticleService) canUserApproveNode(node *models.WorkflowNode, userID ui
 		}
 		return false, nil
 	case "user", "":
-		if node.ApproverID == 0 || node.ApproverID == userID {
+		// 未指定审批人一律拒绝（原因同上），仅显式指定为当前用户时放行
+		if node.ApproverID != 0 && node.ApproverID == userID {
 			return true, nil
 		}
 		return false, nil

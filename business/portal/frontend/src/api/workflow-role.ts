@@ -25,6 +25,11 @@ export function getAllWorkflowRoles(status?: number) {
   return request.get('/workflow-roles', { params: { all: 1, status } })
 }
 
+/** 获取流程角色下拉选项（仅 id/名称，任意登录用户可用，用于展示「角色：xxx」） */
+export function getWorkflowRoleOptions() {
+  return request.get('/workflow-role-options')
+}
+
 export function getWorkflowRoleById(id: number) {
   return request.get(`/workflow-roles/${id}`)
 }

@@ -81,6 +81,9 @@ func SetupRoutes(router *gin.Engine) {
 	{
 
 		member.GET("/users", userController.GetUsers)
+		// 审批人下拉所需的轻量选项接口（仅 id/名称，豁免菜单 api_prefix 校验）
+		member.GET("/user-options", userController.GetUserOptions)
+		member.GET("/workflow-role-options", workflowRoleController.GetWorkflowRoleOptions)
 		member.GET("/templates", templateController.GetTemplates)
 		// 仪表盘
 		member.GET("/dashboard/stats", dashboardController.GetStats)
@@ -142,8 +145,10 @@ func SetupRoutes(router *gin.Engine) {
 	}
 
 	// === 管理员路由（需认证 + 管理员角色）===
+	// 与 member 组一致地校验菜单 api_prefix：管理员只能调用其已授权菜单对应的接口，
+	// 避免「界面按菜单隐藏、接口却全量开放」的两套权限口径。
 	admin := router.Group(apiPrefix)
-	admin.Use(middleware.AuthMiddleware(), middleware.AdminMiddleware(), middleware.ReplayProtectionMiddleware(), middleware.OperationLog(), ipLimiter.Limit())
+	admin.Use(middleware.AuthMiddleware(), middleware.AdminMiddleware(), middleware.MenuAPIPrefixMiddleware(), middleware.ReplayProtectionMiddleware(), middleware.OperationLog(), ipLimiter.Limit())
 	{
 		// 用户管理
 		admin.POST("/users", userController.CreateUser)

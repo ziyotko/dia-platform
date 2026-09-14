@@ -27,9 +27,15 @@ export function getUserList(params: UserQuery) {
 /**
  * 获取全部用户（供下拉选项使用）。
  * 走后端 all=1 不分页，避免用户数超过 pageSize 上限时被静默截断。
+ * 注意：该接口属于「用户管理」菜单范围，非管理角色请改用 getUserOptions。
  */
 export function getAllUsers(status?: number) {
   return request.get('/users', { params: { all: 1, status } })
+}
+
+/** 获取用户下拉选项（仅 id/用户名，任意登录用户可用，用于展示审批人名称） */
+export function getUserOptions() {
+  return request.get('/user-options')
 }
 
 export function createUser(data: UserForm) {

@@ -39,28 +39,49 @@ func NewUserController() *UserController {
 	}
 }
 
-// canAssignRoles 判断操作者能否为他人分配目标角色。
-// 角色序号越小角色越高，操作者只能分配不高于自身最高角色的角色（目标角色序号 >= 操作者最高角色序号）。
-func (c *UserController) canAssignRoles(operatorID uint, targetRoleIds []int) bool {
-	operatorRoles, err := c.userService.GetUserRoleIds(operatorID)
-	if err != nil {
-		return false
+// getMinRoleID 返回角色 ID 列表中的最小角色 ID（角色序号越小角色越高）。
+func getMinRoleID(roleIDs []int) (int, bool) {
+	if len(roleIDs) == 0 {
+		return 0, false
 	}
-	if len(operatorRoles) == 0 || len(targetRoleIds) == 0 {
-		return true
-	}
-	minRoleID := operatorRoles[0]
-	for _, id := range operatorRoles {
+	minRoleID := roleIDs[0]
+	for _, id := range roleIDs {
 		if id < minRoleID {
 			minRoleID = id
 		}
 	}
-	for _, id := range targetRoleIds {
-		if id < minRoleID {
-			return false
-		}
+	return minRoleID, true
+}
+
+// canAssignRoles 判断操作者能否为他人分配目标角色。
+// 角色序号越小角色越高，操作者只能分配不高于自身最高角色的角色（目标角色序号 >= 操作者最高角色序号）。
+func (c *UserController) canAssignRoles(operatorID uint, targetRoleIds []int) bool {
+	operatorMin, ok := getMinRoleID(c.userService.MustGetUserRoleIds(operatorID))
+	if !ok {
+		return false
 	}
-	return true
+	targetMin, hasTarget := getMinRoleID(targetRoleIds)
+	if !hasTarget {
+		return true // 不分配任何角色
+	}
+	return targetMin >= operatorMin
+}
+
+// canOperateUser 判断操作者能否修改/删除目标用户：只能操作角色序号不高于自己的用户。
+// 避免普通管理员（角色 2）修改或删除超级管理员（角色 1）等更高权限账号；目标用户无角色时视为最低权限。
+func (c *UserController) canOperateUser(operatorID uint, targetID uint) bool {
+	if operatorID == targetID {
+		return true
+	}
+	operatorMin, ok := getMinRoleID(c.userService.MustGetUserRoleIds(operatorID))
+	if !ok {
+		return false
+	}
+	targetMin, hasTarget := getMinRoleID(c.userService.MustGetUserRoleIds(targetID))
+	if !hasTarget {
+		return true
+	}
+	return targetMin >= operatorMin
 }
 
 func (c *UserController) GetUsers(ctx *gin.Context) {
@@ -131,6 +152,29 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("获取用户列表成功", utils.PageData(list, result.Total, page, pageSize)))
 }
 
+// GetUserOptions 登录用户可用的用户选项（仅 id/username，不含邮箱/手机号等敏感信息），
+// 供内容编辑/审核页面展示审批人名称使用，避免为此开放管理端的用户列表接口。
+func (c *UserController) GetUserOptions(ctx *gin.Context) {
+	var users []models.User
+	if err := utils.DB.Model(&models.User{}).
+		Select("id, username").
+		Where("status = ?", 1).
+		Order("id ASC").
+		Find(&users).Error; err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取用户选项失败"))
+		return
+	}
+	type userOption struct {
+		ID       uint   `json:"id"`
+		Username string `json:"username"`
+	}
+	options := make([]userOption, 0, len(users))
+	for _, user := range users {
+		options = append(options, userOption{ID: user.ID, Username: user.Username})
+	}
+	ctx.JSON(http.StatusOK, utils.Success("获取成功", options))
+}
+
 func (c *UserController) CreateUser(ctx *gin.Context) {
 	var req struct {
 		Username string `json:"username"`
@@ -194,6 +238,11 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 		return
 	}
 
+	if !c.canOperateUser(ctx.GetUint("userID"), uint(id)) {
+		ctx.JSON(http.StatusOK, utils.Error(1, "不能操作权限高于自己的用户"))
+		return
+	}
+
 	var req struct {
 		Username string `json:"username"`
 		Account  string `json:"account"`
@@ -233,6 +282,11 @@ func (c *UserController) DeleteUser(ctx *gin.Context) {
 		return
 	}
 
+	if !c.canOperateUser(ctx.GetUint("userID"), uint(id)) {
+		ctx.JSON(http.StatusOK, utils.Error(1, "不能操作权限高于自己的用户"))
+		return
+	}
+
 	err = c.userService.DeleteUser(uint(id))
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("删除用户失败", err)))
@@ -256,6 +310,11 @@ func (c *UserController) UpdateUserStatus(ctx *gin.Context) {
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误"))
+		return
+	}
+
+	if !c.canOperateUser(ctx.GetUint("userID"), uint(id)) {
+		ctx.JSON(http.StatusOK, utils.Error(1, "不能操作权限高于自己的用户"))
 		return
 	}
 

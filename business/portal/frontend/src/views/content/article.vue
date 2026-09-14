@@ -1044,8 +1044,8 @@ import {
   getArticleAuditHistory
 } from '@/api/article'
 import { getWorkflowByID } from '@/api/workflow'
-import { getAllUsers } from '@/api/user'
-import { getAllWorkflowRoles } from '@/api/workflow-role'
+import { getUserOptions } from '@/api/user'
+import { getWorkflowRoleOptions } from '@/api/workflow-role'
 import { getAllCategories } from '@/api/category'
 import { getAllTags } from '@/api/tag'
 import { getPages } from '@/api/page'
@@ -1941,19 +1941,21 @@ const handleShowAuditFlow = async (row: any) => {
     if (columnList.value.length === 0) {
       await fetchColumns()
     }
-    // 加载用户/角色列表，用于显示审批人名称
+    // 加载用户/角色选项，用于显示审批人名称
+    // 使用菜单豁免的轻量选项接口（仅 id/名称）：非管理员没有「用户管理/流程角色」菜单，
+    // 若改回 getAllUsers/getAllWorkflowRoles 会因缺少授权而报「没有授权」。
     if (auditFlowUserList.value.length === 0) {
       try {
-        const userRes: any = await getAllUsers()
-        auditFlowUserList.value = userRes.data?.list || userRes.data || []
+        const userRes: any = await getUserOptions()
+        auditFlowUserList.value = userRes.data || []
       } catch {
         auditFlowUserList.value = []
       }
     }
     if (auditFlowRoleList.value.length === 0) {
       try {
-        const roleRes: any = await getAllWorkflowRoles()
-        auditFlowRoleList.value = roleRes.data?.list || []
+        const roleRes: any = await getWorkflowRoleOptions()
+        auditFlowRoleList.value = roleRes.data || []
       } catch {
         auditFlowRoleList.value = []
       }

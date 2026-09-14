@@ -12,17 +12,25 @@ import (
 	"server/utils"
 )
 
-// 登录用户路由中无需 api_prefix 授权校验的路径。
-// 这些接口属于个人账户/工具类接口或没有对应菜单的只读接口，任意已认证用户均可用；
-// 若后续需要收紧，可在此处调整或移除对应条目。
-var memberAPIPrefixExemptPaths = map[string]bool{
+// 无需 api_prefix 授权校验的路径（member 与 admin 两组共用）。
+// 这些接口属于个人账户/工具类接口、或跨模块复用的只读基础数据（分类/标签/栏目/页面选项），
+// 任意已认证用户均可用；若后续需要收紧，可在此处调整或移除对应条目。
+//
+// 注意：此处按「路径」匹配，不区分 HTTP 方法。因此 /pages、/columns 这类同时存在只读（member）与写（admin）
+// 路由的路径，其写操作同样豁免——这些写路由本身已被 AdminMiddleware 限制为管理员，风险可控。
+var apiPrefixExemptPaths = map[string]bool{
 	"/logout":                    true,
 	"/profile":                   true,
 	"/profile/password":          true,
 	"/menus/user":                true,
 	"/upload":                    true,
+	"/user-options":              true,
+	"/workflow-role-options":     true,
 	"/pages":                     true,
 	"/static-pages":              true,
+	"/categories/all":            true,
+	"/tags/all":                  true,
+	"/columns":                   true,
 	"/minPasswordLengthSettings": true,
 }
 
@@ -37,7 +45,8 @@ func pathMatchesAPIPrefix(path, prefix string) bool {
 
 // MenuAPIPrefixMiddleware 校验当前请求路径是否命中用户已授权菜单的 api_prefix。
 // 若请求路径未被任一已授权 api_prefix 覆盖，则返回“没有授权”。
-// 需在 AuthMiddleware 之后挂载（依赖上下文中的 userID）。
+// 需在 AuthMiddleware 之后挂载（依赖上下文中的 userID）；member 与 admin 两组均使用，
+// 使「菜单可见范围」与「接口可调用范围」保持一致。
 func MenuAPIPrefixMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// 去除全局 API 前缀，得到路由级路径（如 /caamm/api/articles -> /articles）
@@ -48,7 +57,7 @@ func MenuAPIPrefixMiddleware() gin.HandlerFunc {
 		}
 
 		// 账户/工具类及无菜单只读接口直接放行
-		if memberAPIPrefixExemptPaths[path] {
+		if apiPrefixExemptPaths[path] {
 			c.Next()
 			return
 		}
@@ -91,8 +100,11 @@ func getUserMenuAPIPrefixes(userID uint) ([]string, error) {
 	var collect func([]models.Menu)
 	collect = func(items []models.Menu) {
 		for _, m := range items {
-			if m.APIPrefix != "" {
-				prefixes = append(prefixes, m.APIPrefix)
+			// 一个菜单可声明多个前缀（逗号分隔），便于「一个页面调用多个模块接口」的场景
+			for _, prefix := range strings.Split(m.APIPrefix, ",") {
+				if prefix = strings.TrimSpace(prefix); prefix != "" {
+					prefixes = append(prefixes, prefix)
+				}
 			}
 			if len(m.Children) > 0 {
 				collect(m.Children)

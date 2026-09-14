@@ -302,16 +302,18 @@ func (s *UserService) ImportUsers(file multipart.File, fileSize int64) (*ImportU
 func (s *UserService) UpdateUser(id uint, username, account, email, password, phone string, status int, sex int, roleIds []int, orgIds []uint) error {
 	updates := map[string]any{
 		"username": username,
-		"account":  account,
-		"email":    email,
-		"mobile":   phone,
 		"sex":      sex,
 	}
 
-	// 内置超级管理员：忽略状态与角色变更，避免被降权或禁用（其余资料仍可修改）
 	if id == builtinSuperAdminUserID {
+		// 内置超级管理员：账号/邮箱/手机号是登录凭据，密码同样是凭据，一律不允许通过用户管理接口修改
+		// （否则普通管理员改掉超管密码即可接管账号）；状态与角色同样保持原值。
+		// 凭据只能由超管本人通过「个人中心」的修改资料/修改密码接口变更。
 		updates["status"] = 1
 	} else {
+		updates["account"] = account
+		updates["email"] = email
+		updates["mobile"] = phone
 		updates["status"] = status
 		// 角色始终写入（空数组表示清空角色），修复“无法清空角色”的问题
 		roleIdStrs := make([]string, len(roleIds))
@@ -319,11 +321,11 @@ func (s *UserService) UpdateUser(id uint, username, account, email, password, ph
 			roleIdStrs[i] = strconv.Itoa(rid)
 		}
 		updates["role_ids"] = strings.Join(roleIdStrs, ",")
-	}
 
-	// 密码需显式做 SM3 加盐哈希后再入库：map 更新不会触发模型 BeforeUpdate 钩子（否则会写入明文）
-	if password != "" {
-		updates["password"] = utils.SM3HashPassword(password)
+		// 密码需显式做 SM3 加盐哈希后再入库：map 更新不会触发模型 BeforeUpdate 钩子（否则会写入明文）
+		if password != "" {
+			updates["password"] = utils.SM3HashPassword(password)
+		}
 	}
 
 	if err := utils.DB.Model(&models.User{}).Where("id = ?", id).Updates(updates).Error; err != nil {
@@ -411,7 +413,6 @@ func (s *UserService) GetUserRoleIds(userId uint) ([]int, error) {
 	if err := utils.DB.First(&user, userId).Error; err != nil {
 		return nil, err
 	}
-
 	if user.RoleIds == "" {
 		return []int{}, nil
 	}
@@ -425,4 +426,13 @@ func (s *UserService) GetUserRoleIds(userId uint) ([]int, error) {
 	}
 
 	return roleIds, nil
+}
+
+// MustGetUserRoleIds 用于调用方不关心错误的场景（查询失败视为无角色），避免各处重复忽略 err。
+func (s *UserService) MustGetUserRoleIds(userId uint) []int {
+	roleIds, err := s.GetUserRoleIds(userId)
+	if err != nil {
+		return nil
+	}
+	return roleIds
 }
