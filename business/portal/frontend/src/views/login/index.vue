@@ -65,7 +65,7 @@
               <div class="captcha-row">
                 <el-input
                   v-model="form.captchaCode"
-                  placeholder="请输入图中的汉字"
+                  placeholder="请输入验证码"
                   maxlength="5"
                   :prefix-icon="Grid"
                   clearable
