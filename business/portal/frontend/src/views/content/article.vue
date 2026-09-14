@@ -952,7 +952,7 @@
             </div>
             <div v-if="item.auditStatus === 1 && item.approveUserName" class="audit-flow-result">
               <el-icon color="#67c23a"><CircleCheck /></el-icon>
-              <span>已通过：{{ item.approverRemark }}</span>
+              <span>已通过：{{ item.approveRemark || '—' }}</span>
             </div>
             <div v-if="item.auditStatus === 2 && item.rejectRemark" class="audit-flow-result audit-flow-reject-result">
               <el-icon color="#f56c6c"><CircleClose /></el-icon>
@@ -1982,6 +1982,7 @@ const handleShowAuditFlow = async (row: any) => {
         canApprove: false,
         approveUserName: '',
         approveTime: '',
+        approveRemark: '',
         rejectRemark: '',
         histories: []
       }
@@ -1991,6 +1992,7 @@ const handleShowAuditFlow = async (row: any) => {
         item.auditStatus = progress.status
         item.approveUserName = progress.approveUserName || ''
         item.approveTime = progress.approveTime || ''
+        item.approveRemark = progress.approveRemark || ''
         item.rejectRemark = progress.rejectRemark || ''
         item.canApprove = !!progress.canApprove
         item.currentApproverName = progress.currentApproverName || ''
