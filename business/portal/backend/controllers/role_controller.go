@@ -142,8 +142,8 @@ func (c *RoleController) UpdateRolePermissions(ctx *gin.Context) {
 		return
 	}
 
-	// 超级管理员（角色1）的权限永远不允许修改
-	if id == 1 {
+	// 超级管理员（角色 1）的权限永远不允许修改
+	if id == models.RoleIDSuperAdmin {
 		ctx.JSON(http.StatusOK, utils.Error(1, "超级管理员角色的权限不允许修改"))
 		return
 	}

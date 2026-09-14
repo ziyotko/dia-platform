@@ -1026,6 +1026,7 @@ import type { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor/edit
 
 import { useUserStore } from '@/stores/user'
 import request from '@/utils/request'
+import { hasAdminRole } from '@/utils/permission'
 import {
   getArticles,
   getArticleByID,
@@ -1053,7 +1054,8 @@ import { uploadFile } from '@/api/upload'
 
 const userStore = useUserStore()
 const currentUserId = computed(() => userStore.userInfo?.id || 0)
-const isAdmin = computed(() => userStore.userInfo?.roleIds?.includes(1) || userStore.userInfo?.roleIds?.includes(2) || false)
+// 管理员判定（角色 1/2），与后端 models.HasAdminRoleIDs 保持一致
+const isAdmin = computed(() => hasAdminRole(userStore.userInfo?.roleIds))
 
 const loading = ref(false)
 const deleting = ref(false)

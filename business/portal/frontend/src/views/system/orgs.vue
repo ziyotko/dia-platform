@@ -414,6 +414,7 @@ import {
   type DepartmentForm
 } from '@/api/department'
 import { getAllUsers } from '@/api/user'
+import { hasAdminRole } from '@/utils/permission'
 
 interface UserItem {
   id: number
@@ -516,8 +517,9 @@ const managerLabel = computed(() => ('管理员'))
 
 const managerPlaceholder = computed(() => ('请选择管理员'))
 
+// 负责人须为管理员（角色 1/2，与后端管理员判定一致）
 const managerUserOptions = computed(() => {
-  return dialogUserOptions.value.filter((user) => user.roleIds?.includes(2))
+  return dialogUserOptions.value.filter((user) => hasAdminRole(user.roleIds))
 })
 
 const deptTreeSelectData = computed(() => {

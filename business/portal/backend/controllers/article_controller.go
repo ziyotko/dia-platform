@@ -8,7 +8,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"server/middleware"
 	"server/models"
 	"server/services"
 	"server/utils"
@@ -382,7 +381,7 @@ func (c *ArticleController) UpdateArticleStatus(ctx *gin.Context) {
 		return
 	}
 	roleIds, _ := c.userService.GetUserRoleIds(userID)
-	isAdmin := middleware.HasAdminRoleIDs(roleIds)
+	isAdmin := models.HasAdminRoleIDs(roleIds)
 	if !isAdmin && strconv.FormatUint(uint64(userID), 10) != article.AuthorCode {
 		ctx.JSON(http.StatusOK, utils.Error(1, "无权操作"))
 		return
@@ -486,7 +485,7 @@ func (c *ArticleController) AuditArticle(ctx *gin.Context) {
 	case 2:
 		// 完成审核：仅管理员
 		roleIds, _ := c.userService.GetUserRoleIds(userID)
-		if !middleware.HasAdminRoleIDs(roleIds) {
+		if !models.HasAdminRoleIDs(roleIds) {
 			ctx.JSON(http.StatusOK, utils.Error(1, "无权限执行该操作"))
 			return
 		}
@@ -494,7 +493,7 @@ func (c *ArticleController) AuditArticle(ctx *gin.Context) {
 	default:
 		// 直接设置审核状态：仅管理员
 		roleIds, _ := c.userService.GetUserRoleIds(userID)
-		if !middleware.HasAdminRoleIDs(roleIds) {
+		if !models.HasAdminRoleIDs(roleIds) {
 			ctx.JSON(http.StatusOK, utils.Error(1, "无权限执行该操作"))
 			return
 		}
@@ -660,7 +659,7 @@ func (c *ArticleController) DeleteArticle(ctx *gin.Context) {
 		return
 	}
 	roleIds, _ := c.userService.GetUserRoleIds(userID)
-	isAdmin := middleware.HasAdminRoleIDs(roleIds)
+	isAdmin := models.HasAdminRoleIDs(roleIds)
 	if !isAdmin && strconv.FormatUint(uint64(userID), 10) != article.AuthorCode {
 		ctx.JSON(http.StatusOK, utils.Error(1, "无权操作"))
 		return

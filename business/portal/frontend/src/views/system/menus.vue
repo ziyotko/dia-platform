@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>菜单管理</span>
-          <el-button v-if="isSuperAdmin" type="primary" @click="handleAdd">
+          <el-button v-if="canManageMenus" type="primary" @click="handleAdd">
             <el-icon><Plus /></el-icon>新增菜单
           </el-button>
         </div>
@@ -46,13 +46,13 @@
         </el-table-column>
         <el-table-column label="操作" width="280" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button v-if="isSuperAdmin" link type="primary" @click="handleAddChild(row)">
+            <el-button v-if="canManageMenus" link type="primary" @click="handleAddChild(row)">
               <el-icon><CirclePlus /></el-icon>子菜单
             </el-button>
-            <el-button v-if="isSuperAdmin" link type="primary" @click="handleEdit(row)">
+            <el-button v-if="canManageMenus" link type="primary" @click="handleEdit(row)">
               <el-icon><Edit /></el-icon>编辑
             </el-button>
-            <el-button v-if="isSuperAdmin" link type="danger" @click="handleDelete(row)">
+            <el-button v-if="canManageMenus" link type="danger" @click="handleDelete(row)">
               <el-icon><Delete /></el-icon>删除
             </el-button>
           </template>
@@ -128,7 +128,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button v-if="isSuperAdmin" type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+        <el-button v-if="canManageMenus" type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
 
@@ -174,6 +174,7 @@ import { Plus, Edit, Delete, CirclePlus, Search, Close } from '@element-plus/ico
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import { getMenuList, createMenu, updateMenu, deleteMenu, type MenuItem, type MenuForm } from '@/api/menus'
 import { useUserStore } from '@/stores/user'
+import { hasAdminRole } from '@/utils/permission'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -185,7 +186,8 @@ const iconPickerVisible = ref(false)
 const iconSearch = ref('')
 
 const userStore = useUserStore()
-const isSuperAdmin = computed(() => userStore.userInfo?.roleIds?.includes(1) || userStore.userInfo?.roleIds?.includes(2) || false)
+// 菜单增删改与后端的菜单管理接口（AdminMiddleware，角色 1/2）口径一致
+const canManageMenus = computed(() => hasAdminRole(userStore.userInfo?.roleIds))
 
 const iconNames = Object.keys(ElementPlusIconsVue)
 

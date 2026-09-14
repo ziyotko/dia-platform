@@ -54,8 +54,9 @@ func (s *MenuService) GetUserMenus(userID uint) ([]models.Menu, error) {
 		return nil, err
 	}
 
-	// 超级管理员（角色 ID=1）拥有一切权限，直接返回全部启用菜单
-	if slices.Contains(roleIds, 1) {
+	// 超级管理员（角色 ID=1）默认拥有一切菜单权限，直接返回全部启用菜单；
+	// 其余角色（含普通管理员）的菜单由权限分配决定，以便按机构/职责范围收缩可见范围。
+	if slices.Contains(roleIds, models.RoleIDSuperAdmin) {
 		return buildMenuTree(allMenus, 0), nil
 	}
 
