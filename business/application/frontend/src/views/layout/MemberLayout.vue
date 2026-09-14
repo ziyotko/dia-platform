@@ -11,7 +11,10 @@
         <el-menu-item index="/member/applications"><el-icon><Tickets /></el-icon><span>我的申报</span></el-menu-item>
         <el-menu-item index="/member/announcements"><el-icon><Bell /></el-icon><span>结果公示</span></el-menu-item>
         <el-menu-item index="/member/certificates"><el-icon><Medal /></el-icon><span>我的证书</span></el-menu-item>
-        <el-menu-item index="/member/notifications"><el-icon><Message /></el-icon><span>通知中心</span></el-menu-item>
+        <el-menu-item index="/member/notifications">
+          <el-icon><Message /></el-icon><span>通知中心</span>
+          <el-badge v-if="unread > 0" :value="unread" :max="99" class="menu-badge" />
+        </el-menu-item>
         <el-menu-item index="/member/profile"><el-icon><User /></el-icon><span>个人资料</span></el-menu-item>
       </el-menu>
     </el-aside>
@@ -38,14 +41,34 @@
 </template>
 
 <script setup lang="ts">
+import { ref, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
+import { memberApi } from '@/api/member'
 
 const route = useRoute()
 const userStore = useUserStore()
 const appStore = useAppStore()
 const { collapsed, toggleCollapse } = appStore
+
+const unread = ref(0)
+
+async function refreshUnread() {
+  try {
+    const res = await memberApi.getUnreadCount()
+    unread.value = res.data?.count || 0
+  } catch {
+    // ignore transient errors
+  }
+}
+
+onMounted(() => {
+  if (!userStore.userInfo) userStore.fetchUserInfo()
+  refreshUnread()
+})
+
+watch(() => route.fullPath, refreshUnread)
 </script>
 
 <style scoped>
@@ -56,4 +79,6 @@ const { collapsed, toggleCollapse } = appStore
 .topbar-right { display: flex; align-items: center; gap: 20px; }
 .user-info { display: flex; align-items: center; gap: 4px; cursor: pointer; }
 .main-content { padding: 20px; background: var(--app-bg); }
+.menu-badge { margin-left: 8px; vertical-align: middle; }
+.menu-badge :deep(.el-badge__content) { border: none; }
 </style>

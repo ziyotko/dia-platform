@@ -96,11 +96,11 @@ func (s *AuthService) GetUserProfile(userID uint64) (*models.User, error) {
 }
 
 func (s *AuthService) UpdateUserProfile(userID uint64, updates map[string]interface{}) error {
-	delete(updates, "password")
-	delete(updates, "username")
-	delete(updates, "id")
-	delete(updates, "status")
-	return db.DB.Model(&models.User{}).Where("id = ?", userID).Updates(updates).Error
+	clean := pickUpdates(updates, "real_name", "phone", "email", "id_card", "organization", "position")
+	if len(clean) == 0 {
+		return nil
+	}
+	return db.DB.Model(&models.User{}).Where("id = ?", userID).Updates(clean).Error
 }
 
 func (s *AuthService) ChangeUserPassword(userID uint64, oldPassword, newPassword string) error {
@@ -153,12 +153,11 @@ func (s *AuthService) GetAdminProfile(adminID uint64) (*models.Admin, error) {
 }
 
 func (s *AuthService) UpdateAdminProfile(adminID uint64, updates map[string]interface{}) error {
-	delete(updates, "password")
-	delete(updates, "username")
-	delete(updates, "id")
-	delete(updates, "role_code")
-	delete(updates, "status")
-	return db.DB.Model(&models.Admin{}).Where("id = ?", adminID).Updates(updates).Error
+	clean := pickUpdates(updates, "real_name", "phone", "email")
+	if len(clean) == 0 {
+		return nil
+	}
+	return db.DB.Model(&models.Admin{}).Where("id = ?", adminID).Updates(clean).Error
 }
 
 func (s *AuthService) ChangeAdminPassword(adminID uint64, oldPassword, newPassword string) error {

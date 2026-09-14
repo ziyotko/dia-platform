@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"application/internal/models"
@@ -12,21 +13,48 @@ import (
 
 type ApplicationService struct{}
 
+// editable reports whether an applicant may still change the submission:
+// drafts and preliminary-rejected applications can be edited and re-submitted.
+func editable(status string) bool {
+	return status == models.AppStatusDraft || status == models.AppStatusPreliminaryRejected
+}
+
 func (s *ApplicationService) Create(app *models.Application) error {
 	if app.Title == "" || app.BatchID == 0 {
 		return errors.New("请填写完整信息")
+	}
+	var batch models.ProjectBatch
+	if err := db.DB.First(&batch, app.BatchID).Error; err != nil {
+		return errors.New("申报批次不存在")
+	}
+	bs := BatchService{}
+	if !bs.IsOpen(&batch) {
+		return errors.New("该批次不在申报期内")
+	}
+	if app.CategoryID == 0 {
+		app.CategoryID = batch.CategoryID
+	}
+	if err := checkCategory(app.CategoryID); err != nil {
+		return err
 	}
 	app.Status = models.AppStatusDraft
 	return db.DB.Create(app).Error
 }
 
+func checkCategory(id uint64) error {
+	if id == 0 {
+		return errors.New("请选择项目类别")
+	}
+	var count int64
+	db.DB.Model(&models.ProjectCategory{}).Where("id = ?", id).Count(&count)
+	if count == 0 {
+		return errors.New("项目类别不存在")
+	}
+	return nil
+}
+
 func (s *ApplicationService) UpdateDraft(id, userID uint64, updates map[string]interface{}) error {
-	delete(updates, "id")
-	delete(updates, "status")
-	delete(updates, "user_id")
-	delete(updates, "batch_id")
-	delete(updates, "total_score")
-	delete(updates, "avg_score")
+	clean := pickUpdates(updates, "category_id", "title", "project_brief", "content")
 	var app models.Application
 	if err := db.DB.First(&app, id).Error; err != nil {
 		return errors.New("申报记录不存在")
@@ -34,10 +62,28 @@ func (s *ApplicationService) UpdateDraft(id, userID uint64, updates map[string]i
 	if app.UserID != userID {
 		return errors.New("无权操作该申报")
 	}
-	if app.Status != models.AppStatusDraft {
-		return errors.New("仅草稿状态可编辑")
+	if !editable(app.Status) {
+		return errors.New("仅草稿或初审驳回状态可编辑")
 	}
-	return db.DB.Model(&app).Updates(updates).Error
+	if len(clean) == 0 {
+		return nil
+	}
+	if raw, ok := clean["category_id"]; ok {
+		id := uint64(0)
+		switch n := raw.(type) {
+		case float64:
+			id = uint64(n)
+		case int:
+			id = uint64(n)
+		case int64:
+			id = uint64(n)
+		}
+		if err := checkCategory(id); err != nil {
+			return err
+		}
+		clean["category_id"] = id
+	}
+	return db.DB.Model(&app).Updates(clean).Error
 }
 
 func (s *ApplicationService) Submit(id, userID uint64) error {
@@ -48,7 +94,7 @@ func (s *ApplicationService) Submit(id, userID uint64) error {
 	if app.UserID != userID {
 		return errors.New("无权操作该申报")
 	}
-	if app.Status != models.AppStatusDraft {
+	if !editable(app.Status) {
 		return errors.New("当前状态不可提交")
 	}
 
@@ -68,10 +114,15 @@ func (s *ApplicationService) Submit(id, userID uint64) error {
 	}
 
 	now := time.Now()
-	return db.DB.Model(&app).Updates(map[string]interface{}{
-		"status":       models.AppStatusSubmitted,
-		"submitted_at": now,
-	}).Error
+	if err := db.DB.Model(&app).Updates(map[string]interface{}{
+		"status":              models.AppStatusSubmitted,
+		"submitted_at":        now,
+		"preliminary_opinion": "",
+	}).Error; err != nil {
+		return err
+	}
+	notifyUser(app.UserID, "申报已提交", "您的项目《"+app.Title+"》已提交，等待初审。", NotifyTypeApplication)
+	return nil
 }
 
 func (s *ApplicationService) DeleteDraft(id, userID uint64) error {
@@ -82,8 +133,8 @@ func (s *ApplicationService) DeleteDraft(id, userID uint64) error {
 	if app.UserID != userID {
 		return errors.New("无权操作该申报")
 	}
-	if app.Status != models.AppStatusDraft {
-		return errors.New("仅草稿状态可删除")
+	if !editable(app.Status) {
+		return errors.New("仅草稿或初审驳回状态可删除")
 	}
 	db.DB.Where("application_id = ?", id).Delete(&models.ApplicationMaterial{})
 	return db.DB.Delete(&app).Error
@@ -128,14 +179,18 @@ func (s *ApplicationService) ListUser(userID uint64, page, size int, status, key
 	return list, total, err
 }
 
-func (s *ApplicationService) List(page, size int, batchID uint64, status, keyword string) ([]models.Application, int64, error) {
+// List returns applications for the admin side. `statuses` (comma separated)
+// takes precedence over `status` when both are provided.
+func (s *ApplicationService) List(page, size int, batchID uint64, status, statuses, keyword string) ([]models.Application, int64, error) {
 	var list []models.Application
 	var total int64
 	query := db.DB.Model(&models.Application{})
 	if batchID > 0 {
 		query = query.Where("batch_id = ?", batchID)
 	}
-	if status != "" {
+	if statuses != "" {
+		query = query.Where("status IN ?", strings.Split(statuses, ","))
+	} else if status != "" {
 		query = query.Where("status = ?", status)
 	}
 	if keyword != "" {
@@ -155,8 +210,8 @@ func (s *ApplicationService) SaveMaterials(applicationID, userID uint64, materia
 	if app.UserID != userID {
 		return errors.New("无权操作该申报")
 	}
-	if app.Status != models.AppStatusDraft {
-		return errors.New("仅草稿状态可上传材料")
+	if !editable(app.Status) {
+		return errors.New("仅草稿或初审驳回状态可上传材料")
 	}
 	db.DB.Where("application_id = ?", applicationID).Delete(&models.ApplicationMaterial{})
 	for i := range materials {
@@ -178,43 +233,87 @@ func (s *ApplicationService) PreliminaryReview(id uint64, pass bool, opinion str
 	if app.Status != models.AppStatusSubmitted {
 		return errors.New("当前状态不可初审")
 	}
-	if pass {
-		return db.DB.Model(&app).Updates(map[string]interface{}{
-			"status":              models.AppStatusUnderReview,
-			"preliminary_opinion": opinion,
-		}).Error
+	status := models.AppStatusUnderReview
+	if !pass {
+		status = models.AppStatusPreliminaryRejected
 	}
-	return db.DB.Model(&app).Updates(map[string]interface{}{
-		"status":              models.AppStatusPreliminaryRejected,
+	if err := db.DB.Model(&app).Updates(map[string]interface{}{
+		"status":              status,
 		"preliminary_opinion": opinion,
-	}).Error
+	}).Error; err != nil {
+		return err
+	}
+	if pass {
+		notifyUser(app.UserID, "初审通过", "您的项目《"+app.Title+"》已通过初审，进入专家评审阶段。", NotifyTypeReview)
+	} else {
+		notifyUser(app.UserID, "初审未通过", "您的项目《"+app.Title+"》初审未通过，可在申报期内修改后重新提交。意见："+opinion, NotifyTypeReview)
+	}
+	return nil
 }
 
-// AssignReviewers assigns reviewers to an application and enters reviewing
+// AssignReviewers assigns reviewers to an application. Existing assignments are
+// preserved (scores are never discarded); only reviewers removed from the list
+// that have not scored yet are dropped.
 func (s *ApplicationService) AssignReviewers(id uint64, reviewerIDs []uint64) error {
-	if len(reviewerIDs) == 0 {
-		return errors.New("请选择评审人")
-	}
 	var app models.Application
 	if err := db.DB.First(&app, id).Error; err != nil {
 		return errors.New("申报记录不存在")
 	}
-	if app.Status != models.AppStatusUnderReview {
+	if app.Status != models.AppStatusUnderReview && app.Status != models.AppStatusReviewed {
 		return errors.New("当前状态不可分配评审")
 	}
-	// reset previous assignments
-	db.DB.Where("application_id = ?", id).Delete(&models.ReviewAssignment{})
+	var batch models.ProjectBatch
+	if err := db.DB.First(&batch, app.BatchID).Error; err == nil {
+		bs := BatchService{}
+		if !bs.IsReviewOpen(&batch) {
+			return errors.New("该批次评审已截止")
+		}
+	}
+
+	target := make(map[uint64]bool, len(reviewerIDs))
 	for _, rid := range reviewerIDs {
-		if rid == 0 {
+		if rid > 0 {
+			target[rid] = true
+		}
+	}
+	if len(target) == 0 {
+		return errors.New("请选择评审人")
+	}
+
+	var existing []models.ReviewAssignment
+	db.DB.Where("application_id = ?", id).Find(&existing)
+	kept := make(map[uint64]bool, len(existing))
+	for _, a := range existing {
+		if target[a.ReviewerID] {
+			kept[a.ReviewerID] = true
 			continue
 		}
-		db.DB.Create(&models.ReviewAssignment{
+		if a.Status == models.ReviewStatusScored {
+			name := "该评审人"
+			var admin models.Admin
+			if err := db.DB.First(&admin, a.ReviewerID).Error; err == nil && admin.RealName != "" {
+				name = admin.RealName
+			}
+			return errors.New(name + "已完成评分，无法移除")
+		}
+		if err := db.DB.Delete(&models.ReviewAssignment{}, a.ID).Error; err != nil {
+			return err
+		}
+	}
+	for rid := range target {
+		if kept[rid] {
+			continue
+		}
+		if err := db.DB.Create(&models.ReviewAssignment{
 			ApplicationID: id,
 			ReviewerID:    rid,
 			Status:        models.ReviewStatusPending,
-		})
+		}).Error; err != nil {
+			return err
+		}
 	}
-	return db.DB.Model(&app).Update("status", models.AppStatusUnderReview).Error
+	s.recalculateScore(id)
+	return nil
 }
 
 // SubmitReview lets a reviewer score an assigned application
@@ -229,6 +328,21 @@ func (s *ApplicationService) SubmitReview(assignmentID, reviewerID uint64, score
 	if assignment.ReviewerID != reviewerID {
 		return errors.New("无权评审该任务")
 	}
+	if assignment.Status == models.ReviewStatusScored {
+		return errors.New("该评审已提交，不能重复评分")
+	}
+	var app models.Application
+	if err := db.DB.First(&app, assignment.ApplicationID).Error; err != nil {
+		return errors.New("申报记录不存在")
+	}
+	var batch models.ProjectBatch
+	if err := db.DB.First(&batch, app.BatchID).Error; err == nil {
+		bs := BatchService{}
+		if !bs.IsReviewOpen(&batch) {
+			return errors.New("该批次评审已截止")
+		}
+	}
+
 	now := time.Now()
 	if err := db.DB.Model(&assignment).Updates(map[string]interface{}{
 		"status":      models.ReviewStatusScored,
@@ -242,27 +356,45 @@ func (s *ApplicationService) SubmitReview(assignmentID, reviewerID uint64, score
 	return nil
 }
 
+// recalculateScore refreshes the aggregate score of an application and moves it
+// between under_review / reviewed as the pending review count changes.
 func (s *ApplicationService) recalculateScore(applicationID uint64) {
-	var assignments []models.ReviewAssignment
-	db.DB.Where("application_id = ? AND status = ?", applicationID, models.ReviewStatusScored).Find(&assignments)
-	if len(assignments) == 0 {
+	var app models.Application
+	if err := db.DB.First(&app, applicationID).Error; err != nil {
 		return
 	}
+	if app.Status != models.AppStatusUnderReview && app.Status != models.AppStatusReviewed {
+		return
+	}
+
+	var scored []models.ReviewAssignment
+	db.DB.Where("application_id = ? AND status = ?", applicationID, models.ReviewStatusScored).Find(&scored)
 	var sum float64
-	for _, a := range assignments {
+	for _, a := range scored {
 		sum += a.Score
 	}
-	avg := sum / float64(len(assignments))
+	var avg float64
+	if len(scored) > 0 {
+		avg = sum / float64(len(scored))
+	}
 
 	var pending int64
 	db.DB.Model(&models.ReviewAssignment{}).
 		Where("application_id = ? AND status = ?", applicationID, models.ReviewStatusPending).Count(&pending)
 
 	updates := map[string]interface{}{"total_score": sum, "avg_score": avg}
-	if pending == 0 {
+	completed := pending == 0 && len(scored) > 0
+	if completed {
 		updates["status"] = models.AppStatusReviewed
+	} else if pending > 0 {
+		// adding a reviewer after scoring re-opens the review
+		updates["status"] = models.AppStatusUnderReview
 	}
 	db.DB.Model(&models.Application{}).Where("id = ?", applicationID).Updates(updates)
+
+	if completed && app.Status == models.AppStatusUnderReview {
+		notifyUser(app.UserID, "评审已完成", "您的项目《"+app.Title+"》专家评审已完成，等待评审结果确认。", NotifyTypeReview)
+	}
 }
 
 // Finalize marks a reviewed application as passed or rejected (评审结果)
@@ -278,13 +410,25 @@ func (s *ApplicationService) Finalize(id uint64, pass bool, opinion string) erro
 	if pass {
 		status = models.AppStatusPassed
 	}
-	return db.DB.Model(&app).Updates(map[string]interface{}{
+	if err := db.DB.Model(&app).Updates(map[string]interface{}{
 		"status":        status,
 		"final_opinion": opinion,
-	}).Error
+	}).Error; err != nil {
+		return err
+	}
+	if pass {
+		notifyUser(app.UserID, "评审结果", "您的项目《"+app.Title+"》已通过评审。", NotifyTypeResult)
+	} else {
+		notifyUser(app.UserID, "评审结果", "您的项目《"+app.Title+"》未通过评审。意见："+opinion, NotifyTypeResult)
+	}
+	return nil
 }
 
-// PublishResult publishes the final result (结果公示)
+// PublishResult publishes the final result (结果公示).
+//
+// Approved projects move to `published` (the only state that can be certified).
+// Rejected projects keep the `rejected` state and only record the publish time,
+// so the pass/reject outcome is never lost.
 func (s *ApplicationService) PublishResult(id uint64) error {
 	var app models.Application
 	if err := db.DB.First(&app, id).Error; err != nil {
@@ -293,5 +437,16 @@ func (s *ApplicationService) PublishResult(id uint64) error {
 	if app.Status != models.AppStatusPassed && app.Status != models.AppStatusRejected {
 		return errors.New("仅已出评审结果的申报可公示")
 	}
-	return db.DB.Model(&app).Update("status", models.AppStatusPublished).Error
+	if app.PublishedAt != nil {
+		return errors.New("该申报结果已公示")
+	}
+	updates := map[string]interface{}{"published_at": time.Now()}
+	if app.Status == models.AppStatusPassed {
+		updates["status"] = models.AppStatusPublished
+	}
+	if err := db.DB.Model(&app).Updates(updates).Error; err != nil {
+		return err
+	}
+	notifyUser(app.UserID, "结果已公示", "您的项目《"+app.Title+"》评审结果已公示，可前往「结果公示」查看。", NotifyTypeResult)
+	return nil
 }

@@ -26,7 +26,6 @@ export const batchStatusMap: Record<string, string> = {
   draft: '草稿',
   open: '申报中',
   reviewing: '评审中',
-  published: '已公示',
   closed: '已结束',
 }
 
@@ -34,7 +33,6 @@ export const batchStatusType: Record<string, string> = {
   draft: 'info',
   open: 'success',
   reviewing: 'warning',
-  published: 'primary',
   closed: 'info',
 }
 

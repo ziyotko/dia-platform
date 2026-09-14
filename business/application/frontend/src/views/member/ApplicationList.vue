@@ -27,11 +27,11 @@
       <el-table-column label="提交时间" width="160">
         <template #default="{ row }">{{ fmt(row.submittedAt) }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="220" fixed="right">
+      <el-table-column label="操作" width="240" fixed="right">
         <template #default="{ row }">
           <el-button size="small" @click="$router.push(`/member/applications/${row.id}`)">查看</el-button>
-          <el-button v-if="row.status === 'draft'" size="small" type="primary" @click="$router.push(`/member/applications/${row.id}`)">编辑</el-button>
-          <el-button v-if="row.status === 'draft'" size="small" type="danger" @click="remove(row)">删除</el-button>
+          <el-button v-if="canEdit(row)" size="small" type="primary" @click="$router.push(`/member/applications/${row.id}`)">修改</el-button>
+          <el-button v-if="canEdit(row)" size="small" type="danger" @click="remove(row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -72,8 +72,13 @@ async function fetch() {
 
 function onPage(p: number) { page.value = p; fetch() }
 
+// Drafts and preliminary-rejected applications can still be modified.
+function canEdit(row: any) {
+  return row.status === 'draft' || row.status === 'preliminary_rejected'
+}
+
 async function remove(row: any) {
-  await ElMessageBox.confirm('确认删除该草稿申报？', '提示', { type: 'warning' })
+  await ElMessageBox.confirm('确认删除该申报？', '提示', { type: 'warning' })
   await memberApi.deleteApplication(row.id)
   ElMessage.success('删除成功')
   fetch()

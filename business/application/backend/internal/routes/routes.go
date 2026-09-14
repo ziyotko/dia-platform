@@ -84,7 +84,7 @@ func Register(r *gin.Engine) {
 		admin.POST("/upload", uploadCtrl.Upload)
 
 		// Categories (项目类别)
-		admin.GET("/categories", categoryCtrl.List)
+		admin.GET("/categories", middleware.PermissionGuard("category:view"), categoryCtrl.List)
 		admin.POST("/categories", middleware.PermissionGuard("category:create"), categoryCtrl.Create)
 		admin.PUT("/categories/:id", middleware.PermissionGuard("category:edit"), categoryCtrl.Update)
 		admin.DELETE("/categories/:id", middleware.PermissionGuard("category:delete"), categoryCtrl.Delete)

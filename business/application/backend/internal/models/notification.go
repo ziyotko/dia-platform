@@ -4,7 +4,8 @@ import (
 	"time"
 )
 
-// Notification is a site message sent to applicants (user_id=0 means all)
+// Notification is a site message sent to an applicant (user_id=0 is reserved and
+// never inserted; broadcasts create one row per applicant).
 type Notification struct {
 	BaseModel
 	UserID  uint64     `gorm:"index" json:"userId"`

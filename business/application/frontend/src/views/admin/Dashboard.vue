@@ -17,8 +17,6 @@ import { adminApi } from '@/api/admin'
 
 const stats = ref<any>({})
 
-const isReviewer = computed(() => false)
-
 const cards = computed(() => {
   if (stats.value.pendingReviews !== undefined) {
     return [

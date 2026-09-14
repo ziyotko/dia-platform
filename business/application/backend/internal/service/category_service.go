@@ -14,7 +14,11 @@ func (s *CategoryService) Create(c *models.ProjectCategory) error {
 }
 
 func (s *CategoryService) Update(id uint64, updates map[string]interface{}) error {
-	return db.DB.Model(&models.ProjectCategory{}).Where("id = ?", id).Updates(updates).Error
+	clean := pickUpdates(updates, "name", "description", "sort")
+	if len(clean) == 0 {
+		return nil
+	}
+	return db.DB.Model(&models.ProjectCategory{}).Where("id = ?", id).Updates(clean).Error
 }
 
 func (s *CategoryService) Delete(id uint64) error {

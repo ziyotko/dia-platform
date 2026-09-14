@@ -25,7 +25,6 @@ const (
 	BatchStatusDraft     = "draft"
 	BatchStatusOpen      = "open"
 	BatchStatusReviewing = "reviewing"
-	BatchStatusPublished = "published"
 	BatchStatusClosed    = "closed"
 )
 

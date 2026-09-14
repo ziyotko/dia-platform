@@ -35,13 +35,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAdminStore } from '@/stores/admin'
 
 const route = useRoute()
 const adminStore = useAdminStore()
 const collapsed = ref(false)
+
+onMounted(() => {
+  if (!adminStore.adminInfo) adminStore.fetchAdminInfo()
+})
 
 const fullMenus = [
   { path: '/admin/dashboard', label: '管理看板', icon: 'DataAnalysis' },

@@ -2,6 +2,9 @@ import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useAdminStore } from '@/stores/admin'
 
+// Roles allowed to manage the review workflow (评审人 only reviews).
+const MANAGER_ROLES = ['super_admin', 'manager']
+
 const routes: RouteRecordRaw[] = [
   // Public routes
   {
@@ -38,19 +41,19 @@ const routes: RouteRecordRaw[] = [
     children: [
       { path: '', redirect: '/admin/dashboard' },
       { path: 'dashboard', name: 'AdminDashboard', component: () => import('@/views/admin/Dashboard.vue'), meta: { title: '管理看板' } },
-      { path: 'categories', name: 'AdminCategories', component: () => import('@/views/admin/CategoryList.vue'), meta: { title: '类别管理' } },
-      { path: 'experts', name: 'AdminExperts', component: () => import('@/views/admin/ExpertList.vue'), meta: { title: '专家库管理' } },
-      { path: 'batches', name: 'AdminBatches', component: () => import('@/views/admin/BatchList.vue'), meta: { title: '批次管理' } },
-      { path: 'applications', name: 'AdminApplications', component: () => import('@/views/admin/ApplicationList.vue'), meta: { title: '申报管理' } },
-      { path: 'applications/:id', name: 'AdminApplicationDetail', component: () => import('@/views/admin/ApplicationDetail.vue'), meta: { title: '申报详情' } },
+      { path: 'categories', name: 'AdminCategories', component: () => import('@/views/admin/CategoryList.vue'), meta: { title: '类别管理', roles: MANAGER_ROLES } },
+      { path: 'experts', name: 'AdminExperts', component: () => import('@/views/admin/ExpertList.vue'), meta: { title: '专家库管理', roles: MANAGER_ROLES } },
+      { path: 'batches', name: 'AdminBatches', component: () => import('@/views/admin/BatchList.vue'), meta: { title: '批次管理', roles: MANAGER_ROLES } },
+      { path: 'applications', name: 'AdminApplications', component: () => import('@/views/admin/ApplicationList.vue'), meta: { title: '申报管理', roles: MANAGER_ROLES } },
+      { path: 'applications/:id', name: 'AdminApplicationDetail', component: () => import('@/views/admin/ApplicationDetail.vue'), meta: { title: '申报详情', roles: MANAGER_ROLES } },
       { path: 'reviews', name: 'AdminReviews', component: () => import('@/views/admin/ReviewList.vue'), meta: { title: '评审管理' } },
       { path: 'reviews/:id', name: 'AdminReviewScore', component: () => import('@/views/admin/ReviewScore.vue'), meta: { title: '专家评审' } },
-      { path: 'announcements', name: 'AdminAnnouncements', component: () => import('@/views/admin/AnnouncementList.vue'), meta: { title: '结果公示' } },
-      { path: 'certificates', name: 'AdminCertificates', component: () => import('@/views/admin/CertificateList.vue'), meta: { title: '证书管理' } },
-      { path: 'notifications', name: 'AdminNotifications', component: () => import('@/views/admin/NotificationList.vue'), meta: { title: '通知管理' } },
-      { path: 'users', name: 'AdminUsers', component: () => import('@/views/admin/UserList.vue'), meta: { title: '申报人管理' } },
-      { path: 'admins', name: 'AdminAdmins', component: () => import('@/views/admin/AdminList.vue'), meta: { title: '账号管理' } },
-      { path: 'audit', name: 'AdminAudit', component: () => import('@/views/admin/AuditLog.vue'), meta: { title: '系统日志' } },
+      { path: 'announcements', name: 'AdminAnnouncements', component: () => import('@/views/admin/AnnouncementList.vue'), meta: { title: '结果公示', roles: MANAGER_ROLES } },
+      { path: 'certificates', name: 'AdminCertificates', component: () => import('@/views/admin/CertificateList.vue'), meta: { title: '证书管理', roles: MANAGER_ROLES } },
+      { path: 'notifications', name: 'AdminNotifications', component: () => import('@/views/admin/NotificationList.vue'), meta: { title: '通知管理', roles: MANAGER_ROLES } },
+      { path: 'users', name: 'AdminUsers', component: () => import('@/views/admin/UserList.vue'), meta: { title: '申报人管理', roles: MANAGER_ROLES } },
+      { path: 'admins', name: 'AdminAdmins', component: () => import('@/views/admin/AdminList.vue'), meta: { title: '账号管理', roles: ['super_admin'] } },
+      { path: 'audit', name: 'AdminAudit', component: () => import('@/views/admin/AuditLog.vue'), meta: { title: '系统日志', roles: MANAGER_ROLES } },
       { path: 'profile', name: 'AdminProfile', component: () => import('@/views/admin/Profile.vue'), meta: { title: '个人资料' } },
     ]
   },
@@ -71,6 +74,10 @@ router.beforeEach((to, _from, next) => {
 
   if (to.path.startsWith('/admin')) {
     if (!adminStore.isLoggedIn) return next('/admin/login')
+    const roles = to.meta.roles as string[] | undefined
+    if (roles && adminStore.roleCode && !roles.includes(adminStore.roleCode)) {
+      return next('/admin/dashboard')
+    }
   } else if (to.path.startsWith('/member')) {
     if (!userStore.isLoggedIn) return next('/login')
   }

@@ -16,8 +16,8 @@
         <el-step title="颁发证书" />
       </el-steps>
 
-      <!-- Basic info (editable in draft) -->
-      <el-descriptions :column="2" border v-if="app.status !== 'draft'">
+      <!-- Basic info (editable in draft / after preliminary rejection) -->
+      <el-descriptions :column="2" border v-if="!isEditable">
         <el-descriptions-item label="申报批次">{{ app.batch?.title || '-' }}</el-descriptions-item>
         <el-descriptions-item label="项目类别">{{ app.category?.name || '-' }}</el-descriptions-item>
         <el-descriptions-item label="项目名称">{{ app.title }}</el-descriptions-item>
@@ -27,6 +27,11 @@
       </el-descriptions>
 
       <el-form v-else :model="editForm" label-width="90px">
+        <el-form-item label="项目类别">
+          <el-select v-model="editForm.categoryId" placeholder="请选择项目类别" style="width:100%">
+            <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="项目名称"><el-input v-model="editForm.title" /></el-form-item>
         <el-form-item label="项目简介"><el-input v-model="editForm.projectBrief" type="textarea" :rows="3" /></el-form-item>
         <el-form-item label="申报内容"><el-input v-model="editForm.content" type="textarea" :rows="5" /></el-form-item>
@@ -46,12 +51,12 @@
         <el-table-column label="操作" width="180">
           <template #default="{ row }">
             <el-button size="small" type="primary" link @click="download(row)">下载</el-button>
-            <el-button v-if="app.status === 'draft'" size="small" type="danger" link @click="removeMaterial(row)">删除</el-button>
+            <el-button v-if="isEditable" size="small" type="danger" link @click="removeMaterial(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
-      <div v-if="app.status === 'draft'" style="margin-top:12px">
-        <el-upload :show-file-list="false" :http-request="handleUpload" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.jpg,.jpeg,.png">
+      <div v-if="isEditable" style="margin-top:12px">
+        <el-upload :show-file-list="false" :http-request="handleUpload" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.jpg,.jpeg,.png,.gif">
           <el-button size="small">上传材料</el-button>
         </el-upload>
       </div>
@@ -60,6 +65,9 @@
       <template v-if="app.preliminaryOpinion">
         <el-divider content-position="left">初审意见</el-divider>
         <el-alert :closable="false" :title="app.preliminaryOpinion" :type="app.status === 'preliminary_rejected' ? 'error' : 'info'" />
+        <div v-if="app.status === 'preliminary_rejected'" style="margin-top:8px;color:#c45656">
+          初审未通过，请修改申报信息或材料后重新提交（需在申报截止前）。
+        </div>
       </template>
 
       <!-- Review scores -->
@@ -78,11 +86,14 @@
       <!-- Final opinion -->
       <template v-if="app.finalOpinion">
         <el-divider content-position="left">评审结果</el-divider>
-        <el-alert :closable="false" :title="app.finalOpinion" :type="app.status === 'rejected' || app.status === 'published' && app.avgScore < 0 ? 'error' : 'success'" />
+        <el-alert :closable="false" :title="app.finalOpinion" :type="app.status === 'rejected' ? 'error' : 'success'" />
+        <div v-if="app.publishedAt" style="margin-top:8px;color:#667085">公示时间：{{ fmt(app.publishedAt) }}</div>
       </template>
 
-      <div v-if="app.status === 'draft'" style="margin-top:20px;text-align:center">
-        <el-button type="primary" size="large" @click="submit" :loading="submitting">提交申报</el-button>
+      <div v-if="isEditable" style="margin-top:20px;text-align:center">
+        <el-button type="primary" size="large" @click="submit" :loading="submitting">
+          {{ app.status === 'preliminary_rejected' ? '修改后重新提交' : '提交申报' }}
+        </el-button>
       </div>
     </div>
   </div>
@@ -101,8 +112,12 @@ const loading = ref(false)
 const submitting = ref(false)
 const app = ref<any>({})
 const materials = ref<any[]>([])
+const categories = ref<any[]>([])
 
-const editForm = reactive({ title: '', projectBrief: '', content: '' })
+const editForm = reactive({ categoryId: '' as any, title: '', projectBrief: '', content: '' })
+
+// Drafts and preliminary-rejected applications can still be edited / resubmitted.
+const isEditable = computed(() => app.value.status === 'draft' || app.value.status === 'preliminary_rejected')
 
 const activeStep = computed(() => {
   const map: Record<string, number> = {
@@ -118,6 +133,7 @@ async function fetch() {
     const res = await memberApi.getApplication(id)
     app.value = res.data
     materials.value = res.data.materials || []
+    editForm.categoryId = res.data.categoryId
     editForm.title = res.data.title
     editForm.projectBrief = res.data.projectBrief
     editForm.content = res.data.content
@@ -127,6 +143,7 @@ async function fetch() {
 }
 
 async function saveInfo() {
+  if (!editForm.categoryId) return ElMessage.warning('请选择项目类别')
   await memberApi.updateApplication(id, { ...editForm })
   ElMessage.success('保存成功')
   fetch()
@@ -162,5 +179,9 @@ function download(row: any) {
   window.open(fileUrl(row.fileUrl), '_blank')
 }
 
-onMounted(fetch)
+onMounted(async () => {
+  await fetch()
+  const res = await memberApi.getCategories()
+  categories.value = res.data
+})
 </script>

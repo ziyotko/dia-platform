@@ -42,18 +42,27 @@ func (s *UserService) CreateUser(u *models.User) error {
 }
 
 func (s *UserService) UpdateUser(id uint64, updates map[string]interface{}) error {
-	delete(updates, "id")
-	delete(updates, "username")
-	if pwd, ok := updates["password"].(string); ok && pwd != "" {
+	clean := pickUpdates(updates, "real_name", "phone", "email", "id_card", "organization", "position", "password")
+	if pwd, ok := clean["password"].(string); ok && pwd != "" {
 		hashed, _ := bcrypt.GenerateFromPassword([]byte(pwd), bcrypt.DefaultCost)
-		updates["password"] = string(hashed)
+		clean["password"] = string(hashed)
 	} else {
-		delete(updates, "password")
+		delete(clean, "password")
 	}
-	return db.DB.Model(&models.User{}).Where("id = ?", id).Updates(updates).Error
+	if len(clean) == 0 {
+		return nil
+	}
+	return db.DB.Model(&models.User{}).Where("id = ?", id).Updates(clean).Error
 }
 
+// DeleteUser removes an applicant. Applicants that already own applications are
+// kept so the submitted records never lose their owner.
 func (s *UserService) DeleteUser(id uint64) error {
+	var count int64
+	db.DB.Model(&models.Application{}).Where("user_id = ?", id).Count(&count)
+	if count > 0 {
+		return errors.New("该申报人存在申报记录，无法删除")
+	}
 	return db.DB.Delete(&models.User{}, id).Error
 }
 
@@ -91,15 +100,17 @@ func (s *UserService) CreateAdmin(a *models.Admin) error {
 }
 
 func (s *UserService) UpdateAdmin(id uint64, updates map[string]interface{}) error {
-	delete(updates, "id")
-	delete(updates, "username")
-	if pwd, ok := updates["password"].(string); ok && pwd != "" {
+	clean := pickUpdates(updates, "real_name", "phone", "email", "role_code", "status", "password")
+	if pwd, ok := clean["password"].(string); ok && pwd != "" {
 		hashed, _ := bcrypt.GenerateFromPassword([]byte(pwd), bcrypt.DefaultCost)
-		updates["password"] = string(hashed)
+		clean["password"] = string(hashed)
 	} else {
-		delete(updates, "password")
+		delete(clean, "password")
 	}
-	return db.DB.Model(&models.Admin{}).Where("id = ?", id).Updates(updates).Error
+	if len(clean) == 0 {
+		return nil
+	}
+	return db.DB.Model(&models.Admin{}).Where("id = ?", id).Updates(clean).Error
 }
 
 func (s *UserService) DeleteAdmin(id uint64) error {

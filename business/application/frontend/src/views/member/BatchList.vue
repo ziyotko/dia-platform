@@ -16,8 +16,9 @@
       <el-table-column label="状态" width="100">
         <template #default="{ row }"><el-tag :type="batchStatusType[row.status]">{{ batchStatusMap[row.status] }}</el-tag></template>
       </el-table-column>
-      <el-table-column label="操作" width="160" fixed="right">
+      <el-table-column label="操作" width="200" fixed="right">
         <template #default="{ row }">
+          <el-button size="small" @click="viewDetail(row)">申报要求</el-button>
           <el-button size="small" type="primary" @click="goApply(row)">立即申报</el-button>
         </template>
       </el-table-column>
@@ -31,6 +32,26 @@
       :current-page="page"
       @current-change="onPage"
     />
+
+    <el-dialog v-model="detailVisible" :title="current.title" width="640px">
+      <el-descriptions :column="1" border>
+        <el-descriptions-item label="项目类别">{{ current.category?.name || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="申报时间">{{ fmt(current.applyStart) }} ~ {{ fmt(current.applyEnd) }}</el-descriptions-item>
+        <el-descriptions-item label="评审截止">{{ fmt(current.reviewDeadline) }}</el-descriptions-item>
+      </el-descriptions>
+      <div class="detail-block">
+        <h4>申报要求</h4>
+        <div class="detail-text">{{ current.requirements || '无' }}</div>
+      </div>
+      <div class="detail-block">
+        <h4>批次说明</h4>
+        <div class="detail-text">{{ current.description || '无' }}</div>
+      </div>
+      <template #footer>
+        <el-button @click="detailVisible = false">关闭</el-button>
+        <el-button type="primary" @click="goApply(current)">立即申报</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -60,9 +81,24 @@ async function fetch() {
 }
 
 function onPage(p: number) { page.value = p; fetch() }
+
+const detailVisible = ref(false)
+const current = ref<any>({})
+
+function viewDetail(row: any) {
+  current.value = row
+  detailVisible.value = true
+}
+
 function goApply(row: any) {
   router.push({ path: '/member/applications/create', query: { batchId: row.id } })
 }
 
 onMounted(fetch)
 </script>
+
+<style scoped>
+.detail-block { margin-top: 16px; }
+.detail-block h4 { margin-bottom: 8px; color: #374151; font-size: 14px; }
+.detail-text { white-space: pre-wrap; line-height: 1.8; color: #4b5563; font-size: 14px; }
+</style>

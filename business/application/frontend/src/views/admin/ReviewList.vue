@@ -89,13 +89,12 @@ async function fetch() {
       total.value = res.data.total
     } else {
       const res = await adminApi.getApplications({
-        page: page.value, pageSize,
-        status: status.value || undefined,
+        page: page.value,
+        pageSize,
+        statuses: status.value || 'under_review,reviewed',
       })
-      // only show review-stage applications
-      const filtered = status.value ? res.data.list : res.data.list.filter((a: any) => ['under_review', 'reviewed'].includes(a.status))
-      list.value = filtered
-      total.value = status.value ? res.data.total : filtered.length
+      list.value = res.data.list
+      total.value = res.data.total
     }
   } finally {
     loading.value = false

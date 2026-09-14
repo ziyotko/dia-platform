@@ -29,9 +29,12 @@
     <el-dialog v-model="dialogVisible" :title="form.id ? '编辑证书' : '颁发证书'" width="560px">
       <el-form :model="form" label-width="90px">
         <el-form-item label="关联申报" v-if="!form.id">
-          <el-select v-model="form.applicationId" style="width:100%" filterable placeholder="选择已通过的申报">
+          <el-select v-model="form.applicationId" style="width:100%" filterable placeholder="选择已公示且通过的申报">
             <el-option v-for="a in passedApps" :key="a.id" :label="`${a.title}（${a.user?.realName}）`" :value="a.id" />
           </el-select>
+          <div v-if="!passedApps.length" style="color:#909399;font-size:12px">
+            暂无可颁发证书的申报（需已公示且通过）
+          </div>
         </el-form-item>
         <el-form-item label="证书编号"><el-input v-model="form.certNo" /></el-form-item>
         <el-form-item label="证书名称"><el-input v-model="form.title" /></el-form-item>
@@ -76,7 +79,7 @@ function onPage(p: number) { page.value = p; fetch() }
 
 async function openDialog() {
   Object.assign(form, { id: 0, applicationId: '', certNo: '', title: '', holder: '', fileUrl: '' })
-  const res = await adminApi.getApplications({ page: 1, pageSize: 100, status: 'passed' })
+  const res = await adminApi.getApplications({ page: 1, pageSize: 100, status: 'published' })
   passedApps.value = res.data.list
   dialogVisible.value = true
 }

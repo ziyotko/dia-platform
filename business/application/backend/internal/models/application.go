@@ -19,6 +19,7 @@ type Application struct {
 	PreliminaryOpinion string     `gorm:"type:text" json:"preliminaryOpinion"`
 	FinalOpinion       string     `gorm:"type:text" json:"finalOpinion"`
 	SubmittedAt        *time.Time `json:"submittedAt"`
+	PublishedAt        *time.Time `json:"publishedAt"`
 
 	Batch     *ProjectBatch         `gorm:"foreignKey:BatchID" json:"batch,omitempty"`
 	Category  *ProjectCategory      `gorm:"foreignKey:CategoryID" json:"category,omitempty"`

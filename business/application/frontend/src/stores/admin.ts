@@ -4,32 +4,44 @@ import { authApi } from '@/api/auth'
 
 export const useAdminStore = defineStore('admin', () => {
   const token = ref<string>(localStorage.getItem('application-admin-token') || '')
+  const roleCode = ref<string>(localStorage.getItem('application-admin-role') || '')
   const adminInfo = ref<any>(null)
 
   const isLoggedIn = computed(() => !!token.value)
-  const roleCode = computed(() => adminInfo.value?.roleCode || '')
 
   function setToken(val: string) {
     token.value = val
     localStorage.setItem('application-admin-token', val)
   }
 
+  function setRole(val: string) {
+    roleCode.value = val || ''
+    if (val) localStorage.setItem('application-admin-role', val)
+    else localStorage.removeItem('application-admin-role')
+  }
+
+  function setAdminInfo(info: any) {
+    adminInfo.value = info
+    setRole(info?.roleCode || '')
+  }
+
   async function login(username: string, password: string, captchaId: string, captchaCode: string) {
     const res = await authApi.adminLogin({ username, password, captchaId, captchaCode })
     setToken(res.data.token)
-    adminInfo.value = res.data.admin
+    setAdminInfo(res.data.admin)
     return res.data
   }
 
   async function fetchAdminInfo() {
     const res = await authApi.getAdminProfile()
-    adminInfo.value = res.data
+    setAdminInfo(res.data)
   }
 
   function logout() {
     token.value = ''
     adminInfo.value = null
     localStorage.removeItem('application-admin-token')
+    localStorage.removeItem('application-admin-role')
     window.location.href = '/application/admin/login'
   }
 

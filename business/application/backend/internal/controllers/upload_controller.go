@@ -51,7 +51,7 @@ func (ctrl *UploadController) Upload(c *gin.Context) {
 	response.Ok(c, gin.H{
 		"name":     file.Filename,
 		"fileUrl":  "/" + filepath.ToSlash(dst),
-		"fileType": ext,
+		"fileType": strings.TrimPrefix(ext, "."),
 		"fileSize": file.Size,
 	})
 }

@@ -23,9 +23,11 @@ func (s *ResultService) CreateAnnouncement(a *models.Announcement) error {
 }
 
 func (s *ResultService) UpdateAnnouncement(id uint64, updates map[string]interface{}) error {
-	delete(updates, "id")
-	delete(updates, "status")
-	return db.DB.Model(&models.Announcement{}).Where("id = ?", id).Updates(updates).Error
+	clean := pickUpdates(updates, "title", "content", "batch_id")
+	if len(clean) == 0 {
+		return nil
+	}
+	return db.DB.Model(&models.Announcement{}).Where("id = ?", id).Updates(clean).Error
 }
 
 func (s *ResultService) DeleteAnnouncement(id uint64) error {
@@ -58,18 +60,24 @@ func (s *ResultService) ListAnnouncements(page, size int, keyword string, onlyPu
 
 // --- Certificates (证书) ---
 
+// IssueCertificate issues a certificate for an approved application.
+// Only applications whose result has already been published (已公示) qualify, so
+// the documented flow passed → published → certified is always respected.
 func (s *ResultService) IssueCertificate(c *models.Certificate) error {
 	var app models.Application
 	if err := db.DB.First(&app, c.ApplicationID).Error; err != nil {
 		return errors.New("申报记录不存在")
 	}
-	if app.Status != models.AppStatusPassed && app.Status != models.AppStatusPublished {
-		return errors.New("仅通过的申报可颁发证书")
+	if app.Status != models.AppStatusPublished {
+		return errors.New("仅已公示且通过的申报可颁发证书")
 	}
 	var count int64
 	db.DB.Model(&models.Certificate{}).Where("application_id = ?", c.ApplicationID).Count(&count)
 	if count > 0 {
 		return errors.New("该申报已颁发证书")
+	}
+	if c.Title == "" {
+		return errors.New("请填写证书名称")
 	}
 	c.UserID = app.UserID
 	c.BatchID = app.BatchID
@@ -79,13 +87,19 @@ func (s *ResultService) IssueCertificate(c *models.Certificate) error {
 	if err := db.DB.Create(c).Error; err != nil {
 		return err
 	}
-	return db.DB.Model(&app).Update("status", models.AppStatusCertified).Error
+	if err := db.DB.Model(&app).Update("status", models.AppStatusCertified).Error; err != nil {
+		return err
+	}
+	notifyUser(app.UserID, "证书已颁发", "您的项目《"+app.Title+"》证书已颁发，可在「我的证书」中下载。", NotifyTypeCertificate)
+	return nil
 }
 
 func (s *ResultService) UpdateCertificate(id uint64, updates map[string]interface{}) error {
-	delete(updates, "id")
-	delete(updates, "application_id")
-	return db.DB.Model(&models.Certificate{}).Where("id = ?", id).Updates(updates).Error
+	clean := pickUpdates(updates, "cert_no", "title", "holder", "file_url")
+	if len(clean) == 0 {
+		return nil
+	}
+	return db.DB.Model(&models.Certificate{}).Where("id = ?", id).Updates(clean).Error
 }
 
 func (s *ResultService) ListCertificates(page, size int, keyword string) ([]models.Certificate, int64, error) {

@@ -110,8 +110,9 @@ func (ctrl *ApplicationController) List(c *gin.Context) {
 	page, size := getPage(c)
 	batchID := parseUint(c.Query("batchId"))
 	status := c.Query("status")
+	statuses := c.Query("statuses")
 	keyword := c.Query("keyword")
-	list, total, err := ctrl.service.List(page, size, batchID, status, keyword)
+	list, total, err := ctrl.service.List(page, size, batchID, status, statuses, keyword)
 	if err != nil {
 		response.Fail(c, err.Error())
 		return

@@ -1,11 +1,14 @@
 package main
 
 import (
+	"time"
+
 	"application/config"
 	"application/internal/middleware"
 	"application/internal/models"
 	"application/internal/routes"
 	"application/internal/seed"
+	"application/internal/service"
 	"application/pkg/captcha"
 	"application/pkg/db"
 	"application/pkg/redis"
@@ -64,7 +67,18 @@ func main() {
 	// 10. Register routes
 	routes.Register(r)
 
-	// 11. Start server
+	// 11. Background job: close batches whose application window has expired
+	go func() {
+		batchSvc := service.BatchService{}
+		batchSvc.AutoCloseExpired()
+		ticker := time.NewTicker(10 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			batchSvc.AutoCloseExpired()
+		}
+	}()
+
+	// 12. Start server
 	utils.Logger.Info("Application server starting on port " + itoa(config.Cfg.Server.Port))
 	r.Run("0.0.0.0:" + itoa(config.Cfg.Server.Port))
 }

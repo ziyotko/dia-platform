@@ -19,9 +19,13 @@ func (s *BatchService) Create(b *models.ProjectBatch) error {
 }
 
 func (s *BatchService) Update(id uint64, updates map[string]interface{}) error {
-	delete(updates, "status")
-	delete(updates, "id")
-	return db.DB.Model(&models.ProjectBatch{}).Where("id = ?", id).Updates(updates).Error
+	clean := pickUpdates(updates, "title", "category_id", "description", "requirements",
+		"apply_start", "apply_end", "review_deadline")
+	normalizeTimeFields(clean, "apply_start", "apply_end", "review_deadline")
+	if len(clean) == 0 {
+		return nil
+	}
+	return db.DB.Model(&models.ProjectBatch{}).Where("id = ?", id).Updates(clean).Error
 }
 
 func (s *BatchService) Delete(id uint64) error {
@@ -69,11 +73,16 @@ func (s *BatchService) List(page, size int, keyword, status string) ([]models.Pr
 	return list, total, err
 }
 
-// ListOpen returns batches currently open for application (frontend)
+// ListOpen returns batches currently open for application (frontend). The
+// result honours the same time window as IsOpen so the list and the submit
+// guard can never disagree.
 func (s *BatchService) ListOpen(page, size int, keyword string) ([]models.ProjectBatch, int64, error) {
 	var list []models.ProjectBatch
 	var total int64
-	query := db.DB.Model(&models.ProjectBatch{}).Where("status = ?", models.BatchStatusOpen)
+	now := time.Now()
+	query := db.DB.Model(&models.ProjectBatch{}).Where("status = ?", models.BatchStatusOpen).
+		Where("apply_start IS NULL OR apply_start <= ?", now).
+		Where("apply_end IS NULL OR apply_end >= ?", now)
 	if keyword != "" {
 		query = query.Where("title LIKE ?", "%"+keyword+"%")
 	}
@@ -96,6 +105,15 @@ func (s *BatchService) IsOpen(b *models.ProjectBatch) bool {
 		return false
 	}
 	return true
+}
+
+// IsReviewOpen checks whether the batch still accepts review work.
+// A nil review deadline means "no deadline".
+func (s *BatchService) IsReviewOpen(b *models.ProjectBatch) bool {
+	if b.ReviewDeadline == nil {
+		return true
+	}
+	return !time.Now().After(*b.ReviewDeadline)
 }
 
 // AutoCloseExpired moves open batches past their deadline into reviewing

@@ -19,6 +19,9 @@
       <el-table-column label="申报起止" min-width="240">
         <template #default="{ row }">{{ fmt(row.applyStart) }} ~ {{ fmt(row.applyEnd) }}</template>
       </el-table-column>
+      <el-table-column label="评审截止" width="160">
+        <template #default="{ row }">{{ fmt(row.reviewDeadline) }}</template>
+      </el-table-column>
       <el-table-column label="状态" width="100">
         <template #default="{ row }"><el-tag :type="batchStatusType[row.status]">{{ batchStatusMap[row.status] }}</el-tag></template>
       </el-table-column>
@@ -49,13 +52,13 @@
           </el-select>
         </el-form-item>
         <el-form-item label="申报开始">
-          <el-date-picker v-model="form.applyStart" type="datetime" value-format="YYYY-MM-DDTHH:mm:ssZ" style="width:100%" />
+          <el-date-picker v-model="form.applyStart" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" />
         </el-form-item>
         <el-form-item label="申报截止">
-          <el-date-picker v-model="form.applyEnd" type="datetime" value-format="YYYY-MM-DDTHH:mm:ssZ" style="width:100%" />
+          <el-date-picker v-model="form.applyEnd" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" />
         </el-form-item>
         <el-form-item label="评审截止">
-          <el-date-picker v-model="form.reviewDeadline" type="datetime" value-format="YYYY-MM-DDTHH:mm:ssZ" style="width:100%" />
+          <el-date-picker v-model="form.reviewDeadline" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" />
         </el-form-item>
         <el-form-item label="申报要求">
           <el-input v-model="form.requirements" type="textarea" :rows="3" />
@@ -102,15 +105,29 @@ async function fetch() {
 
 function onPage(p: number) { page.value = p; fetch() }
 
+// Converts an API datetime (ISO) into the value-format expected by the picker.
+function toFormDate(v?: string) {
+  return v ? v.replace('T', ' ').slice(0, 19) : ''
+}
+
 function openDialog(row?: any) {
-  Object.assign(form, row ? { ...row } : { id: 0, title: '', categoryId: '', applyStart: '', applyEnd: '', reviewDeadline: '', requirements: '', description: '' })
+  if (row) {
+    Object.assign(form, {
+      ...row,
+      applyStart: toFormDate(row.applyStart),
+      applyEnd: toFormDate(row.applyEnd),
+      reviewDeadline: toFormDate(row.reviewDeadline),
+    })
+  } else {
+    Object.assign(form, { id: 0, title: '', categoryId: '', applyStart: '', applyEnd: '', reviewDeadline: '', requirements: '', description: '' })
+  }
   dialogVisible.value = true
 }
 
 async function save() {
   const payload = {
-    title: form.title, categoryId: Number(form.categoryId), applyStart: form.applyStart,
-    applyEnd: form.applyEnd, reviewDeadline: form.reviewDeadline,
+    title: form.title, categoryId: Number(form.categoryId), applyStart: form.applyStart || null,
+    applyEnd: form.applyEnd || null, reviewDeadline: form.reviewDeadline || null,
     requirements: form.requirements, description: form.description,
   }
   if (form.id) await adminApi.updateBatch(form.id, payload)

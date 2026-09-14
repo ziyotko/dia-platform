@@ -12,6 +12,8 @@
         <el-descriptions-item label="申报批次">{{ app.batch?.title || '-' }}</el-descriptions-item>
         <el-descriptions-item label="项目类别">{{ app.category?.name || '-' }}</el-descriptions-item>
         <el-descriptions-item label="项目名称" :span="2">{{ app.title }}</el-descriptions-item>
+        <el-descriptions-item label="提交时间">{{ fmt(app.submittedAt) }}</el-descriptions-item>
+        <el-descriptions-item label="公示时间">{{ fmt(app.publishedAt) }}</el-descriptions-item>
         <el-descriptions-item label="项目简介" :span="2">{{ app.projectBrief || '-' }}</el-descriptions-item>
         <el-descriptions-item label="申报内容" :span="2">{{ app.content || '-' }}</el-descriptions-item>
       </el-descriptions>
@@ -45,6 +47,12 @@
         <div style="margin-top:8px;color:#667085">综合平均分：<b style="color:#002fa7">{{ app.avgScore }}</b></div>
       </template>
 
+      <!-- Final opinion -->
+      <template v-if="app.finalOpinion">
+        <el-divider content-position="left">评审结果</el-divider>
+        <el-alert :closable="false" :title="app.finalOpinion" :type="app.status === 'rejected' ? 'error' : 'success'" />
+      </template>
+
       <!-- Actions -->
       <template v-if="actionsVisible">
         <el-divider content-position="left">操作</el-divider>
@@ -61,7 +69,8 @@
             <el-button type="danger" @click="finalize(false)">确定不通过</el-button>
           </template>
           <template v-if="app.status === 'passed' || app.status === 'rejected'">
-            <el-button type="primary" @click="publishResult">公示结果</el-button>
+            <el-button v-if="!app.publishedAt" type="primary" @click="publishResult">公示结果</el-button>
+            <el-tag v-else type="success">结果已公示</el-tag>
           </template>
         </div>
       </template>
@@ -92,7 +101,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { adminApi } from '@/api/admin'
-import { applicationStatusMap, applicationStatusType, fileUrl } from '@/utils/constants'
+import { applicationStatusMap, applicationStatusType, fileUrl, fmt } from '@/utils/constants'
 
 const route = useRoute()
 const id = Number(route.params.id)
