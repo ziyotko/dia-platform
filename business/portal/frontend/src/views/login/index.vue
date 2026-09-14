@@ -61,7 +61,7 @@
                 @keyup.enter="handleLogin"
               />
             </el-form-item>
-            <el-form-item prop="captchaCode">
+            <el-form-item v-if="captchaEnabled" prop="captchaCode">
               <div class="captcha-row">
                 <el-input
                   v-model="form.captchaCode"
@@ -102,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Lock, Grid, Platform, Check } from '@element-plus/icons-vue'
@@ -116,6 +116,8 @@ const formRef = ref()
 const loading = ref(false)
 const captchaImage = ref('')
 const captchaId = ref('')
+// 登录验证码开关（来自系统设置 captchaEnabled，公共站点信息接口下发）
+const captchaEnabled = ref(true)
 
 const form = reactive({
   username: '',
@@ -143,6 +145,7 @@ const loadSiteInfo = async () => {
       siteInfo.logo = res.data.logo || ''
       siteInfo.icp = res.data.icp || ''
       siteInfo.copyright = res.data.copyright || siteInfo.copyright
+      captchaEnabled.value = res.data.captchaEnabled !== false
 
       document.title = siteInfo.siteName
       const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null
@@ -153,17 +156,24 @@ const loadSiteInfo = async () => {
   } catch {
     // 使用默认值
   }
+  // 验证码开关确定后再加载验证码图片（关闭时不请求，避免无谓的接口调用）
+  if (captchaEnabled.value) {
+    refreshCaptcha()
+  }
 }
 
 
 
-const rules = {
+const rules = computed(() => ({
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
-  captchaCode: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
-}
+  ...(captchaEnabled.value
+    ? { captchaCode: [{ required: true, message: '请输入验证码', trigger: 'blur' }] }
+    : {})
+}))
 
 const refreshCaptcha = async () => {
+  if (!captchaEnabled.value) return
   try {
     const res: any = await getCaptcha()
     captchaId.value = res.data.captcha_id
@@ -183,8 +193,8 @@ const handleLogin = async () => {
     const res: any = await login({
       account: form.username,
       password: form.password,
-      captcha_id: captchaId.value,
-      captcha_code: form.captchaCode
+      captcha_id: captchaEnabled.value ? captchaId.value : '',
+      captcha_code: captchaEnabled.value ? form.captchaCode : ''
     })
     userStore.setToken(res.data.token)
     userStore.setUserInfo(res.data.user)
@@ -199,7 +209,6 @@ const handleLogin = async () => {
 }
 
 onMounted(() => {
-  refreshCaptcha()
   loadSiteInfo()
 })
 </script>

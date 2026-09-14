@@ -61,6 +61,24 @@ func (s *WorkflowService) UpdateWorkflow(id uint, workflow *models.Workflow) err
 }
 
 func (s *WorkflowService) DeleteWorkflow(id uint) error {
+	// 仍被栏目绑定：删除后 column.workflow_id 会变成脏数据，该栏目提交审核时会被当成「无流程」直接通过
+	var columnCount int64
+	if err := utils.DB.Model(&models.Column{}).Where("workflow_id = ?", id).Count(&columnCount).Error; err != nil {
+		return err
+	}
+	if columnCount > 0 {
+		return fmt.Errorf("该流程已被 %d 个栏目绑定，请先解除绑定后再删除", columnCount)
+	}
+	// 存在进行中的审核：删除后这些审核无法继续
+	var pendingCount int64
+	if err := utils.DB.Model(&models.ArticleColumnAudit{}).
+		Where("workflow_id = ? AND status = ?", id, 0).
+		Count(&pendingCount).Error; err != nil {
+		return err
+	}
+	if pendingCount > 0 {
+		return fmt.Errorf("该流程存在 %d 条进行中的审核，无法删除", pendingCount)
+	}
 	return utils.DB.Unscoped().Delete(&models.Workflow{}, id).Error
 }
 
@@ -120,6 +138,16 @@ func (s *WorkflowService) SaveWorkflowNodes(workflowID uint, nodes []models.Work
 	// 先校验再落库：校验失败时不破坏已存在的节点配置
 	if err := s.ValidateNodesResolvable(nodes); err != nil {
 		return err
+	}
+	// 节点是「全删重建」（ID 会变化），若存在进行中的审核，其 current_node_id 将指向已删节点而永久卡住
+	var pendingCount int64
+	if err := utils.DB.Model(&models.ArticleColumnAudit{}).
+		Where("workflow_id = ? AND status = ?", workflowID, 0).
+		Count(&pendingCount).Error; err != nil {
+		return err
+	}
+	if pendingCount > 0 {
+		return fmt.Errorf("该流程存在 %d 条进行中的审核，请等待审核完成或先撤回后再修改节点", pendingCount)
 	}
 	return utils.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("workflow_id = ?", workflowID).Unscoped().Delete(&models.WorkflowNode{}).Error; err != nil {

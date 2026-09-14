@@ -22,13 +22,17 @@ type UserListResult struct {
 }
 
 func (s *UserService) Login(email, account, mobile, password, captchaID, captchaCode string) (*models.User, string, string, error) {
-	if !utils.VerifyCaptcha(captchaID, captchaCode) {
+	settingsService := SettingsService{}
+	settings, err := settingsService.GetSettings()
+	if err != nil {
+		return nil, "", "", errors.New("获取系统设置失败")
+	}
+	// 登录验证码开关来自「系统设置-安全设置」的 captchaEnabled（关闭后不再校验）
+	if settings.CaptchaEnabled && !utils.VerifyCaptcha(captchaID, captchaCode) {
 		return nil, "", "", errors.New("验证码错误")
 	}
 
 	var user models.User
-	var err error
-
 	if email != "" {
 		err = utils.DB.Where("email = ?", email).First(&user).Error
 	} else if account != "" {
@@ -45,12 +49,6 @@ func (s *UserService) Login(email, account, mobile, password, captchaID, captcha
 
 	if user.Status != 1 {
 		return nil, "", "", errors.New("用户已禁用")
-	}
-
-	settingsService := SettingsService{}
-	settings, err := settingsService.GetSettings()
-	if err != nil {
-		return nil, "", "", errors.New("获取系统设置失败")
 	}
 
 	if settings.LockEnabled {
@@ -375,6 +373,11 @@ func (s *UserService) DeleteUser(id uint) error {
 	}
 	orgService := OrganizationService{}
 	if err := orgService.RemoveUserFromAllOrganizations(id); err != nil {
+		return err
+	}
+	// 部门成员关系同样需要清理，否则 department.user_ids/user_count 会残留已删除用户
+	deptService := DepartmentService{}
+	if err := deptService.RemoveUserFromAllDepartments(id); err != nil {
 		return err
 	}
 	return utils.DB.Unscoped().Delete(&models.User{}, id).Error

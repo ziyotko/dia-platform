@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"server/models"
 	"server/utils"
 
@@ -70,6 +71,16 @@ func (s *WorkflowRoleService) UpdateWorkflowRole(id uint, role *models.WorkflowR
 }
 
 func (s *WorkflowRoleService) DeleteWorkflowRole(id uint) error {
+	// 被审批节点引用时不允许删除：删除后这些节点将无人可审（approver_id 永远匹配不到任何用户）
+	var nodeCount int64
+	if err := utils.DB.Model(&models.WorkflowNode{}).
+		Where("approver_type = ? AND approver_id = ?", "role", id).
+		Count(&nodeCount).Error; err != nil {
+		return err
+	}
+	if nodeCount > 0 {
+		return fmt.Errorf("该流程角色已被 %d 个审批节点使用，请先调整流程节点", nodeCount)
+	}
 	return utils.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("workflow_role_id = ?", id).Delete(&models.WorkflowRoleUser{}).Error; err != nil {
 			return err

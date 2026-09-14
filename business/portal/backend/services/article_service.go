@@ -15,8 +15,12 @@ import (
 
 type ArticleService struct{}
 
-func (s *ArticleService) buildArticleListQuery(title string, categoryID int, tagID int, columnID int, status int, auditStatus int, articleType int, author string, source string) *gorm.DB {
+func (s *ArticleService) buildArticleListQuery(title string, categoryID int, tagID int, columnID int, status int, auditStatus int, articleType int, author string, authorCode string, source string) *gorm.DB {
 	query := utils.DB.Model(&models.Article{})
+	// authorCode：归属过滤（非管理员只能看到自己的文章），author：按作者名搜索
+	if authorCode != "" {
+		query = query.Where("article.author_code = ?", authorCode)
+	}
 	if title != "" {
 		query = query.Where("MATCH(title) AGAINST (? IN BOOLEAN MODE) OR title LIKE ?", title, "%"+title+"%")
 	}
@@ -47,15 +51,15 @@ func (s *ArticleService) buildArticleListQuery(title string, categoryID int, tag
 	return query
 }
 
-func (s *ArticleService) GetArticles(title string, categoryID int, tagID int, columnID int, status int, auditStatus int, articleType int, author string, source string, page int, pageSize int) ([]models.Article, int64, error) {
+func (s *ArticleService) GetArticles(title string, categoryID int, tagID int, columnID int, status int, auditStatus int, articleType int, author string, authorCode string, source string, page int, pageSize int) ([]models.Article, int64, error) {
 	var total int64
-	countQuery := s.buildArticleListQuery(title, categoryID, tagID, columnID, status, auditStatus, articleType, author, source)
+	countQuery := s.buildArticleListQuery(title, categoryID, tagID, columnID, status, auditStatus, articleType, author, authorCode, source)
 	if err := countQuery.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	offset := (page - 1) * pageSize
-	idQuery := s.buildArticleListQuery(title, categoryID, tagID, columnID, status, auditStatus, articleType, author, source)
+	idQuery := s.buildArticleListQuery(title, categoryID, tagID, columnID, status, auditStatus, articleType, author, authorCode, source)
 	var ids []uint
 	if err := idQuery.Select("article.id").Order("article.is_top DESC, article.created_at DESC").Limit(pageSize).Offset(offset).Scan(&ids).Error; err != nil {
 		return nil, 0, err
@@ -221,30 +225,12 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 			"publish_time":  article.PublishTime,
 			"url":           article.URL,
 		}
-		if isOffline {
-			updates["column_count"] = 0
-		}
 		if err := tx.Model(&old).Updates(updates).Error; err != nil {
 			return err
 		}
-		// 已下线文章清理关联数据
+		// 已下线文章清理关联数据（与「下线」接口共用 takeOffline，保证两条路径状态一致）
 		if isOffline {
-			if err := tx.Model(&old).Association("Columns").Clear(); err != nil {
-				return err
-			}
-			if err := tx.Where("article_id = ?", id).Delete(&models.ArticleColumnAudit{}).Error; err != nil {
-				return err
-			}
-			if err := tx.Where("article_id = ?", id).Delete(&models.ArticleColumnAuditHistory{}).Error; err != nil {
-				return err
-			}
-			if err := tx.Where("article_id = ?", id).Delete(&models.ArticleColumnPublish{}).Error; err != nil {
-				return err
-			}
-			if err := tx.Model(&old).Association("Categories").Clear(); err != nil {
-				return err
-			}
-			if err := tx.Model(&old).Association("Tags").Clear(); err != nil {
+			if err := takeOffline(tx, &old); err != nil {
 				return err
 			}
 		}
@@ -300,22 +286,43 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 	})
 }
 
+// takeOffline 文章下线时统一清理发布/审核/栏目关联数据：
+// 下线后不应再残留 article_column_publish（否则列表仍会按栏目命中）、进行中的栏目审核，
+// 以及栏目绑定与 column_count（否则重新上线时与实际栏目不符）。审核状态重置为未提交，便于作者修改后重新送审。
+func takeOffline(tx *gorm.DB, article *models.Article) error {
+	if err := tx.Model(article).Association("Columns").Clear(); err != nil {
+		return err
+	}
+	if err := tx.Where("article_id = ?", article.ID).Unscoped().Delete(&models.ArticleColumnAudit{}).Error; err != nil {
+		return err
+	}
+	if err := tx.Where("article_id = ?", article.ID).Unscoped().Delete(&models.ArticleColumnAuditHistory{}).Error; err != nil {
+		return err
+	}
+	if err := tx.Where("article_id = ?", article.ID).Unscoped().Delete(&models.ArticleColumnPublish{}).Error; err != nil {
+		return err
+	}
+	return tx.Model(article).Updates(map[string]any{
+		"column_count": 0,
+		"audit_status": 0,
+	}).Error
+}
+
 func (s *ArticleService) UpdateArticleStatus(id uint, status int) error {
 	return utils.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&models.Article{}).Where("id = ?", id).Update("status", status).Error; err != nil {
+		var article models.Article
+		if err := tx.First(&article, id).Error; err != nil {
 			return err
 		}
-		if status == 2 {
-			if err := tx.Where("article_id = ?", id).Unscoped().Delete(&models.ArticleColumnPublish{}).Error; err != nil {
-				return err
-			}
+		if err := tx.Model(&article).Update("status", status).Error; err != nil {
+			return err
+		}
+		// 下线：清理发布/审核/栏目关联，避免“下线后仍保留栏目绑定与发布记录”
+		if status == models.ArticleStatusOffline {
+			return takeOffline(tx, &article)
 		}
 		return nil
 	})
-}
-
-func (s *ArticleService) UpdateAuditStatus(id uint, auditStatus int) error {
-	return utils.DB.Model(&models.Article{}).Where("id = ?", id).Update("audit_status", auditStatus).Error
 }
 
 func (s *ArticleService) SetArticleColumns(id uint, columnIDs []uint) error {
@@ -323,6 +330,11 @@ func (s *ArticleService) SetArticleColumns(id uint, columnIDs []uint) error {
 		var article models.Article
 		if err := tx.First(&article, id).Error; err != nil {
 			return err
+		}
+		// 审核中/已审核（已发布）时禁止改栏目：
+		// 否则会残留已解绑栏目的审核记录、新栏目无审核记录，后续“全部通过”时会错误发布。
+		if article.AuditStatus != 0 {
+			return fmt.Errorf("文章正在审核或已发布，不能修改栏目；如需调整请先撤回审核或将文章下线")
 		}
 		if len(columnIDs) > 0 {
 			var columns []models.Column
@@ -484,6 +496,15 @@ func (s *ArticleService) StartArticleAudit(articleID uint) error {
 	if len(article.Columns) == 0 {
 		return fmt.Errorf("请先为文章选择栏目后再提交审核")
 	}
+	// 仅草稿可以提交审核：已发布（1）无需再送审，已下线（2）需先编辑转草稿，
+	// 否则可通过审核流程把下线/已发布文章直接推到发布态。
+	if article.Status != models.ArticleStatusDraft {
+		return fmt.Errorf("仅草稿状态的文章可以提交审核，请先编辑文章将其转为草稿")
+	}
+	// 审核中不允许重复提交（需先撤回），避免静默清空当前审核进度
+	if article.AuditStatus == 1 {
+		return fmt.Errorf("文章正在审核中，请先撤回审核后再重新提交")
+	}
 	err := utils.DB.Transaction(func(tx *gorm.DB) error {
 		// 更新文章状态为审核中
 		if err := tx.Model(&article).Update("audit_status", 1).Error; err != nil {
@@ -517,6 +538,10 @@ func (s *ArticleService) StartArticleAudit(articleID uint) error {
 			// 流程无节点或审批人为空都会让审核永久卡住，这里直接返回可定位的原因。
 			workflowService := WorkflowService{}
 			if err := workflowService.ValidateWorkflowResolvable(*col.WorkflowID); err != nil {
+				return fmt.Errorf("栏目「%s」的审核流程不可用: %s", col.Name, err.Error())
+			}
+			// 「部门负责人」节点需作者已归属部门且该部门已配置负责人，否则无人可审
+			if err := s.validateDeptHeadApprovers(*col.WorkflowID, article.AuthorCode); err != nil {
 				return fmt.Errorf("栏目「%s」的审核流程不可用: %s", col.Name, err.Error())
 			}
 			var firstNode models.WorkflowNode
@@ -849,6 +874,60 @@ func (s *ArticleService) RejectArticleAudit(articleID uint, columnID uint, userI
 	return nil
 }
 
+// validateDeptHeadApprovers 校验流程中的「部门负责人」节点对指定作者是否可解析：
+// 作者需归属至少一个部门，且该部门配置了负责人（leader_code），否则审核将永远无法完成。
+func (s *ArticleService) validateDeptHeadApprovers(workflowID uint, authorCode string) error {
+	var count int64
+	if err := utils.DB.Model(&models.WorkflowNode{}).
+		Where("workflow_id = ? AND approver_type = ?", workflowID, "dept_head").
+		Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		return nil
+	}
+	authorID, err := strconv.ParseUint(authorCode, 10, 32)
+	if err != nil {
+		return fmt.Errorf("作者信息异常，无法解析部门负责人")
+	}
+	deptIDs, err := s.getUserDepartmentIDs(uint(authorID))
+	if err != nil {
+		return err
+	}
+	if len(deptIDs) == 0 {
+		return fmt.Errorf("该流程包含「部门负责人」审批节点，但作者未归属任何部门")
+	}
+	var leaderCount int64
+	if err := utils.DB.Model(&models.Department{}).
+		Where("id IN ? AND leader_code IS NOT NULL AND leader_code <> ''", deptIDs).
+		Count(&leaderCount).Error; err != nil {
+		return err
+	}
+	if leaderCount == 0 {
+		return fmt.Errorf("该流程包含「部门负责人」审批节点，但作者所属部门未设置负责人")
+	}
+	return nil
+}
+
+// CanApproveAnyColumn 判断用户是否为文章任一「进行中」栏目审核的当前审批人。
+// 用于文章详情的可见性判断（非作者的管理者/审批人也需要查看正文）。
+func (s *ArticleService) CanApproveAnyColumn(articleID, userID uint) (bool, error) {
+	var audits []models.ArticleColumnAudit
+	if err := utils.DB.Where("article_id = ? AND status = ?", articleID, 0).Find(&audits).Error; err != nil {
+		return false, err
+	}
+	for _, audit := range audits {
+		ok, err := s.CanApproveArticleColumn(articleID, audit.ColumnID, userID)
+		if err != nil {
+			continue
+		}
+		if ok {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // GetArticleAuditHistory 获取文章指定栏目的审核历史
 func (s *ArticleService) GetArticleAuditHistory(articleID uint, columnID uint) ([]models.ArticleColumnAuditHistory, error) {
 	var histories []models.ArticleColumnAuditHistory
@@ -998,9 +1077,25 @@ func (s *ArticleService) GetMyAuditArticles(userID uint, page, pageSize int) ([]
 	return articles, total, err
 }
 
-// CompleteArticleAudit 完成文章审核（所有栏目通过后调用）
+// CompleteArticleAudit 完成文章审核（所有栏目审核通过后调用）。
+// 前置校验：必须存在栏目审核记录且全部为「已通过」，否则拒绝，避免管理员强制发布未审完的文章。
 func (s *ArticleService) CompleteArticleAudit(articleID uint) error {
 	err := utils.DB.Transaction(func(tx *gorm.DB) error {
+		var totalAudits, passedAudits int64
+		if err := tx.Model(&models.ArticleColumnAudit{}).Where("article_id = ?", articleID).Count(&totalAudits).Error; err != nil {
+			return err
+		}
+		if totalAudits == 0 {
+			return fmt.Errorf("该文章没有栏目审核记录，无法完成审核")
+		}
+		if err := tx.Model(&models.ArticleColumnAudit{}).
+			Where("article_id = ? AND status = ?", articleID, 1).
+			Count(&passedAudits).Error; err != nil {
+			return err
+		}
+		if passedAudits != totalAudits {
+			return fmt.Errorf("存在未完成的栏目审核，无法完成审核")
+		}
 		// 更新文章审核状态为已审核
 		if err := tx.Model(&models.Article{}).Where("id = ?", articleID).Update("audit_status", 2).Error; err != nil {
 			return err

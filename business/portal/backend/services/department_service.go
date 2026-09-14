@@ -199,22 +199,30 @@ func (s *DepartmentService) DeleteDepartment(id uint) error {
 	return utils.DB.Unscoped().Delete(&models.Department{}, id).Error
 }
 
+// parseUserIDs 将 department.user_ids（逗号分隔字符串）解析为 int 列表
+func parseUserIDs(raw string) []int {
+	if strings.TrimSpace(raw) == "" {
+		return []int{}
+	}
+	parts := strings.Split(raw, ",")
+	userIds := make([]int, 0, len(parts))
+	for _, p := range parts {
+		if p = strings.TrimSpace(p); p == "" {
+			continue
+		}
+		if val, err := strconv.Atoi(p); err == nil {
+			userIds = append(userIds, val)
+		}
+	}
+	return userIds
+}
+
 func (s *DepartmentService) GetDepartmentUsers(id uint) ([]int, error) {
 	dept, err := s.GetDepartmentByID(id)
 	if err != nil {
 		return nil, err
 	}
-	if dept.UserIds == "" {
-		return []int{}, nil
-	}
-	parts := strings.Split(dept.UserIds, ",")
-	userIds := make([]int, 0, len(parts))
-	for _, p := range parts {
-		if val, err := strconv.Atoi(strings.TrimSpace(p)); err == nil {
-			userIds = append(userIds, val)
-		}
-	}
-	return userIds, nil
+	return parseUserIDs(dept.UserIds), nil
 }
 
 func (s *DepartmentService) AssignDepartmentUsers(id uint, userIds []int) error {
@@ -226,4 +234,32 @@ func (s *DepartmentService) AssignDepartmentUsers(id uint, userIds []int) error 
 		"user_ids":   strings.Join(ids, ","),
 		"user_count": len(userIds),
 	}).Error
+}
+
+// RemoveUserFromAllDepartments 从所有部门中移除指定用户，并同步 user_count（删除用户时调用）。
+func (s *DepartmentService) RemoveUserFromAllDepartments(userId uint) error {
+	var departments []models.Department
+	uidStr := strconv.Itoa(int(userId))
+	err := utils.DB.Where("user_ids LIKE ? OR user_ids LIKE ? OR user_ids LIKE ?",
+		"%"+uidStr+"%", "%"+uidStr+",%", "%,"+uidStr+"%").Find(&departments).Error
+	if err != nil {
+		return err
+	}
+	uid := int(userId)
+	for _, dept := range departments {
+		ids := parseUserIDs(dept.UserIds)
+		newIds := make([]int, 0, len(ids))
+		for _, id := range ids {
+			if id != uid {
+				newIds = append(newIds, id)
+			}
+		}
+		if len(newIds) == len(ids) {
+			continue
+		}
+		if err := s.AssignDepartmentUsers(dept.ID, newIds); err != nil {
+			return err
+		}
+	}
+	return nil
 }

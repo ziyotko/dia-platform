@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -21,6 +23,19 @@ func NewRoleController() *RoleController {
 		roleService: &services.RoleService{},
 		userService: &services.UserService{},
 	}
+}
+
+// canModifyRole 判断操作者能否修改/删除目标角色：
+// 角色序号越小角色越高，只能操作序号 >= 自身最低序号的角色；超级管理员（ID=1）一律不可改。
+func (c *RoleController) canModifyRole(operatorID, targetRoleID uint) bool {
+	if targetRoleID == models.RoleIDSuperAdmin {
+		return false
+	}
+	minRoleID, ok := getMinRoleID(c.userService.MustGetUserRoleIds(operatorID))
+	if !ok {
+		return false
+	}
+	return targetRoleID >= uint(minRoleID)
 }
 
 func (c *RoleController) GetRoles(ctx *gin.Context) {
@@ -90,13 +105,28 @@ func (c *RoleController) UpdateRole(ctx *gin.Context) {
 		return
 	}
 
-	var req models.Role
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
+	if !c.canModifyRole(ctx.GetUint("userID"), uint(id)) {
+		ctx.JSON(http.StatusOK, utils.Error(1, "无权修改该角色"))
 		return
 	}
 
-	if err := c.roleService.UpdateRole(uint(id), &req); err != nil {
+	// 读取原始请求体：既用于绑定角色字段，也用于判断请求体是否**显式携带**了 permissions
+	// （未携带时不得写入，否则会把该角色已有的菜单权限清空）。
+	body, err := io.ReadAll(ctx.Request.Body)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误"))
+		return
+	}
+	var req models.Role
+	if err := json.Unmarshal(body, &req); err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
+		return
+	}
+	var raw map[string]json.RawMessage
+	_ = json.Unmarshal(body, &raw)
+	_, hasPermissions := raw["permissions"]
+
+	if err := c.roleService.UpdateRole(uint(id), &req, hasPermissions); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("更新角色失败", err)))
 		return
 	}
@@ -108,6 +138,11 @@ func (c *RoleController) DeleteRole(ctx *gin.Context) {
 	id, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "角色ID无效"))
+		return
+	}
+
+	if !c.canModifyRole(ctx.GetUint("userID"), uint(id)) {
+		ctx.JSON(http.StatusOK, utils.Error(1, "无权删除该角色"))
 		return
 	}
 
@@ -142,25 +177,8 @@ func (c *RoleController) UpdateRolePermissions(ctx *gin.Context) {
 		return
 	}
 
-	// 超级管理员（角色 1）的权限永远不允许修改
-	if id == models.RoleIDSuperAdmin {
-		ctx.JSON(http.StatusOK, utils.Error(1, "超级管理员角色的权限不允许修改"))
-		return
-	}
-
-	// 权限约束：当前用户只能修改角色序号 >= 自身最小角色序号的角色的权限（角色序号越小角色越高）
-	operatorRoles, err := c.userService.GetUserRoleIds(ctx.GetUint("userID"))
-	if err != nil || len(operatorRoles) == 0 {
-		ctx.JSON(http.StatusOK, utils.Error(1, "无权修改该角色的权限"))
-		return
-	}
-	minRoleID := operatorRoles[0]
-	for _, rid := range operatorRoles {
-		if rid < minRoleID {
-			minRoleID = rid
-		}
-	}
-	if uint(id) < uint(minRoleID) {
+	// 权限约束：内置角色 1 一律不可改；只能修改角色序号 >= 自身最低序号的角色
+	if !c.canModifyRole(ctx.GetUint("userID"), uint(id)) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "无权修改该角色的权限"))
 		return
 	}

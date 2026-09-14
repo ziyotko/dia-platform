@@ -60,17 +60,28 @@ func (s *RoleService) CreateRole(role *models.Role) error {
 	return utils.DB.Create(role).Error
 }
 
-func (s *RoleService) UpdateRole(id uint, role *models.Role) error {
-	return utils.DB.Model(&models.Role{}).Where("id = ?", id).Updates(map[string]any{
+// UpdateRole 更新角色基本信息。updatePermissions 为 false 时不写入 permissions：
+// 角色编辑表单（名称/编码/描述/状态）不包含权限字段，若恒写会把已有菜单权限清空。
+func (s *RoleService) UpdateRole(id uint, role *models.Role, updatePermissions bool) error {
+	if models.IsBuiltinRoleID(id) {
+		return errors.New("系统内置角色不允许修改，可在「分配权限」中调整其权限")
+	}
+	updates := map[string]any{
 		"name":        role.Name,
 		"code":        role.Code,
 		"description": role.Description,
 		"status":      role.Status,
-		"permissions": role.Permissions,
-	}).Error
+	}
+	if updatePermissions {
+		updates["permissions"] = role.Permissions
+	}
+	return utils.DB.Model(&models.Role{}).Where("id = ?", id).Updates(updates).Error
 }
 
 func (s *RoleService) DeleteRole(id uint) error {
+	if models.IsBuiltinRoleID(id) {
+		return errors.New("系统内置角色不允许删除")
+	}
 	return utils.DB.Unscoped().Delete(&models.Role{}, id).Error
 }
 

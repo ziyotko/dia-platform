@@ -41,12 +41,14 @@ func (c *AuthController) GetCaptcha(ctx *gin.Context) {
 
 func (c *AuthController) Login(ctx *gin.Context) {
 	var req struct {
-		Email       string `json:"email"`
-		Account     string `json:"account"`
-		Mobile      string `json:"mobile"`
-		Password    string `json:"password" binding:"required"`
-		CaptchaID   string `json:"captcha_id" binding:"required"`
-		CaptchaCode string `json:"captcha_code" binding:"required"`
+		Email    string `json:"email"`
+		Account  string `json:"account"`
+		Mobile   string `json:"mobile"`
+		Password string `json:"password" binding:"required"`
+		// 验证码开关由系统设置（captchaEnabled）决定，关闭时前端不展示验证码，
+		// 故此处不再强制必填，由 service 根据设置决定是否校验。
+		CaptchaID   string `json:"captcha_id"`
+		CaptchaCode string `json:"captcha_code"`
 	}
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {

@@ -16,7 +16,9 @@ export interface ArticleForm {
   tagIds: number[]
   summary: string
   content: string
-  status: number
+  // 发布状态与审核状态由后端维护（发布/下线走 updateArticleStatus，审核走审核流程），
+  // 提交时无需携带，后端也会忽略这两个字段。
+  status?: number
   auditStatus?: number
   isTop: number
   isBold: number

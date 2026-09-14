@@ -87,7 +87,14 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 		pageSize = 10
 	}
 
-	articles, total, err := c.articleService.GetArticles(title, categoryID, tagID, columnID, status, auditStatus, articleType, author, source, page, pageSize)
+	// 非管理员只能看到自己的文章（“内容作者”角色仅限自有内容；审核人通过「待审核」页/详情接口查看待审文章）
+	authorCodeScope := ""
+	currentUserID := ctx.GetUint("userID")
+	if !models.HasAdminRoleIDs(c.userService.MustGetUserRoleIds(currentUserID)) {
+		authorCodeScope = strconv.FormatUint(uint64(currentUserID), 10)
+	}
+
+	articles, total, err := c.articleService.GetArticles(title, categoryID, tagID, columnID, status, auditStatus, articleType, author, authorCodeScope, source, page, pageSize)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取文章列表失败"))
 		return
@@ -230,6 +237,21 @@ func (c *ArticleController) GetArticleByID(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取文章失败"))
 		return
+	}
+
+	// 可见性：管理员/作者本人/该文章存在待我审批的栏目时可以查看正文
+	userID := ctx.GetUint("userID")
+	if !models.HasAdminRoleIDs(c.userService.MustGetUserRoleIds(userID)) &&
+		strconv.FormatUint(uint64(userID), 10) != article.AuthorCode {
+		allowed, checkErr := c.articleService.CanApproveAnyColumn(uint(id), userID)
+		if checkErr != nil {
+			ctx.JSON(http.StatusOK, utils.Error(1, "获取文章失败"))
+			return
+		}
+		if !allowed {
+			ctx.JSON(http.StatusOK, utils.Error(1, "无权查看该文章"))
+			return
+		}
 	}
 
 	categoryIds := make([]uint, 0, len(article.Categories))
@@ -483,7 +505,7 @@ func (c *ArticleController) AuditArticle(ctx *gin.Context) {
 		}
 		err = c.articleService.StartArticleAudit(uint(id))
 	case 2:
-		// 完成审核：仅管理员
+		// 完成审核：仅管理员（服务层会校验所有栏目审核均已通过）
 		roleIds, _ := c.userService.GetUserRoleIds(userID)
 		if !models.HasAdminRoleIDs(roleIds) {
 			ctx.JSON(http.StatusOK, utils.Error(1, "无权限执行该操作"))
@@ -491,13 +513,10 @@ func (c *ArticleController) AuditArticle(ctx *gin.Context) {
 		}
 		err = c.articleService.CompleteArticleAudit(uint(id))
 	default:
-		// 直接设置审核状态：仅管理员
-		roleIds, _ := c.userService.GetUserRoleIds(userID)
-		if !models.HasAdminRoleIDs(roleIds) {
-			ctx.JSON(http.StatusOK, utils.Error(1, "无权限执行该操作"))
-			return
-		}
-		err = c.articleService.UpdateAuditStatus(uint(id), req.AuditStatus)
+		// 审核状态只能通过「提交审核(1)」与「完成审核(2)」两个动作，或撤回/重新提交专用接口变更，
+		// 不再允许任意设置 audit_status（旧实现可写入任意值且不维护审核记录）。
+		ctx.JSON(http.StatusOK, utils.Error(1, "不支持的审核操作，auditStatus 仅支持 1=提交审核、2=完成审核"))
+		return
 	}
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("审核文章失败", err)))

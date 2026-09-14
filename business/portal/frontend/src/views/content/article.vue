@@ -2273,8 +2273,7 @@ const handleSubmit = async () => {
       tagIds: form.tagIds,
       summary: form.summary,
       content: noReferrerContent(form.content),
-      status: form.status,
-      auditStatus: form.auditStatus,
+      // status/auditStatus 不由列表编辑接口变更：发布/下线只能走状态接口或审核流程（后端亦会忽略这两个字段）
       isTop: form.isTop,
       isBold: form.isBold,
       defaultColor: form.defaultColor,
@@ -2682,15 +2681,24 @@ const handleCurrentChange = (val: number) => {
   fetchData()
 }
 
-const checkAutoAudit = () => {
+const checkAutoAudit = async () => {
   const auditArticleId = route.query.auditArticleId
-  if (auditArticleId) {
-    const row = tableData.value.find((item: any) => String(item.id) === String(auditArticleId))
-    if (row) {
-      handleShowAuditFlow(row)
+  if (!auditArticleId) return
+  let row = tableData.value.find((item: any) => String(item.id) === String(auditArticleId))
+  if (!row) {
+    // 列表按归属过滤后，审核人看不到他人文章的表格行；直接按 ID 拉详情构造最小行，
+    // 保证从「待审核」页/仪表盘跳转过来仍能打开审核流程弹窗（后端仅对作者/管理员/可审人放行）。
+    try {
+      const res: any = await getArticleByID(Number(auditArticleId))
+      row = res.data
+    } catch {
+      ElMessage.warning('无法打开该文章的审核流程，可能没有权限或文章不存在')
     }
-    router.replace({ path: '/content/article', query: {} })
   }
+  if (row) {
+    await handleShowAuditFlow(row)
+  }
+  router.replace({ path: '/content/article', query: {} })
 }
 
 onMounted(() => {

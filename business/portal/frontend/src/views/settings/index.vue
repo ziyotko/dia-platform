@@ -47,6 +47,10 @@
 
         <el-tab-pane label="安全设置" name="security">
           <el-form :model="securityForm" label-width="160px" class="settings-form">
+            <el-form-item label="登录验证码">
+              <el-switch v-model="securityForm.captchaEnabled" />
+              <span class="form-tip">关闭后登录页不再显示验证码输入框</span>
+            </el-form-item>
             <el-form-item label="登录失败锁定">
               <el-switch v-model="securityForm.lockEnabled" />
             </el-form-item>
@@ -333,6 +337,12 @@ onMounted(() => {
   .settings-form {
     max-width: 600px;
     padding: 20px 0;
+
+    .form-tip {
+      margin-left: 12px;
+      color: #909399;
+      font-size: 12px;
+    }
   }
 
   .logo-uploader {

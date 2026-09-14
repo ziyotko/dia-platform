@@ -62,20 +62,22 @@ func (c *SettingsController) GetPublicSiteInfo(ctx *gin.Context) {
 	settings, err := c.settingsService.GetSettings()
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Success("获取成功", gin.H{
-			"siteName":  "门户网站管理后台",
-			"siteUrl":   "",
-			"logo":      "",
-			"icp":       "",
-			"copyright": "门户网站管理系统 版权所有",
+			"siteName":       "门户网站管理后台",
+			"siteUrl":        "",
+			"logo":           "",
+			"icp":            "",
+			"copyright":      "门户网站管理系统 版权所有",
+			"captchaEnabled": true,
 		}))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("获取成功", gin.H{
-		"siteName":  settings.SiteName,
-		"siteUrl":   settings.SiteUrl,
-		"logo":      settings.Logo,
-		"icp":       settings.Icp,
-		"copyright": settings.Copyright,
+		"siteName":       settings.SiteName,
+		"siteUrl":        settings.SiteUrl,
+		"logo":           settings.Logo,
+		"icp":            settings.Icp,
+		"copyright":      settings.Copyright,
+		"captchaEnabled": settings.CaptchaEnabled,
 	}))
 }
 

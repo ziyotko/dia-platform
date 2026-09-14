@@ -10,9 +10,16 @@ import (
 
 // 系统内置角色 ID（与 seed.go 默认角色、前端 src/utils/permission.ts 保持一致）
 const (
-	RoleIDSuperAdmin = 1 // 超级管理员
-	RoleIDAdmin      = 2 // 普通管理员
+	RoleIDSuperAdmin      = 1 // 超级管理员
+	RoleIDAdmin           = 2 // 普通管理员
+	RoleIDContentReviewer = 3 // 内容审核
+	RoleIDContentAuthor   = 4 // 内容作者
 )
+
+// IsBuiltinRoleID 判断是否系统内置角色（ID 1-4）。内置角色由启动种子维护，不允许改名或删除。
+func IsBuiltinRoleID(id uint) bool {
+	return id >= RoleIDSuperAdmin && id <= RoleIDContentAuthor
+}
 
 // IsAdminRoleID 判断单个角色 ID 是否属于管理员角色。
 func IsAdminRoleID(id int) bool {
