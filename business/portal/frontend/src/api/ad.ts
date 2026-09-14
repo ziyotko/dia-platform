@@ -17,10 +17,6 @@ export function getAds(params: { name?: string; pageId?: number; columnId?: numb
   return request.get('/ads', { params })
 }
 
-export function getAdByID(id: number) {
-  return request.get(`/ads/${id}`)
-}
-
 export function createAd(data: AdForm) {
   return request.post('/ads', data)
 }

@@ -91,19 +91,6 @@
           </div>
         </el-card>
       </el-col>
-            <el-col :xs="24" :sm="12" :md="8" :lg="4">
-        <el-card shadow="hover" class="stat-card">
-          <div class="stat-content">
-            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
-              <el-icon size="28"><Collection /></el-icon>
-            </div>
-            <div class="stat-info">
-              <div class="stat-value">{{ statData.topicLastTime }}</div>
-              <div class="stat-label">专题页最后静态化时间</div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
     </el-row>
 
     <!-- 批量操作 / 单页操作 -->
@@ -752,7 +739,6 @@ const statData = reactive({
   lastTime: '-',
   homeLastTime: '-',
   columnLastTime: '-',
-  topicLastTime: '-',
   detailLastTime: '-'
 })
 
@@ -766,7 +752,6 @@ const fetchStaticStat = async () => {
       statData.lastTime = formatShortTime(d.site)
       statData.homeLastTime = formatShortTime(d.home)
       statData.columnLastTime = formatShortTime(d.column)
-      statData.topicLastTime = formatShortTime(d.topic)
       statData.detailLastTime = formatShortTime(d.detail)
     }
   } catch (error) {
@@ -806,25 +791,6 @@ const topicPagedList = computed(() => {
   const end = start + queryForm.pageSize
   return topicList.value.slice(start, end)
 })
-
-const pageList = ref<any[]>([
-  // 首页
-  { id: 1, name: '网站首页', path: '/', type: '首页', fileSize: '32 KB', generating: false },
-  // 栏目页
-  { id: 2, name: '关于我们', path: '/about', type: '单页', fileSize: '18 KB', generating: false },
-  { id: 3, name: '新闻中心', path: '/news', type: '列表', fileSize: '45 KB', generating: false },
-  { id: 4, name: '产品分类-电子产品', path: '/category/electronics', type: '分类', fileSize: '28 KB', generating: false },
-  { id: 5, name: '产品分类-家居用品', path: '/category/home', type: '分类', fileSize: '-', generating: false },
-  { id: 8, name: '标签-Vue', path: '/tag/vue', type: '标签', fileSize: '-', generating: false },
-  { id: 9, name: '标签-Go', path: '/tag/go', type: '标签', fileSize: '22 KB', generating: false },
-  { id: 10, name: '联系我们', path: '/contact', type: '单页', fileSize: '15 KB', generating: false },
-  // 详情页
-  { id: 6, name: '文章-2026年行业趋势分析', path: '/article/1001', type: '文章', fileSize: '52 KB', generating: false },
-  { id: 7, name: '文章-新技术应用案例', path: '/article/1002', type: '文章', fileSize: '38 KB', generating: false },
-  // 专题页
-  { id: 11, name: '年中大促专题', path: '/topic/2026-mid', type: '专题', fileSize: '48 KB', generating: false },
-  { id: 12, name: '品牌故事专题', path: '/topic/brand', type: '专题', fileSize: '35 KB', generating: false }
-])
 
 watch(activeTab, () => {
   queryForm.page = 1
@@ -913,14 +879,6 @@ const fetchPageList = async () => {
     } else if (activeTab.value === 'topic') {
       const res: any = await getStaticPages({ pageType: 'special' })
       topicList.value = res.data || []
-    } else {
-      const res: any = await getArticleColumnPublishes({
-        page: queryForm.page,
-        pageSize: queryForm.pageSize
-      })
-      if (res.data) {
-        pageList.value = res.data.list || []
-      }
     }
   } catch (error) {
     ElMessage.error('获取静态化页面失败')

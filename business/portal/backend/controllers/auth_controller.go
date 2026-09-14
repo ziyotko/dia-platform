@@ -204,7 +204,7 @@ func (c *AuthController) ChangePassword(ctx *gin.Context) {
 		return
 	}
 
-	if len(req.NewPassword) < settings.MinPasswordLength {
+	if len([]rune(req.NewPassword)) < settings.MinPasswordLength {
 		ctx.JSON(http.StatusOK, utils.Error(1, fmt.Sprintf("密码长度不能少于%d位", settings.MinPasswordLength)))
 		return
 	}

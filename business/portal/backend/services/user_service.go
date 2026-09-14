@@ -166,6 +166,8 @@ func (s *UserService) CreateUser(username, account, email, password, phone strin
 	if password == "" {
 		// 未指定密码时生成随机强密码，由调用方展示一次，避免固定弱默认密码
 		password = utils.GenerateRandomPassword(12)
+	} else if err := s.validatePasswordLength(password); err != nil {
+		return "", err
 	}
 
 	user := &models.User{
@@ -322,6 +324,9 @@ func (s *UserService) UpdateUser(id uint, username, account, email, password, ph
 
 		// 密码需显式做 SM3 加盐哈希后再入库：map 更新不会触发模型 BeforeUpdate 钩子（否则会写入明文）
 		if password != "" {
+			if err := s.validatePasswordLength(password); err != nil {
+				return err
+			}
 			updates["password"] = utils.SM3HashPassword(password)
 		}
 	}
@@ -409,6 +414,24 @@ func (s *UserService) ChangePassword(id uint, oldPassword, newPassword string) e
 	}
 	hashedPassword := utils.SM3HashPassword(newPassword)
 	return utils.DB.Model(&models.User{}).Where("id = ?", id).Update("password", hashedPassword).Error
+}
+
+// validatePasswordLength 按系统设置（minPasswordLength，默认 8）校验密码长度；空密码表示不修改，直接放行。
+// 在管理员重置密码与手动创建用户时调用，与「个人中心-修改密码」保持同一口径。
+func (s *UserService) validatePasswordLength(password string) error {
+	if password == "" {
+		return nil
+	}
+	settingsService := SettingsService{}
+	settings, err := settingsService.GetMinPasswordLengthSettings()
+	if err != nil || settings == nil || settings.MinPasswordLength <= 0 {
+		// 设置不可用时不做额外限制，避免阻断正常操作
+		return nil
+	}
+	if len([]rune(password)) < settings.MinPasswordLength {
+		return fmt.Errorf("密码长度不能少于%d位", settings.MinPasswordLength)
+	}
+	return nil
 }
 
 func (s *UserService) GetUserRoleIds(userId uint) ([]int, error) {

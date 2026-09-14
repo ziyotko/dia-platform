@@ -117,7 +117,3 @@ func (s *ColumnService) DeleteColumn(id uint) error {
 	}
 	return utils.DB.Unscoped().Delete(&column).Error
 }
-
-func (s *ColumnService) DeleteColumnsByPageID(pageID uint) error {
-	return utils.DB.Where("page_id = ?", pageID).Unscoped().Delete(&models.Column{}).Error
-}

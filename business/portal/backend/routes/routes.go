@@ -153,7 +153,6 @@ func SetupRoutes(router *gin.Engine) {
 		// 用户管理
 		admin.POST("/users", userController.CreateUser)
 		admin.POST("/users/import", userController.ImportUsers)
-		admin.GET("/users/:id", userController.GetUserByID)
 		admin.PUT("/users/:id", userController.UpdateUser)
 		admin.GET("/users/check-unique", userController.CheckFieldUnique)
 		admin.DELETE("/users/:id", userController.DeleteUser)

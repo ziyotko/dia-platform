@@ -18,6 +18,8 @@ export interface UserForm {
   roleIds: number[]
   orgIds?: number[]
   sex?: number
+  /** 仅更新时使用：留空/不传表示不修改密码 */
+  password?: string
 }
 
 export function getUserList(params: UserQuery) {

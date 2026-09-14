@@ -22,14 +22,6 @@ export interface Settings {
   ssl: boolean
   staticPath: string
   homeGray: boolean
-  homeStaticTimeEnabled: boolean
-  homeStaticTime: string
-  columnStaticTimeEnabled: boolean
-  columnStaticTime: string
-  specialStaticTimeEnabled: boolean
-  specialStaticTime: string
-  detailStaticTimeEnabled: boolean
-  detailStaticTime: string
   staticProgramAddr: string
   staticProgramTokenName: string
 }
@@ -40,6 +32,7 @@ export interface SiteInfo {
   logo: string
   icp: string
   copyright: string
+  captchaEnabled?: boolean
 }
 
 export function getMinPasswordLengthSettings() {

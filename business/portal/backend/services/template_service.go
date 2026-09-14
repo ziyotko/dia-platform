@@ -72,14 +72,6 @@ func (s *TemplateService) GetTemplateList(page, pageSize int, name, ttype string
 	}, nil
 }
 
-func (s *TemplateService) GetTemplateByID(id uint) (*models.Template, error) {
-	var template models.Template
-	if err := utils.DB.First(&template, id).Error; err != nil {
-		return nil, err
-	}
-	return &template, nil
-}
-
 func (s *TemplateService) CreateTemplate(template *models.Template) error {
 	return utils.DB.Create(template).Error
 }

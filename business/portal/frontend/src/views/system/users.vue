@@ -153,6 +153,15 @@
             <el-radio :value="0">禁用</el-radio>
           </el-radio-group>
         </el-form-item>
+        <el-form-item v-if="isEditing && !isReadonly" label="重置密码" prop="password">
+          <el-input
+            v-model="form.password"
+            type="password"
+            show-password
+            clearable
+            :placeholder="`留空则不修改，至少 ${minPasswordLength} 位`"
+          />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">关闭</el-button>
@@ -240,6 +249,12 @@ import { getUserList, createUser, updateUser, deleteUser, updateUserStatus, impo
 import { getAllRoles } from '@/api/role'
 import { getOrgList, type OrgItem } from '@/api/org'
 import { useUserStore } from '@/stores/user'
+import { useAppStore } from '@/stores/app'
+
+const appStore = useAppStore()
+
+// 密码最小长度来自系统设置（与后端 minPasswordLength 校验保持一致）
+const minPasswordLength = computed(() => appStore.minPasswordLength || 8)
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -297,7 +312,9 @@ const form = reactive({
   phone: '',
   status: 1,
   roleIds: [] as number[],
-  sex: undefined as number | undefined
+  sex: undefined as number | undefined,
+  // 重置密码：仅编辑时可用，留空表示不修改
+  password: ''
 })
 
 const checkUnique = (field: string, label: string) => {
@@ -335,7 +352,24 @@ const formRules = {
     { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' },
     { validator: checkUnique('phone', '手机号'), trigger: 'blur' }
   ],
-  roleIds: [{ required: true, message: '请选择角色', trigger: 'change', type: 'array' }]
+  roleIds: [{ required: true, message: '请选择角色', trigger: 'change', type: 'array' }],
+  password: [
+    {
+      // 留空 = 不修改密码；填写时校验最小长度（与后端 minPasswordLength 设置一致）
+      validator: (_rule: any, value: any, callback: any) => {
+        if (!value) {
+          callback()
+          return
+        }
+        if (String(value).length < minPasswordLength.value) {
+          callback(new Error(`密码长度不能少于 ${minPasswordLength.value} 位`))
+          return
+        }
+        callback()
+      },
+      trigger: 'blur'
+    }
+  ]
 }
 
 const tableData = ref<any[]>([])
@@ -438,7 +472,8 @@ const handleEdit = (row: any) => {
     phone: row.phone,
     status: row.status,
     roleIds: row.roleIds || [],
-    sex: row.sex
+    sex: row.sex,
+    password: ''
   })
   dialogVisible.value = true
 }
@@ -487,7 +522,9 @@ const handleSubmit = async () => {
         status: form.status,
         roleIds: form.roleIds,
         orgIds: form.orgIds,
-        sex: form.sex
+        sex: form.sex,
+        // 留空表示不修改密码（后端仅在非空时写入）
+        password: form.password || undefined
       })
       ElMessage.success('修改成功')
     } else {
@@ -527,6 +564,7 @@ const resetForm = () => {
   form.status = 1
   form.roleIds = []
   form.sex = undefined
+  form.password = ''
 }
 
 const handleImport = () => {

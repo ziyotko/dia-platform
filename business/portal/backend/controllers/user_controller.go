@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -354,68 +353,4 @@ func (c *UserController) CheckFieldUnique(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("", gin.H{
 		"unique": unique,
 	}))
-}
-
-func (c *UserController) GetUserByID(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "用户ID无效"))
-		return
-	}
-
-	user, err := c.userService.GetUserByID(uint(id))
-	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, utils.SafeErrText(err)))
-		return
-	}
-
-	item := UserListItem{
-		ID:        user.ID,
-		Username:  user.Username,
-		Account:   user.Account,
-		Email:     user.Email,
-		Phone:     user.Mobile,
-		Status:    user.Status,
-		CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
-	}
-
-	roleIds, err := c.userService.GetUserRoleIds(user.ID)
-	if err == nil {
-		item.RoleIds = roleIds
-	} else {
-		item.RoleIds = []int{}
-	}
-
-	orgs, err := c.orgService.GetOrganizationsByUserId(user.ID)
-	if err == nil {
-		item.OrgIds = make([]uint, 0, len(orgs))
-		item.OrgNames = make([]string, 0, len(orgs))
-		for _, org := range orgs {
-			item.OrgIds = append(item.OrgIds, org.ID)
-			item.OrgNames = append(item.OrgNames, org.Name)
-		}
-	}
-
-	ctx.JSON(http.StatusOK, utils.Success("获取用户信息成功", gin.H{"user": item}))
-}
-
-func (c *UserController) formatCreatedAt(t time.Time) string {
-	return t.Format("2006-01-02 15:04:05")
-}
-
-func (c *UserController) convertUsers(users []models.User) []UserListItem {
-	list := make([]UserListItem, len(users))
-	for i, user := range users {
-		list[i] = UserListItem{
-			ID:        user.ID,
-			Username:  user.Username,
-			Account:   user.Account,
-			Email:     user.Email,
-			Phone:     user.Mobile,
-			Status:    user.Status,
-			CreatedAt: c.formatCreatedAt(user.CreatedAt),
-		}
-	}
-	return list
 }

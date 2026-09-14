@@ -22,12 +22,13 @@ type StaticLogListResult struct {
 	List  []models.StaticLog `json:"list"`
 }
 
-// StaticLatestTimes 各类型页面最后一次静态化成功时间（读取静态化日志最新成功记录）
+// StaticLatestTimes 各类型页面最后一次静态化成功时间（读取静态化日志最新成功记录）。
+// 注意：专题页静态化整链未实现（外部静态化程序无对应接口），故不再提供 topic 字段，
+// 避免前端固定显示空的「专题页最后静态化时间」。
 type StaticLatestTimes struct {
 	Site       string `json:"site"`       // 全站最后静态化时间
 	Home       string `json:"home"`       // 首页最后静态化时间
 	Column     string `json:"column"`     // 栏目页最后静态化时间
-	Topic      string `json:"topic"`      // 专题页最后静态化时间
 	Detail     string `json:"detail"`     // 详情页最后静态化时间
 	TodayFiles int    `json:"todayFiles"` // 今日静态化成功生成文件数
 }
@@ -189,9 +190,6 @@ func (s *StaticLogService) GetLatestSuccessTimes() (*StaticLatestTimes, error) {
 		return nil, err
 	}
 	if result.Column, err = s.latestSuccessTime("生成栏目页任务完成"); err != nil {
-		return nil, err
-	}
-	if result.Topic, err = s.latestSuccessTime("生成专题页任务完成"); err != nil {
 		return nil, err
 	}
 	if result.Detail, err = s.latestSuccessTime("生成详情页任务完成"); err != nil {

@@ -38,65 +38,9 @@
           type="info"
           :closable="false"
           show-icon
-          title="「固定静态化时间」暂未启用：后端尚无定时调度器读取这些配置，为避免误以为已生效，相关设置项暂不可操作。"
+          title="「固定静态化时间」（定时自动静态化）尚未实现：后端没有定时调度器，外部静态化程序也未提供对应接口，因此本页暂不提供该项配置。"
           style="margin-bottom: 18px"
         />
-
-        <el-form-item label="设置首页固定静态化时间">
-          <div class="time-row">
-            <el-switch v-model="form.homeStaticTimeEnabled" :disabled="!staticTimeSchedulerEnabled" />
-            <el-time-picker
-              v-model="form.homeStaticTime"
-              value-format="HH:mm"
-              format="HH:mm"
-              placeholder="请选择时间"
-              :disabled="!staticTimeSchedulerEnabled"
-              class="time-picker"
-            />
-          </div>
-        </el-form-item>
-
-        <el-form-item label="设置栏目页固定静态化时间">
-          <div class="time-row">
-            <el-switch v-model="form.columnStaticTimeEnabled" :disabled="!staticTimeSchedulerEnabled" />
-            <el-time-picker
-              v-model="form.columnStaticTime"
-              value-format="HH:mm"
-              format="HH:mm"
-              placeholder="请选择时间"
-              :disabled="!staticTimeSchedulerEnabled"
-              class="time-picker"
-            />
-          </div>
-        </el-form-item>
-
-        <el-form-item label="设置专题页固定静态化时间">
-          <div class="time-row">
-            <el-switch v-model="form.specialStaticTimeEnabled" :disabled="!staticTimeSchedulerEnabled" />
-            <el-time-picker
-              v-model="form.specialStaticTime"
-              value-format="HH:mm"
-              format="HH:mm"
-              placeholder="请选择时间"
-              :disabled="!staticTimeSchedulerEnabled"
-              class="time-picker"
-            />
-          </div>
-        </el-form-item>
-
-        <el-form-item label="设置详情页固定静态化时间">
-          <div class="time-row">
-            <el-switch v-model="form.detailStaticTimeEnabled" :disabled="!staticTimeSchedulerEnabled" />
-            <el-time-picker
-              v-model="form.detailStaticTime"
-              value-format="HH:mm"
-              format="HH:mm"
-              placeholder="请选择时间"
-              :disabled="!staticTimeSchedulerEnabled"
-              class="time-picker"
-            />
-          </div>
-        </el-form-item>
 
         <el-form-item>
           <el-button type="primary" :loading="loading" @click="handleSave">保存设置</el-button>
@@ -114,24 +58,11 @@ import type { Settings } from '@/api/settings'
 
 const loading = ref(false)
 
-// 「固定静态化时间」调度器暂未实现（后端无任何定时任务读取这些配置）。
-// 暂时置为 false，禁用相关设置项；待调度器实现后改回 true 即可恢复。
-const staticTimeSchedulerEnabled = false
-
 const form = reactive({
   staticPath: '',
   staticProgramAddr: '',
   staticProgramTokenName: '',
-  homeGray: false,
-  // 固定静态化时间（调度器未实现，仅作受控占位，始终禁用）
-  homeStaticTimeEnabled: false,
-  homeStaticTime: '',
-  columnStaticTimeEnabled: false,
-  columnStaticTime: '',
-  specialStaticTimeEnabled: false,
-  specialStaticTime: '',
-  detailStaticTimeEnabled: false,
-  detailStaticTime: ''
+  homeGray: false
 })
 
 const loadSettings = async () => {
@@ -142,7 +73,6 @@ const loadSettings = async () => {
     form.staticProgramAddr = data.staticProgramAddr || ''
     form.staticProgramTokenName = data.staticProgramTokenName || ''
     form.homeGray = data.homeGray ?? false
-    // 固定静态化时间调度器暂未实现，不读取/展示这些死配置（保持默认关闭）
   } catch {
     ElMessage.error('获取静态化设置失败')
   }
@@ -156,7 +86,6 @@ const handleSave = async () => {
       staticProgramAddr: form.staticProgramAddr,
       staticProgramTokenName: form.staticProgramTokenName,
       homeGray: form.homeGray
-      // 固定静态化时间调度器暂未实现，不提交这些死配置
     })
     ElMessage.success('保存成功')
   } catch {

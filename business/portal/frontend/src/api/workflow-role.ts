@@ -30,10 +30,6 @@ export function getWorkflowRoleOptions() {
   return request.get('/workflow-role-options')
 }
 
-export function getWorkflowRoleById(id: number) {
-  return request.get(`/workflow-roles/${id}`)
-}
-
 export function createWorkflowRole(data: WorkflowRoleForm) {
   return request.post('/workflow-roles', data)
 }

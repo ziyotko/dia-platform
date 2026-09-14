@@ -1024,7 +1024,10 @@ func (s *ArticleService) GetArticleColumnPublishes(articleTitle string, columnID
 	return items, total, err
 }
 
-// GetMyAuditArticles 获取当前用户需要审核的文章列表
+// GetMyAuditArticles 获取当前用户需要审核的文章列表。
+// 语义说明：不排除「作者＝审批人」的情况——审批人由流程节点显式指定（user/role）或按部门负责人解析（dept_head），
+// 若作者本人正好是节点审批人（例如部门负责人提交自己的文章），该文章应出现在其待办中；
+// 是否能审批由 canUserApproveNode 统一判定，此处不再做额外过滤。
 func (s *ArticleService) GetMyAuditArticles(userID uint, page, pageSize int) ([]models.Article, int64, error) {
 	type auditItem struct {
 		ArticleID    uint
@@ -1038,7 +1041,6 @@ func (s *ArticleService) GetMyAuditArticles(userID uint, page, pageSize int) ([]
 		Joins("JOIN article ON article.id = aca.article_id").
 		Joins("JOIN workflow_node wn ON wn.id = aca.current_node_id").
 		Where("aca.status = ?", 0).
-		//Where("article.author_code != ?", strconv.FormatUint(uint64(userID), 10)).
 		Scan(&items).Error
 	if err != nil {
 		return nil, 0, err

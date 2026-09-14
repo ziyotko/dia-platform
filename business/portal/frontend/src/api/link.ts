@@ -16,9 +16,6 @@ export function getLinks(params: { name?: string; pageId?: number; columnId?: nu
   return request.get('/links', { params })
 }
 
-export function getLinkByID(id: number) {
-  return request.get(`/links/${id}`)
-}
 
 export function createLink(data: LinkForm) {
   return request.post('/links', data)

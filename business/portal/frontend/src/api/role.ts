@@ -23,10 +23,6 @@ export function getAllRoles() {
   return request.get('/roles/all')
 }
 
-export function getRoleById(id: number) {
-  return request.get(`/roles/${id}`)
-}
-
 export function createRole(data: RoleForm) {
   return request.post('/roles', data)
 }

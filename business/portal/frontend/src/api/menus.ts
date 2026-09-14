@@ -33,10 +33,6 @@ export function getMenuList() {
   return request.get('/menus')
 }
 
-export function getMenuTree() {
-  return request.get('/menus/tree')
-}
-
 export function getUserMenus() {
   return request.get('/menus/user')
 }

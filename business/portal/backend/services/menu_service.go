@@ -93,14 +93,6 @@ func (s *MenuService) GetUserMenus(userID uint) ([]models.Menu, error) {
 	return buildMenuTree(filtered, 0), nil
 }
 
-func (s *MenuService) GetMenuByID(id uint) (*models.Menu, error) {
-	var menu models.Menu
-	if err := utils.DB.First(&menu, id).Error; err != nil {
-		return nil, errors.New("菜单不存在")
-	}
-	return &menu, nil
-}
-
 func (s *MenuService) CreateMenu(menu *models.Menu) error {
 	return utils.DB.Create(menu).Error
 }
