@@ -71,24 +71,21 @@ type CategoryArticleStat struct {
 
 func (s *CategoryService) GetCategoryArticleStats() ([]CategoryArticleStat, int64, error) {
 	var results []CategoryArticleStat
-	var total int64
 
-	// 统计口径与文章列表/作者统计一致：只统计已发布（status=1）且未删除的文章；
-	// 用 INNER JOIN article 保留原有“只出现有文章的分类”的语义。
-	err := utils.DB.Model(&models.ArticleCategory{}).
-		Select("article_category.category_id as category_id, category.name as category_name, COUNT(DISTINCT article.id) as count").
-		Joins("LEFT JOIN category ON article_category.category_id = category.id").
-		Joins("JOIN article ON article.id = article_category.article_id AND article.status = ? AND article.deleted_at IS NULL", models.ArticleStatusPublished).
-		Group("article_category.category_id, category.name").
-		Order("count DESC, article_category.category_id ASC").
+	// 口径与标签统计（tag_service.GetTagArticleStats）保持一致：
+	//   - LEFT JOIN：未被引用/无已发布文章的分类仍以 0 出现，不从统计中消失；
+	//   - 只统计已发布（status=1）且未删除的文章；
+	//   - total 为统计条目数（分类个数），与 /tags/stats 一致。
+	err := utils.DB.Model(&models.Category{}).
+		Select("category.id as category_id, category.name as category_name, COUNT(article.id) as count").
+		Joins("LEFT JOIN article_category ON article_category.category_id = category.id").
+		Joins("LEFT JOIN article ON article.id = article_category.article_id AND article.status = ? AND article.deleted_at IS NULL", models.ArticleStatusPublished).
+		Group("category.id, category.name").
+		Order("count DESC, category.id ASC").
 		Scan(&results).Error
 	if err != nil {
 		return nil, 0, err
 	}
 
-	for _, r := range results {
-		total += r.Count
-	}
-
-	return results, total, nil
+	return results, int64(len(results)), nil
 }

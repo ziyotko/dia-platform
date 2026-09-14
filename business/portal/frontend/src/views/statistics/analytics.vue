@@ -48,6 +48,9 @@
           <span>文章数据趋势</span>
           <div class="header-extra">
             <span class="total-info">点赞 / 分享 / 浏览 {{ periodText }}数据</span>
+            <el-select v-if="period === 'year'" v-model="year" size="small" class="year-select">
+              <el-option v-for="y in yearOptions" :key="y" :label="`${y}年`" :value="y" />
+            </el-select>
             <el-radio-group v-model="period" size="small">
               <el-radio-button value="week">本周</el-radio-button>
               <el-radio-button value="month">本月</el-radio-button>
@@ -75,6 +78,16 @@ const chartRef = ref<HTMLDivElement | null>(null)
 let chartInstance: ECharts | null = null
 
 const period = ref('week')
+// 年份仅在 period=year 时生效（与仪表盘趋势一致）
+const currentYear = new Date().getFullYear()
+const year = ref(currentYear)
+const yearOptions = computed(() => {
+  const years: number[] = []
+  for (let y = currentYear; y >= currentYear - 4; y--) {
+    years.push(y)
+  }
+  return years
+})
 const labels = ref<string[]>([])
 const likeData = ref<number[]>([])
 const shareData = ref<number[]>([])
@@ -98,7 +111,7 @@ const seriesMeta = [
 const fetchData = async () => {
   loading.value = true
   try {
-    const res: any = await getArticleAnalyticsTrend(period.value)
+    const res: any = await getArticleAnalyticsTrend(period.value, period.value === 'year' ? year.value : undefined)
     if (res && res.data) {
       labels.value = res.data.labels || []
       likeData.value = (res.data.like || []).map(Number)
@@ -208,6 +221,12 @@ watch(period, () => {
   fetchData()
 })
 
+watch(year, () => {
+  if (period.value === 'year') {
+    fetchData()
+  }
+})
+
 onMounted(() => {
   fetchData()
   initChart()
@@ -288,6 +307,10 @@ onUnmounted(() => {
       display: flex;
       align-items: center;
       gap: 16px;
+
+      .year-select {
+        width: 100px;
+      }
 
       .total-info {
         font-size: 13px;

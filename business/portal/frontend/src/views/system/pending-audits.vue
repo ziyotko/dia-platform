@@ -56,6 +56,7 @@ import { useRouter } from 'vue-router'
 import { RefreshRight, View } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getMyAuditArticles } from '@/api/dashboard'
+import { canAccessPath } from '@/utils/permission'
 
 const router = useRouter()
 const loading = ref(false)
@@ -87,6 +88,11 @@ const fetchData = async () => {
 }
 
 const handleAudit = (row: any) => {
+  // 审核详情页属于「图文管理」菜单，未授权的用户跳过去只会落到 404，这里直接给出提示
+  if (!canAccessPath('/content/article')) {
+    ElMessage.warning('您没有「图文管理」的访问权限，无法处理审核')
+    return
+  }
   router.push({
     path: '/content/article',
     query: { auditArticleId: String(row.id) }

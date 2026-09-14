@@ -56,7 +56,7 @@
       <el-col :xs="24" :lg="8">
         <el-card shadow="never">
           <div class="quick-links">
-            <div v-for="(item, index) in quickLinks" :key="index" class="quick-item" @click="$router.push(item.path)">
+            <div v-for="(item, index) in visibleQuickLinks" :key="index" class="quick-item" @click="$router.push(item.path)">
               <div class="quick-icon" :style="{ background: item.bg, color: item.color }">
                 <el-icon size="24"><component :is="item.icon" /></el-icon>
               </div>
@@ -178,15 +178,17 @@ import {
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getDashboardStats, getLoginLogs, getVisitTrend, getArticleTrend, getMyAuditArticles } from '@/api/dashboard'
+import { useUserStore } from '@/stores/user'
+import { canAccessPath } from '@/utils/permission'
+
+const userStore = useUserStore()
 
 const router = useRouter()
 
 const stats = reactive({
-  adCount: 0,
   articleCount: 0,
   todayVisit: 0,
   myDraftCount: 0,
-  myPendingAuditCount: 0,
   myArticleCount: 0
 })
 
@@ -194,11 +196,9 @@ const fetchStats = async () => {
   try {
     const res: any = await getDashboardStats()
     if (res && res.data) {
-      stats.adCount = res.data.adCount || 0
       stats.articleCount = res.data.articleCount || 0
       stats.todayVisit = res.data.todayVisit || 0
       stats.myDraftCount = res.data.myDraftCount || 0
-      stats.myPendingAuditCount = res.data.myPendingAuditCount || 0
       stats.myArticleCount = res.data.myArticleCount || 0
     }
   } catch (error) {
@@ -233,6 +233,11 @@ const fetchPendingAudits = async () => {
 }
 
 const handleAuditClick = (item: any) => {
+  // 审核详情页属于「图文管理」菜单，未授权的用户跳过去只会落到 404，这里直接给出提示
+  if (!canAccessPath('/content/article')) {
+    ElMessage.warning('您没有「图文管理」的访问权限，无法在此处理审核')
+    return
+  }
   router.push({
     path: '/content/article',
     query: { auditArticleId: String(item.id) }
@@ -460,9 +465,25 @@ const quickLinks = [
   { name: '用户管理', icon: 'User', path: '/system/users', bg: 'var(--el-color-primary-light-9)', color: 'var(--el-color-primary)' },
   { name: '内容发布', icon: 'EditPen', path: '/content/article', bg: 'var(--el-color-primary-light-9)', color: 'var(--el-color-primary)' },
   { name: '广告管理', icon: 'Promotion', path: '/content/ad', bg: 'var(--el-color-primary-light-9)', color: 'var(--el-color-primary)' },
-  { name: '静态化管理', icon: 'DocumentChecked', path: '/content/static', bg: 'var(--el-color-primary-light-9)', color: 'var(--el-color-primary)' },
+  { name: '静态化管理', icon: 'DocumentChecked', path: '/config/static', bg: 'var(--el-color-primary-light-9)', color: 'var(--el-color-primary)' },
   { name: '系统设置', icon: 'Setting', path: '/settings', bg: 'var(--el-color-primary-light-9)', color: 'var(--el-color-primary)' }
 ]
+
+// 快捷入口按当前用户已授权菜单过滤：动态路由由菜单生成，未授权菜单的路径不存在，
+// 直接 push 会落到 404 页面
+const accessiblePaths = computed(() => {
+  const paths = new Set<string>()
+  const walk = (items: any[]) => {
+    items.forEach((menu) => {
+      if (menu.path) paths.add(menu.path)
+      if (menu.children && menu.children.length > 0) walk(menu.children)
+    })
+  }
+  walk(userStore.menuList || [])
+  return paths
+})
+
+const visibleQuickLinks = computed(() => quickLinks.filter((link) => accessiblePaths.value.has(link.path)))
 
 
 </script>

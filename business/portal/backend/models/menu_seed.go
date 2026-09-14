@@ -49,7 +49,6 @@ var defaultMenus = []menuSeedItem{
 			{Name: "栏目管理", Path: "/content/column", Component: "content/column", Icon: "Grid", Type: "menu", Sort: 6, Status: 1, APIPrefix: "/columns"},
 			{Name: "分类管理", Path: "/content/category", Component: "content/category", Icon: "Folder", Type: "menu", Sort: 7, Status: 1, APIPrefix: "/categories"},
 			{Name: "标签管理", Path: "/content/tag", Component: "content/tag", Icon: "PriceTag", Type: "menu", Sort: 8, Status: 1, APIPrefix: "/tags"},
-			{Name: "静态化管理", Path: "/content/static", Component: "content/static", Icon: "Monitor", Type: "menu", Sort: 9, Status: 1, APIPrefix: staticManagementAPIPrefix},
 		},
 	},
 	{
@@ -81,6 +80,9 @@ var defaultMenus = []menuSeedItem{
 		Name: "基础配置", Path: "/config",
 		Icon: "Setting", Type: "directory", Sort: 4, Status: 1,
 		Children: []menuSeedItem{
+			// 静态化管理属于站点级运维操作（对应接口仅在管理员路由组），故与「静态化设置」同放「基础配置」，
+			// 避免误授予内容角色后出现「菜单可见、页面全报没有授权」
+			{Name: "静态化管理", Path: "/config/static", Component: "content/static", Icon: "Monitor", Type: "menu", Sort: 0, Status: 1, APIPrefix: staticManagementAPIPrefix},
 			{Name: "静态化设置", Path: "/staticization", Component: "staticization/index", Icon: "Cpu", Type: "menu", Sort: 1, Status: 1, APIPrefix: "/settings"},
 			{Name: "系统设置", Path: "/settings", Component: "settings/index", Icon: "Tools", Type: "menu", Sort: 2, Status: 1, APIPrefix: "/settings"},
 		},
@@ -95,6 +97,36 @@ func SeedDefaultMenus() {
 	// 历史版本「静态化管理」只声明了 /static，导致 /static-logs、/static-monitor 不在授权范围内，
 	// 这里对未自定义过该值的环境做一次幂等升级。
 	upgradeMenuAPIPrefix("静态化管理", "/static", staticManagementAPIPrefix)
+	// 历史版本「静态化管理」挂在「内容管理」下（非管理员即使被授权也调不通其接口），迁移到「基础配置」。
+	moveMenuToParent("静态化管理", "内容管理", "基础配置", "/config/static")
+}
+
+// moveMenuToParent 幂等调整内置菜单的归属目录（仅当当前父目录仍为旧目录时），并同步 path。
+func moveMenuToParent(menuName, oldParentName, newParentName, newPath string) {
+	var menu Menu
+	if err := utils.DB.Where("name = ?", menuName).First(&menu).Error; err != nil {
+		return
+	}
+	var oldParent Menu
+	if err := utils.DB.Where("name = ? AND type = ?", oldParentName, "directory").First(&oldParent).Error; err != nil {
+		return
+	}
+	if menu.ParentID != oldParent.ID {
+		return // 已被调整过或使用方自行归类，不覆盖
+	}
+	var newParent Menu
+	if err := utils.DB.Where("name = ? AND type = ?", newParentName, "directory").First(&newParent).Error; err != nil {
+		return
+	}
+	if err := utils.DB.Model(&menu).Updates(map[string]any{
+		"parent_id": newParent.ID,
+		"path":      newPath,
+		"sort":      0, // 与全新安装的默认顺序保持一致（排在新目录首位）
+	}).Error; err != nil {
+		utils.Logger.Warnf("迁移菜单[%s]归属失败: %v", menuName, err)
+		return
+	}
+	utils.Logger.Infof("已迁移菜单[%s]: %s -> %s (path: %s)", menuName, oldParentName, newParentName, newPath)
 }
 
 // upgradeMenuAPIPrefix 幂等升级内置菜单的 api_prefix：仅当当前值仍等于旧默认值时才更新，

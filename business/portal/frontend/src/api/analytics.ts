@@ -10,6 +10,6 @@ export interface ArticleAnalyticsTrend {
   totalVisit: number
 }
 
-export function getArticleAnalyticsTrend(period: string) {
-  return request.get('/analytics/article-trend', { params: { period } })
+export function getArticleAnalyticsTrend(period: string, year?: number) {
+  return request.get('/analytics/article-trend', { params: { period, year } })
 }

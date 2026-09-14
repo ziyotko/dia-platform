@@ -68,7 +68,8 @@ const fetchData = async () => {
     const res: any = await getCategoryArticleStats()
     if (res && res.data) {
       chartData.value = res.data.list || []
-      totalCount.value = res.data.total || 0
+      // total 现在与 /tags/stats 口径一致（= 统计条目数），百分比分母改用已发布文章数合计
+      totalCount.value = chartData.value.reduce((sum: number, item: any) => sum + (item.count || 0), 0)
       nextTick(() => updateChart())
     }
   } catch (error) {

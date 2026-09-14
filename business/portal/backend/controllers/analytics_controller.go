@@ -3,6 +3,7 @@ package controllers
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -35,7 +36,15 @@ func (c *AnalyticsController) GetArticleAnalyticsTrend(ctx *gin.Context) {
 	now := time.Now()
 	loc := now.Location()
 
-	labels, windows, err := buildAnalyticsWindows(period, now, loc)
+	// period=year 时支持按年份查看全年趋势（与仪表盘趋势接口一致），默认当前年
+	year := now.Year()
+	if yStr := ctx.Query("year"); yStr != "" {
+		if y, err := strconv.Atoi(yStr); err == nil && y >= 2000 && y <= 9999 {
+			year = y
+		}
+	}
+
+	labels, windows, err := buildAnalyticsWindows(period, year, now, loc)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "无效的 period 参数"))
 		return
@@ -56,8 +65,8 @@ func (c *AnalyticsController) GetArticleAnalyticsTrend(ctx *gin.Context) {
 	}))
 }
 
-// buildAnalyticsWindows 根据周期构建时间窗口与对应标签
-func buildAnalyticsWindows(period string, now time.Time, loc *time.Location) ([]string, []analyticsWindow, error) {
+// buildAnalyticsWindows 根据周期构建时间窗口与对应标签（year 仅对 period=year 生效）
+func buildAnalyticsWindows(period string, year int, now time.Time, loc *time.Location) ([]string, []analyticsWindow, error) {
 	switch period {
 	case "week":
 		weekday := int(now.Weekday())
@@ -87,7 +96,7 @@ func buildAnalyticsWindows(period string, now time.Time, loc *time.Location) ([]
 		labels := []string{"1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"}
 		windows := make([]analyticsWindow, 12)
 		for i := 1; i <= 12; i++ {
-			start := time.Date(now.Year(), time.Month(i), 1, 0, 0, 0, 0, loc)
+			start := time.Date(year, time.Month(i), 1, 0, 0, 0, 0, loc)
 			windows[i-1] = analyticsWindow{Start: start, End: start.AddDate(0, 1, 0)}
 		}
 		return labels, windows, nil

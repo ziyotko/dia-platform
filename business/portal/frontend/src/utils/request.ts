@@ -237,7 +237,10 @@ request.interceptors.response.use(
       if (res.code === 401) {
         const userStore = useUserStore()
         userStore.logout()
-        window.location.href = '/login'
+        // 跳转到登录页：必须带上部署子路径（VITE_BASE_PATH，如 /caamm/），
+        // 否则在子路径部署下会跳到不存在的一级路径 /login。
+        const base = import.meta.env.BASE_URL || '/'
+        window.location.href = `${base.endsWith('/') ? base : `${base}/`}login`
       }
       return Promise.reject(new Error(res.message || '请求失败'))
     }
