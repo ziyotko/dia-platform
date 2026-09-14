@@ -79,6 +79,7 @@ func SetupRoutes(router *gin.Engine) {
 	member := router.Group(apiPrefix)
 	member.Use(middleware.AuthMiddleware(), middleware.MenuAPIPrefixMiddleware(), middleware.ReplayProtectionMiddleware(), middleware.OperationLog(), ipLimiter.Limit())
 	{
+
 		member.GET("/users", userController.GetUsers)
 		member.GET("/templates", templateController.GetTemplates)
 		// 仪表盘
@@ -191,8 +192,6 @@ func SetupRoutes(router *gin.Engine) {
 		admin.DELETE("/login-logs", logController.ClearLoginLogs)
 		admin.GET("/static-logs", staticLogController.GetLogs)
 		admin.DELETE("/static-logs", staticLogController.ClearLogs)
-		admin.GET("/static-logs/latest-times", staticLogController.GetLatestTimes)
-		admin.GET("/static-monitor", staticMonitorController.GetStaticMonitor)
 
 		// 静态化批量操作任务（代理转发至静态化程序，返回 202 + 任务信息）
 		admin.POST("/static/site", staticJobController.SiteStatic)
@@ -207,8 +206,10 @@ func SetupRoutes(router *gin.Engine) {
 
 		// 系统设置（写操作）
 		admin.PUT("/settings", settingsController.UpdateSettings)
-		admin.GET("/settings", settingsController.GetSettings)
 		admin.POST("/settings/test-email", settingsController.TestEmail)
+		admin.GET("/static-monitor", staticMonitorController.GetStaticMonitor)
+		admin.GET("/settings", settingsController.GetSettings)
+		admin.GET("/static-logs/latest-times", staticLogController.GetLatestTimes)
 
 		// 模板管理
 		admin.POST("/templates", templateController.CreateTemplate)
