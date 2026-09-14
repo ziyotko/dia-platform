@@ -125,6 +125,8 @@ function openDialog(row?: any) {
 }
 
 async function save() {
+  if (!form.title) return ElMessage.warning('请填写批次名称')
+  if (!form.categoryId) return ElMessage.warning('请选择项目类别')
   const payload = {
     title: form.title, categoryId: Number(form.categoryId), applyStart: form.applyStart || null,
     applyEnd: form.applyEnd || null, reviewDeadline: form.reviewDeadline || null,
@@ -137,7 +139,16 @@ async function save() {
   fetch()
 }
 
-async function publish(row: any) { await adminApi.publishBatch(row.id); ElMessage.success('已发布'); fetch() }
+// A batch can only be published with a complete application window; the backend
+// enforces the same rule.
+async function publish(row: any) {
+  if (!row.applyStart || !row.applyEnd) {
+    return ElMessage.warning('请先设置申报开始和截止时间')
+  }
+  await adminApi.publishBatch(row.id)
+  ElMessage.success('已发布')
+  fetch()
+}
 async function startReview(row: any) { await adminApi.startReview(row.id); ElMessage.success('已进入评审阶段'); fetch() }
 async function close(row: any) { await adminApi.closeBatch(row.id); ElMessage.success('已结束'); fetch() }
 

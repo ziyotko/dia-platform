@@ -88,6 +88,9 @@ func (s *UserService) CreateAdmin(a *models.Admin) error {
 	if a.Username == "" || a.Password == "" || a.RealName == "" || a.RoleCode == "" {
 		return errors.New("请填写完整信息")
 	}
+	if !validRole(a.RoleCode) {
+		return errors.New("角色不存在")
+	}
 	var count int64
 	db.DB.Model(&models.Admin{}).Where("username = ?", a.Username).Count(&count)
 	if count > 0 {
@@ -99,8 +102,24 @@ func (s *UserService) CreateAdmin(a *models.Admin) error {
 	return db.DB.Create(a).Error
 }
 
+// validRole keeps role_code inside the three roles the permission table knows
+// about; anything else would log in with no permissions at all.
+func validRole(code string) bool {
+	switch code {
+	case models.RoleSuperAdmin, models.RoleManager, models.RoleReviewer:
+		return true
+	}
+	return false
+}
+
 func (s *UserService) UpdateAdmin(id uint64, updates map[string]interface{}) error {
 	clean := pickUpdates(updates, "real_name", "phone", "email", "role_code", "status", "password")
+	if raw, ok := clean["role_code"]; ok {
+		role, _ := raw.(string)
+		if !validRole(role) {
+			return errors.New("角色不存在")
+		}
+	}
 	if pwd, ok := clean["password"].(string); ok && pwd != "" {
 		hashed, _ := bcrypt.GenerateFromPassword([]byte(pwd), bcrypt.DefaultCost)
 		clean["password"] = string(hashed)

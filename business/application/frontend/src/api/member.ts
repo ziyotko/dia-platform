@@ -13,6 +13,7 @@ export const memberApi = {
   updateApplication: (id: number, data: any) => request.put(`/member/applications/${id}`, data),
   deleteApplication: (id: number) => request.delete(`/member/applications/${id}`),
   submitApplication: (id: number) => request.post(`/member/applications/${id}/submit`),
+  withdrawApplication: (id: number) => request.post(`/member/applications/${id}/withdraw`),
   saveMaterials: (id: number, data: any) => request.put(`/member/applications/${id}/materials`, data),
 
   // Certificates (证书下载)

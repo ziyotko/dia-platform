@@ -8,9 +8,10 @@
         </el-select>
       </el-form-item>
       <el-form-item label="项目类别" prop="categoryId">
-        <el-select v-model="form.categoryId" placeholder="请选择项目类别" style="width:100%">
+        <el-select v-model="form.categoryId" placeholder="请先选择申报批次" style="width:100%" disabled>
           <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
         </el-select>
+        <div class="form-hint">项目类别由申报批次决定，不可修改</div>
       </el-form-item>
       <el-form-item label="项目名称" prop="title">
         <el-input v-model="form.title" placeholder="请输入项目名称" maxlength="100" show-word-limit />
@@ -52,17 +53,17 @@ const form = reactive({
 
 const rules = {
   batchId: [{ required: true, message: '请选择申报批次', trigger: 'change' }],
-  categoryId: [{ required: true, message: '请选择项目类别', trigger: 'change' }],
   title: [{ required: true, message: '请输入项目名称', trigger: 'blur' }],
 }
 
 function onBatchChange(batchId: number) {
   const batch = batches.value.find((b) => b.id === batchId)
-  if (batch?.categoryId) form.categoryId = batch.categoryId
+  form.categoryId = batch?.categoryId || ''
 }
 
 async function save() {
   await formRef.value?.validate()
+  if (!form.categoryId) return ElMessage.warning('该批次未设置项目类别，请联系管理员')
   loading.value = true
   try {
     const res = await memberApi.createApplication({
@@ -83,5 +84,11 @@ onMounted(async () => {
   const [b, c] = await Promise.all([memberApi.getOpenBatches({ page: 1, pageSize: 100 }), memberApi.getCategories()])
   batches.value = b.data.list
   categories.value = c.data
+  // Arriving from 「立即申报」: derive the locked category right away.
+  if (form.batchId) onBatchChange(Number(form.batchId))
 })
 </script>
+
+<style scoped>
+.form-hint { font-size: 12px; color: #909399; line-height: 1.6; }
+</style>

@@ -23,6 +23,9 @@ func (s *ApplicationService) Create(app *models.Application) error {
 	if app.Title == "" || app.BatchID == 0 {
 		return errors.New("请填写完整信息")
 	}
+	if len([]rune(app.Title)) > 100 {
+		return errors.New("项目名称不能超过 100 个字符")
+	}
 	var batch models.ProjectBatch
 	if err := db.DB.First(&batch, app.BatchID).Error; err != nil {
 		return errors.New("申报批次不存在")
@@ -33,6 +36,11 @@ func (s *ApplicationService) Create(app *models.Application) error {
 	}
 	if app.CategoryID == 0 {
 		app.CategoryID = batch.CategoryID
+	}
+	// The batch defines the category of the round: an application may not pick a
+	// different one, otherwise it would be reviewed against the wrong rules.
+	if batch.CategoryID != 0 && app.CategoryID != batch.CategoryID {
+		return errors.New("项目类别须与申报批次一致")
 	}
 	if err := checkCategory(app.CategoryID); err != nil {
 		return err
@@ -69,21 +77,45 @@ func (s *ApplicationService) UpdateDraft(id, userID uint64, updates map[string]i
 		return nil
 	}
 	if raw, ok := clean["category_id"]; ok {
-		id := uint64(0)
-		switch n := raw.(type) {
-		case float64:
-			id = uint64(n)
-		case int:
-			id = uint64(n)
-		case int64:
-			id = uint64(n)
+		newID := toUint64(raw)
+		var batch models.ProjectBatch
+		if err := db.DB.First(&batch, app.BatchID).Error; err == nil && batch.CategoryID != 0 && newID != batch.CategoryID {
+			return errors.New("项目类别须与申报批次一致")
 		}
-		if err := checkCategory(id); err != nil {
+		if err := checkCategory(newID); err != nil {
 			return err
 		}
-		clean["category_id"] = id
+		clean["category_id"] = newID
+	}
+	if raw, ok := clean["title"]; ok {
+		title, _ := raw.(string)
+		if title == "" {
+			return errors.New("请填写项目名称")
+		}
+		if len([]rune(title)) > 100 {
+			return errors.New("项目名称不能超过 100 个字符")
+		}
 	}
 	return db.DB.Model(&app).Updates(clean).Error
+}
+
+// Withdraw returns a submitted application to draft so the applicant can correct
+// it before the preliminary review starts.
+func (s *ApplicationService) Withdraw(id, userID uint64) error {
+	var app models.Application
+	if err := db.DB.First(&app, id).Error; err != nil {
+		return errors.New("申报记录不存在")
+	}
+	if app.UserID != userID {
+		return errors.New("无权操作该申报")
+	}
+	if app.Status != models.AppStatusSubmitted {
+		return errors.New("仅待初审的申报可撤回")
+	}
+	return db.DB.Model(&app).Updates(map[string]interface{}{
+		"status":       models.AppStatusDraft,
+		"submitted_at": nil,
+	}).Error
 }
 
 func (s *ApplicationService) Submit(id, userID uint64) error {
@@ -213,6 +245,11 @@ func (s *ApplicationService) SaveMaterials(applicationID, userID uint64, materia
 	if !editable(app.Status) {
 		return errors.New("仅草稿或初审驳回状态可上传材料")
 	}
+	for _, m := range materials {
+		if m.Name == "" || m.FileURL == "" {
+			return errors.New("材料信息不完整，请重新上传")
+		}
+	}
 	db.DB.Where("application_id = ?", applicationID).Delete(&models.ApplicationMaterial{})
 	for i := range materials {
 		materials[i].ApplicationID = applicationID
@@ -262,13 +299,6 @@ func (s *ApplicationService) AssignReviewers(id uint64, reviewerIDs []uint64) er
 	if app.Status != models.AppStatusUnderReview && app.Status != models.AppStatusReviewed {
 		return errors.New("当前状态不可分配评审")
 	}
-	var batch models.ProjectBatch
-	if err := db.DB.First(&batch, app.BatchID).Error; err == nil {
-		bs := BatchService{}
-		if !bs.IsReviewOpen(&batch) {
-			return errors.New("该批次评审已截止")
-		}
-	}
 
 	target := make(map[uint64]bool, len(reviewerIDs))
 	for _, rid := range reviewerIDs {
@@ -279,9 +309,41 @@ func (s *ApplicationService) AssignReviewers(id uint64, reviewerIDs []uint64) er
 	if len(target) == 0 {
 		return errors.New("请选择评审人")
 	}
+	// Only enabled reviewer accounts may be assigned.
+	var validCount int64
+	db.DB.Model(&models.Admin{}).
+		Where("id IN ? AND role_code = ? AND status = 1", keysOf(target), models.RoleReviewer).
+		Count(&validCount)
+	if int(validCount) != len(target) {
+		return errors.New("存在无效的评审人，请重新选择")
+	}
 
 	var existing []models.ReviewAssignment
 	db.DB.Where("application_id = ?", id).Find(&existing)
+	assigned := make(map[uint64]bool, len(existing))
+	for _, a := range existing {
+		assigned[a.ReviewerID] = true
+	}
+
+	// Adding a reviewer after the deadline is forbidden, but removing one is
+	// always allowed — otherwise a reviewer that never scores would leave the
+	// application stuck in 待评审 for ever.
+	var added int
+	for rid := range target {
+		if !assigned[rid] {
+			added++
+		}
+	}
+	if added > 0 {
+		var batch models.ProjectBatch
+		if err := db.DB.First(&batch, app.BatchID).Error; err == nil {
+			bs := BatchService{}
+			if !bs.IsReviewOpen(&batch) {
+				return errors.New("该批次评审已截止，不能再新增评审人")
+			}
+		}
+	}
+
 	kept := make(map[uint64]bool, len(existing))
 	for _, a := range existing {
 		if target[a.ReviewerID] {

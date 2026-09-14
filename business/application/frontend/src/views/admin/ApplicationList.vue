@@ -3,7 +3,9 @@
     <div class="page-toolbar">
       <div style="display:flex;gap:12px;flex-wrap:wrap">
         <el-input v-model="keyword" placeholder="搜索项目名称" clearable style="width:200px" @keyup.enter="fetch" @clear="fetch" />
-        <el-input v-model="batchId" placeholder="批次ID" clearable style="width:110px" @keyup.enter="fetch" @clear="fetch" />
+        <el-select v-model="batchId" placeholder="全部批次" clearable filterable style="width:220px" @change="fetch">
+          <el-option v-for="b in batches" :key="b.id" :label="b.title" :value="b.id" />
+        </el-select>
         <el-select v-model="status" placeholder="全部状态" clearable style="width:150px" @change="fetch">
           <el-option v-for="(label, key) in applicationStatusMap" :key="key" :label="label" :value="key" />
         </el-select>
@@ -51,11 +53,12 @@ import { adminApi } from '@/api/admin'
 import { applicationStatusMap, applicationStatusType } from '@/utils/constants'
 
 const list = ref<any[]>([])
+const batches = ref<any[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = 10
 const keyword = ref('')
-const batchId = ref('')
+const batchId = ref<any>('')
 const status = ref('')
 const loading = ref(false)
 
@@ -64,7 +67,7 @@ async function fetch() {
   try {
     const res = await adminApi.getApplications({
       page: page.value, pageSize, keyword: keyword.value, status: status.value,
-      batchId: batchId.value ? Number(batchId.value) : undefined,
+      batchId: batchId.value || undefined,
     })
     list.value = res.data.list
     total.value = res.data.total
@@ -81,5 +84,9 @@ async function quickPreliminary(row: any, pass: boolean) {
   fetch()
 }
 
-onMounted(fetch)
+onMounted(async () => {
+  fetch()
+  const res = await adminApi.getBatches({ page: 1, pageSize: 100 })
+  batches.value = res.data.list
+})
 </script>

@@ -65,6 +65,17 @@ func (ctrl *ApplicationController) Submit(c *gin.Context) {
 	response.OkWithMessage(c, "提交成功，等待初审", nil)
 }
 
+// Withdraw takes back a submitted application before the preliminary review.
+func (ctrl *ApplicationController) Withdraw(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	id := parseUint(c.Param("id"))
+	if err := ctrl.service.Withdraw(id, userID); err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+	response.OkWithMessage(c, "已撤回，可继续修改", nil)
+}
+
 func (ctrl *ApplicationController) MyApplications(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 	page, size := getPage(c)

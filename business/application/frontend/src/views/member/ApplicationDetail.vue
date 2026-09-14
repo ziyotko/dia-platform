@@ -28,9 +28,10 @@
 
       <el-form v-else :model="editForm" label-width="90px">
         <el-form-item label="项目类别">
-          <el-select v-model="editForm.categoryId" placeholder="请选择项目类别" style="width:100%">
+          <el-select v-model="editForm.categoryId" placeholder="-" style="width:100%" disabled>
             <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
+          <div class="form-hint">项目类别由申报批次决定，不可修改</div>
         </el-form-item>
         <el-form-item label="项目名称"><el-input v-model="editForm.title" /></el-form-item>
         <el-form-item label="项目简介"><el-input v-model="editForm.projectBrief" type="textarea" :rows="3" /></el-form-item>
@@ -95,6 +96,10 @@
           {{ app.status === 'preliminary_rejected' ? '修改后重新提交' : '提交申报' }}
         </el-button>
       </div>
+      <div v-else-if="app.status === 'submitted'" style="margin-top:20px;text-align:center">
+        <el-button size="large" @click="withdraw" :loading="withdrawing">撤回申报</el-button>
+        <div class="form-hint" style="margin-top:8px">撤回后申报将回到草稿状态，可继续修改后重新提交</div>
+      </div>
     </div>
   </div>
 </template>
@@ -110,6 +115,7 @@ const route = useRoute()
 const id = Number(route.params.id)
 const loading = ref(false)
 const submitting = ref(false)
+const withdrawing = ref(false)
 const app = ref<any>({})
 const materials = ref<any[]>([])
 const categories = ref<any[]>([])
@@ -143,8 +149,13 @@ async function fetch() {
 }
 
 async function saveInfo() {
-  if (!editForm.categoryId) return ElMessage.warning('请选择项目类别')
-  await memberApi.updateApplication(id, { ...editForm })
+  if (!editForm.title) return ElMessage.warning('请填写项目名称')
+  // categoryId is fixed by the batch and intentionally not sent back.
+  await memberApi.updateApplication(id, {
+    title: editForm.title,
+    projectBrief: editForm.projectBrief,
+    content: editForm.content,
+  })
   ElMessage.success('保存成功')
   fetch()
 }
@@ -175,6 +186,17 @@ async function submit() {
   }
 }
 
+async function withdraw() {
+  withdrawing.value = true
+  try {
+    await memberApi.withdrawApplication(id)
+    ElMessage.success('已撤回，可继续修改')
+    fetch()
+  } finally {
+    withdrawing.value = false
+  }
+}
+
 function download(row: any) {
   window.open(fileUrl(row.fileUrl), '_blank')
 }
@@ -185,3 +207,7 @@ onMounted(async () => {
   categories.value = res.data
 })
 </script>
+
+<style scoped>
+.form-hint { font-size: 12px; color: #909399; line-height: 1.6; }
+</style>

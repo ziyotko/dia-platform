@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"application/internal/models"
@@ -18,7 +19,13 @@ func (s *ResultService) CreateAnnouncement(a *models.Announcement) error {
 	if a.Title == "" {
 		return errors.New("请填写公示标题")
 	}
+	if a.BatchID > 0 {
+		if err := checkBatch(a.BatchID); err != nil {
+			return err
+		}
+	}
 	a.Status = models.AnnouncementStatusDraft
+	a.PublishedAt = nil
 	return db.DB.Create(a).Error
 }
 
@@ -27,19 +34,67 @@ func (s *ResultService) UpdateAnnouncement(id uint64, updates map[string]interfa
 	if len(clean) == 0 {
 		return nil
 	}
-	return db.DB.Model(&models.Announcement{}).Where("id = ?", id).Updates(clean).Error
+	var a models.Announcement
+	if err := db.DB.First(&a, id).Error; err != nil {
+		return errors.New("公示不存在")
+	}
+	if a.Status == models.AnnouncementStatusPublished {
+		return errors.New("已发布的公示不可编辑")
+	}
+	if raw, ok := clean["batch_id"]; ok {
+		batchID := toUint64(raw)
+		if batchID > 0 {
+			if err := checkBatch(batchID); err != nil {
+				return err
+			}
+		}
+		clean["batch_id"] = batchID
+	}
+	return db.DB.Model(&a).Updates(clean).Error
 }
 
 func (s *ResultService) DeleteAnnouncement(id uint64) error {
-	return db.DB.Delete(&models.Announcement{}, id).Error
+	var a models.Announcement
+	if err := db.DB.First(&a, id).Error; err != nil {
+		return errors.New("公示不存在")
+	}
+	if a.Status == models.AnnouncementStatusPublished {
+		return errors.New("已发布的公示不可删除")
+	}
+	return db.DB.Delete(&a).Error
 }
 
+// PublishAnnouncement publishes a draft announcement. A published announcement
+// is final, so it is published exactly once.
 func (s *ResultService) PublishAnnouncement(id uint64) error {
+	var a models.Announcement
+	if err := db.DB.First(&a, id).Error; err != nil {
+		return errors.New("公示不存在")
+	}
+	if a.Status == models.AnnouncementStatusPublished {
+		return errors.New("该公示已发布")
+	}
+	if a.Title == "" {
+		return errors.New("请填写公示标题")
+	}
 	now := time.Now()
-	return db.DB.Model(&models.Announcement{}).Where("id = ?", id).Updates(map[string]interface{}{
+	return db.DB.Model(&a).Updates(map[string]interface{}{
 		"status":       models.AnnouncementStatusPublished,
 		"published_at": now,
 	}).Error
+}
+
+// checkBatch reports an error when the referenced batch does not exist.
+func checkBatch(id uint64) error {
+	if id == 0 {
+		return nil
+	}
+	var count int64
+	db.DB.Model(&models.ProjectBatch{}).Where("id = ?", id).Count(&count)
+	if count == 0 {
+		return errors.New("申报批次不存在")
+	}
+	return nil
 }
 
 func (s *ResultService) ListAnnouncements(page, size int, keyword string, onlyPublished bool) ([]models.Announcement, int64, error) {
@@ -79,6 +134,15 @@ func (s *ResultService) IssueCertificate(c *models.Certificate) error {
 	if c.Title == "" {
 		return errors.New("请填写证书名称")
 	}
+	if c.CertNo == "" {
+		// Generate a stable, readable number: CAAM-<year>-<application id>.
+		c.CertNo = fmt.Sprintf("CAAM-%s-%06d", time.Now().Format("2006"), c.ApplicationID)
+	}
+	var dup int64
+	db.DB.Model(&models.Certificate{}).Where("cert_no = ?", c.CertNo).Count(&dup)
+	if dup > 0 {
+		return errors.New("证书编号已存在")
+	}
 	c.UserID = app.UserID
 	c.BatchID = app.BatchID
 	c.Status = models.CertStatusIssued
@@ -99,7 +163,24 @@ func (s *ResultService) UpdateCertificate(id uint64, updates map[string]interfac
 	if len(clean) == 0 {
 		return nil
 	}
-	return db.DB.Model(&models.Certificate{}).Where("id = ?", id).Updates(clean).Error
+	var cert models.Certificate
+	if err := db.DB.First(&cert, id).Error; err != nil {
+		return errors.New("证书不存在")
+	}
+	if raw, ok := clean["cert_no"]; ok {
+		no, _ := raw.(string)
+		if no == "" {
+			return errors.New("请填写证书编号")
+		}
+		if no != cert.CertNo {
+			var dup int64
+			db.DB.Model(&models.Certificate{}).Where("cert_no = ? AND id <> ?", no, id).Count(&dup)
+			if dup > 0 {
+				return errors.New("证书编号已存在")
+			}
+		}
+	}
+	return db.DB.Model(&cert).Updates(clean).Error
 }
 
 func (s *ResultService) ListCertificates(page, size int, keyword string) ([]models.Certificate, int64, error) {

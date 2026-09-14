@@ -51,6 +51,7 @@ func Register(r *gin.Engine) {
 		member.PUT("/applications/:id", appCtrl.UpdateDraft)
 		member.DELETE("/applications/:id", appCtrl.DeleteDraft)
 		member.POST("/applications/:id/submit", appCtrl.Submit)
+		member.POST("/applications/:id/withdraw", appCtrl.Withdraw)
 		member.PUT("/applications/:id/materials", appCtrl.SaveMaterials)
 
 		// Certificates (证书下载)

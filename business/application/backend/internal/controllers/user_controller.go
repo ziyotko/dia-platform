@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"application/internal/middleware"
 	"application/internal/models"
 	"application/internal/service"
 	"application/pkg/response"
@@ -126,6 +127,10 @@ func (ctrl *UserController) UpdateAdmin(c *gin.Context) {
 
 func (ctrl *UserController) DeleteAdmin(c *gin.Context) {
 	id := parseUint(c.Param("id"))
+	if id == middleware.GetAdminID(c) {
+		response.Fail(c, "不能删除当前登录账号")
+		return
+	}
 	if err := ctrl.service.DeleteAdmin(id); err != nil {
 		response.Fail(c, err.Error())
 		return

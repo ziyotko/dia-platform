@@ -31,6 +31,7 @@
         <template #default="{ row }">
           <el-button size="small" @click="$router.push(`/member/applications/${row.id}`)">查看</el-button>
           <el-button v-if="canEdit(row)" size="small" type="primary" @click="$router.push(`/member/applications/${row.id}`)">修改</el-button>
+          <el-button v-if="row.status === 'submitted'" size="small" type="warning" @click="withdraw(row)">撤回</el-button>
           <el-button v-if="canEdit(row)" size="small" type="danger" @click="remove(row)">删除</el-button>
         </template>
       </el-table-column>
@@ -81,6 +82,14 @@ async function remove(row: any) {
   await ElMessageBox.confirm('确认删除该申报？', '提示', { type: 'warning' })
   await memberApi.deleteApplication(row.id)
   ElMessage.success('删除成功')
+  fetch()
+}
+
+// Withdrawing returns the submission to draft so it can be edited again.
+async function withdraw(row: any) {
+  await ElMessageBox.confirm('撤回后申报将回到草稿状态，确认撤回？', '提示', { type: 'warning' })
+  await memberApi.withdrawApplication(row.id)
+  ElMessage.success('已撤回，可继续修改')
   fetch()
 }
 

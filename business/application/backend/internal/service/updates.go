@@ -32,6 +32,44 @@ func snakeKey(k string) string {
 	return b.String()
 }
 
+// toUint64 converts a JSON-decoded numeric value into an unsigned integer.
+// encoding/json decodes every number as float64, while internal callers may pass
+// int / int64 / uint64. Negative values are clamped to 0.
+func toUint64(v interface{}) uint64 {
+	switch n := v.(type) {
+	case uint64:
+		return n
+	case uint:
+		return uint64(n)
+	case int:
+		if n > 0 {
+			return uint64(n)
+		}
+	case int64:
+		if n > 0 {
+			return uint64(n)
+		}
+	case float64:
+		if n > 0 {
+			return uint64(n)
+		}
+	case float32:
+		if n > 0 {
+			return uint64(n)
+		}
+	}
+	return 0
+}
+
+// keysOf returns the keys of a set-style map as a slice (used for IN queries).
+func keysOf(set map[uint64]bool) []uint64 {
+	out := make([]uint64, 0, len(set))
+	for k := range set {
+		out = append(out, k)
+	}
+	return out
+}
+
 // pickUpdates normalizes incoming JSON keys to snake_case and keeps only the
 // allowed columns, so callers cannot mass-assign protected fields.
 func pickUpdates(updates map[string]interface{}, allowed ...string) map[string]interface{} {

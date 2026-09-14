@@ -36,7 +36,9 @@
             暂无可颁发证书的申报（需已公示且通过）
           </div>
         </el-form-item>
-        <el-form-item label="证书编号"><el-input v-model="form.certNo" /></el-form-item>
+        <el-form-item label="证书编号">
+          <el-input v-model="form.certNo" :placeholder="form.id ? '请填写证书编号' : '留空则自动生成（CAAM-年份-申报ID）'" />
+        </el-form-item>
         <el-form-item label="证书名称"><el-input v-model="form.title" /></el-form-item>
         <el-form-item label="持有人"><el-input v-model="form.holder" /></el-form-item>
         <el-form-item label="证书文件URL"><el-input v-model="form.fileUrl" placeholder="/uploads/xxx.pdf" /></el-form-item>
@@ -90,9 +92,11 @@ function openEdit(row: any) {
 }
 
 async function save() {
+  if (!form.title) return ElMessage.warning('请填写证书名称')
   if (form.id) {
     await adminApi.updateCertificate(form.id, { certNo: form.certNo, title: form.title, holder: form.holder, fileUrl: form.fileUrl })
   } else {
+    if (!form.applicationId) return ElMessage.warning('请选择关联申报')
     await adminApi.issueCertificate({
       applicationId: Number(form.applicationId), certNo: form.certNo, title: form.title,
       holder: form.holder, fileUrl: form.fileUrl,

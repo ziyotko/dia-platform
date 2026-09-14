@@ -14,6 +14,12 @@ func (s *BatchService) Create(b *models.ProjectBatch) error {
 	if b.Title == "" {
 		return errors.New("请填写批次名称")
 	}
+	if err := checkCategory(b.CategoryID); err != nil {
+		return err
+	}
+	if b.ApplyStart != nil && b.ApplyEnd != nil && !b.ApplyEnd.After(*b.ApplyStart) {
+		return errors.New("申报截止时间必须晚于开始时间")
+	}
 	b.Status = models.BatchStatusDraft
 	return db.DB.Create(b).Error
 }
@@ -25,7 +31,42 @@ func (s *BatchService) Update(id uint64, updates map[string]interface{}) error {
 	if len(clean) == 0 {
 		return nil
 	}
-	return db.DB.Model(&models.ProjectBatch{}).Where("id = ?", id).Updates(clean).Error
+	var b models.ProjectBatch
+	if err := db.DB.First(&b, id).Error; err != nil {
+		return errors.New("批次不存在")
+	}
+	if raw, ok := clean["title"]; ok {
+		title, _ := raw.(string)
+		if title == "" {
+			return errors.New("请填写批次名称")
+		}
+	}
+	if raw, ok := clean["category_id"]; ok {
+		if err := checkCategory(toUint64(raw)); err != nil {
+			return err
+		}
+	}
+	// Validate the merged (not the incoming) window so a batch can never be
+	// stored with a deadline that is before its start date.
+	start := mergeTime(b.ApplyStart, clean, "apply_start")
+	end := mergeTime(b.ApplyEnd, clean, "apply_end")
+	if start != nil && end != nil && !end.After(*start) {
+		return errors.New("申报截止时间必须晚于开始时间")
+	}
+	return db.DB.Model(&b).Updates(clean).Error
+}
+
+// mergeTime returns the value a time column will have after applying updates.
+// A key absent from updates keeps its current value; an explicit null clears it.
+func mergeTime(current *time.Time, updates map[string]interface{}, key string) *time.Time {
+	raw, ok := updates[key]
+	if !ok {
+		return current
+	}
+	if t, ok := raw.(time.Time); ok {
+		return &t
+	}
+	return nil
 }
 
 func (s *BatchService) Delete(id uint64) error {
@@ -34,19 +75,62 @@ func (s *BatchService) Delete(id uint64) error {
 	if count > 0 {
 		return errors.New("该批次下存在申报记录，无法删除")
 	}
+	var annCount int64
+	db.DB.Model(&models.Announcement{}).Where("batch_id = ?", id).Count(&annCount)
+	if annCount > 0 {
+		return errors.New("该批次下存在结果公示，无法删除")
+	}
 	return db.DB.Delete(&models.ProjectBatch{}, id).Error
 }
 
+// Publish opens a draft batch for applications. A batch can only be published
+// once and must have a category plus a complete application window, otherwise it
+// would silently stay open for ever.
 func (s *BatchService) Publish(id uint64) error {
-	return db.DB.Model(&models.ProjectBatch{}).Where("id = ?", id).Update("status", models.BatchStatusOpen).Error
+	var b models.ProjectBatch
+	if err := db.DB.First(&b, id).Error; err != nil {
+		return errors.New("批次不存在")
+	}
+	if b.Status != models.BatchStatusDraft {
+		return errors.New("仅草稿状态的批次可发布")
+	}
+	if b.Title == "" {
+		return errors.New("请先填写批次名称")
+	}
+	if err := checkCategory(b.CategoryID); err != nil {
+		return err
+	}
+	if b.ApplyStart == nil || b.ApplyEnd == nil {
+		return errors.New("请先设置申报开始和截止时间")
+	}
+	if !b.ApplyEnd.After(*b.ApplyStart) {
+		return errors.New("申报截止时间必须晚于开始时间")
+	}
+	return db.DB.Model(&b).Update("status", models.BatchStatusOpen).Error
 }
 
+// Close ends a batch that is either accepting applications or under review.
 func (s *BatchService) Close(id uint64) error {
-	return db.DB.Model(&models.ProjectBatch{}).Where("id = ?", id).Update("status", models.BatchStatusClosed).Error
+	var b models.ProjectBatch
+	if err := db.DB.First(&b, id).Error; err != nil {
+		return errors.New("批次不存在")
+	}
+	if b.Status != models.BatchStatusOpen && b.Status != models.BatchStatusReviewing {
+		return errors.New("仅申报中或评审中的批次可结束")
+	}
+	return db.DB.Model(&b).Update("status", models.BatchStatusClosed).Error
 }
 
+// StartReview moves an open batch into the review stage.
 func (s *BatchService) StartReview(id uint64) error {
-	return db.DB.Model(&models.ProjectBatch{}).Where("id = ?", id).Update("status", models.BatchStatusReviewing).Error
+	var b models.ProjectBatch
+	if err := db.DB.First(&b, id).Error; err != nil {
+		return errors.New("批次不存在")
+	}
+	if b.Status != models.BatchStatusOpen {
+		return errors.New("仅申报中的批次可进入评审阶段")
+	}
+	return db.DB.Model(&b).Update("status", models.BatchStatusReviewing).Error
 }
 
 func (s *BatchService) GetByID(id uint64) (*models.ProjectBatch, error) {
