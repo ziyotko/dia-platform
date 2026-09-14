@@ -1,6 +1,8 @@
 package routes
 
 import (
+	"time"
+
 	"application/internal/controllers"
 	"application/internal/middleware"
 
@@ -25,7 +27,8 @@ func Register(r *gin.Engine) {
 	auditCtrl := &controllers.AuditController{}
 
 	// === Public routes ===
-	api.GET("/captcha", authCtrl.GetCaptcha)
+	// 验证码接口独立限流：30 次/分钟（对齐 portal 的 captcha_rate_limit），防刷验证码；按真实客户端 IP
+	api.GET("/captcha", middleware.RateLimitMiddleware(30, time.Minute), authCtrl.GetCaptcha)
 	api.POST("/member/register", authCtrl.UserRegister)
 	api.POST("/member/login", authCtrl.UserLogin)
 	api.POST("/admin/login", authCtrl.AdminLogin)

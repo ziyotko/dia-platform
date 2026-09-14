@@ -26,7 +26,7 @@ export const useAdminStore = defineStore('admin', () => {
   }
 
   async function login(username: string, password: string, captchaId: string, captchaCode: string) {
-    const res = await authApi.adminLogin({ username, password, captchaId, captchaCode })
+    const res = await authApi.adminLogin({ username, password, captcha_id: captchaId, captcha_code: captchaCode })
     setToken(res.data.token)
     setAdminInfo(res.data.admin)
     return res.data

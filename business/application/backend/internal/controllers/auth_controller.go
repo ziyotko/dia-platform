@@ -20,9 +20,10 @@ func (ctrl *AuthController) GetCaptcha(c *gin.Context) {
 		response.Fail(c, "生成验证码失败")
 		return
 	}
+	// 字段名与 portal 保持一致：captcha_id + captcha_img
 	response.Ok(c, gin.H{
-		"captchaId":    id,
-		"captchaImage": b64s,
+		"captcha_id":  id,
+		"captcha_img": b64s,
 	})
 }
 
@@ -32,8 +33,8 @@ func (ctrl *AuthController) UserLogin(c *gin.Context) {
 	var req struct {
 		Username    string `json:"username" binding:"required"`
 		Password    string `json:"password" binding:"required"`
-		CaptchaID   string `json:"captchaId" binding:"required"`
-		CaptchaCode string `json:"captchaCode" binding:"required"`
+		CaptchaID   string `json:"captcha_id" binding:"required"`
+		CaptchaCode string `json:"captcha_code" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "请填写完整信息")
@@ -107,8 +108,8 @@ func (ctrl *AuthController) AdminLogin(c *gin.Context) {
 	var req struct {
 		Username    string `json:"username" binding:"required"`
 		Password    string `json:"password" binding:"required"`
-		CaptchaID   string `json:"captchaId" binding:"required"`
-		CaptchaCode string `json:"captchaCode" binding:"required"`
+		CaptchaID   string `json:"captcha_id" binding:"required"`
+		CaptchaCode string `json:"captcha_code" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "请填写完整信息")

@@ -63,6 +63,8 @@ func main() {
 	r.Use(middleware.CORS(), middleware.Logger(), middleware.IPLimit(), gin.Recovery())
 	r.Static("/uploads", "./uploads")
 	r.MaxMultipartMemory = 64 << 20 // 64MB
+	// 限定可信代理，保证 c.ClientIP() 取到的是真实客户端 IP（限流按真实 IP 计数）
+	r.SetTrustedProxies(config.Cfg.Server.TrustedProxies)
 
 	// 10. Register routes
 	routes.Register(r)

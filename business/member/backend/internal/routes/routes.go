@@ -39,7 +39,8 @@ func Register(r *gin.Engine) {
 	public := r.Group(prefix)
 	{
 		// Auth
-		public.GET("/captcha", authCtrl.GetCaptcha)
+		// 验证码接口独立限流：30 次/分钟（对齐 portal 的 captcha_rate_limit），防刷验证码
+		public.GET("/captcha", middleware.RateLimitMiddleware(30, time.Minute), authCtrl.GetCaptcha)
 		public.POST("/auth/register", middleware.RateLimitByIP(authRateLimiter, "请求过于频繁，请稍后再试"), authCtrl.Register)
 		public.POST("/auth/check-exists", middleware.RateLimitByIP(checkLimiter, "请求过于频繁，请稍后再试"), authCtrl.CheckExists)
 		public.POST("/auth/login", middleware.RateLimitByIP(authRateLimiter, "请求过于频繁，请稍后再试"), authCtrl.Login)

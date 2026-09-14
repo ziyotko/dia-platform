@@ -214,8 +214,17 @@
             <el-form ref="captchaFormRef" :model="captchaForm" :rules="captchaRules" size="large" class="captcha-form">
               <el-form-item prop="code">
                 <div class="captcha-row">
-                  <el-input v-model="captchaForm.code" placeholder="请输入验证码" :prefix-icon="Key" />
-                  <img :src="captchaImage" class="captcha-img" @click="loadCaptcha" title="点击刷新验证码" />
+                  <el-input
+                    v-model="captchaForm.code"
+                    placeholder="请输入验证码"
+                    maxlength="5"
+                    :prefix-icon="Key"
+                    clearable
+                  />
+                  <div class="captcha-image" @click="loadCaptcha">
+                    <img v-if="captchaImage" :src="captchaImage" alt="验证码" />
+                    <div v-else class="captcha-placeholder">点击刷新</div>
+                  </div>
                 </div>
               </el-form-item>
             </el-form>
@@ -474,7 +483,7 @@ async function loadCaptcha() {
   try {
     const res = await authApi.getCaptcha()
     captchaId.value = res.data.captcha_id
-    captchaImage.value = res.data.captcha_image
+    captchaImage.value = res.data.captcha_img
   } catch {}
 }
 
@@ -900,22 +909,32 @@ async function handleSubmit() {
   align-items: center;
 
   .el-input { flex: 1; }
+}
 
-  .captcha-img {
-    width: 130px;
-    height: 42px;
-    border-radius: 10px;
-    cursor: pointer;
-    border: 1px solid #e5e6eb;
-    transition: all 0.25s ease;
+.captcha-image {
+  width: 150px;
+  height: 50px;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  background: #f5f7fb;
+  border: 1px solid #e3e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  align-self: center;
+
+  img {
+    width: 100%;
+    height: 100%;
     object-fit: cover;
-
-    &:hover {
-      border-color: #002fa7;
-      box-shadow: 0 2px 8px rgba(64,158,255,0.15);
-      transform: scale(1.02);
-    }
   }
+}
+
+.captcha-placeholder {
+  color: #98a2b3;
+  font-size: 12px;
 }
 
 /* ===== 文件上传 ===== */

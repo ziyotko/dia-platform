@@ -57,6 +57,7 @@
                 <el-input
                   v-model="form.captchaCode"
                   placeholder="请输入验证码"
+                  maxlength="5"
                   :prefix-icon="Grid"
                   clearable
                   @keyup.enter="handleLogin"
@@ -119,7 +120,7 @@ async function loadCaptcha() {
   try {
     const res = await authApi.getCaptcha()
     captchaId.value = res.data.captcha_id
-    captchaImage.value = res.data.captcha_image
+    captchaImage.value = res.data.captcha_img
   } catch {}
 }
 
@@ -280,16 +281,18 @@ $primary-gradient: linear-gradient(160deg, #2f5ed6 0%, #001b5e 100%);
 }
 
 .captcha-image {
-  width: 120px;
-  height: 40px;
+  width: 150px;
+  height: 50px;
   border-radius: 8px;
   overflow: hidden;
   cursor: pointer;
-  background: #f8fafd;
-  border: 1px solid var(--el-color-primary-light-8);
+  background: #f5f7fb;
+  border: 1px solid #e3e8f0;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
+  align-self: center;
 
   img {
     width: 100%;
@@ -299,7 +302,7 @@ $primary-gradient: linear-gradient(160deg, #2f5ed6 0%, #001b5e 100%);
 }
 
 .captcha-placeholder {
-  color: #909399;
+  color: #98a2b3;
   font-size: 12px;
 }
 

@@ -15,11 +15,12 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Port             int    `mapstructure:"port"`
-	Mode             string `mapstructure:"mode"`
-	APIPrefix        string `mapstructure:"api_prefix"`
-	MaxConcurrentIPs int    `mapstructure:"max_concurrent_ips"`
-	UploadDirPrefix  string `mapstructure:"upload_dir_prefix"`
+	Port             int      `mapstructure:"port"`
+	Mode             string   `mapstructure:"mode"`
+	APIPrefix        string   `mapstructure:"api_prefix"`
+	MaxConcurrentIPs int      `mapstructure:"max_concurrent_ips"`
+	UploadDirPrefix  string   `mapstructure:"upload_dir_prefix"`
+	TrustedProxies   []string `mapstructure:"trusted_proxies"`
 }
 
 type MySQLConfig struct {

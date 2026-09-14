@@ -26,8 +26,8 @@ func (ctrl *AuthController) GetCaptcha(c *gin.Context) {
 		return
 	}
 	response.Success(c, gin.H{
-		"captcha_id":    id,
-		"captcha_image": b64s,
+		"captcha_id":  id,
+		"captcha_img": b64s,
 	})
 }
 
