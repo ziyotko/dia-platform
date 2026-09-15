@@ -195,7 +195,31 @@ if tenantID > 0 {
 
 ---
 
-## 4. 开发 checklist
+## 4. 公开接口限流
+
+实现：[internal/middleware/rate_limit.go](../internal/middleware/rate_limit.go)，基于 Redis 固定窗口（借鉴 portal 的同名中间件）。
+
+**已挂载限流的接口**（参数见 `config.yaml` 的 `server.*_rate_limit`）：
+
+| 接口 | 限制 | 配置项 |
+|------|------|--------|
+| `POST /base/api/v1/auth/login` | 10 次/分钟 | `login_rate_limit` / `login_rate_window_seconds` |
+| `GET /base/api/v1/auth/captcha` | 30 次/分钟 | `captcha_rate_limit` / `captcha_rate_window_seconds` |
+| `POST /base/api/v1/auth/init` | 5 次/分钟 | `init_rate_limit` / `init_rate_window_seconds` |
+
+**要点**：
+
+- 计数 key 为 `ratelimit:<路由模板>:<客户端IP>:<窗口段>`，**每个接口各自独立配额**；
+  （portal 当前实现不含路由段，同 IP 下各接口共用一个计数，验证码刷多了会把登录额度一并吃掉，base 未采纳）
+- 超限返回 `{ code: 429, message: "请求过于频繁，请稍后再试" }`。
+- Redis 不可用时退化为**进程内固定窗口限流**（fail-closed），避免限流组件故障时被无限刷量。
+- 客户端 IP 由 gin 的 `ClientIP()` 解析：仅当请求来自 `server.trusted_proxies` 配置的可信代理时才信任
+  `X-Forwarded-For` / `X-Real-IP`，否则一律使用 `RemoteAddr`，防止伪造头绕过限流。
+  部署在 Nginx 等反向代理后时，**必须**把代理真实地址填入 `trusted_proxies`，否则限流会把所有请求算到代理 IP 上。
+
+---
+
+## 5. 开发 checklist
 
 新增一个需要按 ID 操作的接口时，请确认：
 

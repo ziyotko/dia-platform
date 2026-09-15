@@ -76,6 +76,16 @@ backend/
 server:
   port: 8080
   mode: debug          # debug / release
+  # 可信反向代理：仅当请求来自这些地址时才信任 X-Forwarded-For / X-Real-IP
+  trusted_proxies:
+    - 127.0.0.1
+  # 登录/验证码/初始化接口限流（每窗口允许的请求数 + 窗口秒数）
+  login_rate_limit: 10
+  login_rate_window_seconds: 60
+  captcha_rate_limit: 30
+  captcha_rate_window_seconds: 60
+  init_rate_limit: 5
+  init_rate_window_seconds: 60
 
 mysql:
   host: 127.0.0.1
@@ -145,6 +155,13 @@ log:
 - 所有登录接口默认挂载 `PermissionAuth` 中间件。
 - 基于 `base_permission` 表的 `method` + `path` 进行匹配，支持 `:param` 通配符。
 - 放行顺序：平台超管（`tenantID == 0`）→ 租户管理员（`is_admin`）→ 白名单接口 → 未分配权限的普通用户仅放行 `GET`；其余按权限点精确匹配，未命中返回 403。
+- 详见 [docs/security.md](./docs/security.md)。
+
+### 公开接口限流
+
+- `RateLimitMiddleware(limit, window)`：基于 Redis 固定窗口、按「路由 + 真实客户端 IP」计数，Redis 不可用时退化为进程内限流。
+- 已挂载：`POST /auth/login`（10/分钟）、`GET /auth/captcha`（30/分钟）、`POST /auth/init`（5/分钟），参数见 `config.yaml`。
+- 客户端 IP 依赖 `server.trusted_proxies` 配置，部署在反向代理后必须填写代理地址。
 - 详见 [docs/security.md](./docs/security.md)。
 
 ### 租户数据隔离
