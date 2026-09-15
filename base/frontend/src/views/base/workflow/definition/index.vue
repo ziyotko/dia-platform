@@ -13,7 +13,7 @@
         :closable="false"
         show-icon
         style="margin-bottom: 16px"
-        title="节点按顺序串行审批；同一节点内多个审批人为「或签」（任一人处理即通过该节点）；节点无有效审批人时自动通过"
+        title="节点按顺序串行审批；同一节点内默认「或签」（任一人处理即通过该节点），可改为「会签」（全部通过才通过）；节点无有效审批人时自动通过"
       />
 
       <el-form :inline="true" class="search-form">
@@ -145,6 +145,19 @@
             </el-select>
           </template>
         </el-table-column>
+        <el-table-column label="审批方式" width="120">
+          <template #default="{ row }">
+            <el-select v-model="row.approveMode" size="small">
+              <el-option label="或签" value="or" />
+              <el-option label="会签" value="and" />
+            </el-select>
+          </template>
+        </el-table-column>
+        <el-table-column label="超时提醒(分钟)" width="140">
+          <template #default="{ row }">
+            <el-input-number v-model="row.timeoutMinutes" size="small" :min="0" :max="10080" :step="60" controls-position="right" style="width: 100%" />
+          </template>
+        </el-table-column>
         <el-table-column label="节点说明" min-width="160">
           <template #default="{ row }">
             <el-input v-model="row.description" size="small" placeholder="可选" />
@@ -157,7 +170,11 @@
         </el-table-column>
       </el-table>
       <el-button style="margin-top: 12px" @click="addNode">添加节点</el-button>
-      <div class="form-tip">提示：流程角色需先在「流程角色」中配置成员；角色无成员时该节点会自动通过</div>
+      <div class="form-tip">
+        提示：流程角色需先在「流程角色」中配置成员；角色无成员时该节点会自动通过；
+        「或签」= 任一审批人处理即通过该节点，「会签」= 全部审批人都通过才通过（任一驳回即流程驳回）；
+        超时提醒 0 表示不提醒，待办超过该时长未处理会向审批人发站内信催办
+      </div>
       <template #footer>
         <el-button @click="nodeDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleSaveNodes">保存</el-button>
@@ -315,13 +332,15 @@ const handleNodes = async (row: Workflow) => {
     sort: n.sort,
     approverType: n.approverType,
     approverId: n.approverId,
+    approveMode: n.approveMode || 'or',
+    timeoutMinutes: n.timeoutMinutes || 0,
     description: n.description || ''
   }))
   nodeDialogVisible.value = true
 }
 
 const addNode = () => {
-  nodes.value.push({ name: '', approverType: 'role', approverId: 0, description: '' })
+  nodes.value.push({ name: '', approverType: 'role', approverId: 0, approveMode: 'or', timeoutMinutes: 0, description: '' })
 }
 
 const moveNode = (index: number, delta: number) => {

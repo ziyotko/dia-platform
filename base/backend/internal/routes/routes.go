@@ -191,8 +191,11 @@ func Register(r *gin.Engine) {
 		wfTasks := authorized.Group("/workflow-tasks")
 		{
 			wfTasks.GET("", (&controllers.WorkflowEngineController{}).MyTasks)
+			wfTasks.GET("/approver-options", (&controllers.WorkflowEngineController{}).ApproverOptions)
 			wfTasks.POST("/:id/approve", (&controllers.WorkflowEngineController{}).Approve)
 			wfTasks.POST("/:id/reject", (&controllers.WorkflowEngineController{}).Reject)
+			wfTasks.POST("/:id/transfer", (&controllers.WorkflowEngineController{}).Transfer)
+			wfTasks.POST("/:id/add-approver", (&controllers.WorkflowEngineController{}).AddApprover)
 		}
 
 		orgs := authorized.Group("/organizations")

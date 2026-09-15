@@ -5,6 +5,9 @@ import request from '@/utils/request'
 /** 节点审批人类型 */
 export type ApproverType = 'role' | 'user' | 'initiator'
 
+/** 节点审批方式：or 或签（任一处理即完成）/ and 会签（全部通过才完成） */
+export type ApproveMode = 'or' | 'and'
+
 export interface WorkflowNode {
   id?: number
   workflowId?: number
@@ -12,6 +15,10 @@ export interface WorkflowNode {
   sort?: number
   approverType: ApproverType
   approverId: number
+  /** 审批方式，默认 or */
+  approveMode?: ApproveMode
+  /** 超时提醒（分钟），0 表示不提醒 */
+  timeoutMinutes?: number
   description?: string
   /** 审批人展示名（后端回填） */
   approverName?: string
@@ -101,6 +108,11 @@ export interface WorkflowTask {
   nodeId: number
   nodeName: string
   nodeSort: number
+  /** 审批方式快照：or 或签 / and 会签 */
+  approveMode?: ApproveMode
+  timeoutMinutes?: number
+  remindedAt?: string
+  remindCount?: number
   approverId: number
   approverName: string
   status: number
@@ -172,8 +184,23 @@ export function getMyWorkflowTasks(params: { box: 'todo' | 'done'; page: number;
   return request.get('/workflow-tasks', { params })
 }
 
+/** 转办/加签可选的用户（本租户启用中的用户） */
+export function getWorkflowTaskApproverOptions() {
+  return request.get('/workflow-tasks/approver-options')
+}
+
 export function approveWorkflowTask(id: number, comment: string) {
   return request.post(`/workflow-tasks/${id}/approve`, { comment })
+}
+
+/** 转办：把待办交给同租户的另一个用户 */
+export function transferWorkflowTask(id: number, userId: number, comment?: string) {
+  return request.post(`/workflow-tasks/${id}/transfer`, { userId, comment })
+}
+
+/** 加签：在当前节点追加一个审批人 */
+export function addApproverWorkflowTask(id: number, userId: number, comment?: string) {
+  return request.post(`/workflow-tasks/${id}/add-approver`, { userId, comment })
 }
 
 export function rejectWorkflowTask(id: number, comment: string) {
@@ -203,7 +230,15 @@ export const logActionMap: Record<string, string> = {
   reject: '审批驳回',
   cancel: '撤销流程',
   'auto-pass': '自动通过',
-  finish: '流程完成'
+  finish: '流程完成',
+  transfer: '转办',
+  'add-approver': '加签',
+  remind: '超时提醒'
+}
+
+export const approveModeMap: Record<string, string> = {
+  or: '或签',
+  and: '会签'
 }
 
 export const approverTypeMap: Record<string, string> = {

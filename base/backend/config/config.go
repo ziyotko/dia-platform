@@ -33,6 +33,9 @@ type Server struct {
 	// 初始化超管接口限流（公开写接口，防被反复调用）
 	InitRateLimit      int `mapstructure:"init_rate_limit"`
 	InitRateWindowSecs int `mapstructure:"init_rate_window_seconds"`
+
+	// 工作流超时提醒的后台扫描间隔（秒），<= 0 表示关闭
+	WorkflowRemindInterval int `mapstructure:"workflow_remind_interval_seconds"`
 }
 
 type MySQL struct {
@@ -93,6 +96,10 @@ func (c *Config) applyDefaults() {
 	}
 	if c.Server.MaxUploadMB <= 0 {
 		c.Server.MaxUploadMB = 50
+	}
+	// 工作流超时提醒：默认 10 分钟扫一次；显式配置 0 或负数表示关闭
+	if c.Server.WorkflowRemindInterval == 0 {
+		c.Server.WorkflowRemindInterval = 600
 	}
 }
 

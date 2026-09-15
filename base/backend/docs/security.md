@@ -44,7 +44,10 @@
      - `GET /base/api/v1/workflow-instances/:id`
      - `POST /base/api/v1/workflow-instances/:id/cancel`
      - `GET /base/api/v1/workflow-tasks`
+     - `GET /base/api/v1/workflow-tasks/approver-options`（转办/加签的候选人选项，只返回本租户启用用户）
      - `POST /base/api/v1/workflow-tasks/:id/approve` / `reject`
+     - `POST /base/api/v1/workflow-tasks/:id/transfer`（转办）
+     - `POST /base/api/v1/workflow-tasks/:id/add-approver`（加签）
 4. **未分配任何权限的普通用户**：除白名单接口外一律返回 403「未分配任何接口权限，请联系管理员在「角色管理 → 分配权限」中授权」。
    （旧行为是「只读放行所有 `GET`」，会让零权限用户读到 `/settings`（含 SMTP 密码）、`/users`、`/operation-logs` 等敏感数据，已收窄。）
 5. 其余请求按 `base_permission` 的 `method + path` 匹配，未命中返回 403「无权限访问该接口」。
@@ -62,8 +65,17 @@
 | 实例详情 | 仅发起人、该实例的审批参与人、管理员可见 |
 | 撤销 | 仅发起人本人或管理员，且实例必须处于「审批中」 |
 | 待办列表 / 审批 / 驳回 | 按 `approver_id = 当前用户` 过滤，且校验任务归属与状态（不能重复处理、不能处理已结束流程） |
+| 转办 / 加签 | 只能操作 `approver_id = 当前用户` 的待处理任务；目标用户必须是**同租户且启用**的用户（平台超管可选全部租户用户），跨租户/已停用会被拒绝；目标已是本节点待处理审批人时拒绝，避免重复待办 |
+| 转办/加签候选人选项 | 只返回本租户启用用户的 `id/username/realName`，不返回密码等敏感字段 |
 
 而**流程定义（含节点编排）**属于管理动作，仍走权限点 `base:workflow-def:*`；**删除流程实例**属于管理动作，走 `base:workflow-instance:delete`（不在白名单）。
+
+#### 1.4.2 工作流超时提醒（后台任务）
+
+- 由 `service.StartWorkflowReminder` 在服务进程内按 `server.workflow_remind_interval_seconds`（默认 600 秒，`<= 0` 关闭）周期扫描，不对外暴露接口。
+- 只扫描 `status = 待处理` 且所属实例仍在审批中、且 `TIMESTAMPADD(MINUTE, timeout_minutes, created_at) <= NOW()` 的待办，单轮上限 200 条，避免大表扫描拖垮服务。
+- 提醒方式为**站内信**（`SendToUsers(0, "系统", tenantID, ...)`），收件人仅限该任务的审批人本人，不涉及邮件/短信渠道，也不回写业务数据。
+- 提醒结果只更新任务的 `reminded_at` / `remind_count` 并写 `remind` 流转日志（同一超时周期内不重复提醒）。
 
 ### 1.5 挂载方式
 

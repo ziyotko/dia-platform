@@ -20,7 +20,12 @@
         <el-table-column label="流程" min-width="140">
           <template #default="{ row }">{{ row.instance?.workflowName || '-' }}</template>
         </el-table-column>
-        <el-table-column prop="nodeName" label="审批节点" min-width="120" />
+        <el-table-column prop="nodeName" label="审批节点" min-width="150">
+          <template #default="{ row }">
+            {{ row.nodeName }}
+            <el-tag v-if="row.approveMode === 'and'" size="small" type="warning" effect="plain">会签</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="发起人" width="110">
           <template #default="{ row }">{{ row.instance?.initiatorName || '-' }}</template>
         </el-table-column>
@@ -39,12 +44,14 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="330" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="showDetail(row)">详情</el-button>
             <template v-if="box === 'todo'">
               <el-button link type="success" @click="openHandle(row, true)">通过</el-button>
               <el-button link type="danger" @click="openHandle(row, false)">驳回</el-button>
+              <el-button link type="warning" @click="openDelegate(row, 'add')">加签</el-button>
+              <el-button link @click="openDelegate(row, 'transfer')">转办</el-button>
             </template>
             <span v-else class="comment-tip">{{ row.comment || '-' }}</span>
           </template>
@@ -84,6 +91,35 @@
     </el-dialog>
 
     <workflow-detail v-model="detailVisible" :instance-id="detailId" />
+
+    <el-dialog v-model="delegateVisible" :title="delegateMode === 'add' ? '加签' : '转办'" width="520px">
+      <el-alert
+        :title="delegateMode === 'add' ? '加签：在当前审批节点追加一个审批人（会签节点需其也通过）' : '转办：把该待办交给选定的用户处理，你将不再需要处理'"
+        type="info"
+        :closable="false"
+        show-icon
+        style="margin-bottom: 12px"
+      />
+      <el-form label-width="80px">
+        <el-form-item label="选择用户" required>
+          <el-select v-model="delegateUserId" filterable placeholder="请选择" style="width: 100%">
+            <el-option
+              v-for="u in approverOptions"
+              :key="u.id"
+              :label="u.realName ? `${u.username}（${u.realName}）` : u.username"
+              :value="u.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="说明">
+          <el-input v-model="delegateComment" type="textarea" :rows="2" placeholder="可选" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="delegateVisible = false">取消</el-button>
+        <el-button type="primary" :loading="submitting" @click="submitDelegate">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -95,6 +131,9 @@ import {
   getMyWorkflowTasks,
   approveWorkflowTask,
   rejectWorkflowTask,
+  transferWorkflowTask,
+  addApproverWorkflowTask,
+  getWorkflowTaskApproverOptions,
   instanceStatusMap,
   taskStatusMap
 } from '@/api/workflow'
@@ -113,6 +152,50 @@ const comment = ref('')
 const currentTask = ref<WorkflowTask>({} as WorkflowTask)
 const detailVisible = ref(false)
 const detailId = ref<number>()
+
+// 加签 / 转办
+const delegateVisible = ref(false)
+const delegateMode = ref<'add' | 'transfer'>('add')
+const delegateUserId = ref<number | undefined>(undefined)
+const delegateComment = ref('')
+const approverOptions = ref<{ id: number; username: string; realName?: string }[]>([])
+
+const openDelegate = async (row: WorkflowTask, mode: 'add' | 'transfer') => {
+  currentTask.value = row
+  delegateMode.value = mode
+  delegateUserId.value = undefined
+  delegateComment.value = ''
+  delegateVisible.value = true
+  if (approverOptions.value.length === 0) {
+    try {
+      const res: any = await getWorkflowTaskApproverOptions()
+      approverOptions.value = res.data || []
+    } catch (error) {
+      approverOptions.value = []
+    }
+  }
+}
+
+const submitDelegate = async () => {
+  if (!delegateUserId.value) {
+    ElMessage.warning('请选择用户')
+    return
+  }
+  submitting.value = true
+  try {
+    if (delegateMode.value === 'add') {
+      await addApproverWorkflowTask(currentTask.value.id, delegateUserId.value, delegateComment.value)
+      ElMessage.success('已加签')
+    } else {
+      await transferWorkflowTask(currentTask.value.id, delegateUserId.value, delegateComment.value)
+      ElMessage.success('已转办')
+    }
+    delegateVisible.value = false
+    fetchData()
+  } finally {
+    submitting.value = false
+  }
+}
 
 const statusOf = (map: typeof taskStatusMap, status: number) => map[status] || { label: '未知', type: 'info' as const }
 const taskStatusOf = (status: number) => statusOf(taskStatusMap, status)

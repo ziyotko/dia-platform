@@ -249,6 +249,16 @@ func (s WorkflowService) SaveNodes(workflowID uint64, nodes []models.WorkflowNod
 			default:
 				return errors.New("节点审批人类型不合法")
 			}
+			// 审批方式：非 and 一律归一到 or；超时提醒限制在 0~10080 分钟（7 天）
+			if node.ApproveMode != models.ApproveModeAnd {
+				node.ApproveMode = models.ApproveModeOr
+			}
+			if node.TimeoutMinutes < 0 {
+				node.TimeoutMinutes = 0
+			}
+			if node.TimeoutMinutes > 10080 {
+				node.TimeoutMinutes = 10080
+			}
 			cleaned = append(cleaned, node)
 		}
 		return tx.Create(&cleaned).Error

@@ -51,6 +51,9 @@ func main() {
 	// 加载消息通知渠道（邮件 / 企业微信 / 短信），未配置的渠道不会注册
 	service.ReloadNotifiers()
 
+	// 工作流超时提醒后台轮询（间隔见 server.workflow_remind_interval_seconds，0 关闭）
+	go service.StartWorkflowReminder()
+
 	if *mockData {
 		if err := seed.MockOrganizations(); err != nil {
 			logrus.WithError(err).Fatal("插入模拟机构数据失败")

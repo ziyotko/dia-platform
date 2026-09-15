@@ -33,11 +33,19 @@
 
         <div class="section-title">审批任务</div>
         <el-table :data="detail.tasks" border size="small">
-          <el-table-column prop="nodeName" label="节点" min-width="110" />
+          <el-table-column prop="nodeName" label="节点" min-width="130">
+            <template #default="{ row }">
+              {{ row.nodeName }}
+              <el-tag v-if="row.approveMode === 'and'" size="small" type="warning" effect="plain">会签</el-tag>
+            </template>
+          </el-table-column>
           <el-table-column prop="approverName" label="审批人" min-width="100" />
-          <el-table-column label="结果" width="90">
+          <el-table-column label="结果" width="100">
             <template #default="{ row }">
               <el-tag :type="taskStatusOf(row.status).type" size="small">{{ taskStatusOf(row.status).label }}</el-tag>
+              <el-tooltip v-if="row.remindCount" :content="`已催办 ${row.remindCount} 次，最近 ${formatTime(row.remindedAt)}`">
+                <el-tag size="small" type="danger" effect="plain" style="margin-left: 4px">催</el-tag>
+              </el-tooltip>
             </template>
           </el-table-column>
           <el-table-column prop="comment" label="意见" show-overflow-tooltip />

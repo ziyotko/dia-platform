@@ -25,13 +25,16 @@ var permissionWhitelist = map[string][]string{
 	"/base/api/v1/messages/unread-count": {"GET"},
 
 	// 工作流：发起流程需要先选流程定义
-	"/base/api/v1/workflows/options":             {"GET"},
-	"/base/api/v1/workflow-instances":            {"POST", "GET"},
-	"/base/api/v1/workflow-instances/:id":        {"GET"},
-	"/base/api/v1/workflow-instances/:id/cancel": {"POST"},
-	"/base/api/v1/workflow-tasks":                {"GET"},
-	"/base/api/v1/workflow-tasks/:id/approve":    {"POST"},
-	"/base/api/v1/workflow-tasks/:id/reject":     {"POST"},
+	"/base/api/v1/workflows/options":               {"GET"},
+	"/base/api/v1/workflow-instances":              {"POST", "GET"},
+	"/base/api/v1/workflow-instances/:id":          {"GET"},
+	"/base/api/v1/workflow-instances/:id/cancel":   {"POST"},
+	"/base/api/v1/workflow-tasks":                  {"GET"},
+	"/base/api/v1/workflow-tasks/approver-options": {"GET"},
+	"/base/api/v1/workflow-tasks/:id/approve":      {"POST"},
+	"/base/api/v1/workflow-tasks/:id/reject":       {"POST"},
+	"/base/api/v1/workflow-tasks/:id/transfer":     {"POST"},
+	"/base/api/v1/workflow-tasks/:id/add-approver": {"POST"},
 }
 
 // PermissionAuth 基于 base_permission 表的接口级权限校验中间件。

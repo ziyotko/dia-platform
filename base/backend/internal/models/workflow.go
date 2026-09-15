@@ -18,6 +18,12 @@ const (
 	WorkflowTaskInvalid  = 4 // 已失效（他人已处理 / 流程终止）
 )
 
+// 节点审批方式
+const (
+	ApproveModeOr  = "or"  // 或签：任一审批人处理即完成（默认）
+	ApproveModeAnd = "and" // 会签：全部审批人都通过才算完成，任一驳回则节点不通过
+)
+
 // 节点审批人类型
 const (
 	ApproverTypeRole      = "role"      // 流程角色（角色内成员或签）
@@ -27,12 +33,15 @@ const (
 
 // 流程日志动作
 const (
-	WorkflowActionStart    = "start"     // 发起
-	WorkflowActionApprove  = "approve"   // 通过
-	WorkflowActionReject   = "reject"    // 驳回
-	WorkflowActionCancel   = "cancel"    // 撤销
-	WorkflowActionAutoPass = "auto-pass" // 节点无有效审批人，自动通过
-	WorkflowActionFinish   = "finish"    // 流程结束（通过）
+	WorkflowActionStart       = "start"        // 发起
+	WorkflowActionApprove     = "approve"      // 通过
+	WorkflowActionReject      = "reject"       // 驳回
+	WorkflowActionCancel      = "cancel"       // 撤销
+	WorkflowActionAutoPass    = "auto-pass"    // 节点无有效审批人，自动通过
+	WorkflowActionFinish      = "finish"       // 流程结束（通过）
+	WorkflowActionTransfer    = "transfer"     // 转办
+	WorkflowActionAddApprover = "add-approver" // 加签
+	WorkflowActionRemind      = "remind"       // 超时提醒
 )
 
 // Workflow 流程定义。
@@ -54,7 +63,8 @@ func (Workflow) TableName() string {
 }
 
 // WorkflowNode 流程节点（审批环节）。
-// 同一节点内的多个审批人为「或签」：任一审批人处理即视为该节点完成，其余任务自动失效。
+// 同一节点内的多个审批人默认「或签」（任一处理即完成）；ApproveMode = and 时为「会签」，
+// 需全部审批人通过才推进，任一驳回则节点不通过。
 type WorkflowNode struct {
 	BaseModel
 	WorkflowID   uint64 `gorm:"index;comment:流程定义ID" json:"workflowId"`
@@ -62,7 +72,10 @@ type WorkflowNode struct {
 	Sort         int    `gorm:"default:1;comment:节点顺序" json:"sort"`
 	ApproverType string `gorm:"size:32;comment:审批人类型 role/user/initiator" json:"approverType"`
 	ApproverID   uint64 `gorm:"default:0;comment:流程角色ID或用户ID" json:"approverId"`
-	Description  string `gorm:"size:512;comment:节点说明" json:"description"`
+	ApproveMode  string `gorm:"size:16;default:'or';comment:审批方式 or或签 and会签" json:"approveMode"`
+	// TimeoutMinutes 超时提醒：待办超过该分钟数仍未处理时提醒审批人（0 = 不提醒）
+	TimeoutMinutes int    `gorm:"default:0;comment:超时提醒（分钟），0=不提醒" json:"timeoutMinutes"`
+	Description    string `gorm:"size:512;comment:节点说明" json:"description"`
 
 	// ApproverName 审批人展示名（流程角色名/用户名/发起人），不落库
 	ApproverName string `gorm:"-" json:"approverName,omitempty"`
@@ -100,15 +113,21 @@ func (WorkflowInstance) TableName() string {
 // WorkflowTask 审批任务（待办）。
 type WorkflowTask struct {
 	BaseModel
-	TenantID     uint64 `gorm:"index;comment:租户ID" json:"tenantId"`
-	InstanceID   uint64 `gorm:"index;comment:流程实例ID" json:"instanceId"`
-	NodeID       uint64 `gorm:"index;comment:节点ID" json:"nodeId"`
-	NodeName     string `gorm:"size:128;comment:节点名称快照" json:"nodeName"`
-	NodeSort     int    `gorm:"comment:节点顺序快照" json:"nodeSort"`
+	TenantID   uint64 `gorm:"index;comment:租户ID" json:"tenantId"`
+	InstanceID uint64 `gorm:"index;comment:流程实例ID" json:"instanceId"`
+	NodeID     uint64 `gorm:"index;comment:节点ID" json:"nodeId"`
+	NodeName   string `gorm:"size:128;comment:节点名称快照" json:"nodeName"`
+	NodeSort   int    `gorm:"comment:节点顺序快照" json:"nodeSort"`
+	// ApproveMode 审批方式快照（or 或签 / and 会签）：定义变更不影响运行中的实例
+	ApproveMode  string `gorm:"size:16;default:'or';comment:审批方式快照 or/and" json:"approveMode"`
 	ApproverID   uint64 `gorm:"index;comment:审批人ID" json:"approverId"`
 	ApproverName string `gorm:"size:64;comment:审批人" json:"approverName"`
 	Status       int    `gorm:"default:1;comment:状态 1待处理 2已通过 3已驳回 4已失效" json:"status"`
 	Comment      string `gorm:"size:512;comment:审批意见" json:"comment"`
+	// TimeoutMinutes 超时提醒快照（0 = 不提醒）；RemindedAt/RemindCount 记录催办情况
+	TimeoutMinutes int        `gorm:"default:0;comment:超时提醒快照（分钟）" json:"timeoutMinutes"`
+	RemindedAt     *time.Time `gorm:"comment:最近一次超时提醒时间" json:"remindedAt"`
+	RemindCount    int        `gorm:"default:0;comment:超时提醒次数" json:"remindCount"`
 	// HandledAt 为指针类型：未处理时写入 NULL（同 EndAt，避免零值时间被 MySQL 拒绝）
 	HandledAt *time.Time `gorm:"comment:处理时间" json:"handledAt"`
 

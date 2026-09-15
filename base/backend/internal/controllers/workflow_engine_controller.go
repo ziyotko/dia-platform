@@ -119,6 +119,44 @@ func (ctl *WorkflowEngineController) Reject(c *gin.Context) {
 	ctl.handleTaskAction(c, false)
 }
 
+// ApproverOptions 转办/加签可选的用户列表
+func (ctl *WorkflowEngineController) ApproverOptions(c *gin.Context) {
+	options, err := ctl.service.ApproverOptions(workflowActor(c))
+	if err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+	response.Ok(c, options)
+}
+
+// Transfer 转办：把待办交给同租户的另一个用户（仅当前审批人可操作）
+func (ctl *WorkflowEngineController) Transfer(c *gin.Context) {
+	var req service.TransferRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.FailWithCode(c, response.CodeBadRequest, "参数错误")
+		return
+	}
+	if err := ctl.service.Transfer(uint64(parseID(c)), req, workflowActor(c)); err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+	response.OkWithMessage(c, "已转办", nil)
+}
+
+// AddApprover 加签：在当前节点追加一个审批人
+func (ctl *WorkflowEngineController) AddApprover(c *gin.Context) {
+	var req service.AddApproverRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.FailWithCode(c, response.CodeBadRequest, "参数错误")
+		return
+	}
+	if err := ctl.service.AddApprover(uint64(parseID(c)), req, workflowActor(c)); err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+	response.OkWithMessage(c, "已加签", nil)
+}
+
 func (ctl *WorkflowEngineController) handleTaskAction(c *gin.Context, approve bool) {
 	var req struct {
 		Comment string `json:"comment"`

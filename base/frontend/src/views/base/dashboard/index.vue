@@ -13,10 +13,32 @@
 
     <!-- 统计卡片 -->
     <el-row :gutter="16" class="stat-row">
-      <el-col :xs="24" :sm="12" :md="8" :lg="4" v-for="stat in statList" :key="stat.title">
+      <el-col :xs="24" :sm="12" :md="8" :lg="6" v-for="stat in statList" :key="stat.title">
         <el-card class="stat-card-wrapper" shadow="hover">
           <stat-card v-bind="stat" />
         </el-card>
+      </el-col>
+    </el-row>
+
+    <!-- 我的待办 -->
+    <el-row :gutter="16" class="stat-row">
+      <el-col :xs="24" :sm="8" v-for="item in myList" :key="item.title">
+        <el-card class="stat-card-wrapper clickable" shadow="hover" @click="item.go && item.go()">
+          <stat-card v-bind="item" />
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <!-- 近 7 天趋势（有租户/平台汇总权限时才展示） -->
+    <el-row v-if="showTrend" :gutter="16" class="stat-row">
+      <el-col :xs="24" :md="8">
+        <trend-card title="新增用户" :points="stats.userTrend" color="#409EFF" />
+      </el-col>
+      <el-col :xs="24" :md="8">
+        <trend-card title="登录次数" :points="stats.loginTrend" color="#67C23A" />
+      </el-col>
+      <el-col :xs="24" :md="8">
+        <trend-card title="新增消息" :points="stats.messageTrend" color="#8E44AD" />
       </el-col>
     </el-row>
 
@@ -71,7 +93,9 @@
 <script setup lang="ts">
 import { reactive, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRouter } from 'vue-router'
 import StatCard from './components/StatCard.vue'
+import TrendCard from './components/TrendCard.vue'
 import { getDashboardStats, type DashboardStats } from '@/api/dashboard'
 import { Management, InfoFilled } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
@@ -79,10 +103,14 @@ import { useAppStore } from '@/stores/app'
 import { buildAppEntryUrl } from '@/utils/appEntry'
 import type { App } from '@/api/app'
 
+const router = useRouter()
 const userStore = useUserStore()
 const appStore = useAppStore()
 // 仅平台超级管理员（tenantId === 0）可看全平台统计
 const isSuperAdmin = computed(() => userStore.userInfo?.tenantId === 0)
+// 租户管理员可看本租户汇总；普通用户只看「我的」
+const isAdmin = computed(() => isSuperAdmin.value || !!userStore.userInfo?.isAdmin)
+const showTrend = computed(() => isAdmin.value)
 
 // 当前租户已开通的应用（普通用户也可见，未开通则为空、不展示卡片）
 const myApps = computed(() => appStore.myApps)
@@ -104,25 +132,75 @@ const openApp = (app: App) => {
 
 const stats = reactive<DashboardStats>({
   tenantCount: 0,
+  tenantEnabledCount: 0,
   appCount: 0,
+  appIframeCount: 0,
+  appProxyCount: 0,
+  appInstanceCount: 0,
   userCount: 0,
+  userEnabledCount: 0,
+  userDisabledCount: 0,
+  userAdminCount: 0,
   roleCount: 0,
   organizationCount: 0,
-  messageCount: 0
+  messageCount: 0,
+  myUnreadCount: 0,
+  myTodoCount: 0,
+  myRunningInstanceCount: 0,
+  runningInstanceCount: 0,
+  todayNewUserCount: 0,
+  todayLoginCount: 0,
+  todayLoginFailCount: 0,
+  userTrend: [],
+  loginTrend: [],
+  messageTrend: []
 })
 
-// 统计口径：平台超管看全平台；租户用户只看本租户（租户数对租户无意义，仅超管展示）
+// 资源概览：平台超管看全平台，租户管理员看本租户，普通用户不展示（后端也不返回）
 const statList = computed(() => {
-  const list = [
-    { title: '租户数', value: stats.tenantCount, icon: 'OfficeBuilding', color: '#409EFF', superAdminOnly: true },
-    { title: isSuperAdmin.value ? '应用数' : '已开通应用', value: stats.appCount, icon: 'Grid', color: '#67C23A', superAdminOnly: false },
-    { title: '用户数', value: stats.userCount, icon: 'User', color: '#E6A23C', superAdminOnly: false },
-    { title: '角色数', value: stats.roleCount, icon: 'UserFilled', color: '#F56C6C', superAdminOnly: false },
-    { title: '机构数', value: stats.organizationCount, icon: 'OfficeBuilding', color: '#909399', superAdminOnly: false },
-    { title: '消息数', value: stats.messageCount, icon: 'Message', color: '#8E44AD', superAdminOnly: false }
+  const list: Array<{ title: string; value: number; icon: string; color: string; scope: 'platform' | 'tenant' }> = [
+    { title: '租户数', value: stats.tenantCount, icon: 'OfficeBuilding', color: '#409EFF', scope: 'platform' },
+    { title: '启用租户', value: stats.tenantEnabledCount, icon: 'CircleCheck', color: '#67C23A', scope: 'platform' },
+    { title: isSuperAdmin.value ? '应用数' : '已开通应用', value: stats.appCount, icon: 'Grid', color: '#67C23A', scope: 'tenant' },
+    { title: '应用实例', value: stats.appInstanceCount, icon: 'Connection', color: '#0EA5E9', scope: 'tenant' },
+    { title: '用户数', value: stats.userCount, icon: 'User', color: '#E6A23C', scope: 'tenant' },
+    { title: '启用用户', value: stats.userEnabledCount, icon: 'UserFilled', color: '#22C55E', scope: 'tenant' },
+    { title: '管理员', value: stats.userAdminCount, icon: 'Avatar', color: '#F59E0B', scope: 'tenant' },
+    { title: '角色数', value: stats.roleCount, icon: 'UserFilled', color: '#F56C6C', scope: 'tenant' },
+    { title: '机构数', value: stats.organizationCount, icon: 'OfficeBuilding', color: '#909399', scope: 'tenant' },
+    { title: '消息数', value: stats.messageCount, icon: 'Message', color: '#8E44AD', scope: 'tenant' },
+    { title: '今日新增用户', value: stats.todayNewUserCount, icon: 'Plus', color: '#3B82F6', scope: 'tenant' },
+    { title: '今日登录', value: stats.todayLoginCount, icon: 'Key', color: '#14B8A6', scope: 'tenant' },
+    { title: '今日登录失败', value: stats.todayLoginFailCount, icon: 'WarningFilled', color: '#EF4444', scope: 'tenant' }
   ]
-  return list.filter((item) => !item.superAdminOnly || isSuperAdmin.value)
+  if (!isAdmin.value) return []
+  return list.filter((item) => (item.scope === 'platform' ? isSuperAdmin.value : true))
 })
+
+// 我的待办：所有用户都能看到自己的数据，点击直达对应页面
+const myList = computed(() => [
+  {
+    title: '未读消息',
+    value: stats.myUnreadCount,
+    icon: 'Bell',
+    color: '#8E44AD',
+    go: () => router.push('/message/list')
+  },
+  {
+    title: '待我审批',
+    value: stats.myTodoCount,
+    icon: 'Finished',
+    color: '#409EFF',
+    go: () => router.push('/workflow/task')
+  },
+  {
+    title: '审批中的流程',
+    value: isAdmin.value ? stats.runningInstanceCount : stats.myRunningInstanceCount,
+    icon: 'Share',
+    color: '#F59E0B',
+    go: () => router.push('/workflow/instance')
+  }
+])
 
 const features = [
   { title: '多租户管理', desc: '支持租户隔离与平台级资源管理', icon: 'OfficeBuilding', color: '#409EFF', bg: '#e0f2fe' },
@@ -253,6 +331,10 @@ onMounted(() => {
 
   .app-card {
     margin-top: 20px;
+  }
+
+  .clickable {
+    cursor: pointer;
   }
 
   .app-item {
