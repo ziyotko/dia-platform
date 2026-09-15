@@ -148,8 +148,10 @@ func (s *MemberService) ListMembers(page, size int, keyword, status, memberType 
 	return members, total, nil
 }
 
-// UpdateMemberStatus updates a member's status (admin)
-func (s *MemberService) UpdateMemberStatus(id uint64, status string) error {
+// UpdateMemberStatus updates a member's status (admin).
+// 会籍有效性的变化（到期 / 恢复）会写入会籍变更记录，其余状态流转（
+// 报名中/待审核/待缴费/驳回）尚无会籍，不写记录。
+func (s *MemberService) UpdateMemberStatus(id uint64, status string, operator string) error {
 	validStatuses := map[string]bool{
 		models.MemberStatusRegistering:   true,
 		models.MemberStatusPendingReview: true,
@@ -161,7 +163,36 @@ func (s *MemberService) UpdateMemberStatus(id uint64, status string) error {
 	if !validStatuses[status] {
 		return errors.New("无效的状态值")
 	}
-	return db.DB.Model(&models.Member{}).Where("id = ?", id).Update("status", status).Error
+
+	var m models.Member
+	if err := db.DB.First(&m, id).Error; err != nil {
+		return errors.New("会员不存在")
+	}
+	if m.Status == status {
+		return nil
+	}
+	if err := db.DB.Model(&models.Member{}).Where("id = ?", id).Update("status", status).Error; err != nil {
+		return err
+	}
+
+	// 会籍失效 / 恢复时记录会籍变更
+	levelID, levelName := resolveMemberLevel(m.MemberLevel)
+	orgID, orgName := s.primaryOrg(&m)
+	switch {
+	case status == models.MemberStatusExpired && m.Status != models.MemberStatusExpired:
+		// 会籍终止：同步作废其生效证书，避免出现“已过期会员 + 生效证书”的矛盾状态。
+		// 注：恢复会籍（expired→active）不反向复活证书，会员可在缴费后自行续证。
+		db.DB.Model(&models.Certificate{}).
+			Where("member_id = ? AND status = ?", id, models.CertStatusActive).
+			Update("status", models.CertStatusExpired)
+		_ = writeMembershipChange(&m, time.Now().Year(), orgID, orgName,
+			levelID, levelName, 0, "", models.ReasonMemberExpired, operator)
+	case status == models.MemberStatusActive && m.Status == models.MemberStatusExpired:
+		_ = writeMembershipChange(&m, time.Now().Year(), orgID, orgName,
+			0, "", levelID, levelName, models.ReasonMemberResume, operator)
+	}
+
+	return nil
 }
 
 // UpdateMemberLevel updates a member's level (admin). Only active members may change
@@ -223,23 +254,9 @@ func (s *MemberService) UpdateMemberLevel(id uint64, levelID uint64, operator st
 	// 主入会机构
 	orgID, orgName := s.primaryOrg(&m)
 
-	// 记录会籍变更
-	change := models.MemberLevelChange{
-		MemberID:     m.ID,
-		Username:     m.Username,
-		MemberName:   memberDisplayName(&m),
-		MemberType:   m.MemberType,
-		ChangeYear:   time.Now().Year(),
-		OrgID:        orgID,
-		OrgName:      orgName,
-		OldLevelID:   oldLevelID,
-		OldLevelName: oldLevelName,
-		NewLevelID:   lvl.ID,
-		NewLevelName: lvl.Name,
-		Reason:       reason,
-		Operator:     operator,
-	}
-	if err := db.DB.Create(&change).Error; err != nil {
+	// 记录会籍变更（原因由管理员填写，不限定为常量）
+	if err := writeMembershipChange(&m, time.Now().Year(), orgID, orgName,
+		oldLevelID, oldLevelName, lvl.ID, lvl.Name, reason, operator); err != nil {
 		return err
 	}
 
@@ -262,10 +279,24 @@ func (s *MemberService) primaryOrg(m *models.Member) (uint64, string) {
 }
 
 // ListLevelChanges returns paginated membership change records (admin).
-func (s *MemberService) ListLevelChanges(page, size int, keyword, memberType string) ([]models.MemberLevelChange, int64, error) {
+// year > 0 时按“变更年份”过滤（缴费确认的变更年份为会费年度）。
+func (s *MemberService) ListLevelChanges(page, size int, keyword, memberType string, year int) ([]models.MemberLevelChange, int64, error) {
 	var list []models.MemberLevelChange
 	var total int64
 
+	query := levelChangeQuery(keyword, memberType, year)
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if err := query.Order("id DESC").Offset((page - 1) * size).Limit(size).Find(&list).Error; err != nil {
+		return nil, 0, err
+	}
+	return list, total, nil
+}
+
+// levelChangeQuery 构造会籍记录筛选条件（列表与导出共用）。
+func levelChangeQuery(keyword, memberType string, year int) *gorm.DB {
 	query := db.DB.Model(&models.MemberLevelChange{})
 	if keyword != "" {
 		kw := "%" + keyword + "%"
@@ -275,14 +306,58 @@ func (s *MemberService) ListLevelChanges(page, size int, keyword, memberType str
 	if memberType != "" {
 		query = query.Where("member_type = ?", memberType)
 	}
+	if year > 0 {
+		query = query.Where("change_year = ?", year)
+	}
+	return query
+}
 
-	if err := query.Count(&total).Error; err != nil {
-		return nil, 0, err
+// ListLevelChangeYears returns the distinct change years, newest first (筛选下拉用)。
+func (s *MemberService) ListLevelChangeYears() ([]int, error) {
+	years := []int{}
+	err := db.DB.Model(&models.MemberLevelChange{}).
+		Distinct().Order("change_year DESC").Pluck("change_year", &years).Error
+	if err != nil {
+		return nil, err
 	}
-	if err := query.Order("id DESC").Offset((page - 1) * size).Limit(size).Find(&list).Error; err != nil {
-		return nil, 0, err
+	return years, nil
+}
+
+// ExportLevelChanges exports membership change records as CSV (admin).
+// 导出量与筛选条件一致，上限 10000 条。
+func (s *MemberService) ExportLevelChanges(keyword, memberType string, year int) (string, error) {
+	var list []models.MemberLevelChange
+	if err := levelChangeQuery(keyword, memberType, year).
+		Order("id DESC").Limit(10000).Find(&list).Error; err != nil {
+		return "", err
 	}
-	return list, total, nil
+
+	sb := newCSVBuilder()
+	sb.WriteString("ID,变更用户名,公司名称/姓名,会员类型,变更时间,变更年份,入会机构,原始会籍,新的会籍,变更原因,变更人\n")
+	for _, r := range list {
+		oldLevel := r.OldLevelName
+		if oldLevel == "" {
+			oldLevel = "-"
+		}
+		newLevel := r.NewLevelName
+		if newLevel == "" {
+			newLevel = "-"
+		}
+		sb.WriteString(csvLine(
+			strconv.FormatUint(r.ID, 10),
+			r.Username,
+			r.MemberName,
+			memberTypeLabel(r.MemberType),
+			r.CreatedAt.Format("2006-01-02 15:04:05"),
+			strconv.Itoa(r.ChangeYear),
+			r.OrgName,
+			oldLevel,
+			newLevel,
+			r.Reason,
+			r.Operator,
+		))
+	}
+	return sb.String(), nil
 }
 
 // ListProfileChanges returns paginated profile change records (资料变更记录, admin).
@@ -332,6 +407,46 @@ func memberDisplayName(m *models.Member) string {
 		return m.CompanyName
 	}
 	return m.Username
+}
+
+// writeMembershipChange 统一写入一条会籍变更记录（会籍记录表 member_level_changes）。
+// 所有写入点（新增会员 / 等级变更 / 缴费确认 / 退出机构 / 到期 / 恢复 / 续证）均经此函数，
+// 保证 username、member_name、member_type 等口径一致。
+// year 为变更年份，传 0 时取当前自然年。
+func writeMembershipChange(m *models.Member, year int, orgID uint64, orgName string,
+	oldID uint64, oldName string, newID uint64, newName string, reason, operator string) error {
+	if m == nil || m.ID == 0 {
+		return nil
+	}
+	if year == 0 {
+		year = time.Now().Year()
+	}
+	change := models.MemberLevelChange{
+		MemberID:     m.ID,
+		Username:     m.Username,
+		MemberName:   memberDisplayName(m),
+		MemberType:   m.MemberType,
+		ChangeYear:   year,
+		OrgID:        orgID,
+		OrgName:      orgName,
+		OldLevelID:   oldID,
+		OldLevelName: oldName,
+		NewLevelID:   newID,
+		NewLevelName: newName,
+		Reason:       reason,
+		Operator:     operator,
+	}
+	return db.DB.Create(&change).Error
+}
+
+// membershipChangeExists 判断某会员某年是否已有指定原因的会籍记录（幂等写入用）。
+// 适用于“每会员每年至多一条”的事件（如证书续期）。
+func membershipChangeExists(memberID uint64, reason string, year int) bool {
+	var n int64
+	db.DB.Model(&models.MemberLevelChange{}).
+		Where("member_id = ? AND reason = ? AND change_year = ?", memberID, reason, year).
+		Count(&n)
+	return n > 0
 }
 
 // parseUint parses a string into uint64, returning 0 on error or empty input.
@@ -752,20 +867,8 @@ func (s *MemberService) CreateMember(req CreateMemberRequest, operator string) (
 
 	// 插入会籍变更记录（按所选总会新增入会）
 	if req.LevelID > 0 {
-		change := models.MemberLevelChange{
-			MemberID:     member.ID,
-			Username:     member.Username,
-			MemberName:   memberDisplayName(&member),
-			MemberType:   member.MemberType,
-			ChangeYear:   time.Now().Year(),
-			OrgID:        req.RootOrgID,
-			OrgName:      rootOrgName,
-			NewLevelID:   req.LevelID,
-			NewLevelName: levelName,
-			Reason:       "新增会员",
-			Operator:     operator,
-		}
-		db.DB.Create(&change)
+		_ = writeMembershipChange(&member, time.Now().Year(), req.RootOrgID, rootOrgName,
+			0, "", req.LevelID, levelName, models.ReasonMemberCreate, operator)
 	}
 
 	return &member, nil

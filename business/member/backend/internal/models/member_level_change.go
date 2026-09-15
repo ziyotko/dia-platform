@@ -1,5 +1,17 @@
 package models
 
+// 系统生成的会籍变更原因常量。
+// 管理员手工变更等级时原因由管理员填写（不受这些常量限制），
+// 其余由系统写入的记录统一使用下列常量，避免字面量散落各处。
+const (
+	ReasonMemberCreate  = "新增会员" // 管理员新增会员 / 审批通过入会
+	ReasonFeePaid       = "缴费确认" // 费用记录首次变为已缴费
+	ReasonLeaveOrg      = "退出机构" // 会员主动退出某机构
+	ReasonMemberExpired = "会员到期" // 管理员将会员置为已过期
+	ReasonMemberResume  = "恢复会籍" // 会员由已过期恢复为正式会员
+	ReasonCertRenew     = "证书续期" // 会员自助续证（年度延续）
+)
+
 // MemberLevelChange records a membership level change (会籍变更记录).
 // CreatedAt is treated as the change time (变更时间).
 type MemberLevelChange struct {

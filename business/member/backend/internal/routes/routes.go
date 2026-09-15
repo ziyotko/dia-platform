@@ -137,6 +137,8 @@ func Register(r *gin.Engine) {
 		admin.GET("/admin/member-stats", memberCtrl.GetMemberStats)
 		admin.GET("/admin/member-exists", memberCtrl.CheckMemberExists)
 		admin.GET("/admin/member-level-changes", memberCtrl.ListLevelChanges)
+		admin.GET("/admin/member-level-changes/years", memberCtrl.ListLevelChangeYears)
+		admin.GET("/admin/member-level-changes/export", memberCtrl.ExportLevelChanges)
 		admin.GET("/admin/member-profile-changes", memberCtrl.ListProfileChanges)
 
 		// Application review

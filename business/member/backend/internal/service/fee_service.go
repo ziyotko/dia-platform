@@ -75,6 +75,19 @@ func (s *FeeService) ConfirmFee(id uint64, amount float64, remark *string, opera
 		return err
 	}
 
+	// 重新读取，确保副作用使用更新后的字段
+	if err := db.DB.First(&fee, id).Error; err != nil {
+		return err
+	}
+	s.applyPaidSideEffects(fee, operator)
+
+	return nil
+}
+
+// applyPaidSideEffects 执行“费用变为已缴费”后的一次性副作用：
+// 激活会员、同步会员等级、同步证书、写入会籍变更记录。
+// ConfirmFee 与 UpdateFeeRecord 共用，避免两条确认路径行为漂移。
+func (s *FeeService) applyPaidSideEffects(fee models.FeeRecord, operator string) {
 	// Update member status to active if pending_payment
 	db.DB.Model(&models.Member{}).Where("id = ? AND status = ?", fee.MemberID, models.MemberStatusPendingPay).
 		Update("status", models.MemberStatusActive)
@@ -90,8 +103,6 @@ func (s *FeeService) ConfirmFee(id uint64, amount float64, remark *string, opera
 
 	// Record membership change (缴费确认)
 	s.recordPaymentChange(fee, operator)
-
-	return nil
 }
 
 // CreateFeeRecord creates a fee record (admin)
@@ -127,6 +138,14 @@ func (s *FeeService) UpdateFeeRecord(id uint64, req UpdateFeeRequest, operator s
 		return errors.New("费用记录不存在")
 	}
 
+	// 已缴费记录不可回退为其他状态：会籍记录、证书、会员状态均无法回滚
+	if exist.Status == models.FeeStatusPaid && req.Status != nil && *req.Status != models.FeeStatusPaid {
+		return errors.New("已缴费的记录不可改为其他状态")
+	}
+	// 仅“首次由未缴费/待确认变为已缴费”才执行副作用，
+	// 否则重复提交 status=paid 会重复写会籍记录、重复同步证书。
+	paidNow := req.Status != nil && *req.Status == models.FeeStatusPaid && exist.Status != models.FeeStatusPaid
+
 	updates := map[string]interface{}{}
 	if req.Status != nil {
 		updates["status"] = *req.Status
@@ -159,24 +178,12 @@ func (s *FeeService) UpdateFeeRecord(id uint64, req UpdateFeeRequest, operator s
 	}
 
 	// If confirmed as paid, activate member and update certificate
-	if req.Status != nil && *req.Status == models.FeeStatusPaid {
+	if paidNow {
 		var fee models.FeeRecord
 		if err := db.DB.First(&fee, id).Error; err != nil {
 			return err
 		}
-		db.DB.Model(&models.Member{}).Where("id = ? AND status = ?", fee.MemberID, models.MemberStatusPendingPay).
-			Update("status", models.MemberStatusActive)
-
-		// Update the member's level on the user record
-		if fee.LevelID > 0 {
-			db.DB.Model(&models.Member{}).Where("id = ?", fee.MemberID).
-				Update("member_level", strconv.FormatUint(fee.LevelID, 10))
-		}
-
-		s.updateCertificateWithLevelAndTemplate(fee.MemberID, fee.LevelID, fee.LevelName)
-
-		// Record membership change (缴费确认)
-		s.recordPaymentChange(fee, operator)
+		s.applyPaidSideEffects(fee, operator)
 	}
 
 	return nil
@@ -184,28 +191,30 @@ func (s *FeeService) UpdateFeeRecord(id uint64, req UpdateFeeRequest, operator s
 
 // recordPaymentChange inserts a membership change record for a paid fee confirmation.
 // 变更原因为“缴费确认”，原始会籍 id/name 为空，新会籍取自费用记录。
+// 幂等：同一会员 + 机构 + 等级 + 会费年度只保留一条。
 func (s *FeeService) recordPaymentChange(fee models.FeeRecord, operator string) {
 	var member models.Member
 	if err := db.DB.First(&member, fee.MemberID).Error; err != nil {
 		return
 	}
 
-	change := models.MemberLevelChange{
-		MemberID:     member.ID,
-		Username:     member.Username,
-		MemberName:   memberDisplayName(&member),
-		MemberType:   member.MemberType,
-		ChangeYear:   time.Now().Year(),
-		OrgID:        fee.OrgID,
-		OrgName:      fee.OrgName,
-		OldLevelID:   0,
-		OldLevelName: "",
-		NewLevelID:   fee.LevelID,
-		NewLevelName: fee.LevelName,
-		Reason:       "缴费确认",
-		Operator:     operator,
+	// 变更年份取会费年度（而非操作年份），否则跨年度缴费会让年度台账错位
+	year := fee.Year
+	if year == 0 {
+		year = time.Now().Year()
 	}
-	db.DB.Create(&change)
+
+	var exists int64
+	db.DB.Model(&models.MemberLevelChange{}).
+		Where("member_id = ? AND reason = ? AND org_id = ? AND new_level_id = ? AND change_year = ?",
+			member.ID, models.ReasonFeePaid, fee.OrgID, fee.LevelID, year).
+		Count(&exists)
+	if exists > 0 {
+		return
+	}
+
+	_ = writeMembershipChange(&member, year, fee.OrgID, fee.OrgName,
+		0, "", fee.LevelID, fee.LevelName, models.ReasonFeePaid, operator)
 }
 
 // DeleteFeeRecord deletes a fee record (admin, unpaid only)

@@ -105,7 +105,23 @@ func (s *CertificateService) RenewMyCertificate(memberID uint64) (*models.Certif
 	}
 
 	// Create a new certificate
-	return s.GenerateCertificateForMember(memberID)
+	cert, err := s.GenerateCertificateForMember(memberID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 续证成功即写入“证书续期”会籍记录（年度延续，等级不变）。
+	// 续证接口可重复调用（每次都会重发证书），但会籍记录按“每会员每年一条”幂等，
+	// 避免同一年度重复续证时刷出多条相同的会籍记录。
+	year := time.Now().Year()
+	if !membershipChangeExists(memberID, models.ReasonCertRenew, year) {
+		levelID, levelName := resolveMemberLevel(member.MemberLevel)
+		orgID, orgName := (&MemberService{}).primaryOrg(&member)
+		_ = writeMembershipChange(&member, year, orgID, orgName,
+			levelID, levelName, levelID, levelName, models.ReasonCertRenew, member.Username)
+	}
+
+	return cert, nil
 }
 
 type CreateCertRequest struct {

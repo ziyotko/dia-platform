@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"net/http"
+	"strings"
 	"time"
 
 	"member/internal/middleware"
@@ -58,7 +60,7 @@ func (ctrl *MemberController) UpdateMemberStatus(c *gin.Context) {
 		response.BadRequest(c, "参数错误")
 		return
 	}
-	if err := ctrl.memberService.UpdateMemberStatus(id, req.Status); err != nil {
+	if err := ctrl.memberService.UpdateMemberStatus(id, req.Status, middleware.GetUsername(c)); err != nil {
 		response.BadRequest(c, err.Error())
 		return
 	}
@@ -148,8 +150,9 @@ func (ctrl *MemberController) ListLevelChanges(c *gin.Context) {
 	size := parseIntDefault(c.Query("size"), 10)
 	keyword := c.Query("keyword")
 	memberType := c.Query("member_type")
+	year := parseIntDefault(c.Query("year"), 0)
 
-	list, total, err := ctrl.memberService.ListLevelChanges(page, size, keyword, memberType)
+	list, total, err := ctrl.memberService.ListLevelChanges(page, size, keyword, memberType, year)
 	if err != nil {
 		response.ServerError(c, err.Error())
 		return
@@ -160,6 +163,34 @@ func (ctrl *MemberController) ListLevelChanges(c *gin.Context) {
 		"page":  page,
 		"size":  size,
 	})
+}
+
+// ListLevelChangeYears returns the distinct change years for the year filter (admin)
+func (ctrl *MemberController) ListLevelChangeYears(c *gin.Context) {
+	years, err := ctrl.memberService.ListLevelChangeYears()
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+	response.Success(c, years)
+}
+
+// ExportLevelChanges exports membership change records as CSV (admin)
+func (ctrl *MemberController) ExportLevelChanges(c *gin.Context) {
+	keyword := c.Query("keyword")
+	memberType := c.Query("member_type")
+	year := parseIntDefault(c.Query("year"), 0)
+
+	csv, err := ctrl.memberService.ExportLevelChanges(keyword, memberType, year)
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+
+	filename := "member_level_changes_" + time.Now().Format("20060102_150405") + ".csv"
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+	c.Header("Content-Disposition", "attachment; filename="+filename)
+	c.String(http.StatusOK, strings.TrimSuffix(csv, "\n"))
 }
 
 // ListProfileChanges lists profile change records (资料变更记录, admin)

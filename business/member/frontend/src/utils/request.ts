@@ -21,6 +21,10 @@ request.interceptors.request.use(
 
 request.interceptors.response.use(
   (response) => {
+    // 文件下载/导出等非统一响应体：直接返回原始数据，跳过 {code} 校验
+    if (response.config.responseType === 'blob') {
+      return response.data
+    }
     const res = response.data
     if (res.code !== 0 && res.code !== 200) {
       ElMessage.error(res.message || '请求失败')

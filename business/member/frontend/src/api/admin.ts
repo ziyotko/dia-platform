@@ -16,6 +16,8 @@ export const adminApi = {
   deleteMember: (id: number) => request.delete(`/admin/members/${id}`),
   getMemberStats: () => request.get('/admin/member-stats'),
   getMemberLevelChanges: (params?: any) => request.get('/admin/member-level-changes', { params }),
+  getLevelChangeYears: () => request.get('/admin/member-level-changes/years'),
+  exportMemberLevelChanges: (params?: any) => request.get('/admin/member-level-changes/export', { params, responseType: 'blob' }),
   getProfileChanges: (params?: any) => request.get('/admin/member-profile-changes', { params }),
 
   // Applications

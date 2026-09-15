@@ -133,24 +133,26 @@
     <!-- 会籍变更历史弹窗 -->
     <el-dialog v-model="historyVisible" :title="`会籍变更历史 - ${historyTarget ? displayName(historyTarget) : ''}`" width="640px" class="member-history-dialog" append-to-body>
       <div ref="historyBodyRef" class="history-body" @scroll="onHistoryScroll">
-        <el-timeline v-if="historyList.length">
-          <el-timeline-item v-for="item in historyList" :key="item.id" :timestamp="fmt(item.created_at)" placement="top">
-            <div class="history-card">
-              <div class="history-line">
-                <span class="from">{{ item.old_level_name || '无' }}</span>
-                <el-icon class="arrow"><Right /></el-icon>
-                <span class="to">{{ item.new_level_name }}</span>
+        <div v-for="group in historyGroups" :key="group.year" class="history-year-group">
+          <div class="history-year">{{ group.year }} 年</div>
+          <el-timeline>
+            <el-timeline-item v-for="item in group.items" :key="item.id" :timestamp="fmt(item.created_at)" placement="top">
+              <div class="history-card">
+                <div class="history-line">
+                  <span class="from">{{ item.old_level_name || '无' }}</span>
+                  <el-icon class="arrow"><Right /></el-icon>
+                  <span class="to" :class="{ 'is-off': !item.new_level_id }">{{ item.new_level_name || '已失效' }}</span>
+                </div>
+                <div class="history-meta">
+                  <span>入会机构：{{ item.org_name || '-' }}</span>
+                  <span>变更人：{{ item.operator || '-' }}</span>
+                </div>
+                <div class="history-reason" v-if="item.reason">变更原因：{{ item.reason }}</div>
               </div>
-              <div class="history-meta">
-                <span>年份：{{ item.change_year }}</span>
-                <span>入会机构：{{ item.org_name || '-' }}</span>
-                <span>变更人：{{ item.operator || '-' }}</span>
-              </div>
-              <div class="history-reason" v-if="item.reason">变更原因：{{ item.reason }}</div>
-            </div>
-          </el-timeline-item>
-        </el-timeline>
-        <el-empty v-else-if="!historyLoading" description="暂无会籍变更记录" />
+            </el-timeline-item>
+          </el-timeline>
+        </div>
+        <el-empty v-if="!historyGroups.length && !historyLoading" description="暂无会籍变更记录" />
         <div v-if="historyLoading" class="history-loading">加载中...</div>
         <div v-else-if="historyList.length > 0 && historyList.length >= historyTotal" class="history-end">已加载全部记录</div>
       </div>
@@ -671,6 +673,19 @@ async function openHistory(row: any) {
   await fetchHistory()
 }
 
+// 会籍历史按变更年份分组（接口按时间倒序返回，分组后年份自然从新到旧）
+const historyGroups = computed(() => {
+  const groups: { year: number; items: any[] }[] = []
+  const map = new Map<number, { year: number; items: any[] }>()
+  for (const item of historyList.value) {
+    const year = Number(item.change_year) || 0
+    let g = map.get(year)
+    if (!g) { g = { year, items: [] }; map.set(year, g); groups.push(g) }
+    g.items.push(item)
+  }
+  return groups
+})
+
 async function fetchHistory() {
   if (historyLoading.value) return
   if (historyList.value.length >= historyTotal.value && historyPage.value > 1) return
@@ -851,6 +866,16 @@ function fmtMoney(n: any) {
     overflow-y: auto;
     padding: 4px 8px 4px 0;
 
+    .history-year-group {
+      .history-year {
+        margin: 4px 0 12px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #303133;
+      }
+      & + .history-year-group { margin-top: 10px; }
+    }
+
     .history-card {
       background: #fafbfc;
       border: 1px solid #eef0f3;
@@ -865,7 +890,10 @@ function fmtMoney(n: any) {
         font-weight: 600;
         .from { color: #909399; }
         .arrow { color: #c0c4cc; }
-        .to { color: #e6a23c; }
+        .to {
+          color: #e6a23c;
+          &.is-off { color: #909399; }
+        }
       }
       .history-meta {
         display: flex;

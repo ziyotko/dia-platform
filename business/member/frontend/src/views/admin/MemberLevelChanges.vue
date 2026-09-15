@@ -8,7 +8,11 @@
           <el-option label="单位会员" value="unit" />
           <el-option label="个人会员" value="personal" />
         </el-select>
+        <el-select v-model="filterYear" placeholder="变更年份" clearable style="width:130px" @change="search">
+          <el-option v-for="y in years" :key="y" :label="`${y} 年`" :value="y" />
+        </el-select>
         <el-button type="primary" @click="search">查询</el-button>
+        <el-button type="success" :loading="exporting" @click="handleExport">导出</el-button>
       </div>
     </div>
 
@@ -34,7 +38,8 @@
         </el-table-column>
         <el-table-column label="新的会籍" min-width="150">
           <template #default="{ row }">
-            <el-tag type="warning">{{ row.new_level_name }}</el-tag>
+            <el-tag v-if="row.new_level_id" type="warning">{{ row.new_level_name }}</el-tag>
+            <el-tag v-else type="info" effect="plain">已失效</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="变更原因" min-width="180" show-overflow-tooltip>
@@ -117,12 +122,15 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import { adminApi } from '@/api/admin'
 
 const list = ref<any[]>([])
 const loading = ref(true)
 const page = ref(1); const size = ref(10); const total = ref(0)
-const keyword = ref(''); const filterType = ref('')
+const keyword = ref(''); const filterType = ref(''); const filterYear = ref<number | ''>('')
+const years = ref<number[]>([])
+const exporting = ref(false)
 const levels = ref<any[]>([])
 
 const detailVisible = ref(false)
@@ -159,7 +167,14 @@ function fileUrl(path?: string) {
 }
 function tableRowClassName() { return 'level-changes-row' }
 
-onMounted(() => { fetchData(); fetchLevels() })
+onMounted(() => { fetchData(); fetchLevels(); fetchYears() })
+
+async function fetchYears() {
+  try {
+    const res = await adminApi.getLevelChangeYears()
+    years.value = res.data || []
+  } catch {}
+}
 
 async function fetchLevels() {
   try {
@@ -186,11 +201,33 @@ async function fetchData() {
       page: page.value,
       size: size.value,
       keyword: keyword.value,
-      member_type: filterType.value
+      member_type: filterType.value,
+      year: filterYear.value || undefined
     })
     list.value = res.data?.list || []
     total.value = res.data?.total || 0
   } catch {} finally { loading.value = false }
+}
+
+async function handleExport() {
+  exporting.value = true
+  try {
+    const data: any = await adminApi.exportMemberLevelChanges({
+      keyword: keyword.value,
+      member_type: filterType.value,
+      year: filterYear.value || undefined
+    })
+    const blob = new Blob([data], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `member_level_changes_${new Date().getTime()}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('导出成功')
+  } catch {
+    ElMessage.error('导出失败')
+  } finally { exporting.value = false }
 }
 
 function search() { page.value = 1; fetchData() }

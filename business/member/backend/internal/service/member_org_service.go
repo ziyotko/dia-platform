@@ -60,7 +60,15 @@ func (s *MemberOrgService) LeaveOrg(memberID, orgID uint64) error {
 	if err := s.checkLeavable(orgID); err != nil {
 		return err
 	}
-	return db.DB.Where("member_id = ? AND org_id = ?", memberID, orgID).Delete(&models.MemberOrganization{}).Error
+	var mo models.MemberOrganization
+	if err := db.DB.Where("member_id = ? AND org_id = ?", memberID, orgID).First(&mo).Error; err != nil {
+		return errors.New("未找到该加入记录")
+	}
+	if err := db.DB.Where("member_id = ? AND org_id = ?", memberID, orgID).Delete(&models.MemberOrganization{}).Error; err != nil {
+		return err
+	}
+	s.recordLeaveOrg(memberID, mo)
+	return nil
 }
 
 // LeaveOrgByID leaves by membership record ID
@@ -72,7 +80,28 @@ func (s *MemberOrgService) LeaveOrgByID(memberID, id uint64) error {
 	if err := s.checkLeavable(mo.OrgID); err != nil {
 		return err
 	}
-	return db.DB.Where("id = ? AND member_id = ?", id, memberID).Delete(&models.MemberOrganization{}).Error
+	if err := db.DB.Where("id = ? AND member_id = ?", id, memberID).Delete(&models.MemberOrganization{}).Error; err != nil {
+		return err
+	}
+	s.recordLeaveOrg(memberID, mo)
+	return nil
+}
+
+// recordLeaveOrg 写入“退出机构”会籍记录：
+// 入会机构 = 所退出的机构，原始会籍 = 该机构下的等级，新的会籍留空（已退出）。
+// 操作为会员自助，operator 记为会员用户名。
+func (s *MemberOrgService) recordLeaveOrg(memberID uint64, mo models.MemberOrganization) {
+	var member models.Member
+	if err := db.DB.First(&member, memberID).Error; err != nil {
+		return
+	}
+	orgName := ""
+	var org models.Organization
+	if err := db.DB.First(&org, mo.OrgID).Error; err == nil {
+		orgName = org.Name
+	}
+	_ = writeMembershipChange(&member, time.Now().Year(), mo.OrgID, orgName,
+		mo.LevelID, memberLevelNameByID(mo.LevelID), 0, "", models.ReasonLeaveOrg, member.Username)
 }
 
 // checkLeavable prevents a member from leaving the root (level-1) organization
