@@ -12,9 +12,14 @@ func (s MenuService) Create(m *models.Menu) error {
 }
 
 func (s MenuService) Update(m *models.Menu, tenantID uint64) error {
+	check := db.DB.Model(&models.Menu{}).Where("id = ?", m.ID)
 	db := db.DB.Model(m)
 	if tenantID > 0 {
+		check = check.Where("tenant_id = ?", tenantID)
 		db = db.Where("tenant_id = ?", tenantID)
+	}
+	if err := ensureRecordExists(check, msgNotOwnedOrMissing); err != nil {
+		return err
 	}
 	return db.Updates(map[string]interface{}{
 		"parent_id":  m.ParentID,
@@ -34,11 +39,11 @@ func (s MenuService) Update(m *models.Menu, tenantID uint64) error {
 }
 
 func (s MenuService) Delete(id uint64, tenantID uint64) error {
-	db := db.DB
+	db := db.DB.Where("id = ?", id)
 	if tenantID > 0 {
 		db = db.Where("tenant_id = ?", tenantID)
 	}
-	return db.Delete(&models.Menu{BaseModel: models.BaseModel{ID: id}}).Error
+	return ensureDeleteAffected(db.Delete(&models.Menu{}), msgNotOwnedOrMissingDelete)
 }
 
 func (s MenuService) GetByID(id uint64, tenantID uint64) (*models.Menu, error) {

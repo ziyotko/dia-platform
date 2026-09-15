@@ -1,6 +1,8 @@
 package service
 
 import (
+	"errors"
+
 	"base/internal/models"
 	"base/pkg/db"
 
@@ -23,9 +25,14 @@ func (s DictService) Create(d *models.Dict) error {
 }
 
 func (s DictService) Update(d *models.Dict, tenantID uint64) error {
+	check := db.DB.Model(&models.Dict{}).Where("id = ?", d.ID)
 	db := db.DB.Model(d).Where("id = ?", d.ID)
 	if tenantID > 0 {
+		check = check.Where("tenant_id = ?", tenantID)
 		db = db.Where("tenant_id = ?", tenantID)
+	}
+	if err := ensureRecordExists(check, msgNotOwnedOrMissing); err != nil {
+		return err
 	}
 	return db.Updates(map[string]interface{}{
 		"code":        d.Code,
@@ -43,7 +50,7 @@ func (s DictService) Delete(id uint64, tenantID uint64) error {
 			query = query.Where("tenant_id = ?", tenantID)
 		}
 		if err := query.First(&d).Error; err != nil {
-			return err
+			return errors.New(msgNotOwnedOrMissingDelete)
 		}
 		if err := tx.Where("dict_id = ?", id).Delete(&models.DictItem{}).Error; err != nil {
 			return err

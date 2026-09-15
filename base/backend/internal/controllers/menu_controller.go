@@ -18,9 +18,8 @@ func (ctl *MenuController) Create(c *gin.Context) {
 		response.FailWithCode(c, response.CodeBadRequest, "参数错误")
 		return
 	}
-	if m.TenantID == 0 {
-		m.TenantID = c.GetUint64("tenantID")
-	}
+	// 与其它模块统一：普通租户用户强制落到自身租户；平台超管可用 body 的 tenantId 指定（缺省=平台内置菜单）
+	m.TenantID = resolveTenantID(c, m.TenantID)
 	if err := ctl.service.Create(&m); err != nil {
 		response.Fail(c, err.Error())
 		return

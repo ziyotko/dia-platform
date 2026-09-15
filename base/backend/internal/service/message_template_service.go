@@ -12,9 +12,14 @@ func (s MessageTemplateService) Create(t *models.MessageTemplate) error {
 }
 
 func (s MessageTemplateService) Update(t *models.MessageTemplate, tenantID uint64) error {
+	check := db.DB.Model(&models.MessageTemplate{}).Where("id = ?", t.ID)
 	db := db.DB.Model(t).Where("id = ?", t.ID)
 	if tenantID > 0 {
+		check = check.Where("tenant_id = ?", tenantID)
 		db = db.Where("tenant_id = ?", tenantID)
+	}
+	if err := ensureRecordExists(check, msgNotOwnedOrMissing); err != nil {
+		return err
 	}
 	return db.Updates(map[string]interface{}{
 		"name":        t.Name,
@@ -32,7 +37,7 @@ func (s MessageTemplateService) Delete(id uint64, tenantID uint64) error {
 	if tenantID > 0 {
 		db = db.Where("tenant_id = ?", tenantID)
 	}
-	return db.Delete(&models.MessageTemplate{}).Error
+	return ensureDeleteAffected(db.Delete(&models.MessageTemplate{}), msgNotOwnedOrMissingDelete)
 }
 
 func (s MessageTemplateService) GetByID(id uint64, tenantID uint64) (*models.MessageTemplate, error) {

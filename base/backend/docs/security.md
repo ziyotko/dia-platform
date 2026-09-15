@@ -45,7 +45,8 @@
      - `POST /base/api/v1/workflow-instances/:id/cancel`
      - `GET /base/api/v1/workflow-tasks`
      - `POST /base/api/v1/workflow-tasks/:id/approve` / `reject`
-4. **未分配任何权限的普通用户**：仅放行 `GET`（只读），写操作（POST/PUT/DELETE）返回 403「未分配该操作的接口权限，请联系管理员」。
+4. **未分配任何权限的普通用户**：除白名单接口外一律返回 403「未分配任何接口权限，请联系管理员在「角色管理 → 分配权限」中授权」。
+   （旧行为是「只读放行所有 `GET`」，会让零权限用户读到 `/settings`（含 SMTP 密码）、`/users`、`/operation-logs` 等敏感数据，已收窄。）
 5. 其余请求按 `base_permission` 的 `method + path` 匹配，未命中返回 403「无权限访问该接口」。
 
 > ⚠️ 历史行为（已取消）：早期版本在「用户没有任何权限记录」时 **整体放行**，导致全新部署下所有登录用户可调用全部写接口。
@@ -127,6 +128,16 @@ return db.Updates(updates).Error
 
 - 当 `tenantID > 0`（普通租户管理员），SQL 自动带 `tenant_id = ?` 过滤。
 - 当 `tenantID == 0`（超级管理员），不加过滤，可管理全量数据。
+
+#### 写操作必须校验命中（`internal/service/helper.go`）
+
+GORM 的 `Updates` / `Delete` 在 `WHERE` 命中 0 行时**不返回错误**，若直接 `return res.Error`，接口会提示
+「保存成功 / 删除成功」而数据没有任何变化。菜单、字典、机构、消息模板这些模块的读取口径包含平台内置数据
+（`tenant_id = 0`，租户可见但不可改），这个问题在租户管理员操作平台内置项时必然出现，因此：
+
+- 更新前用 `ensureRecordExists(...)` 先做一次存在性 + 归属校验（`COUNT`）；
+  **不要用 `RowsAffected` 判断更新**：MySQL 默认返回「实际变更行数」，原样保存时会得到 0，会被误判为失败。
+- 删除后用 `ensureDeleteAffected(...)` 校验 `RowsAffected > 0`（软删除一定会改 `deleted_at`，因此可靠）。
 
 #### Controller 层
 
@@ -233,11 +244,14 @@ if tenantID > 0 {
 | 登录失败锁定 | `loginLock` | `true` | 是否启用连续失败锁定 |
 | 最大失败次数 | `maxFailCount` | `5` | 达到该次数即锁定（范围 3~20） |
 | 锁定时长(分钟) | `lockDuration` | `30` | 锁定时间，同时是失败计数 Redis key 的 TTL（范围 1~1440） |
-| 密码最小长度 | `pwdMinLength` | `8` | 新增用户与修改密码时服务端强校验（范围 6~32） |
+| 密码最小长度 | `pwdMinLength` | `8` | 新增用户 / 重置密码 / 修改密码时服务端强校验（范围 6~32） |
 
 **要点**：
 
 - 读取入口统一为 `service.SettingsService{}.GetSecuritySettings()`，登录、验证码锁定、用户创建三个流程共用一份配置，避免口径不一。
+- **密码不存在隐式默认值**：新增用户必须显式填写初始密码，`POST /users/:id/reset-password` 也必须由管理员传入新密码。
+  早期版本会隐式使用 `123456`（6 位），与 `pwdMinLength`（默认 8）自相矛盾——不填密码必然报错，
+  而重置密码又不做长度校验、绕过策略；现在两者统一走 `service.validatePassword`。
 - 设置为空或非法时回退到默认值（数值会被 clamp 到合法区间），因此旧环境不需要预先写入任何记录。
 - 前端「安全策略」表单必须与后端 key 对齐（`api/setting.ts` + `views/base/setting/index.vue` 的 `handleSaveSecurity`）。
 

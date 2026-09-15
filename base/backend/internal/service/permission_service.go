@@ -12,6 +12,9 @@ func (s PermissionService) Create(p *models.Permission) error {
 }
 
 func (s PermissionService) Update(p *models.Permission) error {
+	if err := ensureRecordExists(db.DB.Model(&models.Permission{}).Where("id = ?", p.ID), "权限不存在"); err != nil {
+		return err
+	}
 	return db.DB.Model(p).Updates(map[string]interface{}{
 		"app_code":  p.AppCode,
 		"code":      p.Code,
@@ -25,7 +28,7 @@ func (s PermissionService) Update(p *models.Permission) error {
 }
 
 func (s PermissionService) Delete(id uint64) error {
-	return db.DB.Delete(&models.Permission{BaseModel: models.BaseModel{ID: id}}).Error
+	return ensureDeleteAffected(db.DB.Where("id = ?", id).Delete(&models.Permission{}), "权限不存在")
 }
 
 func (s PermissionService) List(appCode string) ([]models.Permission, error) {

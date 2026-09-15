@@ -59,6 +59,6 @@ export function assignUserRoles(id: number, roleIds: number[]) {
   return request.post(`/users/${id}/roles`, { roleIds })
 }
 
-export function resetUserPassword(id: number) {
-  return request.post(`/users/${id}/reset-password`)
+export function resetUserPassword(id: number, password: string) {
+  return request.post(`/users/${id}/reset-password`, { password })
 }

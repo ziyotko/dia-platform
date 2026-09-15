@@ -14,9 +14,14 @@ func (s RoleService) Create(r *models.Role) error {
 }
 
 func (s RoleService) Update(r *models.Role, tenantID uint64) error {
+	check := db.DB.Model(&models.Role{}).Where("id = ?", r.ID)
 	db := db.DB.Model(r)
 	if tenantID > 0 {
+		check = check.Where("tenant_id = ?", tenantID)
 		db = db.Where("tenant_id = ?", tenantID)
+	}
+	if err := ensureRecordExists(check, "角色不存在或不属于当前租户"); err != nil {
+		return err
 	}
 	return db.Updates(map[string]interface{}{
 		"name":   r.Name,

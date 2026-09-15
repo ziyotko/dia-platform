@@ -16,6 +16,9 @@ func (s TenantService) Create(t *models.Tenant) error {
 }
 
 func (s TenantService) Update(t *models.Tenant) error {
+	if err := ensureRecordExists(db.DB.Model(&models.Tenant{}).Where("id = ?", t.ID), "租户不存在"); err != nil {
+		return err
+	}
 	return db.DB.Model(t).Updates(map[string]interface{}{
 		"name":          t.Name,
 		"status":        t.Status,
@@ -26,7 +29,7 @@ func (s TenantService) Update(t *models.Tenant) error {
 }
 
 func (s TenantService) Delete(id uint64) error {
-	return db.DB.Delete(&models.Tenant{BaseModel: models.BaseModel{ID: id}}).Error
+	return ensureDeleteAffected(db.DB.Where("id = ?", id).Delete(&models.Tenant{}), "租户不存在")
 }
 
 func (s TenantService) GetByID(id uint64) (*models.Tenant, error) {

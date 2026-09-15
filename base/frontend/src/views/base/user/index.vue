@@ -91,7 +91,13 @@
           <el-input v-model="form.email" />
         </el-form-item>
         <el-form-item label="密码" v-if="!isEdit" prop="password">
-          <el-input v-model="form.password" type="password" show-password placeholder="不填则默认为 123456，长度 6-64 位" />
+          <el-input
+            v-model="form.password"
+            type="password"
+            show-password
+            placeholder="登录初始密码"
+          />
+          <div class="form-tip">长度需满足「系统设置 → 安全策略」的密码最小长度（默认 8 位）</div>
         </el-form-item>
         <el-form-item label="管理员">
           <el-switch v-model="form.isAdmin" />
@@ -177,7 +183,8 @@ const form = reactive<any>({
 
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ min: 6, max: 64, message: '密码长度 6-64 位', trigger: 'blur' }],
+  // 初始密码必填：后端不再隐式默认 123456（6 位无法通过安全策略的密码最小长度校验）
+  password: [{ required: true, message: '请输入初始密码', trigger: 'blur' }],
   email: [{ type: 'email', message: '邮箱格式不正确', trigger: 'blur' }]
 }
 
@@ -229,9 +236,18 @@ const handleDelete = async (row: User) => {
   fetchData()
 }
 
+// 重置密码：由管理员显式输入新密码（与新增用户同一套长度校验由后端执行）
 const handleResetPwd = async (row: User) => {
-  await ElMessageBox.confirm('确认重置密码为 123456？', '提示', { type: 'warning' })
-  await resetUserPassword(row.id)
+  const { value } = await ElMessageBox.prompt(
+    `请输入 ${row.username} 的新密码（需满足安全策略的密码最小长度）：`,
+    '重置密码',
+    {
+      inputType: 'password',
+      inputPlaceholder: '新密码',
+      inputValidator: (val: string) => (val ? true : '请输入新密码')
+    }
+  )
+  await resetUserPassword(row.id, value)
   ElMessage.success('密码已重置')
 }
 
@@ -265,7 +281,7 @@ const handleSubmit = async () => {
   } else {
     await createUser({
       username: form.username,
-      password: form.password || undefined,
+      password: form.password,
       realName: form.realName,
       phone: form.phone,
       email: form.email,

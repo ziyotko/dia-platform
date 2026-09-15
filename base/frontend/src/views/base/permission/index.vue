@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>权限管理</span>
-          <el-button type="primary" @click="handleAdd">新增权限</el-button>
+          <el-button v-if="can('base:permission:create')" type="primary" @click="handleAdd">新增权限</el-button>
         </div>
       </template>
 
@@ -42,8 +42,8 @@
         </el-table-column>
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="can('base:permission:update')" link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="can('base:permission:delete')" link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -104,6 +104,11 @@ import { reactive, ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getPermissionTree, createPermission, updatePermission, deletePermission } from '@/api/permission'
 import type { Permission } from '@/api/permission'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+// 按钮级权限：与后端 base:permission:* 权限点对齐
+const can = (code: string) => userStore.can(code)
 
 const methods = ['GET', 'POST', 'PUT', 'DELETE']
 const typeMap: Record<string, string> = { menu: '分组', api: '接口', button: '按钮' }

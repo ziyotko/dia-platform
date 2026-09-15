@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"base/internal/models"
 	"base/pkg/db"
@@ -22,12 +23,13 @@ func (s UserService) Create(u *models.User) error {
 		return errors.New("该租户下用户名已存在")
 	}
 
+	// 初始密码由管理员显式指定：不再隐式默认 123456
+	// （6 位无法通过「安全策略 → 密码最小长度」校验，默认密码必然报错）
 	if u.Password == "" {
-		u.Password = "123456"
+		return errors.New("请填写初始密码")
 	}
-	// 密码最小长度来自「系统设置 → 安全策略」（默认 8 位）
-	if minLen := (SettingsService{}).GetSecuritySettings().PwdMinLength; len([]rune(u.Password)) < minLen {
-		return fmt.Errorf("密码长度不能少于 %d 位", minLen)
+	if err := validatePassword(u.Password); err != nil {
+		return err
 	}
 	hash, err := utils.HashPassword(u.Password)
 	if err != nil {
@@ -35,6 +37,16 @@ func (s UserService) Create(u *models.User) error {
 	}
 	u.Password = hash
 	return db.DB.Create(u).Error
+}
+
+// validatePassword 按「系统设置 → 安全策略」的密码最小长度校验明文密码。
+// 新增用户、重置密码、修改密码统一走这里，避免出现绕过策略的密码。
+func validatePassword(pwd string) error {
+	minLen := (SettingsService{}).GetSecuritySettings().PwdMinLength
+	if len([]rune(pwd)) < minLen {
+		return fmt.Errorf("密码长度不能少于 %d 位", minLen)
+	}
+	return nil
 }
 
 func (s UserService) Update(u *models.User, tenantID uint64) error {
@@ -53,19 +65,24 @@ func (s UserService) Update(u *models.User, tenantID uint64) error {
 		}
 		updates["password"] = hash
 	}
-	db := db.DB.Model(u)
+	check := db.DB.Model(&models.User{}).Where("id = ?", u.ID)
+	query := db.DB.Model(u)
 	if tenantID > 0 {
-		db = db.Where("tenant_id = ?", tenantID)
+		query = query.Where("tenant_id = ?", tenantID)
+		check = check.Where("tenant_id = ?", tenantID)
 	}
-	return db.Updates(updates).Error
+	if err := ensureRecordExists(check, "用户不存在或不属于当前租户"); err != nil {
+		return err
+	}
+	return query.Updates(updates).Error
 }
 
 func (s UserService) Delete(id uint64, tenantID uint64) error {
-	db := db.DB
+	query := db.DB.Where("id = ?", id)
 	if tenantID > 0 {
-		db = db.Where("tenant_id = ?", tenantID)
+		query = query.Where("tenant_id = ?", tenantID)
 	}
-	return db.Delete(&models.User{BaseModel: models.BaseModel{ID: id}}).Error
+	return ensureDeleteAffected(query.Delete(&models.User{}), "用户不存在或不属于当前租户")
 }
 
 func (s UserService) GetByID(id uint64, tenantID uint64) (*models.User, error) {
@@ -126,7 +143,13 @@ func (s UserService) AssignRoles(userID uint64, roleIDs []uint64, tenantID uint6
 	return db.DB.Model(&user).Association("Roles").Replace(roles)
 }
 
-func (s UserService) ResetPassword(userID uint64, tenantID uint64) error {
+func (s UserService) ResetPassword(userID uint64, newPwd string, tenantID uint64) error {
+	if newPwd == "" {
+		return errors.New("请填写新密码")
+	}
+	if err := validatePassword(newPwd); err != nil {
+		return err
+	}
 	var user models.User
 	query := db.DB.Where("id = ?", userID)
 	if tenantID > 0 {
@@ -135,7 +158,7 @@ func (s UserService) ResetPassword(userID uint64, tenantID uint64) error {
 	if err := query.First(&user).Error; err != nil {
 		return err
 	}
-	hash, err := utils.HashPassword("123456")
+	hash, err := utils.HashPassword(newPwd)
 	if err != nil {
 		return err
 	}
@@ -150,9 +173,8 @@ func (s UserService) ChangePassword(userID uint64, oldPwd, newPwd string) error 
 	if !utils.CheckPassword(oldPwd, user.Password) {
 		return errors.New("旧密码错误")
 	}
-	// 密码最小长度来自「系统设置 → 安全策略」（默认 8 位）
-	if minLen := (SettingsService{}).GetSecuritySettings().PwdMinLength; len([]rune(newPwd)) < minLen {
-		return fmt.Errorf("新密码长度不能少于 %d 位", minLen)
+	if err := validatePassword(newPwd); err != nil {
+		return fmt.Errorf("新密码%s", strings.TrimPrefix(err.Error(), "密码"))
 	}
 	hash, err := utils.HashPassword(newPwd)
 	if err != nil {

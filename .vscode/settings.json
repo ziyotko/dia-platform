@@ -44,6 +44,8 @@
         "Get-Item": true,
         ".\\controllers\\log_controller.go": true,
         "Get-Process": true,
-        "Out-File": true
+        "Out-File": true,
+        "git check-ignore": true,
+        "npm run build": true
     }
 }

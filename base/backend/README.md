@@ -133,7 +133,7 @@ jwt:
 | 数据字典 | CRUD | `/base/api/v1/dicts` | 含字典项管理 |
 | 应用 | CRUD | `/base/api/v1/apps` | 应用定义管理 |
 | 应用实例 | CRUD | `/base/api/v1/app-instances` | 含我的应用列表 |
-| 用户 | CRUD | `/base/api/v1/users` | 含分配角色、重置密码 |
+| 用户 | CRUD | `/base/api/v1/users` | 含分配角色、重置密码（需传入新密码，服务端按安全策略校验长度） |
 | 角色 | CRUD | `/base/api/v1/roles` | 含分配菜单、分配权限 |
 | 菜单 | CRUD | `/base/api/v1/menus/tree` | 菜单树 |
 | 权限 | CRUD | `/base/api/v1/permissions/tree` | 权限树 |
@@ -155,7 +155,7 @@ jwt:
 
 - 所有登录接口默认挂载 `PermissionAuth` 中间件。
 - 基于 `base_permission` 表的 `method` + `path` 进行匹配，支持 `:param` 通配符。
-- 放行顺序：平台超管（`tenantID == 0`）→ 租户管理员（`is_admin`）→ 白名单接口 → 未分配权限的普通用户仅放行 `GET`；其余按权限点精确匹配，未命中返回 403。
+- 放行顺序：平台超管（`tenantID == 0`）→ 租户管理员（`is_admin`）→ 白名单接口 → 未分配权限的普通用户一律 403（白名单外不再放行 GET）；其余按权限点精确匹配，未命中返回 403。
 - 详见 [docs/security.md](./docs/security.md)。
 
 ### 公开接口限流

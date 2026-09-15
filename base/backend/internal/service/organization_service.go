@@ -12,9 +12,14 @@ func (s OrganizationService) Create(o *models.Organization) error {
 }
 
 func (s OrganizationService) Update(o *models.Organization, tenantID uint64) error {
+	check := db.DB.Model(&models.Organization{}).Where("id = ?", o.ID)
 	db := db.DB.Model(o)
 	if tenantID > 0 {
+		check = check.Where("tenant_id = ?", tenantID)
 		db = db.Where("tenant_id = ?", tenantID)
+	}
+	if err := ensureRecordExists(check, msgNotOwnedOrMissing); err != nil {
+		return err
 	}
 	return db.Updates(map[string]interface{}{
 		"parent_id":   o.ParentID,
@@ -30,11 +35,11 @@ func (s OrganizationService) Update(o *models.Organization, tenantID uint64) err
 }
 
 func (s OrganizationService) Delete(id uint64, tenantID uint64) error {
-	db := db.DB
+	db := db.DB.Where("id = ?", id)
 	if tenantID > 0 {
 		db = db.Where("tenant_id = ?", tenantID)
 	}
-	return db.Delete(&models.Organization{BaseModel: models.BaseModel{ID: id}}).Error
+	return ensureDeleteAffected(db.Delete(&models.Organization{}), msgNotOwnedOrMissingDelete)
 }
 
 func (s OrganizationService) GetByID(id uint64, tenantID uint64) (*models.Organization, error) {

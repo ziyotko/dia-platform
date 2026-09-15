@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>应用实例</span>
-          <el-button type="primary" @click="handleAdd">开通应用</el-button>
+          <el-button v-if="can('base:app-instance:create')" type="primary" @click="handleAdd">开通应用</el-button>
         </div>
       </template>
 
@@ -33,8 +33,8 @@
         <el-table-column prop="config" label="配置" min-width="200" show-overflow-tooltip />
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="can('base:app-instance:update')" link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="can('base:app-instance:delete')" link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -106,6 +106,8 @@ const formRef = ref()
 const userStore = useUserStore()
 // 仅平台超级管理员（tenantId === 0）可以跨租户开通应用
 const isSuperAdmin = computed(() => userStore.userInfo?.tenantId === 0)
+// 按钮级权限：与后端 base:app-instance:* 权限点对齐
+const can = (code: string) => userStore.can(code)
 const form = reactive<{
   id?: number
   tenantId: number

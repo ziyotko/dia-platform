@@ -17,7 +17,7 @@
               <el-input v-model="settings.basic.copyright" type="textarea" :rows="3" />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" @click="handleSave">保存</el-button>
+              <el-button v-if="can('base:setting:save')" type="primary" @click="handleSave">保存</el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
@@ -42,7 +42,7 @@
               <div class="form-tip">新增用户与修改密码时服务端校验</div>
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" @click="handleSaveSecurity">保存</el-button>
+              <el-button v-if="can('base:setting:save')" type="primary" @click="handleSaveSecurity">保存</el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
@@ -67,14 +67,14 @@
               <el-switch v-model="settings.email.ssl" />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" @click="handleSave">保存</el-button>
+              <el-button v-if="can('base:setting:save')" type="primary" @click="handleSave">保存</el-button>
             </el-form-item>
             <el-divider />
             <el-form-item label="测试收件人">
               <el-input v-model="testEmail.to" placeholder="请输入测试邮箱地址" />
             </el-form-item>
             <el-form-item>
-              <el-button type="success" :loading="sending" @click="handleTestEmail">发送测试邮件</el-button>
+              <el-button v-if="can('base:setting:test-email')" type="success" :loading="sending" @click="handleTestEmail">发送测试邮件</el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
@@ -89,6 +89,11 @@ import { ElMessage } from 'element-plus'
 import { getSettings, saveSettings } from '@/api/setting'
 import { testEmail as testEmailApi } from '@/api/setting'
 import type { SettingItem } from '@/api/setting'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+// 按钮级权限：与后端 base:setting:* 权限点对齐
+const can = (code: string) => userStore.can(code)
 
 const activeTab = ref('basic')
 const sending = ref(false)

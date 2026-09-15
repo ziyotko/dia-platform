@@ -68,6 +68,7 @@ func migrate() error {
 		&models.WorkflowTask{},
 		&models.WorkflowLog{},
 		&models.Menu{},
+		&models.MessageRead{},
 		&models.OperationLog{},
 		&models.Setting{},
 		&models.LoginLog{},

@@ -5,6 +5,7 @@
         <div class="card-header">
           <span>文件管理</span>
           <el-upload
+            v-if="can('base:file:upload')"
             action="#"
             :http-request="handleUpload"
             :show-file-list="false"
@@ -29,7 +30,7 @@
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handlePreview(row)">预览</el-button>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="can('base:file:delete')" link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -60,6 +61,11 @@ import { reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getFileList, deleteFile, uploadFile } from '@/api/file'
 import type { UploadedFile, FileQuery } from '@/api/file'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+// 按钮级权限：与后端 base:file:* 权限点对齐
+const can = (code: string) => userStore.can(code)
 
 const loading = ref(false)
 const tableData = ref<UploadedFile[]>([])

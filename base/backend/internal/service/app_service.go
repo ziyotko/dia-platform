@@ -12,6 +12,9 @@ func (s AppService) Create(a *models.App) error {
 }
 
 func (s AppService) Update(a *models.App) error {
+	if err := ensureRecordExists(db.DB.Model(&models.App{}).Where("id = ?", a.ID), "应用不存在"); err != nil {
+		return err
+	}
 	return db.DB.Model(a).Updates(map[string]interface{}{
 		"name":         a.Name,
 		"icon":         a.Icon,
@@ -26,7 +29,7 @@ func (s AppService) Update(a *models.App) error {
 }
 
 func (s AppService) Delete(id uint64) error {
-	return db.DB.Delete(&models.App{BaseModel: models.BaseModel{ID: id}}).Error
+	return ensureDeleteAffected(db.DB.Where("id = ?", id).Delete(&models.App{}), "应用不存在")
 }
 
 func (s AppService) GetByID(id uint64) (*models.App, error) {

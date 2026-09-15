@@ -18,7 +18,7 @@ type UserController struct {
 // 密码不能直接绑定 models.User（其 Password 字段为 json:"-"，绑定时会被忽略），故单独定义请求体。
 type CreateUserReq struct {
 	Username string `json:"username" binding:"required,min=2,max=64"`
-	Password string `json:"password" binding:"omitempty,min=6,max=64"`
+	Password string `json:"password" binding:"max=64"`
 	RealName string `json:"realName" binding:"max=64"`
 	Phone    string `json:"phone" binding:"max=32"`
 	Email    string `json:"email" binding:"omitempty,email"`
@@ -122,11 +122,18 @@ func (ctl *UserController) AssignRoles(c *gin.Context) {
 	response.OkWithMessage(c, "分配成功", nil)
 }
 
+// ResetPassword 重置用户密码。密码由管理员显式指定（与新增用户同一套长度校验），
+// 不再固定重置为 123456——6 位弱密码会绕过「安全策略 → 密码最小长度」。
 func (ctl *UserController) ResetPassword(c *gin.Context) {
 	id := uint64(parseID(c))
-	if err := ctl.service.ResetPassword(id, c.GetUint64("tenantID")); err != nil {
+	var req struct {
+		Password string `json:"password"`
+	}
+	// 请求体可为空（仅缺参数），参数错误交给 service 给出明确提示
+	_ = c.ShouldBindJSON(&req)
+	if err := ctl.service.ResetPassword(id, req.Password, c.GetUint64("tenantID")); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
-	response.OkWithMessage(c, "密码已重置为 123456", nil)
+	response.OkWithMessage(c, "密码已重置", nil)
 }

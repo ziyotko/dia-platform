@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>机构管理</span>
-          <el-button type="primary" @click="handleAdd">新增机构</el-button>
+          <el-button v-if="can('base:org:create')" type="primary" @click="handleAdd">新增机构</el-button>
         </div>
       </template>
       <el-table :data="tableData" v-loading="loading" row-key="id" border default-expand-all empty-text="暂无数据">
@@ -20,8 +20,8 @@
         </el-table-column>
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="can('base:org:update')" link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="can('base:org:delete')" link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -77,6 +77,11 @@ import { reactive, ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getOrganizationTree, createOrganization, updateOrganization, deleteOrganization } from '@/api/organization'
 import type { Organization } from '@/api/organization'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+// 按钮级权限：与后端 base:org:* 权限点对齐
+const can = (code: string) => userStore.can(code)
 
 const loading = ref(false)
 const tableData = ref<Organization[]>([])

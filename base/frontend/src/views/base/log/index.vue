@@ -5,9 +5,9 @@
         <div class="card-header">
           <span>审计日志</span>
           <div class="header-actions">
-            <el-button type="danger" :disabled="selectedIds.length === 0" @click="handleBatchDelete">批量删除</el-button>
-            <el-button type="warning" @click="handleClear">清理</el-button>
-            <el-button type="success" @click="handleExport">导出</el-button>
+            <el-button v-if="can('base:operation-log:delete')" type="danger" :disabled="selectedIds.length === 0" @click="handleBatchDelete">批量删除</el-button>
+            <el-button v-if="can('base:operation-log:clear')" type="warning" @click="handleClear">清理</el-button>
+            <el-button v-if="can('base:operation-log:export')" type="success" @click="handleExport">导出</el-button>
           </div>
         </div>
       </template>
@@ -107,6 +107,11 @@ import { reactive, ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getLogList, deleteLogs, clearLogs, exportLogs } from '@/api/log'
 import type { OperationLog, LogQuery } from '@/api/log'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+// 按钮级权限：与后端 base:operation-log:* 权限点对齐
+const can = (code: string) => userStore.can(code)
 
 const loading = ref(false)
 const tableData = ref<OperationLog[]>([])

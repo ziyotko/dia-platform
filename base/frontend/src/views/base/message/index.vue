@@ -10,8 +10,8 @@
               <el-radio-button :label="0">未读</el-radio-button>
               <el-radio-button :label="1">已读</el-radio-button>
             </el-radio-group>
-            <el-button v-if="activeTab === 'inbox'" @click="handleMarkAll">全部标为已读</el-button>
-            <el-button type="primary" @click="handleSend">发送消息</el-button>
+            <el-button v-if="activeTab === 'inbox' && can('base:message:read-all')" @click="handleMarkAll">全部标为已读</el-button>
+            <el-button v-if="can('base:message:send')" type="primary" @click="handleSend">发送消息</el-button>
           </div>
         </div>
       </template>
@@ -35,8 +35,8 @@
             <el-table-column label="操作" width="180" fixed="right">
               <template #default="{ row }">
                 <el-button link type="primary" @click="handleView(row)">查看</el-button>
-                <el-button v-if="!row.isRead" link type="primary" @click="handleRead(row)">标为已读</el-button>
-                <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+                <el-button v-if="!row.isRead && can('base:message:read')" link type="primary" @click="handleRead(row)">标为已读</el-button>
+                <el-button v-if="can('base:message:delete')" link type="danger" @click="handleDelete(row)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -55,7 +55,7 @@
             <el-table-column prop="sendAt" label="发送时间" width="180" />
             <el-table-column label="操作" width="120" fixed="right">
               <template #default="{ row }">
-                <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+                <el-button v-if="can('base:message:delete')" link type="danger" @click="handleDelete(row)">删除</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -134,6 +134,11 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMessageList, sendMessage, markMessageRead, markAllMessageRead, deleteMessage } from '@/api/message'
 import { getUserList } from '@/api/user'
 import type { Message } from '@/api/message'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+// 按钮级权限：与后端 base:message:* 权限点对齐
+const can = (code: string) => userStore.can(code)
 
 // 通知外层布局刷新未读红点
 const notifyUnreadChanged = () => window.dispatchEvent(new Event('base:unread-changed'))

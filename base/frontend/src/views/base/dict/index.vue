@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>数据字典</span>
-          <el-button type="primary" @click="handleAdd">新增字典</el-button>
+          <el-button v-if="can('base:dict:create')" type="primary" @click="handleAdd">新增字典</el-button>
         </div>
       </template>
 
@@ -33,9 +33,9 @@
         </el-table-column>
         <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="primary" @click="handleEditItems(row)">字典项</el-button>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="can('base:dict:update')" link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="can('base:dict:save-items')" link type="primary" @click="handleEditItems(row)">字典项</el-button>
+            <el-button v-if="can('base:dict:delete')" link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -98,7 +98,7 @@
       </el-table>
       <template #footer>
         <el-button @click="itemDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSaveItems">保存</el-button>
+        <el-button type="primary" @click="handleSaveItems" v-if="can('base:dict:save-items')">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -109,6 +109,11 @@ import { reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getDictList, createDict, updateDict, deleteDict, saveDictItems, getDictDetail } from '@/api/dict'
 import type { Dict, DictItem, DictQuery } from '@/api/dict'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+// 按钮级权限：与后端 base:dict:* 权限点对齐
+const can = (code: string) => userStore.can(code)
 
 const loading = ref(false)
 const tableData = ref<Dict[]>([])

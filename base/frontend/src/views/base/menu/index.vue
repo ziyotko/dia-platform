@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>菜单管理</span>
-          <el-button type="primary" @click="handleAdd">新增菜单</el-button>
+          <el-button v-if="can('base:menu:create')" type="primary" @click="handleAdd">新增菜单</el-button>
         </div>
       </template>
       <el-table :data="tableData" v-loading="loading" row-key="id" border default-expand-all>
@@ -20,8 +20,8 @@
         <el-table-column prop="sort" label="排序" width="80" />
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="can('base:menu:update')" link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="can('base:menu:delete')" link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -93,6 +93,11 @@ import { reactive, ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMenuTree, createMenu, updateMenu, deleteMenu } from '@/api/menu'
 import type { Menu } from '@/api/menu'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+// 按钮级权限：与后端 base:menu:* 权限点对齐
+const can = (code: string) => userStore.can(code)
 
 const loading = ref(false)
 const tableData = ref<Menu[]>([])

@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"net/http"
 	"strings"
 
 	"base/internal/models"
@@ -40,7 +39,7 @@ var permissionWhitelist = map[string][]string{
 //  1. 平台超级管理员（`models.IsPlatformTenant`）直接放行；
 //  2. 租户管理员（base_user.is_admin）在本租户内直接放行，与「管理员可见全部菜单」保持同一口径；
 //  3. 白名单接口直接放行；
-//  4. 未分配任何权限的普通用户：仅放行 GET，写操作拒绝（不再整体放行）。
+//  4. 未分配任何权限的普通用户：除白名单外一律拒绝（只读接口同样需要显式授权）。
 func PermissionAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID, exists := c.Get("userID")
@@ -87,13 +86,11 @@ func PermissionAuth() gin.HandlerFunc {
 			return
 		}
 
-		// 未分配任何接口权限：只读放行，写操作拒绝
+		// 未分配任何权限：一律拒绝（白名单接口已在上面放行）。
+		// 不再「放行所有 GET」——那会让零权限用户读到 /settings（含 SMTP 密码）、/users、
+		// /operation-logs 等敏感数据，只读接口也必须由角色显式授权。
 		if len(perms) == 0 {
-			if requiredMethod == http.MethodGet {
-				c.Next()
-				return
-			}
-			response.FailWithCode(c, response.CodeForbidden, "未分配该操作的接口权限，请联系管理员")
+			response.FailWithCode(c, response.CodeForbidden, "未分配任何接口权限，请联系管理员在「角色管理 → 分配权限」中授权")
 			c.Abort()
 			return
 		}

@@ -12,9 +12,14 @@ func (s AppInstanceService) Create(i *models.AppInstance) error {
 }
 
 func (s AppInstanceService) Update(i *models.AppInstance, tenantID uint64) error {
+	check := db.DB.Model(&models.AppInstance{}).Where("id = ?", i.ID)
 	db := db.DB.Model(i)
 	if tenantID > 0 {
+		check = check.Where("tenant_id = ?", tenantID)
 		db = db.Where("tenant_id = ?", tenantID)
+	}
+	if err := ensureRecordExists(check, "应用实例不存在或不属于当前租户"); err != nil {
+		return err
 	}
 	return db.Updates(map[string]interface{}{
 		"status": i.Status,
@@ -23,11 +28,11 @@ func (s AppInstanceService) Update(i *models.AppInstance, tenantID uint64) error
 }
 
 func (s AppInstanceService) Delete(id uint64, tenantID uint64) error {
-	db := db.DB
+	query := db.DB.Where("id = ?", id)
 	if tenantID > 0 {
-		db = db.Where("tenant_id = ?", tenantID)
+		query = query.Where("tenant_id = ?", tenantID)
 	}
-	return db.Delete(&models.AppInstance{BaseModel: models.BaseModel{ID: id}}).Error
+	return ensureDeleteAffected(query.Delete(&models.AppInstance{}), "应用实例不存在或不属于当前租户")
 }
 
 func (s AppInstanceService) GetByID(id uint64, tenantID uint64) (*models.AppInstance, error) {

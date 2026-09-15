@@ -24,6 +24,7 @@ func (ctl *MessageController) Create(c *gin.Context) {
 	m.SenderID = c.GetUint64("userID")
 	m.SenderName = c.GetString("username")
 	m.TenantID = c.GetUint64("tenantID")
+	// 仅新建草稿，发送请走 /messages/send（那里会校验接收人归属与启用状态）
 	if err := ctl.service.Create(&m); err != nil {
 		response.Fail(c, err.Error())
 		return
@@ -82,16 +83,18 @@ func (ctl *MessageController) Send(c *gin.Context) {
 
 	// 邮件渠道：站内信写入后额外发送（失败只记日志，不影响主流程）
 	if req.Channel == "email" {
-		go ctl.sendEmailToUsers(req.ReceiverIDs, req.Title, req.Content)
+		go ctl.sendEmailToUsers(tenantID, req.ReceiverIDs, req.Title, req.Content)
 	}
 
 	response.OkWithMessage(c, "发送成功", nil)
 }
 
-func (ctl *MessageController) sendEmailToUsers(userIDs []uint64, subject, content string) {
+func (ctl *MessageController) sendEmailToUsers(tenantID uint64, userIDs []uint64, subject, content string) {
 	userSvc := service.UserService{}
 	for _, uid := range userIDs {
-		user, err := userSvc.GetByID(uid, 0)
+		// 与站内信同一口径：只能发给自己租户的用户（平台超管 tenantID=0 时不限租户），
+		// 避免通过指定其他租户的用户 ID 向外发信
+		user, err := userSvc.GetByID(uid, tenantID)
 		if err != nil || user.Email == "" {
 			continue
 		}
@@ -104,7 +107,9 @@ func (ctl *MessageController) sendEmailToUsers(userIDs []uint64, subject, conten
 func (ctl *MessageController) Delete(c *gin.Context) {
 	id := uint64(parseID(c))
 	tenantID := c.GetUint64("tenantID")
-	if err := ctl.service.Delete(id, tenantID); err != nil {
+	// 广播消息在库中只有一行（租户内共享），只允许发送者或管理员删除
+	admin := models.IsPlatformTenant(tenantID) || isAdminUser(c.GetUint64("userID"))
+	if err := ctl.service.Delete(id, c.GetUint64("userID"), admin, tenantID); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
@@ -113,8 +118,7 @@ func (ctl *MessageController) Delete(c *gin.Context) {
 
 func (ctl *MessageController) Get(c *gin.Context) {
 	id := uint64(parseID(c))
-	tenantID := c.GetUint64("tenantID")
-	m, err := ctl.service.GetByID(id, tenantID)
+	m, err := ctl.service.GetByID(id, c.GetUint64("userID"), c.GetUint64("tenantID"))
 	if err != nil {
 		response.Fail(c, "消息不存在")
 		return
