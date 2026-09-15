@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import type { Menu } from '@/api/menu'
 
@@ -151,16 +152,39 @@ router.beforeEach(async (to, _from, next) => {
   if (!userStore.hasFetchedMenus) {
     try {
       await userStore.fetchUserInfo()
-      const menus = await userStore.fetchUserMenusAndGenerateRoutes()
-      addDynamicRoutes(menus)
-      const first = findFirstValidRoute(generateRoutes(menus))
-      if (to.path === '/' && first) {
-        next({ path: first, replace: true })
-      } else {
-        next({ ...to, replace: true })
-      }
-    } catch {
-      next('/login')
+    } catch (error) {
+      // 登录态已失效：清空本地会话并回到登录页
+      console.error('[base] 获取用户信息失败', error)
+      userStore.clearSession()
+      next({ path: '/login', replace: true })
+      return
+    }
+
+    let menus: Menu[] = []
+    try {
+      menus = await userStore.fetchUserMenusAndGenerateRoutes()
+    } catch (error) {
+      // 菜单接口异常不应把用户卡在登录页：进入系统并提示
+      console.error('[base] 获取用户菜单失败', error)
+      ElMessage.warning('菜单加载失败，请联系管理员')
+      menus = []
+    }
+
+    addDynamicRoutes(menus || [])
+    const target = findFirstValidRoute(generateRoutes(menus || []))
+
+    if (!target) {
+      // 已登录但没有任何菜单权限（例如新租户用户未分配角色/菜单）：
+      // 进入系统并落到「个人中心」，避免停在登录页看起来像登录失败
+      ElMessage.warning('当前账号未分配菜单权限，请联系管理员')
+      next({ path: '/profile', replace: true })
+      return
+    }
+
+    if (to.path === '/') {
+      next({ path: target, replace: true })
+    } else {
+      next({ ...to, replace: true })
     }
     return
   }

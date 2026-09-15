@@ -92,6 +92,15 @@
         </div>
       </el-header>
       <el-main class="main">
+        <el-alert
+          v-if="userStore.menus.length === 0"
+          title="当前账号未分配任何菜单权限"
+          description="请联系管理员在「系统管理 → 角色管理」中为该账号分配角色与菜单后再使用。"
+          type="warning"
+          :closable="false"
+          show-icon
+          class="empty-menu-alert"
+        />
         <router-view />
       </el-main>
     </el-container>
@@ -246,6 +255,10 @@ onUnmounted(() => {
 </script>
 
 <style scoped lang="scss">
+.empty-menu-alert {
+  margin-bottom: 12px;
+}
+
 .layout-container {
   height: 100vh;
   background: #f1f5f9;

@@ -32,10 +32,14 @@ export const useUserStore = defineStore('user', () => {
   }
 
   async function fetchUserMenusAndGenerateRoutes() {
-    const res: any = await authApi.getUserMenus()
-    menus.value = res.data || []
-    hasFetchedMenus.value = true
-    return res.data
+    try {
+      const res: any = await authApi.getUserMenus()
+      menus.value = res.data || []
+      return menus.value
+    } finally {
+      // 无论成功与否都标记为已拉取，避免路由守卫因异常反复重试
+      hasFetchedMenus.value = true
+    }
   }
 
   async function fetchPermissions() {
@@ -44,13 +48,18 @@ export const useUserStore = defineStore('user', () => {
     return res.data
   }
 
-  function logout() {
+  /** 仅清空本地会话，不做跳转（供路由守卫使用） */
+  function clearSession() {
     token.value = ''
     userInfo.value = null
     menus.value = []
     permissions.value = []
     hasFetchedMenus.value = false
     localStorage.removeItem('base-token')
+  }
+
+  function logout() {
+    clearSession()
     router.push('/login')
   }
 
@@ -66,6 +75,7 @@ export const useUserStore = defineStore('user', () => {
     fetchUserInfo,
     fetchUserMenusAndGenerateRoutes,
     fetchPermissions,
+    clearSession,
     logout
   }
 })

@@ -148,7 +148,12 @@ const handleLogin = async () => {
       captchaCode: form.captchaCode
     })
     ElMessage.success('登录成功')
-    router.push('/')
+    try {
+      await router.push('/')
+    } catch (navError) {
+      console.error('[base] 登录后跳转失败', navError)
+      ElMessage.error('登录后跳转失败，请刷新页面重试')
+    }
   } catch (error: any) {
     ElMessage.error(error?.response?.data?.message || '登录失败')
     loadCaptcha()
