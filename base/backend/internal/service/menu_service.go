@@ -70,7 +70,7 @@ func (s MenuService) GetTree(tenantID uint64, appCode string) ([]models.Menu, er
 }
 
 func buildMenuTree(list []models.Menu, parentID uint64) []models.Menu {
-	var tree []models.Menu
+	tree := make([]models.Menu, 0)
 	for _, m := range list {
 		if m.ParentID == parentID {
 			children := buildMenuTree(list, m.ID)

@@ -62,13 +62,15 @@
             <div class="captcha-row">
               <el-input
                 v-model="form.captchaCode"
-                placeholder="验证码"
+                placeholder="请输入验证码"
+                maxlength="5"
                 :prefix-icon="Grid"
                 class="login-input captcha-input"
+                @keyup.enter="handleLogin"
               />
-              <div class="captcha-wrapper" @click="loadCaptcha" title="点击刷新验证码">
-                <img v-if="captchaImage" :src="captchaImage" class="captcha-img" />
-                <div v-else class="captcha-placeholder">加载中...</div>
+              <div class="captcha-image" @click="loadCaptcha" title="点击刷新验证码">
+                <img v-if="captchaImage" :src="captchaImage" alt="验证码" />
+                <div v-else class="captcha-placeholder">点击刷新</div>
               </div>
             </div>
           </el-form-item>
@@ -127,8 +129,8 @@ const rules = {
 const loadCaptcha = async () => {
   try {
     const res: any = await getCaptcha()
-    captchaId.value = res.data.captchaId
-    captchaImage.value = res.data.image
+    captchaId.value = res.data.captcha_id
+    captchaImage.value = res.data.captcha_img
     form.captchaCode = ''
   } catch (error) {
     ElMessage.error('验证码加载失败')
@@ -144,8 +146,8 @@ const handleLogin = async () => {
       username: form.username,
       password: form.password,
       tenantCode: form.tenantCode || undefined,
-      captchaId: captchaId.value,
-      captchaCode: form.captchaCode
+      captcha_id: captchaId.value,
+      captcha_code: form.captchaCode
     })
     ElMessage.success('登录成功')
     try {
@@ -350,10 +352,12 @@ onMounted(loadCaptcha)
   }
 }
 
-.captcha-wrapper {
-  width: 126px;
+/* 验证码图片容器尺寸与 portal 保持一致：150x50，object-fit: cover */
+.captcha-image {
+  width: 150px;
   height: 50px;
   flex-shrink: 0;
+  align-self: center;
   border-radius: 10px;
   overflow: hidden;
   cursor: pointer;
@@ -369,16 +373,16 @@ onMounted(loadCaptcha)
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
   }
 
-  .captcha-img {
+  img {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
+}
 
-  .captcha-placeholder {
-    font-size: 13px;
-    color: #94a3b8;
-  }
+.captcha-placeholder {
+  font-size: 12px;
+  color: #94a3b8;
 }
 
 .login-btn {

@@ -180,7 +180,22 @@ if tenantID > 0 {
 
 ---
 
-## 3. 开发 checklist
+## 3. 登录验证码
+
+验证码实现与 portal / member / application 保持一致（`internal/service/captcha_service.go`）：
+
+- **样式**：`base64Captcha.NewDriverString`，5 位数字 + 大写字母，字符集 `234679ACDEFGHJKMNPQRTUVWXY`
+  （已剔除 0/O、1/I/L、2/Z、5/S、8/B 等易混字符），带空心线/粘连线/正弦线干扰；
+  图片尺寸 100x300（宽:高 = 3:1），对应前端 150x50 容器 + `object-fit: cover`，避免裁切。
+- **存储**：仅 Redis（key 为 `captcha:<id>`，TTL 5 分钟），已去除内存 store，多实例部署校验一致。
+- **校验**：一次性（无论对错校验后立即删除）、大小写不敏感、忽畸首尾空格；`id` 或 `code` 为空直接失败。
+- **接口字段**：`GET /base/api/v1/auth/captcha` 返回 `{ captcha_id, captcha_img }`；
+  登录请求体使用 `captcha_id` + `captcha_code`（与 portal / member / application 一致）。
+- **失败处理**：验证码错误计入 `login_fail:<tenantID>:<username>`（15 分钟窗口，5 次后锁定 30 分钟）。
+
+---
+
+## 4. 开发 checklist
 
 新增一个需要按 ID 操作的接口时，请确认：
 

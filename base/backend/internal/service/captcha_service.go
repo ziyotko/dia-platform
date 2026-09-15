@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 
 	"base/pkg/redis"
@@ -19,37 +20,71 @@ const (
 	LockDuration       = 30 * time.Minute
 )
 
+// 数字 + 字母验证码字符集：5 位，仅使用大写字母（与 portal / member / application 保持一致）。
+// 注意：
+//   - 元素个数必须大于 Length，否则库会回退为默认字符集；
+//   - 已剔除易混字符 0/O、1/I/L、2/Z、5/S、8/B，降低识别成本；
+//   - 校验时大小写不敏感，用户输入小写字母同样可通过。
+const captchaSource = "234679ACDEFGHJKMNPQRTUVWXY"
+
 type CaptchaService struct{}
 
-var store = base64Captcha.DefaultMemStore
+// redisCaptchaStore 以 Redis 作为验证码存储，多实例部署下校验结果一致。
+type redisCaptchaStore struct{}
 
+func (redisCaptchaStore) Set(id string, value string) error {
+	return redis.Client.Set(redis.Ctx, CaptchaKeyPrefix+id, value, CaptchaExpire).Err()
+}
+
+func (redisCaptchaStore) Get(id string, clear bool) string {
+	key := CaptchaKeyPrefix + id
+	val, err := redis.Client.Get(redis.Ctx, key).Result()
+	if err != nil {
+		return ""
+	}
+	if clear {
+		_ = redis.Client.Del(redis.Ctx, key).Err()
+	}
+	return val
+}
+
+func (s redisCaptchaStore) Verify(id, answer string, clear bool) bool {
+	val := s.Get(id, clear)
+	if val == "" {
+		return false
+	}
+	// 大小写不敏感，兼容用户输入小写字母；同时容忍首尾空格。
+	return strings.EqualFold(val, strings.TrimSpace(answer))
+}
+
+// Generate 生成验证码：5 位数字 + 大写字母，带干扰线（与 portal 保持一致的样式与字符集）。
 func (s CaptchaService) Generate() (id string, b64s string, err error) {
-	driver := base64Captcha.NewDriverDigit(80, 240, 4, 0.7, 80)
-	c := base64Captcha.NewCaptcha(driver, store)
-	id, b64s, answer, err := c.Generate()
+	// 尺寸保持 100x300（宽:高 = 3:1），契合前端 150x50 的 object-fit 容器，避免裁切。
+	driver := base64Captcha.NewDriverString(
+		100, 300, // height, width
+		30, // noiseCount 噪点（拉丁字符笔画细，噪点过多会明显影响可读性）
+		base64Captcha.OptionShowHollowLine|base64Captcha.OptionShowSlimeLine|base64Captcha.OptionShowSineLine,
+		5,             // Length 字符个数
+		captchaSource, // 字符集（数字 + 大写字母，剔除易混字符）
+		nil,           // 背景颜色（随机浅色）
+		nil,           // 字体存储（默认 DefaultEmbeddedFonts）
+		nil,
+	)
+	c := base64Captcha.NewCaptcha(driver, redisCaptchaStore{})
+	id, b64s, _, err = c.Generate()
 	if err != nil {
 		return "", "", err
 	}
-	// 同时写入 redis，便于集群部署时统一校验
-	_ = redis.Client.Set(redis.Ctx, CaptchaKeyPrefix+id, answer, CaptchaExpire).Err()
 	return id, b64s, nil
 }
 
+// Verify 校验验证码：一次性使用（校验后立即删除），大小写不敏感。
 func (s CaptchaService) Verify(id, code string) bool {
+	// 空参数直接失败，避免 strings.EqualFold("", "") 误判为通过
 	if id == "" || code == "" {
 		return false
 	}
-	// 优先使用 redis 校验
-	val, err := redis.Client.Get(redis.Ctx, CaptchaKeyPrefix+id).Result()
-	if err == nil && val != "" {
-		ok := val == code
-		if ok {
-			_ = redis.Client.Del(redis.Ctx, CaptchaKeyPrefix+id).Err()
-		}
-		return ok
-	}
-	// 兜底使用内存 store
-	return store.Verify(id, code, true)
+	return redisCaptchaStore{}.Verify(id, code, true)
 }
 
 func loginFailKey(tenantID uint64, username string) string {

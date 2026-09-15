@@ -112,7 +112,7 @@ log:
 |------|------|------|
 | POST | `/base/api/v1/auth/login` | 登录（支持租户编码、验证码） |
 | POST | `/base/api/v1/auth/init` | 初始化/重置超级管理员 |
-| GET  | `/base/api/v1/auth/captcha` | 获取图形验证码 |
+| GET  | `/base/api/v1/auth/captcha` | 获取图形验证码（5 位数字+字母，返回 `captcha_id` / `captcha_img`） |
 | GET  | `/base/api/v1/files/*key` | 文件公开访问（key 含日期目录，如 `20260101/xxx.png`） |
 
 ### 登录后接口（均需要 JWT，并经过操作审计、接口权限校验）

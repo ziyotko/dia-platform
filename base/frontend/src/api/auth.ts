@@ -4,8 +4,9 @@ export interface LoginReq {
   username: string
   password: string
   tenantCode?: string
-  captchaId: string
-  captchaCode: string
+  /** 验证码字段名与 portal / member / application 保持一致 */
+  captcha_id: string
+  captcha_code: string
 }
 
 export interface UserInfo {
@@ -22,7 +23,7 @@ export function login(data: LoginReq) {
 }
 
 export function getCaptcha() {
-  return request.get('/auth/captcha')
+  return request.get<{ captcha_id: string; captcha_img: string }>('/auth/captcha')
 }
 
 export function getUserInfo() {

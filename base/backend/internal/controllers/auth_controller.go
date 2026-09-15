@@ -16,8 +16,8 @@ type LoginReq struct {
 	Username    string `json:"username" binding:"required"`
 	Password    string `json:"password" binding:"required"`
 	TenantCode  string `json:"tenantCode"`
-	CaptchaID   string `json:"captchaId"`
-	CaptchaCode string `json:"captchaCode"`
+	CaptchaID   string `json:"captcha_id"`
+	CaptchaCode string `json:"captcha_code"`
 }
 
 type LoginResp struct {
@@ -78,9 +78,10 @@ func (ctl *AuthController) Captcha(c *gin.Context) {
 		response.Fail(c, err.Error())
 		return
 	}
+	// 字段名与 portal / member / application 保持一致：captcha_id + captcha_img
 	response.Ok(c, gin.H{
-		"captchaId": id,
-		"image":     b64s,
+		"captcha_id":  id,
+		"captcha_img": b64s,
 	})
 }
 
