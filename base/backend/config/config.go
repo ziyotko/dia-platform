@@ -9,7 +9,6 @@ type Config struct {
 	MySQL  MySQL  `mapstructure:"mysql"`
 	Redis  Redis  `mapstructure:"redis"`
 	JWT    JWT    `mapstructure:"jwt"`
-	Log    Log    `mapstructure:"log"`
 }
 
 type Server struct {
@@ -53,13 +52,6 @@ type JWT struct {
 	Secret      string `mapstructure:"secret"`
 	ExpireHours int    `mapstructure:"expire_hours"`
 	Issuer      string `mapstructure:"issuer"`
-}
-
-type Log struct {
-	Path       string `mapstructure:"path"`
-	MaxSize    int    `mapstructure:"max_size"`
-	MaxBackups int    `mapstructure:"max_backups"`
-	MaxAge     int    `mapstructure:"max_age"`
 }
 
 var Cfg *Config

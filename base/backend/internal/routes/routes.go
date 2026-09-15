@@ -43,6 +43,12 @@ func Register(r *gin.Engine) {
 		), (&controllers.AuthController{}).Captcha)
 	}
 
+	// 公开站点信息（登录页读取验证码开关等）：与验证码接口同量级，按相同限流参数保护
+	api.GET("/site-info", middleware.RateLimitMiddleware(
+		srv.CaptchaRateLimit,
+		time.Duration(srv.CaptchaRateWindowSecs)*time.Second,
+	), (&controllers.SettingsController{}).SiteInfo)
+
 	// 文件公开访问（key 含日期目录，使用通配路由）
 	api.GET("/files/*key", fileCtl.Serve)
 

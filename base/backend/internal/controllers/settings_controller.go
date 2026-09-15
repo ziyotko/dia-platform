@@ -44,6 +44,15 @@ func (ctl *SettingsController) Save(c *gin.Context) {
 	response.OkWithMessage(c, "保存成功", nil)
 }
 
+// SiteInfo 公开站点信息（无需登录）：登录页据此决定是否展示验证码等。
+// 只返回与登录页展示相关的非敏感设置。
+func (ctl *SettingsController) SiteInfo(c *gin.Context) {
+	security := ctl.service.GetSecuritySettings()
+	response.Ok(c, gin.H{
+		"captchaEnabled": security.CaptchaEnabled,
+	})
+}
+
 func (ctl *SettingsController) TestEmail(c *gin.Context) {
 	var req struct {
 		Host     string `json:"host"`

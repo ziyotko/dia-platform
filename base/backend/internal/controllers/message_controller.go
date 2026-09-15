@@ -8,6 +8,7 @@ import (
 	"base/pkg/response"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 type MessageController struct {
@@ -58,6 +59,16 @@ func (ctl *MessageController) Send(c *gin.Context) {
 		req.Channel = "in-app"
 	}
 
+	// 站外渠道校验：目前仅接入邮件发送器，其余渠道直接拒绝而不是静默忽略
+	if req.Channel != "in-app" && req.Channel != "email" {
+		response.FailWithCode(c, response.CodeBadRequest, "暂不支持的发送渠道："+req.Channel)
+		return
+	}
+	if req.Channel == "email" && req.ReceiverType == "all" {
+		response.FailWithCode(c, response.CodeBadRequest, "全员广播暂不支持邮件渠道，请指定接收用户或改用站内信")
+		return
+	}
+
 	var err error
 	if req.ReceiverType == "all" {
 		err = ctl.service.Broadcast(senderID, senderName, tenantID, req.Title, req.Content, req.Type, req.Priority)
@@ -69,8 +80,8 @@ func (ctl *MessageController) Send(c *gin.Context) {
 		return
 	}
 
-	// 站外渠道发送（目前实现邮件）
-	if req.Channel == "email" && req.ReceiverType != "all" {
+	// 邮件渠道：站内信写入后额外发送（失败只记日志，不影响主流程）
+	if req.Channel == "email" {
 		go ctl.sendEmailToUsers(req.ReceiverIDs, req.Title, req.Content)
 	}
 
@@ -84,7 +95,9 @@ func (ctl *MessageController) sendEmailToUsers(userIDs []uint64, subject, conten
 		if err != nil || user.Email == "" {
 			continue
 		}
-		_ = ctl.service.SendExternal("email", user.Email, subject, content)
+		if err := ctl.service.SendExternal("email", user.Email, subject, content); err != nil {
+			logrus.WithError(err).Warnf("发送邮件通知失败: userID=%d email=%s", uid, user.Email)
+		}
 	}
 }
 

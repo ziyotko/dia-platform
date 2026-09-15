@@ -42,14 +42,57 @@
         </el-col>
       </el-row>
     </el-card>
+
+    <!-- 我的应用（来自 /app-instances/my：当前租户已开通且启用的应用） -->
+    <el-card v-if="myApps.length" class="feature-card app-card" shadow="never">
+      <template #header>
+        <div class="feature-header">
+          <el-icon :size="20" color="#2563eb"><Grid /></el-icon>
+          <span>我的应用</span>
+        </div>
+      </template>
+      <el-row :gutter="16">
+        <el-col :xs="24" :sm="12" :md="8" v-for="app in myApps" :key="app.id">
+          <div class="feature-item app-item" @click="openApp(app)">
+            <div class="feature-icon" :style="{ backgroundColor: '#e0f2fe', color: '#409EFF' }">
+              <el-icon :size="22"><Grid /></el-icon>
+            </div>
+            <div class="feature-info">
+              <div class="feature-title">{{ app.name }}</div>
+              <div class="feature-desc">{{ app.apiPrefix || app.frontendUrl || 'API 代理接入' }}</div>
+            </div>
+          </div>
+        </el-col>
+      </el-row>
+    </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
 import { reactive, onMounted, computed } from 'vue'
+import { ElMessage } from 'element-plus'
 import StatCard from './components/StatCard.vue'
 import { getDashboardStats, type DashboardStats } from '@/api/dashboard'
 import { Management, InfoFilled } from '@element-plus/icons-vue'
+import { useUserStore } from '@/stores/user'
+import { useAppStore } from '@/stores/app'
+import type { App } from '@/api/app'
+
+const userStore = useUserStore()
+const appStore = useAppStore()
+// 仅平台超级管理员（tenantId === 0）可看全平台统计
+const isSuperAdmin = computed(() => userStore.userInfo?.tenantId === 0)
+
+// 当前租户已开通的应用（普通用户也可见，未开通则为空、不展示卡片）
+const myApps = computed(() => appStore.myApps)
+
+const openApp = (app: App) => {
+  if (app.frontendUrl) {
+    window.open(app.frontendUrl, '_blank')
+    return
+  }
+  ElMessage.info('该应用未配置前端入口，请通过左侧菜单访问')
+}
 
 const stats = reactive<DashboardStats>({
   tenantCount: 0,
@@ -60,14 +103,18 @@ const stats = reactive<DashboardStats>({
   messageCount: 0
 })
 
-const statList = computed(() => [
-  { title: '租户数', value: stats.tenantCount, icon: 'OfficeBuilding', color: '#409EFF' },
-  { title: '应用数', value: stats.appCount, icon: 'Grid', color: '#67C23A' },
-  { title: '用户数', value: stats.userCount, icon: 'User', color: '#E6A23C' },
-  { title: '角色数', value: stats.roleCount, icon: 'UserFilled', color: '#F56C6C' },
-  { title: '机构数', value: stats.organizationCount, icon: 'OfficeBuilding', color: '#909399' },
-  { title: '消息数', value: stats.messageCount, icon: 'Message', color: '#8E44AD' }
-])
+// 统计口径：平台超管看全平台；租户用户只看本租户（租户数对租户无意义，仅超管展示）
+const statList = computed(() => {
+  const list = [
+    { title: '租户数', value: stats.tenantCount, icon: 'OfficeBuilding', color: '#409EFF', superAdminOnly: true },
+    { title: isSuperAdmin.value ? '应用数' : '已开通应用', value: stats.appCount, icon: 'Grid', color: '#67C23A', superAdminOnly: false },
+    { title: '用户数', value: stats.userCount, icon: 'User', color: '#E6A23C', superAdminOnly: false },
+    { title: '角色数', value: stats.roleCount, icon: 'UserFilled', color: '#F56C6C', superAdminOnly: false },
+    { title: '机构数', value: stats.organizationCount, icon: 'OfficeBuilding', color: '#909399', superAdminOnly: false },
+    { title: '消息数', value: stats.messageCount, icon: 'Message', color: '#8E44AD', superAdminOnly: false }
+  ]
+  return list.filter((item) => !item.superAdminOnly || isSuperAdmin.value)
+})
 
 const features = [
   { title: '多租户管理', desc: '支持租户隔离与平台级资源管理', icon: 'OfficeBuilding', color: '#409EFF', bg: '#e0f2fe' },
@@ -83,7 +130,18 @@ const fetchStats = async () => {
   Object.assign(stats, res.data || {})
 }
 
-onMounted(fetchStats)
+const fetchMyApps = async () => {
+  try {
+    await appStore.fetchMyApps()
+  } catch {
+    // 拉取失败不影响仪表盘其它内容
+  }
+}
+
+onMounted(() => {
+  fetchStats()
+  fetchMyApps()
+})
 </script>
 
 <style scoped lang="scss">
@@ -183,6 +241,14 @@ onMounted(fetchStats)
     &:hover {
       background: #f8fafc;
     }
+  }
+
+  .app-card {
+    margin-top: 20px;
+  }
+
+  .app-item {
+    cursor: pointer;
   }
 
   .feature-icon {

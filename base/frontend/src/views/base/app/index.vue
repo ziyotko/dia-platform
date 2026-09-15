@@ -52,8 +52,8 @@
           <el-select v-model="form.type" placeholder="请选择" style="width: 100%">
             <el-option label="IFrame" value="iframe" />
             <el-option label="API代理" value="proxy" />
-            <el-option label="微应用" value="micro" />
           </el-select>
+          <div class="form-tip">IFrame：子应用前端以 iframe 嵌入；API代理：子应用后端由底座反向代理</div>
         </el-form-item>
         <el-form-item label="前端入口">
           <el-input v-model="form.frontendUrl" placeholder="http://localhost:5173" />
@@ -63,6 +63,7 @@
         </el-form-item>
         <el-form-item label="API前缀">
           <el-input v-model="form.apiPrefix" placeholder="/caamm/api" />
+          <div class="form-tip">代理转发时会拼接到业务路径前（留空则直接转发）</div>
         </el-form-item>
         <el-form-item label="状态">
           <el-switch v-model="form.status" :active-value="1" :inactive-value="0" />
@@ -110,8 +111,7 @@ const form = reactive<App>({
 
 const typeMap: Record<string, string> = {
   iframe: 'IFrame',
-  proxy: 'API代理',
-  micro: '微应用'
+  proxy: 'API代理'
 }
 
 const rules = {
@@ -187,6 +187,12 @@ onMounted(fetchData)
     margin-top: 16px;
     display: flex;
     justify-content: flex-end;
+  }
+  .form-tip {
+    width: 100%;
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.6;
   }
 }
 </style>

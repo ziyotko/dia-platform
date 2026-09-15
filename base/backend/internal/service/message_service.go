@@ -29,30 +29,6 @@ type MessageListQuery struct {
 	Size     int
 }
 
-func (s MessageService) Update(m *models.Message, tenantID uint64) error {
-	db := db.DB.Model(m)
-	if tenantID > 0 {
-		db = db.Where("tenant_id = ?", tenantID)
-	}
-	return db.Updates(map[string]interface{}{
-		"title":         m.Title,
-		"content":       m.Content,
-		"type":          m.Type,
-		"priority":      m.Priority,
-		"receiver_id":   m.ReceiverID,
-		"receiver_type": m.ReceiverType,
-		"status":        m.Status,
-	}).Error
-}
-
-func (s MessageService) Delete(id uint64, tenantID uint64) error {
-	db := db.DB
-	if tenantID > 0 {
-		db = db.Where("tenant_id = ?", tenantID)
-	}
-	return db.Delete(&models.Message{BaseModel: models.BaseModel{ID: id}}).Error
-}
-
 func (s MessageService) GetByID(id uint64, tenantID uint64) (*models.Message, error) {
 	var m models.Message
 	db := db.DB
@@ -61,6 +37,15 @@ func (s MessageService) GetByID(id uint64, tenantID uint64) (*models.Message, er
 	}
 	err := db.First(&m, id).Error
 	return &m, err
+}
+
+// Delete 删除消息：租户用户只能删除本租户数据，平台超管（tenantID=0）可删除任意消息。
+func (s MessageService) Delete(id uint64, tenantID uint64) error {
+	query := db.DB.Where("id = ?", id)
+	if tenantID > 0 {
+		query = query.Where("tenant_id = ?", tenantID)
+	}
+	return query.Delete(&models.Message{}).Error
 }
 
 func (s MessageService) List(q MessageListQuery) ([]models.Message, int64, error) {
@@ -124,12 +109,6 @@ func (s MessageService) MarkAllRead(receiverID uint64, tenantID uint64) (int64, 
 		"read_at": time.Now(),
 	})
 	return res.RowsAffected, res.Error
-}
-
-func (s MessageService) Send(m *models.Message) error {
-	m.Status = 3
-	m.SendAt = time.Now()
-	return db.DB.Create(m).Error
 }
 
 func (s MessageService) SendToUsers(senderID uint64, senderName string, tenantID uint64, userIDs []uint64, title, content, msgType, priority string) error {

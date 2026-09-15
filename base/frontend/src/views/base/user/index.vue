@@ -10,7 +10,7 @@
           <p>管理系统用户账号与权限分配</p>
         </div>
       </div>
-      <el-button type="primary" :icon="Plus" @click="handleAdd">新增用户</el-button>
+      <el-button v-if="can('base:user:create')" type="primary" :icon="Plus" @click="handleAdd">新增用户</el-button>
     </div>
 
     <el-card shadow="never">
@@ -54,10 +54,10 @@
         </el-table-column>
         <el-table-column label="操作" width="300" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="primary" @click="handleAssignRole(row)">分配角色</el-button>
-            <el-button link type="primary" @click="handleResetPwd(row)">重置密码</el-button>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="can('base:user:update')" link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="can('base:user:assign-role')" link type="primary" @click="handleAssignRole(row)">分配角色</el-button>
+            <el-button v-if="can('base:user:reset-password')" link type="primary" @click="handleResetPwd(row)">重置密码</el-button>
+            <el-button v-if="can('base:user:delete')" link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -148,6 +148,8 @@ import TenantSelect from '@/components/TenantSelect.vue'
 const userStore = useUserStore()
 // 仅平台超级管理员（tenantId === 0）可以跨租户管理
 const isSuperAdmin = computed(() => userStore.userInfo?.tenantId === 0)
+// 按钮级权限：与后端 base:user:* 权限点对齐
+const can = (code: string) => userStore.can(code)
 
 const loading = ref(false)
 const tableData = ref<User[]>([])

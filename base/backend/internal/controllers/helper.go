@@ -3,6 +3,8 @@ package controllers
 import (
 	"strconv"
 
+	"base/internal/models"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -13,11 +15,11 @@ func parseID(c *gin.Context) int {
 }
 
 // resolveTenantID 解析本次操作的目标租户。
-//   - 平台超级管理员（tenantID == 0）：可采用请求中指定的租户，未指定则为平台级（0）；
+//   - 平台超级管理员：可采用请求中指定的租户，未指定则为平台级（models.PlatformTenantID）；
 //   - 普通租户用户：一律强制为自身所属租户，忽略请求中的 tenantId，避免跨租户写入。
 func resolveTenantID(c *gin.Context, requested uint64) uint64 {
 	callerTenantID := c.GetUint64("tenantID")
-	if callerTenantID != 0 {
+	if !models.IsPlatformTenant(callerTenantID) {
 		return callerTenantID
 	}
 	return requested

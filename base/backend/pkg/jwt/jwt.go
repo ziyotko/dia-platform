@@ -14,7 +14,6 @@ type Claims struct {
 	UserID   uint64 `json:"user_id"`
 	Username string `json:"username"`
 	TenantID uint64 `json:"tenant_id"`
-	jti      string
 	jwt.RegisteredClaims
 }
 
@@ -25,7 +24,6 @@ func GenerateToken(userID uint64, username string, tenantID uint64) (string, err
 		UserID:   userID,
 		Username: username,
 		TenantID: tenantID,
-		jti:      uuid.NewString(),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(now.Add(time.Duration(cfg.ExpireHours) * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(now),

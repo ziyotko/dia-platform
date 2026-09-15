@@ -113,7 +113,6 @@ const form = reactive<Menu>({
   sort: 0,
   status: 1,
   hidden: false,
-  keepAlive: false,
   target: '_self'
 })
 
@@ -133,7 +132,7 @@ const fetchData = async () => {
   loading.value = true
   const res: any = await getMenuTree()
   tableData.value = res.data || []
-  menuOptions.value = [{ id: 0, parentId: 0, appCode: 'base', name: '根目录', path: '', type: 'directory', sort: 0, status: 1, hidden: false, keepAlive: false }, ...res.data]
+  menuOptions.value = [{ id: 0, parentId: 0, appCode: 'base', name: '根目录', path: '', type: 'directory', sort: 0, status: 1, hidden: false }, ...res.data]
   loading.value = false
 }
 
@@ -182,7 +181,6 @@ const resetForm = () => {
   form.sort = 0
   form.status = 1
   form.hidden = false
-  form.keepAlive = false
   form.target = '_self'
 }
 

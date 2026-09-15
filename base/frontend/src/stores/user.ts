@@ -48,6 +48,17 @@ export const useUserStore = defineStore('user', () => {
     return res.data
   }
 
+  /**
+   * 是否拥有某个权限标识（如 base:user:delete）。
+   * 与后端 PermissionAuth 口径保持一致：平台超管 / 租户管理员直接放行，其余按授权码判断。
+   */
+  function can(code: string) {
+    const info = userInfo.value
+    if (!info) return false
+    if (info.tenantId === 0 || info.isAdmin) return true
+    return permissions.value.includes(code)
+  }
+
   /** 仅清空本地会话，不做跳转（供路由守卫使用） */
   function clearSession() {
     token.value = ''
@@ -75,6 +86,7 @@ export const useUserStore = defineStore('user', () => {
     fetchUserInfo,
     fetchUserMenusAndGenerateRoutes,
     fetchPermissions,
+    can,
     clearSession,
     logout
   }

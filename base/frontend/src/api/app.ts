@@ -5,7 +5,7 @@ export interface App {
   code: string
   name: string
   icon?: string
-  type: 'iframe' | 'proxy' | 'micro'
+  type: 'iframe' | 'proxy'
   frontendUrl?: string
   backendUrl?: string
   apiPrefix?: string

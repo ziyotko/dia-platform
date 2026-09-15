@@ -13,7 +13,8 @@ export interface Menu {
   sort: number
   status: number
   hidden: boolean
-  keepAlive: boolean
+  /** 预留：路由缓存暂未实现，后端字段保留 */
+  keepAlive?: boolean
   target?: string
   children?: Menu[]
 }

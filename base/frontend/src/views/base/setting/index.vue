@@ -22,12 +22,27 @@
           </el-form>
         </el-tab-pane>
         <el-tab-pane label="安全策略" name="security">
-          <el-form label-width="120px" style="max-width: 600px">
+          <el-form label-width="140px" style="max-width: 640px">
+            <el-form-item label="登录验证码">
+              <el-switch v-model="settings.security.captchaEnabled" />
+              <div class="form-tip">关闭后登录页不再显示验证码输入框</div>
+            </el-form-item>
             <el-form-item label="登录失败锁定">
               <el-switch v-model="settings.security.loginLock" />
+              <div class="form-tip">连续登录失败达到上限后锁定账号一段时间</div>
+            </el-form-item>
+            <el-form-item label="最大失败次数">
+              <el-input-number v-model="settings.security.maxFailCount" :min="3" :max="20" />
+            </el-form-item>
+            <el-form-item label="锁定时长(分钟)">
+              <el-input-number v-model="settings.security.lockDuration" :min="1" :max="1440" />
             </el-form-item>
             <el-form-item label="密码最小长度">
               <el-input-number v-model="settings.security.pwdMinLength" :min="6" :max="32" />
+              <div class="form-tip">新增用户与修改密码时服务端校验</div>
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="handleSaveSecurity">保存</el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
@@ -85,7 +100,10 @@ const settings = reactive({
     copyright: '© 2026 Base Platform'
   },
   security: {
+    captchaEnabled: true,
     loginLock: true,
+    maxFailCount: 5,
+    lockDuration: 30,
     pwdMinLength: 8
   },
   email: {
@@ -122,7 +140,10 @@ const loadSettings = async () => {
     }
     if (data.security) {
       Object.assign(settings.security, {
-        loginLock: data.security.loginLock === 'true',
+        captchaEnabled: data.security.captchaEnabled !== 'false',
+        loginLock: data.security.loginLock !== 'false',
+        maxFailCount: Number(data.security.maxFailCount || 5),
+        lockDuration: Number(data.security.lockDuration || 30),
         pwdMinLength: Number(data.security.pwdMinLength || 8)
       })
     }
@@ -151,6 +172,23 @@ const handleSave = async () => {
   try {
     await saveSettings(payload)
     ElMessage.success('设置已保存')
+  } catch (error) {
+    ElMessage.error('保存失败')
+  }
+}
+
+// 安全策略保存（登录验证码开关 + 登录失败锁定 + 密码最小长度）
+const handleSaveSecurity = async () => {
+  const payload: SettingItem[] = [
+    { category: 'security', key: 'captchaEnabled', value: String(settings.security.captchaEnabled), type: 'boolean' },
+    { category: 'security', key: 'loginLock', value: String(settings.security.loginLock), type: 'boolean' },
+    { category: 'security', key: 'maxFailCount', value: String(settings.security.maxFailCount), type: 'number' },
+    { category: 'security', key: 'lockDuration', value: String(settings.security.lockDuration), type: 'number' },
+    { category: 'security', key: 'pwdMinLength', value: String(settings.security.pwdMinLength), type: 'number' }
+  ]
+  try {
+    await saveSettings(payload)
+    ElMessage.success('安全策略已保存')
   } catch (error) {
     ElMessage.error('保存失败')
   }
@@ -187,6 +225,13 @@ onMounted(loadSettings)
 .setting-page {
   .el-tabs {
     min-height: 400px;
+  }
+
+  .form-tip {
+    width: 100%;
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.6;
   }
 }
 </style>

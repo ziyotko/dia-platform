@@ -58,7 +58,7 @@
             />
           </el-form-item>
 
-          <el-form-item prop="captchaCode">
+          <el-form-item v-if="captchaEnabled" prop="captchaCode">
             <div class="captcha-row">
               <el-input
                 v-model="form.captchaCode"
@@ -102,7 +102,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Management, OfficeBuilding, User, Lock, Grid } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
-import { getCaptcha } from '@/api/auth'
+import { getCaptcha, getSiteInfo } from '@/api/auth'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -110,6 +110,8 @@ const formRef = ref<any>(null)
 const loading = ref(false)
 const captchaImage = ref('')
 const captchaId = ref('')
+// 登录验证码开关（来自系统设置 → 安全策略 captchaEnabled，公开站点信息接口下发）
+const captchaEnabled = ref(true)
 
 const currentYear = computed(() => new Date().getFullYear())
 
@@ -120,20 +122,36 @@ const form = reactive({
   captchaCode: ''
 })
 
-const rules = {
+const rules = computed(() => ({
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
-  captchaCode: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
-}
+  ...(captchaEnabled.value
+    ? { captchaCode: [{ required: true, message: '请输入验证码', trigger: 'blur' }] }
+    : {})
+}))
 
 const loadCaptcha = async () => {
+  if (!captchaEnabled.value) return
   try {
     const res: any = await getCaptcha()
     captchaId.value = res.data.captcha_id
     captchaImage.value = res.data.captcha_img
     form.captchaCode = ''
   } catch (error) {
-    ElMessage.error('验证码加载失败')
+    ElMessage.warning('验证码加载失败，请稍后重试')
+  }
+}
+
+// 验证码开关确定后再加载验证码图片（关闭时不请求，避免无谓的接口调用）
+const loadSiteInfo = async () => {
+  try {
+    const res: any = await getSiteInfo()
+    captchaEnabled.value = res.data?.captchaEnabled !== false
+  } catch {
+    // 拉取失败时保持默认开启
+  }
+  if (captchaEnabled.value) {
+    loadCaptcha()
   }
 }
 
@@ -146,8 +164,8 @@ const handleLogin = async () => {
       username: form.username,
       password: form.password,
       tenantCode: form.tenantCode || undefined,
-      captcha_id: captchaId.value,
-      captcha_code: form.captchaCode
+      captcha_id: captchaEnabled.value ? captchaId.value : '',
+      captcha_code: captchaEnabled.value ? form.captchaCode : ''
     })
     ElMessage.success('登录成功')
     try {
@@ -164,7 +182,7 @@ const handleLogin = async () => {
   }
 }
 
-onMounted(loadCaptcha)
+onMounted(loadSiteInfo)
 </script>
 
 <style scoped lang="scss">

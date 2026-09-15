@@ -36,3 +36,9 @@ type RolePermission struct {
 	RoleID       uint64 `gorm:"primaryKey"`
 	PermissionID uint64 `gorm:"primaryKey"`
 }
+
+// TableName 与 Role.Perms 的 many2many 关联表保持一致，
+// 否则 AutoMigrate 会额外建一张无用的 role_permissions 空表。
+func (RolePermission) TableName() string {
+	return "base_role_permission"
+}

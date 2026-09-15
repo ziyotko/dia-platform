@@ -26,7 +26,7 @@ var permissionWhitelist = map[string][]string{
 // 匹配规则：当前请求方法 + 路由模板（或去除 /base/api/v1 前缀后的路径）与权限表中的 method/path 匹配。
 //
 // 放行策略（自上而下）：
-//  1. 平台超级管理员（tenantID == 0）直接放行；
+//  1. 平台超级管理员（`models.IsPlatformTenant`）直接放行；
 //  2. 租户管理员（base_user.is_admin）在本租户内直接放行，与「管理员可见全部菜单」保持同一口径；
 //  3. 白名单接口直接放行；
 //  4. 未分配任何权限的普通用户：仅放行 GET，写操作拒绝（不再整体放行）。
@@ -40,7 +40,7 @@ func PermissionAuth() gin.HandlerFunc {
 		}
 
 		// 平台超级管理员直接放行
-		if c.GetUint64("tenantID") == 0 {
+		if models.IsPlatformTenant(c.GetUint64("tenantID")) {
 			c.Next()
 			return
 		}

@@ -1,7 +1,5 @@
 package models
 
-import "gorm.io/gorm"
-
 // Dict 数据字典分组
 type Dict struct {
 	BaseModel
@@ -29,8 +27,4 @@ type DictItem struct {
 
 func (DictItem) TableName() string {
 	return "base_dict_item"
-}
-
-func AutoMigrateDict(db *gorm.DB) error {
-	return db.AutoMigrate(&Dict{}, &DictItem{})
 }

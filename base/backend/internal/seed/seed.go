@@ -1,9 +1,13 @@
 package seed
 
 import (
+	"errors"
+
 	"base/internal/models"
 	"base/pkg/db"
 	"base/pkg/utils"
+
+	"gorm.io/gorm"
 )
 
 // Run 初始化默认数据：超级管理员、底座菜单、底座权限点
@@ -22,7 +26,9 @@ func Run() error {
 
 func seedSuperAdmin() error {
 	var count int64
-	if err := db.DB.Model(&models.User{}).Where("tenant_id = ? AND username = ?", 0, "admin").Count(&count).Error; err != nil {
+	if err := db.DB.Model(&models.User{}).
+		Where("tenant_id = ? AND username = ?", models.PlatformTenantID, "admin").
+		Count(&count).Error; err != nil {
 		return err
 	}
 	if count > 0 {
@@ -33,7 +39,7 @@ func seedSuperAdmin() error {
 		return err
 	}
 	return db.DB.Create(&models.User{
-		TenantID: 0,
+		TenantID: models.PlatformTenantID,
 		Username: "admin",
 		Password: hash,
 		RealName: "超级管理员",
@@ -42,90 +48,119 @@ func seedSuperAdmin() error {
 	}).Error
 }
 
+// baseMenuSeeds 底座默认菜单。
+// ParentPath 为空表示顶层菜单；ParentPath 为父菜单的 Path。
+// 注意：菜单为「按 (app_code, parent_id, name) 幂等补种」——已存在的不覆盖（保留管理员的改名/调整），
+// 只补齐缺失项，因此后续新增菜单在已有环境重启后也会自动出现。
+var baseMenuSeeds = []menuSeed{
+	{AppCode: "base", Name: "控制台", Path: "/index", Component: "base/dashboard/index.vue", Type: "menu", Icon: "HomeFilled", Sort: 1},
+	{AppCode: "base", Name: "系统管理", Path: "/system", Type: "directory", Icon: "Setting", Sort: 100},
+	{AppCode: "base", Name: "消息管理", Path: "/message", Type: "directory", Icon: "Message", Sort: 200},
+
+	{AppCode: "base", ParentPath: "/system", Name: "租户管理", Path: "/system/tenant", Component: "base/tenant/index.vue", Type: "menu", Sort: 1},
+	{AppCode: "base", ParentPath: "/system", Name: "应用管理", Path: "/system/app", Component: "base/app/index.vue", Type: "menu", Sort: 2},
+	{AppCode: "base", ParentPath: "/system", Name: "应用实例", Path: "/system/app-instance", Component: "base/app-instance/index.vue", Type: "menu", Sort: 3},
+	{AppCode: "base", ParentPath: "/system", Name: "用户管理", Path: "/system/user", Component: "base/user/index.vue", Type: "menu", Sort: 4},
+	{AppCode: "base", ParentPath: "/system", Name: "机构管理", Path: "/system/organization", Component: "base/organization/index.vue", Type: "menu", Sort: 5},
+	{AppCode: "base", ParentPath: "/system", Name: "角色管理", Path: "/system/role", Component: "base/role/index.vue", Type: "menu", Sort: 6},
+	{AppCode: "base", ParentPath: "/system", Name: "菜单管理", Path: "/system/menu", Component: "base/menu/index.vue", Type: "menu", Sort: 7},
+	{AppCode: "base", ParentPath: "/system", Name: "权限管理", Path: "/system/permission", Component: "base/permission/index.vue", Type: "menu", Sort: 8},
+	{AppCode: "base", ParentPath: "/system", Name: "审计日志", Path: "/system/log", Component: "base/log/index.vue", Type: "menu", Sort: 9},
+	{AppCode: "base", ParentPath: "/system", Name: "登录日志", Path: "/system/login-log", Component: "base/login-log/index.vue", Type: "menu", Sort: 10},
+	{AppCode: "base", ParentPath: "/system", Name: "数据字典", Path: "/system/dict", Component: "base/dict/index.vue", Type: "menu", Sort: 11},
+	{AppCode: "base", ParentPath: "/system", Name: "文件管理", Path: "/system/file", Component: "base/file/index.vue", Type: "menu", Sort: 12},
+	{AppCode: "base", ParentPath: "/system", Name: "系统设置", Path: "/system/setting", Component: "base/setting/index.vue", Type: "menu", Sort: 13},
+
+	{AppCode: "base", ParentPath: "/message", Name: "消息列表", Path: "/message/list", Component: "base/message/index.vue", Type: "menu", Sort: 1},
+	{AppCode: "base", ParentPath: "/message", Name: "消息模板", Path: "/message/template", Component: "base/message-template/index.vue", Type: "menu", Sort: 2},
+}
+
+type menuSeed struct {
+	AppCode    string
+	ParentPath string
+	Name       string
+	Path       string
+	Component  string
+	Type       string
+	Icon       string
+	Sort       int
+	Target     string
+}
+
 func seedBaseMenus() error {
-	var count int64
-	if err := db.DB.Model(&models.Menu{}).Where("app_code = ?", "base").Count(&count).Error; err != nil {
-		return err
-	}
-	if count > 0 {
-		return nil
-	}
+	// path -> id，用于解析父菜单
+	idByPath := make(map[string]uint64)
+	var created []models.Menu
 
-	dirs := []models.Menu{
-		{AppCode: "base", Name: "控制台", Path: "/index", Component: "base/dashboard/index.vue", Type: "menu", Icon: "HomeFilled", Sort: 1, Status: 1},
-		{AppCode: "base", Name: "系统管理", Path: "/system", Type: "directory", Icon: "Setting", Sort: 100, Status: 1},
-		{AppCode: "base", Name: "消息管理", Path: "/message", Type: "directory", Icon: "Message", Sort: 200, Status: 1},
-		{AppCode: "base", Name: "工作流管理", Path: "/workflow", Type: "directory", Icon: "Connection", Sort: 300, Status: 1},
-	}
+	for _, s := range baseMenuSeeds {
+		parentID := uint64(0)
+		if s.ParentPath != "" {
+			parentID = idByPath[s.ParentPath]
+		}
 
-	dirIDs := make(map[string]uint64)
-	for i := range dirs {
-		if err := db.DB.Create(&dirs[i]).Error; err != nil {
+		var existing models.Menu
+		err := db.DB.Where("app_code = ? AND parent_id = ? AND name = ?", s.AppCode, parentID, s.Name).First(&existing).Error
+		if err == nil {
+			// 已存在：保留管理员的自定义，仅记录 id 供子菜单解析父级
+			idByPath[s.Path] = existing.ID
+			continue
+		}
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
-		dirIDs[dirs[i].Name] = dirs[i].ID
+
+		menu := models.Menu{
+			TenantID:  models.PlatformTenantID,
+			AppCode:   s.AppCode,
+			ParentID:  parentID,
+			Name:      s.Name,
+			Path:      s.Path,
+			Component: s.Component,
+			Type:      s.Type,
+			Icon:      s.Icon,
+			Sort:      s.Sort,
+			Status:    1,
+			Target:    s.Target,
+		}
+		if err := db.DB.Create(&menu).Error; err != nil {
+			return err
+		}
+		idByPath[s.Path] = menu.ID
+		created = append(created, menu)
 	}
 
-	systemDirID := dirIDs["系统管理"]
-	msgDirID := dirIDs["消息管理"]
-	workflowDirID := dirIDs["工作流管理"]
+	return seedSuperAdminRole(created)
+}
 
-	children := []models.Menu{
-		{AppCode: "base", ParentID: systemDirID, Name: "租户管理", Path: "/system/tenant", Component: "base/tenant/index.vue", Type: "menu", Sort: 1, Status: 1},
-		{AppCode: "base", ParentID: systemDirID, Name: "应用管理", Path: "/system/app", Component: "base/app/index.vue", Type: "menu", Sort: 2, Status: 1},
-		{AppCode: "base", ParentID: systemDirID, Name: "应用实例", Path: "/system/app-instance", Component: "base/app-instance/index.vue", Type: "menu", Sort: 3, Status: 1},
-		{AppCode: "base", ParentID: systemDirID, Name: "用户管理", Path: "/system/user", Component: "base/user/index.vue", Type: "menu", Sort: 4, Status: 1},
-		{AppCode: "base", ParentID: systemDirID, Name: "机构管理", Path: "/system/organization", Component: "base/organization/index.vue", Type: "menu", Sort: 5, Status: 1},
-		{AppCode: "base", ParentID: systemDirID, Name: "角色管理", Path: "/system/role", Component: "base/role/index.vue", Type: "menu", Sort: 6, Status: 1},
-		{AppCode: "base", ParentID: systemDirID, Name: "菜单管理", Path: "/system/menu", Component: "base/menu/index.vue", Type: "menu", Sort: 7, Status: 1},
-		{AppCode: "base", ParentID: systemDirID, Name: "审计日志", Path: "/system/log", Component: "base/log/index.vue", Type: "menu", Sort: 8, Status: 1},
-		{AppCode: "base", ParentID: systemDirID, Name: "登录日志", Path: "/system/login-log", Component: "base/login-log/index.vue", Type: "menu", Sort: 9, Status: 1},
-		{AppCode: "base", ParentID: systemDirID, Name: "数据字典", Path: "/system/dict", Component: "base/dict/index.vue", Type: "menu", Sort: 10, Status: 1},
-		{AppCode: "base", ParentID: systemDirID, Name: "文件管理", Path: "/system/file", Component: "base/file/index.vue", Type: "menu", Sort: 11, Status: 1},
-		{AppCode: "base", ParentID: systemDirID, Name: "系统设置", Path: "/system/setting", Component: "base/setting/index.vue", Type: "menu", Sort: 12, Status: 1},
-
-		{AppCode: "base", ParentID: msgDirID, Name: "消息列表", Path: "/message/list", Component: "base/message/index.vue", Type: "menu", Sort: 1, Status: 1},
-		{AppCode: "base", ParentID: msgDirID, Name: "消息模板", Path: "/message/template", Component: "base/message-template/index.vue", Type: "menu", Sort: 2, Status: 1},
-
-		{AppCode: "base", ParentID: workflowDirID, Name: "流程模型", Path: "/workflow/model", Component: "base/workflow/model/index.vue", Type: "menu", Sort: 1, Status: 1},
-		{AppCode: "base", ParentID: workflowDirID, Name: "流程实例", Path: "/workflow/instance", Component: "base/workflow/instance/index.vue", Type: "menu", Sort: 2, Status: 1},
-		{AppCode: "base", ParentID: workflowDirID, Name: "审批任务", Path: "/workflow/task", Component: "base/workflow/task/index.vue", Type: "menu", Sort: 3, Status: 1},
-		{AppCode: "base", ParentID: workflowDirID, Name: "流程设计器", Path: "/workflow/designer", Component: "base/workflow/designer/index.vue", Type: "menu", Sort: 4, Status: 1},
+// seedSuperAdminRole 保证平台内置超级管理员角色存在，并把本次新增的菜单授予它。
+// 只追加新增菜单，避免把管理员主动取消的菜单又加回来。
+func seedSuperAdminRole(newMenus []models.Menu) error {
+	var role models.Role
+	err := db.DB.Where("tenant_id = ? AND code = ?", models.PlatformTenantID, "super_admin").First(&role).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		role = models.Role{
+			TenantID: models.PlatformTenantID,
+			Code:     "super_admin",
+			Name:     "超级管理员",
+			Status:   1,
+		}
+		if err := db.DB.Create(&role).Error; err != nil {
+			return err
+		}
+	} else if err != nil {
+		return err
 	}
 
-	for i := range children {
-		if err := db.DB.Create(&children[i]).Error; err != nil {
+	if len(newMenus) > 0 {
+		if err := db.DB.Model(&role).Association("Menus").Append(newMenus); err != nil {
 			return err
 		}
 	}
 
-	// 创建默认超级管理员角色并关联所有 base 菜单
-	role := models.Role{
-		TenantID: 0,
-		Code:     "super_admin",
-		Name:     "超级管理员",
-		Status:   1,
-	}
-	if err := db.DB.Create(&role).Error; err != nil {
-		return err
-	}
-
-	var allMenus []models.Menu
-	if err := db.DB.Where("app_code = ?", "base").Find(&allMenus).Error; err != nil {
-		return err
-	}
-	if err := db.DB.Model(&role).Association("Menus").Append(allMenus); err != nil {
-		return err
-	}
-
-	// 将角色赋给 admin 用户
+	// 将角色赋给 admin 用户（幂等）
 	var admin models.User
-	if err := db.DB.Where("username = ? AND tenant_id = ?", "admin", 0).First(&admin).Error; err != nil {
+	if err := db.DB.Where("username = ? AND tenant_id = ?", "admin", models.PlatformTenantID).First(&admin).Error; err != nil {
 		return err
 	}
-	if err := db.DB.Model(&admin).Association("Roles").Append(&role); err != nil {
-		return err
-	}
-
-	return nil
+	return db.DB.Model(&admin).Association("Roles").Append(&role)
 }

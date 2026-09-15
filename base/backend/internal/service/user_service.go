@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 
 	"base/internal/models"
 	"base/pkg/db"
@@ -23,6 +24,10 @@ func (s UserService) Create(u *models.User) error {
 
 	if u.Password == "" {
 		u.Password = "123456"
+	}
+	// 密码最小长度来自「系统设置 → 安全策略」（默认 8 位）
+	if minLen := (SettingsService{}).GetSecuritySettings().PwdMinLength; len([]rune(u.Password)) < minLen {
+		return fmt.Errorf("密码长度不能少于 %d 位", minLen)
 	}
 	hash, err := utils.HashPassword(u.Password)
 	if err != nil {
@@ -144,6 +149,10 @@ func (s UserService) ChangePassword(userID uint64, oldPwd, newPwd string) error 
 	}
 	if !utils.CheckPassword(oldPwd, user.Password) {
 		return errors.New("旧密码错误")
+	}
+	// 密码最小长度来自「系统设置 → 安全策略」（默认 8 位）
+	if minLen := (SettingsService{}).GetSecuritySettings().PwdMinLength; len([]rune(newPwd)) < minLen {
+		return fmt.Errorf("新密码长度不能少于 %d 位", minLen)
 	}
 	hash, err := utils.HashPassword(newPwd)
 	if err != nil {

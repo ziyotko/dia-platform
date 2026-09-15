@@ -1,13 +1,13 @@
 package adapter
 
 import (
-	"io"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"strconv"
 	"strings"
 
+	"base/internal/models"
 	"base/pkg/response"
 
 	"github.com/gin-gonic/gin"
@@ -21,9 +21,11 @@ func setBaseUserHeaders(req *http.Request, c *gin.Context) {
 	req.Header.Set("X-Base-Tenant-ID", strconv.FormatUint(c.GetUint64("tenantID"), 10))
 }
 
-// ProxyToApp 将请求代理到子应用后端
-func ProxyToApp(c *gin.Context, backendURL string) {
-	target, err := url.Parse(backendURL)
+// ProxyToApp 将请求代理到子应用后端。
+// 转发路径 = target 路径 + App.ApiPrefix（子应用自己的 API 前缀，如 /caamm/api）+ 通配符路径，
+// 这样前端只需调 `/base/api/v1/app/{appCode}/{业务路径}`，子应用无需感知底座前缀。
+func ProxyToApp(c *gin.Context, app *models.App) {
+	target, err := url.Parse(app.BackendURL)
 	if err != nil {
 		response.Fail(c, "子应用地址配置错误")
 		return
@@ -33,8 +35,8 @@ func ProxyToApp(c *gin.Context, backendURL string) {
 		req.URL.Scheme = target.Scheme
 		req.URL.Host = target.Host
 		req.Host = target.Host
-		// 将通配符路径拼接到目标后端地址
-		req.URL.Path = singleJoiningSlash(target.Path, c.Param("path"))
+		// 将 API 前缀与通配符路径拼接到目标后端地址
+		req.URL.Path = singleJoiningSlash(singleJoiningSlash(target.Path, app.ApiPrefix), c.Param("path"))
 		req.URL.RawQuery = c.Request.URL.RawQuery
 		// 注入底座用户信息
 		setBaseUserHeaders(req, c)
@@ -56,28 +58,4 @@ func singleJoiningSlash(a, b string) string {
 		return a + "/" + b
 	}
 	return a + b
-}
-
-// ForwardRequest 简单转发，用于适配器场景
-func ForwardRequest(c *gin.Context, backendURL string, path string) (*http.Response, error) {
-	targetURL := strings.TrimSuffix(backendURL, "/") + "/" + strings.TrimPrefix(path, "/")
-	req, err := http.NewRequest(c.Request.Method, targetURL, c.Request.Body)
-	if err != nil {
-		return nil, err
-	}
-	req.Header = c.Request.Header.Clone()
-	setBaseUserHeaders(req, c)
-	client := &http.Client{}
-	return client.Do(req)
-}
-
-func CopyResponse(c *gin.Context, resp *http.Response) {
-	defer resp.Body.Close()
-	for k, v := range resp.Header {
-		for _, vv := range v {
-			c.Writer.Header().Add(k, vv)
-		}
-	}
-	c.Writer.WriteHeader(resp.StatusCode)
-	io.Copy(c.Writer, resp.Body)
 }

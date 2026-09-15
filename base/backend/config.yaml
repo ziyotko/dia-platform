@@ -33,9 +33,3 @@ jwt:
   secret: base-platform-jwt-secret
   expire_hours: 8
   issuer: base-platform
-
-log:
-  path: logs/base.log
-  max_size: 100
-  max_backups: 10
-  max_age: 30

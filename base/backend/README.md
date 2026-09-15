@@ -106,12 +106,6 @@ jwt:
   secret: base-platform-jwt-secret
   expire_hours: 8
   issuer: base-platform
-
-log:
-  path: logs/base.log
-  max_size: 100
-  max_backups: 10
-  max_age: 30
 ```
 
 ## 核心接口
@@ -123,7 +117,10 @@ log:
 | POST | `/base/api/v1/auth/login` | 登录（支持租户编码、验证码） |
 | POST | `/base/api/v1/auth/init` | 初始化/重置超级管理员 |
 | GET  | `/base/api/v1/auth/captcha` | 获取图形验证码（5 位数字+字母，返回 `captcha_id` / `captcha_img`） |
+| GET  | `/base/api/v1/site-info` | 站点公开配置（`captchaEnabled`，登录页据此决定是否展示验证码） |
 | GET  | `/base/api/v1/files/*key` | 文件公开访问（key 含日期目录，如 `20260101/xxx.png`） |
+
+> 三个公开接口（`login` / `captcha` / `init`）均按真实客户端 IP 限流，超限返回 `code=429`，各自独立额度，可在 `server` 配置段调整。
 
 ### 登录后接口（均需要 JWT，并经过操作审计、接口权限校验）
 

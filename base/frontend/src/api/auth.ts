@@ -26,6 +26,11 @@ export function getCaptcha() {
   return request.get<{ captcha_id: string; captcha_img: string }>('/auth/captcha')
 }
 
+/** 公开站点信息（无需登录）：登录页据此决定是否展示验证码 */
+export function getSiteInfo() {
+  return request.get<{ captchaEnabled: boolean }>('/site-info')
+}
+
 export function getUserInfo() {
   return request.get('/auth/info')
 }

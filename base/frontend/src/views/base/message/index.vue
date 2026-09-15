@@ -88,10 +88,9 @@
         <el-form-item label="发送渠道">
           <el-select v-model="sendForm.channel" style="width: 100%">
             <el-option label="站内信" value="in-app" />
-            <el-option label="邮件" value="email" />
-            <el-option label="短信" value="sms" />
-            <el-option label="企微" value="wechat" />
+            <el-option label="邮件（额外发送，需在系统设置中配置 SMTP）" value="email" />
           </el-select>
+          <div class="form-tip">短信 / 企微渠道尚未接入发送器，故未开放</div>
         </el-form-item>
         <el-form-item label="消息类型">
           <el-select v-model="sendForm.type" style="width: 100%">
@@ -270,6 +269,13 @@ onMounted(fetchData)
     display: flex;
     gap: 10px;
     align-items: center;
+  }
+
+  .form-tip {
+    width: 100%;
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.6;
   }
   .pagination {
     margin-top: 16px;

@@ -20,6 +20,7 @@ type LoginDTO struct {
 
 func (s AuthService) Login(dto LoginDTO) (*models.User, string, error) {
 	captchaSvc := CaptchaService{}
+	security := SettingsService{}.GetSecuritySettings()
 
 	// 解析租户编码，为空则视为平台级（tenantID=0）
 	var tenantID uint64
@@ -35,27 +36,37 @@ func (s AuthService) Login(dto LoginDTO) (*models.User, string, error) {
 	}
 
 	// 检查账号是否因登录失败被锁定（按租户隔离）
-	if err := captchaSvc.CheckAndLock(tenantID, dto.Username); err != nil {
-		return nil, "", err
+	if security.LockEnabled {
+		if err := captchaSvc.CheckAndLock(tenantID, dto.Username, security.MaxFailCount, security.LockDuration); err != nil {
+			return nil, "", err
+		}
 	}
 
-	// 校验验证码
-	if !captchaSvc.Verify(dto.CaptchaID, dto.CaptchaCode) {
-		_, _ = captchaSvc.RecordLoginFail(tenantID, dto.Username)
+	// 验证码开关由系统设置（安全策略 → captchaEnabled）决定，关闭后不再校验
+	if security.CaptchaEnabled && !captchaSvc.Verify(dto.CaptchaID, dto.CaptchaCode) {
+		if security.LockEnabled {
+			_, _ = captchaSvc.RecordLoginFail(tenantID, dto.Username, security.MaxFailCount, security.LockDuration)
+		}
 		return nil, "", errors.New("验证码错误")
 	}
 
 	var user models.User
 	if err := db.DB.Where("username = ? AND tenant_id = ?", dto.Username, tenantID).First(&user).Error; err != nil {
-		_, _ = captchaSvc.RecordLoginFail(tenantID, dto.Username)
+		if security.LockEnabled {
+			_, _ = captchaSvc.RecordLoginFail(tenantID, dto.Username, security.MaxFailCount, security.LockDuration)
+		}
 		return nil, "", errors.New("用户不存在")
 	}
 	if user.Status != 1 {
-		_, _ = captchaSvc.RecordLoginFail(tenantID, dto.Username)
+		if security.LockEnabled {
+			_, _ = captchaSvc.RecordLoginFail(tenantID, dto.Username, security.MaxFailCount, security.LockDuration)
+		}
 		return nil, "", errors.New("账号已禁用")
 	}
 	if !utils.CheckPassword(dto.Password, user.Password) {
-		_, _ = captchaSvc.RecordLoginFail(tenantID, dto.Username)
+		if security.LockEnabled {
+			_, _ = captchaSvc.RecordLoginFail(tenantID, dto.Username, security.MaxFailCount, security.LockDuration)
+		}
 		return nil, "", errors.New("密码错误")
 	}
 

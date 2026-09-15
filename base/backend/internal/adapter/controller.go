@@ -19,9 +19,10 @@ func AdapterController(c *gin.Context) {
 		response.Fail(c, "应用已禁用")
 		return
 	}
+	// 当前仅支持 iframe（前端容器）与 proxy（API 代理）两种接入方式
 	if app.Type == "iframe" {
 		response.FailWithCode(c, response.CodeBadRequest, "IFrame 应用不支持 API 代理")
 		return
 	}
-	ProxyToApp(c, app.BackendURL)
+	ProxyToApp(c, app)
 }

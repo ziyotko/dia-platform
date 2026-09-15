@@ -191,11 +191,33 @@ if tenantID > 0 {
 - **校验**：一次性（无论对错校验后立即删除）、大小写不敏感、忽畸首尾空格；`id` 或 `code` 为空直接失败。
 - **接口字段**：`GET /base/api/v1/auth/captcha` 返回 `{ captcha_id, captcha_img }`；
   登录请求体使用 `captcha_id` + `captcha_code`（与 portal / member / application 一致）。
-- **失败处理**：验证码错误计入 `login_fail:<tenantID>:<username>`（15 分钟窗口，5 次后锁定 30 分钟）。
+- **开关**：是否启用验证码由「系统设置 → 安全策略 → 登录验证码」控制（`settings.security.captchaEnabled`）。
+  登录页先调 `GET /base/api/v1/site-info` 获取 `captchaEnabled`，关闭时不渲染验证码输入框、不提交验证码字段，后端同样不校验。
+- **失败处理**：验证码错误或密码错误均计入 `login_fail:<tenantID>:<username>`，窗口与阈值由安全策略配置（默认 5 次 / 30 分钟）。
 
 ---
 
-## 4. 公开接口限流
+## 4. 安全策略（系统设置）
+
+「系统设置 → 安全策略」写入 `base_setting`（`category = security`，值以字符串存储），由 `internal/service/settings_service.go` 统一读取并带默认值与范围限制：
+
+| 设置项 | Key | 默认值 | 作用 |
+|--------|-----|--------|------|
+| 登录验证码 | `captchaEnabled` | `true` | 关闭后登录接口不再校验验证码，登录页隐藏验证码框 |
+| 登录失败锁定 | `loginLock` | `true` | 是否启用连续失败锁定 |
+| 最大失败次数 | `maxFailCount` | `5` | 达到该次数即锁定（范围 3~20） |
+| 锁定时长(分钟) | `lockDuration` | `30` | 锁定时间，同时是失败计数 Redis key 的 TTL（范围 1~1440） |
+| 密码最小长度 | `pwdMinLength` | `8` | 新增用户与修改密码时服务端强校验（范围 6~32） |
+
+**要点**：
+
+- 读取入口统一为 `service.SettingsService{}.GetSecuritySettings()`，登录、验证码锁定、用户创建三个流程共用一份配置，避免口径不一。
+- 设置为空或非法时回退到默认值（数值会被 clamp 到合法区间），因此旧环境不需要预先写入任何记录。
+- 前端「安全策略」表单必须与后端 key 对齐（`api/setting.ts` + `views/base/setting/index.vue` 的 `handleSaveSecurity`）。
+
+---
+
+## 5. 公开接口限流
 
 实现：[internal/middleware/rate_limit.go](../internal/middleware/rate_limit.go)，基于 Redis 固定窗口（借鉴 portal 的同名中间件）。
 
@@ -219,7 +241,7 @@ if tenantID > 0 {
 
 ---
 
-## 5. 开发 checklist
+## 6. 开发 checklist
 
 新增一个需要按 ID 操作的接口时，请确认：
 
@@ -227,6 +249,9 @@ if tenantID > 0 {
 - [ ] `Update`/`Delete`/`GetByID` 方法是否接收并使用了 `tenantID` 参数。
 - [ ] Controller 是否从 `c.GetUint64("tenantID")` 获取当前租户 ID 并传入 service。
 - [ ] 创建接口是否使用 `resolveTenantID(c, requested)` 而不是直接赋值 `c.GetUint64("tenantID")`。
-- [ ] 超级管理员（`tenantID == 0`）行为是否符合预期。
+- [ ] 判断「平台超级管理员」是否统一使用 `models.IsPlatformTenant(tenantID)`，而不要内联 `tenantID == 0`。
+- [ ] 读取可见性是否符合约定：字典/机构/消息模板/菜单/消息为 `tenant_id = 自身 OR tenant_id = 0`，用户/角色/文件/应用实例严格等于自身。
+- [ ] 列表接口：租户用户只看自己，超管默认全部并支持 `tenantId` 查询参数过滤。
 - [ ] 跨租户请求是否返回"资源不存在"或 403，而不是泄露其他租户数据。
 - [ ] 该接口是否已在 `internal/seed/permission_seed.go` 的 `basePermissionSeeds` 中登记。
+- [ ] 若前端需要控制按钮显隐，权限点的 `code` 是否与 `userStore.can('base:xxx:yyy')` 中使用的字符串一致（超管/租户管理员由 `can()` 自动放行）。

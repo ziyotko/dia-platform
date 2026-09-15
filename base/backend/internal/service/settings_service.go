@@ -1,6 +1,8 @@
 package service
 
 import (
+	"strconv"
+
 	"base/internal/models"
 	"base/pkg/db"
 
@@ -8,6 +10,58 @@ import (
 )
 
 type SettingsService struct{}
+
+// SecuritySettings 安全策略（系统设置 → 安全策略），由登录与密码相关流程读取。
+type SecuritySettings struct {
+	CaptchaEnabled bool // 是否启用登录验证码
+	LockEnabled    bool // 是否启用登录失败锁定
+	MaxFailCount   int  // 最大失败次数（超过则锁定）
+	LockDuration   int  // 锁定时长（分钟）
+	PwdMinLength   int  // 密码最小长度
+}
+
+// GetSecuritySettings 读取安全策略，未配置项使用默认值（验证码开启、5 次锁 30 分钟、密码至少 8 位）。
+func (s SettingsService) GetSecuritySettings() SecuritySettings {
+	out := SecuritySettings{
+		CaptchaEnabled: true,
+		LockEnabled:    true,
+		MaxFailCount:   5,
+		LockDuration:   30,
+		PwdMinLength:   8,
+	}
+	raw, err := s.GetByCategory("security")
+	if err != nil {
+		return out
+	}
+	out.CaptchaEnabled = boolValue(raw["captchaEnabled"], out.CaptchaEnabled)
+	out.LockEnabled = boolValue(raw["loginLock"], out.LockEnabled)
+	out.MaxFailCount = intValue(raw["maxFailCount"], out.MaxFailCount, 3, 20)
+	out.LockDuration = intValue(raw["lockDuration"], out.LockDuration, 1, 1440)
+	out.PwdMinLength = intValue(raw["pwdMinLength"], out.PwdMinLength, 6, 32)
+	return out
+}
+
+func boolValue(raw string, fallback bool) bool {
+	if raw == "" {
+		return fallback
+	}
+	v, err := strconv.ParseBool(raw)
+	if err != nil {
+		return fallback
+	}
+	return v
+}
+
+func intValue(raw string, fallback, min, max int) int {
+	if raw == "" {
+		return fallback
+	}
+	v, err := strconv.Atoi(raw)
+	if err != nil || v < min || v > max {
+		return fallback
+	}
+	return v
+}
 
 func (s SettingsService) GetAll() (map[string]map[string]string, error) {
 	var list []models.Setting

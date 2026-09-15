@@ -46,10 +46,9 @@
         <el-form-item label="渠道" prop="channel">
           <el-select v-model="form.channel" style="width: 100%">
             <el-option label="站内信" value="in-app" />
-            <el-option label="短信" value="sms" />
             <el-option label="邮件" value="email" />
-            <el-option label="微信" value="wechat" />
           </el-select>
+          <div class="form-tip">短信 / 企微渠道尚未接入发送器，故未开放</div>
         </el-form-item>
         <el-form-item label="主题">
           <el-input v-model="form.subject" />
@@ -173,6 +172,12 @@ onMounted(fetchData)
     margin-top: 16px;
     display: flex;
     justify-content: flex-end;
+  }
+  .form-tip {
+    width: 100%;
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.6;
   }
 }
 </style>

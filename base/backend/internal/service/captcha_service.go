@@ -1,7 +1,7 @@
 package service
 
 import (
-	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -15,9 +15,6 @@ const (
 	CaptchaKeyPrefix   = "captcha:"
 	CaptchaExpire      = 5 * time.Minute
 	LoginFailKeyPrefix = "login_fail:"
-	LoginFailExpire    = 15 * time.Minute
-	MaxLoginFailCount  = 5
-	LockDuration       = 30 * time.Minute
 )
 
 // 数字 + 字母验证码字符集：5 位，仅使用大写字母（与 portal / member / application 保持一致）。
@@ -91,42 +88,35 @@ func loginFailKey(tenantID uint64, username string) string {
 	return LoginFailKeyPrefix + strconv.FormatUint(tenantID, 10) + ":" + username
 }
 
-func (s CaptchaService) RecordLoginFail(tenantID uint64, username string) (int, error) {
+// RecordLoginFail 记录一次登录失败。
+// 计数键 TTL = 锁定时长：即 maxFail 次失败需在 lockMinutes 窗口内累计，达到阈值后锁定期内持续拦截。
+func (s CaptchaService) RecordLoginFail(tenantID uint64, username string, maxFail, lockMinutes int) (int, error) {
 	key := loginFailKey(tenantID, username)
 	count, err := redis.Client.Incr(redis.Ctx, key).Result()
 	if err != nil {
 		return 0, err
 	}
-	if count == 1 {
-		_ = redis.Client.Expire(redis.Ctx, key, LoginFailExpire).Err()
+	if count == 1 || int(count) == maxFail {
+		_ = redis.Client.Expire(redis.Ctx, key, time.Duration(lockMinutes)*time.Minute).Err()
 	}
 	return int(count), nil
 }
 
-func (s CaptchaService) IsLocked(tenantID uint64, username string) (bool, int, error) {
+// CheckAndLock 校验账号是否因连续登录失败被锁定，锁定时返回剩余等待分钟数。
+func (s CaptchaService) CheckAndLock(tenantID uint64, username string, maxFail, lockMinutes int) error {
 	key := loginFailKey(tenantID, username)
 	count, err := redis.Client.Get(redis.Ctx, key).Int()
-	if err != nil {
-		// redis 中没有失败记录，未锁定，剩余次数为最大允许次数
-		return false, MaxLoginFailCount, nil
+	if err != nil || count < maxFail {
+		return nil
 	}
-	if count >= MaxLoginFailCount {
-		return true, 0, nil
+
+	remain := lockMinutes
+	if ttl, ttlErr := redis.Client.TTL(redis.Ctx, key).Result(); ttlErr == nil && ttl > 0 {
+		remain = int(ttl.Minutes()) + 1
 	}
-	return false, MaxLoginFailCount - count, nil
+	return fmt.Errorf("登录失败次数过多，账号已锁定，请 %d 分钟后重试", remain)
 }
 
 func (s CaptchaService) ClearLoginFail(tenantID uint64, username string) error {
 	return redis.Client.Del(redis.Ctx, loginFailKey(tenantID, username)).Err()
-}
-
-func (s CaptchaService) CheckAndLock(tenantID uint64, username string) error {
-	locked, remain, err := s.IsLocked(tenantID, username)
-	if err != nil {
-		return err
-	}
-	if locked || remain <= 0 {
-		return errors.New("登录失败次数过多，账号已锁定，请30分钟后再试")
-	}
-	return nil
 }

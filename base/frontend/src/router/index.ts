@@ -160,6 +160,13 @@ router.beforeEach(async (to, _from, next) => {
       return
     }
 
+    try {
+      await userStore.fetchPermissions()
+    } catch (error) {
+      // 权限标识获取失败不阻断进入系统：按钮级控制降级为仅超管/管理员可见
+      console.error('[base] 获取权限标识失败', error)
+    }
+
     let menus: Menu[] = []
     try {
       menus = await userStore.fetchUserMenusAndGenerateRoutes()
