@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"application/internal/middleware"
-	"application/internal/models"
 	"application/internal/service"
 	"application/pkg/response"
 
@@ -27,11 +26,12 @@ func (ctrl *UserController) ListUsers(c *gin.Context) {
 }
 
 func (ctrl *UserController) CreateUser(c *gin.Context) {
-	var u models.User
-	if err := c.ShouldBindJSON(&u); err != nil {
+	var req service.UserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "参数错误")
 		return
 	}
+	u := req.ToModel()
 	if err := ctrl.service.CreateUser(&u); err != nil {
 		response.Fail(c, err.Error())
 		return
@@ -97,11 +97,12 @@ func (ctrl *UserController) ListAdmins(c *gin.Context) {
 }
 
 func (ctrl *UserController) CreateAdmin(c *gin.Context) {
-	var a models.Admin
-	if err := c.ShouldBindJSON(&a); err != nil {
+	var req service.AdminRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "参数错误")
 		return
 	}
+	a := req.ToModel()
 	if err := ctrl.service.CreateAdmin(&a); err != nil {
 		response.Fail(c, err.Error())
 		return

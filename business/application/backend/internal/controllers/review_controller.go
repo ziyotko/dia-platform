@@ -79,3 +79,18 @@ func (ctrl *ReviewController) ListAssignments(c *gin.Context) {
 	}
 	response.Ok(c, list)
 }
+
+// ListReviewTasks is the 全部评审任务 overview for managers.
+func (ctrl *ReviewController) ListReviewTasks(c *gin.Context) {
+	page, size := getPage(c)
+	status := c.Query("status")
+	batchID := parseUint(c.Query("batchId"))
+	reviewerID := parseUint(c.Query("reviewerId"))
+	keyword := c.Query("keyword")
+	list, total, err := ctrl.service.ListAllAssignments(page, size, status, batchID, reviewerID, keyword)
+	if err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+	response.Page(c, list, total)
+}

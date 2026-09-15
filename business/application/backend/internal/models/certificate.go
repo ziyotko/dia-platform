@@ -16,6 +16,8 @@ type Certificate struct {
 	FileURL       string     `gorm:"size:512" json:"fileUrl"`
 	Status        string     `gorm:"size:32;default:draft" json:"status"`
 	IssuedAt      *time.Time `json:"issuedAt"`
+	VoidedAt      *time.Time `json:"voidedAt"`
+	VoidReason    string     `gorm:"size:256" json:"voidReason"`
 
 	Application *Application `gorm:"foreignKey:ApplicationID" json:"application,omitempty"`
 }

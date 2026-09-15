@@ -40,6 +40,17 @@ func (ctrl *NotificationController) UnreadCount(c *gin.Context) {
 	response.Ok(c, gin.H{"count": count})
 }
 
+// MarkAllRead marks every unread notification of the current applicant.
+func (ctrl *NotificationController) MarkAllRead(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	n, err := ctrl.service.MarkAllRead(userID)
+	if err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+	response.OkWithMessage(c, "已全部标记为已读", gin.H{"count": n})
+}
+
 // --- Admin ---
 
 type SendReq struct {

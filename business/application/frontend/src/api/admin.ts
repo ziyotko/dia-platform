@@ -36,6 +36,7 @@ export const adminApi = {
   assignReviewers: (id: number, data: any) => request.post(`/admin/applications/${id}/assign`, data),
   finalize: (id: number, data: any) => request.post(`/admin/applications/${id}/finalize`, data),
   publishResult: (id: number) => request.post(`/admin/applications/${id}/publish`),
+  revokeResult: (id: number) => request.post(`/admin/applications/${id}/revoke`),
 
   // Reviews (专家评审)
   getReviewers: () => request.get('/admin/reviewers'),
@@ -43,6 +44,8 @@ export const adminApi = {
   getReview: (id: number) => request.get(`/admin/reviews/${id}`),
   submitReview: (id: number, data: any) => request.post(`/admin/reviews/${id}/submit`, data),
   getReviewAssignments: (applicationId: number) => request.get('/admin/review-assignments', { params: { applicationId } }),
+  // 全部评审任务总览
+  getReviewTasks: (params?: any) => request.get('/admin/review-tasks', { params }),
 
   // Announcements (结果公示)
   getAnnouncements: (params?: any) => request.get('/admin/announcements', { params }),
@@ -50,11 +53,14 @@ export const adminApi = {
   updateAnnouncement: (id: number, data: any) => request.put(`/admin/announcements/${id}`, data),
   deleteAnnouncement: (id: number) => request.delete(`/admin/announcements/${id}`),
   publishAnnouncement: (id: number) => request.post(`/admin/announcements/${id}/publish`),
+  getAnnouncementPreview: (batchId: number) =>
+    request.get('/admin/announcements/preview-content', { params: { batchId } }),
 
   // Certificates (证书管理)
   getCertificates: (params?: any) => request.get('/admin/certificates', { params }),
   issueCertificate: (data: any) => request.post('/admin/certificates', data),
   updateCertificate: (id: number, data: any) => request.put(`/admin/certificates/${id}`, data),
+  voidCertificate: (id: number, data?: any) => request.post(`/admin/certificates/${id}/void`, data || {}),
 
   // Notifications (通知管理)
   sendNotification: (data: any) => request.post('/admin/notifications', data),

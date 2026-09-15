@@ -113,3 +113,20 @@ func normalizeTimeFields(updates map[string]interface{}, fields ...string) {
 		}
 	}
 }
+
+// stringOf reads a string value out of a decoded JSON object.
+func stringOf(v interface{}) string {
+	s, _ := v.(string)
+	return s
+}
+
+// timeOf reads a *time.Time out of a normalized JSON object.
+func timeOf(v interface{}) *time.Time {
+	switch t := v.(type) {
+	case time.Time:
+		return &t
+	case *time.Time:
+		return t
+	}
+	return nil
+}

@@ -1,10 +1,12 @@
 import request from '@/utils/request'
 
 export const memberApi = {
-  // Browse
-  getOpenBatches: (params?: any) => request.get('/member/batches', { params }),
+  // Browse（申报中 / 评审中 / 已结束，canApply 标记是否还能申报）
+  getBatches: (params?: any) => request.get('/member/batches', { params }),
   getCategories: () => request.get('/member/categories'),
   getAnnouncements: (params?: any) => request.get('/member/announcements', { params }),
+  // 逐条评审结果公示
+  getPublishedResults: (params?: any) => request.get('/member/results', { params }),
 
   // Applications (项目申报)
   getMyApplications: (params?: any) => request.get('/member/applications', { params }),
@@ -22,6 +24,7 @@ export const memberApi = {
   // Notifications (进度通知)
   getNotifications: (params?: any) => request.get('/member/notifications', { params }),
   markRead: (id: number) => request.put(`/member/notifications/${id}/read`),
+  markAllRead: () => request.put('/member/notifications/read-all'),
   getUnreadCount: () => request.get('/member/notifications/unread-count'),
 
   // Dashboard

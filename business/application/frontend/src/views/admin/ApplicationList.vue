@@ -25,8 +25,8 @@
       <el-table-column label="状态" width="110">
         <template #default="{ row }"><el-tag :type="applicationStatusType[row.status]">{{ applicationStatusMap[row.status] || row.status }}</el-tag></template>
       </el-table-column>
-      <el-table-column label="平均分" width="90">
-        <template #default="{ row }">{{ row.avgScore || '-' }}</template>
+      <el-table-column label="评审平均分" width="110">
+        <template #default="{ row }">{{ avgScoreText(row) }}</template>
       </el-table-column>
       <el-table-column label="操作" width="240" fixed="right">
         <template #default="{ row }">
@@ -50,7 +50,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { adminApi } from '@/api/admin'
-import { applicationStatusMap, applicationStatusType } from '@/utils/constants'
+import { applicationStatusMap, applicationStatusType, avgScoreText } from '@/utils/constants'
 
 const list = ref<any[]>([])
 const batches = ref<any[]>([])

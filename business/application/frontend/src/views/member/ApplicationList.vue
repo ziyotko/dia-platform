@@ -21,8 +21,8 @@
           <el-tag :type="applicationStatusType[row.status]">{{ applicationStatusMap[row.status] || row.status }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="平均分" width="90">
-        <template #default="{ row }">{{ row.avgScore || '-' }}</template>
+      <el-table-column label="评审平均分" width="110">
+        <template #default="{ row }">{{ avgScoreText(row) }}</template>
       </el-table-column>
       <el-table-column label="提交时间" width="160">
         <template #default="{ row }">{{ fmt(row.submittedAt) }}</template>
@@ -50,7 +50,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { memberApi } from '@/api/member'
-import { applicationStatusMap, applicationStatusType, fmt } from '@/utils/constants'
+import { applicationStatusMap, applicationStatusType, avgScoreText, fmt } from '@/utils/constants'
 
 const list = ref<any[]>([])
 const total = ref(0)

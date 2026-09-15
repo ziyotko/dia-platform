@@ -2,11 +2,13 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
 	"application/internal/models"
 	"application/pkg/db"
+	"application/pkg/storage"
 
 	"gorm.io/gorm"
 )
@@ -168,8 +170,18 @@ func (s *ApplicationService) DeleteDraft(id, userID uint64) error {
 	if !editable(app.Status) {
 		return errors.New("仅草稿或初审驳回状态可删除")
 	}
+	var materials []models.ApplicationMaterial
+	db.DB.Where("application_id = ?", id).Find(&materials)
 	db.DB.Where("application_id = ?", id).Delete(&models.ApplicationMaterial{})
-	return db.DB.Delete(&app).Error
+	if err := db.DB.Delete(&app).Error; err != nil {
+		return err
+	}
+	// The DB rows are gone, so drop the uploaded files too — otherwise uploads/
+	// keeps growing with attachments nobody can reach any more.
+	for _, m := range materials {
+		storage.RemoveByURL(m.FileURL)
+	}
+	return nil
 }
 
 func (s *ApplicationService) GetByID(id uint64) (*models.Application, error) {
@@ -180,6 +192,20 @@ func (s *ApplicationService) GetByID(id uint64) (*models.Application, error) {
 		Preload("Reviews.Reviewer").
 		First(&app, id).Error; err != nil {
 		return nil, errors.New("申报记录不存在")
+	}
+	app.ReviewCount = int64(len(app.Reviews))
+	for i := range app.Reviews {
+		if app.Reviews[i].Status == models.ReviewStatusScored {
+			app.ScoredCount++
+		}
+	}
+	// The certificate is a separate row; attached here so the detail page can
+	// offer "颁发证书" / "查看证书" without a second request. A voided
+	// certificate is kept in the table but must not look active.
+	var cert models.Certificate
+	if err := db.DB.Where("application_id = ? AND status <> ?", id, models.CertStatusVoid).
+		First(&cert).Error; err == nil {
+		app.Certificate = &cert
 	}
 	return &app, nil
 }
@@ -208,6 +234,7 @@ func (s *ApplicationService) ListUser(userID uint64, page, size int, status, key
 	query.Count(&total)
 	err := query.Preload("Batch").Preload("Category").Order("created_at DESC").
 		Offset((page - 1) * size).Limit(size).Find(&list).Error
+	fillReviewCounts(list)
 	return list, total, err
 }
 
@@ -231,7 +258,42 @@ func (s *ApplicationService) List(page, size int, batchID uint64, status, status
 	query.Count(&total)
 	err := query.Preload("Batch").Preload("Category").Preload("User").Order("created_at DESC").
 		Offset((page - 1) * size).Limit(size).Find(&list).Error
+	fillReviewCounts(list)
 	return list, total, err
+}
+
+// fillReviewCounts attaches the assignment totals of a page of applications in
+// a single grouped query (no N+1). Callers use scored_count to decide between
+// showing the average and showing "no score yet".
+func fillReviewCounts(list []models.Application) {
+	if len(list) == 0 {
+		return
+	}
+	ids := make([]uint64, 0, len(list))
+	for _, a := range list {
+		ids = append(ids, a.ID)
+	}
+	type aggregate struct {
+		ApplicationID uint64
+		Total         int64
+		Scored        int64
+	}
+	var rows []aggregate
+	db.DB.Model(&models.ReviewAssignment{}).
+		Select("application_id, COUNT(*) AS total, SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS scored", models.ReviewStatusScored).
+		Where("application_id IN ?", ids).
+		Group("application_id").
+		Scan(&rows)
+	byID := make(map[uint64]aggregate, len(rows))
+	for _, r := range rows {
+		byID[r.ApplicationID] = r
+	}
+	for i := range list {
+		if r, ok := byID[list[i].ID]; ok {
+			list[i].ReviewCount = r.Total
+			list[i].ScoredCount = r.Scored
+		}
+	}
 }
 
 func (s *ApplicationService) SaveMaterials(applicationID, userID uint64, materials []models.ApplicationMaterial) error {
@@ -250,15 +312,38 @@ func (s *ApplicationService) SaveMaterials(applicationID, userID uint64, materia
 			return errors.New("材料信息不完整，请重新上传")
 		}
 	}
-	db.DB.Where("application_id = ?", applicationID).Delete(&models.ApplicationMaterial{})
+	var previous []models.ApplicationMaterial
+	db.DB.Where("application_id = ?", applicationID).Find(&previous)
+
 	for i := range materials {
 		materials[i].ApplicationID = applicationID
 		materials[i].ID = 0
 	}
-	if len(materials) == 0 {
-		return nil
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("application_id = ?", applicationID).Delete(&models.ApplicationMaterial{}).Error; err != nil {
+			return err
+		}
+		if len(materials) == 0 {
+			return nil
+		}
+		return tx.Create(&materials).Error
+	}); err != nil {
+		return err
 	}
-	return db.DB.Create(&materials).Error
+
+	// The caller always sends the complete list, so anything that was stored
+	// before and is not in it any more has been removed by the applicant: delete
+	// its file as well.
+	kept := make(map[string]bool, len(materials))
+	for _, m := range materials {
+		kept[m.FileURL] = true
+	}
+	for _, m := range previous {
+		if !kept[m.FileURL] {
+			storage.RemoveByURL(m.FileURL)
+		}
+	}
+	return nil
 }
 
 // PreliminaryReview handles online preliminary review (在线初审)
@@ -307,7 +392,20 @@ func (s *ApplicationService) AssignReviewers(id uint64, reviewerIDs []uint64) er
 		}
 	}
 	if len(target) == 0 {
-		return errors.New("请选择评审人")
+		// Clearing the whole list is the escape hatch for an application that no
+		// expert will ever score, so it is only safe while nobody has scored.
+		// Otherwise the scores would silently disappear from the average.
+		var scored int64
+		db.DB.Model(&models.ReviewAssignment{}).
+			Where("application_id = ? AND status = ?", id, models.ReviewStatusScored).Count(&scored)
+		if scored > 0 {
+			return errors.New("已有专家完成评分，不能清空评审人")
+		}
+		if err := db.DB.Where("application_id = ?", id).Delete(&models.ReviewAssignment{}).Error; err != nil {
+			return err
+		}
+		s.recalculateScore(id)
+		return nil
 	}
 	// Only enabled reviewer accounts may be assigned.
 	var validCount int64
@@ -459,13 +557,27 @@ func (s *ApplicationService) recalculateScore(applicationID uint64) {
 	}
 }
 
-// Finalize marks a reviewed application as passed or rejected (评审结果)
+// Finalize marks a reviewed application as passed or rejected (评审结果).
+//
+// An application left in 待评审 with nothing pending (no reviewer assigned at
+// all, or every assignment removed) can be decided directly: otherwise it would
+// be stuck for ever, since reviewed is only reachable through a score.
 func (s *ApplicationService) Finalize(id uint64, pass bool, opinion string) error {
 	var app models.Application
 	if err := db.DB.First(&app, id).Error; err != nil {
 		return errors.New("申报记录不存在")
 	}
-	if app.Status != models.AppStatusReviewed {
+	switch app.Status {
+	case models.AppStatusReviewed:
+		// normal path
+	case models.AppStatusUnderReview:
+		var pending int64
+		db.DB.Model(&models.ReviewAssignment{}).
+			Where("application_id = ? AND status = ?", id, models.ReviewStatusPending).Count(&pending)
+		if pending > 0 {
+			return fmt.Errorf("还有 %d 位评审人未评分，无法确定结果", pending)
+		}
+	default:
 		return errors.New("当前状态不可确定评审结果")
 	}
 	status := models.AppStatusRejected
@@ -511,4 +623,46 @@ func (s *ApplicationService) PublishResult(id uint64) error {
 	}
 	notifyUser(app.UserID, "结果已公示", "您的项目《"+app.Title+"》评审结果已公示，可前往「结果公示」查看。", NotifyTypeResult)
 	return nil
+}
+
+// RevokeResult takes back a decision that is not final yet so the operator can
+// correct it. It is deliberately two-step and never touches a certified
+// application: the certificate has to be voided first, which keeps the
+// passed → published → certified flow intact.
+//
+//	已公示 (published / rejected+publishedAt) →撤回公示，结果可重新公示
+//	已通过 / 未通过 (not published)          → 撤回评审结果，回到「评审完成」
+func (s *ApplicationService) RevokeResult(id uint64) (string, error) {
+	var app models.Application
+	if err := db.DB.First(&app, id).Error; err != nil {
+		return "", errors.New("申报记录不存在")
+	}
+
+	updates := map[string]interface{}{}
+	var message string
+	switch {
+	case app.Status == models.AppStatusCertified:
+		return "", errors.New("该申报已颁发证书，请先在「证书管理」中作废证书")
+	case app.Status == models.AppStatusPublished:
+		// 通过后的公示会改状态，撤回时必须一起退回去，否则会留下一个没有
+		// published_at 的 published 记录。
+		updates["status"] = models.AppStatusPassed
+		updates["published_at"] = nil
+		message = "已撤回公示，可重新公示"
+	case app.PublishedAt != nil && (app.Status == models.AppStatusPassed || app.Status == models.AppStatusRejected):
+		// 未通过的项目公示只写 published_at，状态保持不变。
+		updates["published_at"] = nil
+		message = "已撤回公示，可重新公示"
+	case app.Status == models.AppStatusPassed || app.Status == models.AppStatusRejected:
+		updates["status"] = models.AppStatusReviewed
+		updates["final_opinion"] = ""
+		message = "已撤回评审结果，可重新确定结果"
+	default:
+		return "", errors.New("当前状态不可撤回评审结果")
+	}
+	if err := db.DB.Model(&app).Updates(updates).Error; err != nil {
+		return "", err
+	}
+	notifyUser(app.UserID, "评审结果已撤回", "您的项目《"+app.Title+"》的评审结果已被撤回，请留意后续通知。", NotifyTypeResult)
+	return message, nil
 }

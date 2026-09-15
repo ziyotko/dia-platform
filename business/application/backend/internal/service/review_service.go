@@ -56,3 +56,35 @@ func (s *ReviewService) ListAssignments(applicationID uint64) ([]models.ReviewAs
 	err := db.DB.Preload("Reviewer").Where("application_id = ?", applicationID).Order("id ASC").Find(&list).Error
 	return list, err
 }
+
+// ListAllAssignments lists every review task across all applications (管理端
+// 评审任务总览). Applications are filtered through a subquery so the pagination
+// stays on the assignment table.
+func (s *ReviewService) ListAllAssignments(page, size int, status string, batchID, reviewerID uint64, keyword string) ([]models.ReviewAssignment, int64, error) {
+	var list []models.ReviewAssignment
+	var total int64
+	query := db.DB.Model(&models.ReviewAssignment{})
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	if reviewerID > 0 {
+		query = query.Where("reviewer_id = ?", reviewerID)
+	}
+	if batchID > 0 {
+		query = query.Where("application_id IN (?)",
+			db.DB.Model(&models.Application{}).Select("id").Where("batch_id = ?", batchID))
+	}
+	if keyword != "" {
+		query = query.Where("application_id IN (?)",
+			db.DB.Model(&models.Application{}).Select("id").Where("title LIKE ?", "%"+keyword+"%"))
+	}
+	query.Count(&total)
+	err := query.
+		Preload("Reviewer").
+		Preload("Application", func(d *gorm.DB) *gorm.DB {
+			return d.Preload("Batch").Preload("Category").Preload("User")
+		}).
+		Order("created_at DESC").
+		Offset((page - 1) * size).Limit(size).Find(&list).Error
+	return list, total, err
+}

@@ -42,10 +42,12 @@ func Register(r *gin.Engine) {
 		member.PUT("/profile", authCtrl.UpdateUserProfile)
 		member.PUT("/change-password", authCtrl.ChangeUserPassword)
 
-		// Browse open batches & published announcements
-		member.GET("/batches", batchCtrl.ListOpen)
+		// Browse published batches & results
+		member.GET("/batches", batchCtrl.ListVisible)
 		member.GET("/categories", categoryCtrl.List)
 		member.GET("/announcements", resultCtrl.ListPublishedAnnouncements)
+		// 逐条结果公示：与文本公示公告并列，申报人在同一页看到两种形式
+		member.GET("/results", resultCtrl.ListPublishedResults)
 
 		// Applications (项目申报)
 		member.GET("/applications", appCtrl.MyApplications)
@@ -63,6 +65,7 @@ func Register(r *gin.Engine) {
 		// Notifications (进度通知)
 		member.GET("/notifications", notifCtrl.MyNotifications)
 		member.PUT("/notifications/:id/read", notifCtrl.MarkRead)
+		member.PUT("/notifications/read-all", notifCtrl.MarkAllRead)
 		member.GET("/notifications/unread-count", notifCtrl.UnreadCount)
 
 		// Dashboard
@@ -110,6 +113,7 @@ func Register(r *gin.Engine) {
 		admin.POST("/applications/:id/assign", middleware.PermissionGuard("review:assign"), appCtrl.AssignReviewers)
 		admin.POST("/applications/:id/finalize", middleware.PermissionGuard("result:manage"), appCtrl.Finalize)
 		admin.POST("/applications/:id/publish", middleware.PermissionGuard("result:publish"), appCtrl.PublishResult)
+		admin.POST("/applications/:id/revoke", middleware.PermissionGuard("result:manage"), appCtrl.RevokeResult)
 
 		// Reviews (专家评审)
 		admin.GET("/reviewers", middleware.PermissionGuard("review:assign"), reviewCtrl.ListReviewers)
@@ -117,6 +121,8 @@ func Register(r *gin.Engine) {
 		admin.GET("/reviews/:id", reviewCtrl.GetAssignment)
 		admin.POST("/reviews/:id/submit", middleware.PermissionGuard("review:score"), reviewCtrl.SubmitReview)
 		admin.GET("/review-assignments", middleware.PermissionGuard("review:assign"), reviewCtrl.ListAssignments)
+		// 全部评审任务总览
+		admin.GET("/review-tasks", middleware.PermissionGuard("review:assign"), reviewCtrl.ListReviewTasks)
 
 		// Announcements (结果公示)
 		admin.GET("/announcements", middleware.PermissionGuard("announcement:manage"), resultCtrl.ListAnnouncements)
@@ -124,11 +130,14 @@ func Register(r *gin.Engine) {
 		admin.PUT("/announcements/:id", middleware.PermissionGuard("announcement:manage"), resultCtrl.UpdateAnnouncement)
 		admin.DELETE("/announcements/:id", middleware.PermissionGuard("announcement:manage"), resultCtrl.DeleteAnnouncement)
 		admin.POST("/announcements/:id/publish", middleware.PermissionGuard("announcement:manage"), resultCtrl.PublishAnnouncement)
+		// 用已公示的逐条结果生成公告正文，避免两套公示口径不一致
+		admin.GET("/announcements/preview-content", middleware.PermissionGuard("announcement:manage"), resultCtrl.AnnouncementPreview)
 
 		// Certificates (证书管理)
 		admin.GET("/certificates", middleware.PermissionGuard("certificate:manage"), resultCtrl.ListCertificates)
 		admin.POST("/certificates", middleware.PermissionGuard("certificate:manage"), resultCtrl.IssueCertificate)
 		admin.PUT("/certificates/:id", middleware.PermissionGuard("certificate:manage"), resultCtrl.UpdateCertificate)
+		admin.POST("/certificates/:id/void", middleware.PermissionGuard("certificate:manage"), resultCtrl.VoidCertificate)
 
 		// Notifications (通知管理)
 		admin.POST("/notifications", middleware.PermissionGuard("notification:send"), notifCtrl.Send)

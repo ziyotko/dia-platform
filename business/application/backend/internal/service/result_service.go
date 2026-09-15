@@ -3,10 +3,12 @@ package service
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"application/internal/models"
 	"application/pkg/db"
+	"application/pkg/storage"
 
 	"gorm.io/gorm"
 )
@@ -127,7 +129,8 @@ func (s *ResultService) IssueCertificate(c *models.Certificate) error {
 		return errors.New("仅已公示且通过的申报可颁发证书")
 	}
 	var count int64
-	db.DB.Model(&models.Certificate{}).Where("application_id = ?", c.ApplicationID).Count(&count)
+	db.DB.Model(&models.Certificate{}).
+		Where("application_id = ? AND status <> ?", c.ApplicationID, models.CertStatusVoid).Count(&count)
 	if count > 0 {
 		return errors.New("该申报已颁发证书")
 	}
@@ -139,7 +142,11 @@ func (s *ResultService) IssueCertificate(c *models.Certificate) error {
 		c.CertNo = fmt.Sprintf("CAAM-%s-%06d", time.Now().Format("2006"), c.ApplicationID)
 	}
 	var dup int64
-	db.DB.Model(&models.Certificate{}).Where("cert_no = ?", c.CertNo).Count(&dup)
+	// A voided certificate no longer holds its number, otherwise the generated
+	// "CAAM-<year>-<application id>" would make re-issuing after a void
+	// impossible for the rest of the year.
+	db.DB.Model(&models.Certificate{}).
+		Where("cert_no = ? AND status <> ?", c.CertNo, models.CertStatusVoid).Count(&dup)
 	if dup > 0 {
 		return errors.New("证书编号已存在")
 	}
@@ -175,6 +182,9 @@ func (s *ResultService) UpdateCertificate(id uint64, updates map[string]interfac
 	if err := db.DB.First(&cert, id).Error; err != nil {
 		return errors.New("证书不存在")
 	}
+	if cert.Status == models.CertStatusVoid {
+		return errors.New("证书已作废，不可编辑")
+	}
 	if raw, ok := clean["cert_no"]; ok {
 		no, _ := raw.(string)
 		if no == "" {
@@ -182,13 +192,105 @@ func (s *ResultService) UpdateCertificate(id uint64, updates map[string]interfac
 		}
 		if no != cert.CertNo {
 			var dup int64
-			db.DB.Model(&models.Certificate{}).Where("cert_no = ? AND id <> ?", no, id).Count(&dup)
+			db.DB.Model(&models.Certificate{}).
+				Where("cert_no = ? AND id <> ? AND status <> ?", no, id, models.CertStatusVoid).Count(&dup)
 			if dup > 0 {
 				return errors.New("证书编号已存在")
 			}
 		}
 	}
+	// Replacing the attachment must not leave the previous file behind.
+	if raw, ok := clean["file_url"]; ok {
+		newURL, _ := raw.(string)
+		if cert.FileURL != "" && newURL != cert.FileURL {
+			storage.RemoveByURL(cert.FileURL)
+		}
+	}
 	return db.DB.Model(&cert).Updates(clean).Error
+}
+
+// VoidCertificate invalidates an issued certificate. The application returns to
+// 已公示 so a corrected certificate can be issued afterwards, and the voided row
+// is kept (never deleted) as an audit trail.
+func (s *ResultService) VoidCertificate(id uint64, reason string) error {
+	var cert models.Certificate
+	if err := db.DB.First(&cert, id).Error; err != nil {
+		return errors.New("证书不存在")
+	}
+	if cert.Status == models.CertStatusVoid {
+		return errors.New("该证书已作废")
+	}
+	now := time.Now()
+	if err := db.DB.Model(&cert).Updates(map[string]interface{}{
+		"status":      models.CertStatusVoid,
+		"voided_at":   now,
+		"void_reason": reason,
+	}).Error; err != nil {
+		return err
+	}
+
+	var app models.Application
+	if err := db.DB.First(&app, cert.ApplicationID).Error; err == nil && app.Status == models.AppStatusCertified {
+		db.DB.Model(&app).Update("status", models.AppStatusPublished)
+	}
+	notifyUser(cert.UserID, "证书已作废", "您的项目《"+cert.Title+"》的证书已作废，如需重新颁发请联系管理方。", NotifyTypeCertificate)
+	return nil
+}
+
+// ListPublishedResults returns the per-application results that have been made
+// public (逐条结果公示). It is the structured counterpart of the free-text
+// Announcement and is what the applicant-facing 结果公示 page shows next to it.
+func (s *ResultService) ListPublishedResults(page, size int, batchID uint64, keyword string) ([]models.Application, int64, error) {
+	var list []models.Application
+	var total int64
+	query := db.DB.Model(&models.Application{}).Where("published_at IS NOT NULL")
+	if batchID > 0 {
+		query = query.Where("batch_id = ?", batchID)
+	}
+	if keyword != "" {
+		query = query.Where("title LIKE ?", "%"+keyword+"%")
+	}
+	query.Count(&total)
+	err := query.Preload("Batch").Preload("Category").Preload("User").
+		Order("published_at DESC").
+		Offset((page - 1) * size).Limit(size).Find(&list).Error
+	return list, total, err
+}
+
+// BuildAnnouncementContent renders the already-published results of a batch as
+// announcement text, so the two 公示 implementations no longer have to be kept
+// in sync by hand when a manager writes the notice.
+func (s *ResultService) BuildAnnouncementContent(batchID uint64) (string, error) {
+	if err := checkBatch(batchID); err != nil {
+		return "", err
+	}
+	if batchID == 0 {
+		return "", errors.New("请先选择所属批次")
+	}
+	var apps []models.Application
+	if err := db.DB.Preload("User").Where("batch_id = ? AND published_at IS NOT NULL", batchID).
+		Order("id ASC").Find(&apps).Error; err != nil {
+		return "", err
+	}
+	if len(apps) == 0 {
+		return "", errors.New("该批次暂无已公示的评审结果")
+	}
+	var b strings.Builder
+	var passed int
+	for i, a := range apps {
+		name := "-"
+		if a.User != nil && a.User.RealName != "" {
+			name = a.User.RealName
+		}
+		outcome := "未通过"
+		if a.Status == models.AppStatusPublished || a.Status == models.AppStatusCertified {
+			outcome = "通过"
+			passed++
+		}
+		fmt.Fprintf(&b, "%d. %s（申报人：%s）——%s\n", i+1, a.Title, name, outcome)
+	}
+	header := fmt.Sprintf("本批次共受理并公示 %d 个项目，其中通过 %d 个：\n\n", len(apps), passed)
+	return header + b.String(), nil
 }
 
 func (s *ResultService) ListCertificates(page, size int, keyword string) ([]models.Certificate, int64, error) {
@@ -208,7 +310,8 @@ func (s *ResultService) ListCertificates(page, size int, keyword string) ([]mode
 
 func (s *ResultService) ListUserCertificates(userID uint64) ([]models.Certificate, error) {
 	var list []models.Certificate
-	err := db.DB.Where("user_id = ?", userID).
+	// A voided certificate is no longer the applicant's to download.
+	err := db.DB.Where("user_id = ? AND status <> ?", userID, models.CertStatusVoid).
 		Preload("Application", func(db *gorm.DB) *gorm.DB {
 			return db.Preload("Batch")
 		}).Order("created_at DESC").Find(&list).Error

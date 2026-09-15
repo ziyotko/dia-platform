@@ -57,6 +57,15 @@ func (s *NotificationService) MarkRead(id, userID uint64) error {
 		Update("read_at", now).Error
 }
 
+// MarkAllRead marks every unread notification of one applicant as read and
+// reports how many rows changed.
+func (s *NotificationService) MarkAllRead(userID uint64) (int64, error) {
+	res := db.DB.Model(&models.Notification{}).
+		Where("user_id = ? AND read_at IS NULL", userID).
+		Update("read_at", time.Now())
+	return res.RowsAffected, res.Error
+}
+
 func (s *NotificationService) UnreadCount(userID uint64) int64 {
 	var count int64
 	db.DB.Model(&models.Notification{}).Where("user_id = ? AND read_at IS NULL", userID).Count(&count)

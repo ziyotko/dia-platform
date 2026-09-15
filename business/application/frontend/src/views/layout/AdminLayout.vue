@@ -54,6 +54,7 @@ const fullMenus = [
   { path: '/admin/batches', label: '批次管理', icon: 'Files' },
   { path: '/admin/applications', label: '申报管理', icon: 'Tickets' },
   { path: '/admin/reviews', label: '评审管理', icon: 'Histogram' },
+  { path: '/admin/review-tasks', label: '评审任务', icon: 'DocumentChecked' },
   { path: '/admin/announcements', label: '结果公示', icon: 'Bell' },
   { path: '/admin/certificates', label: '证书管理', icon: 'Medal' },
   { path: '/admin/notifications', label: '通知管理', icon: 'Message' },

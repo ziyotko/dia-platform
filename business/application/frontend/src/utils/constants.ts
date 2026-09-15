@@ -41,6 +41,28 @@ export const reviewStatusMap: Record<string, string> = {
   scored: '已评分',
 }
 
+export const certStatusMap: Record<string, string> = {
+  draft: '未颁发',
+  issued: '已颁发',
+  void: '已作废',
+}
+
+export const certStatusType: Record<string, string> = {
+  draft: 'info',
+  issued: 'success',
+  void: 'danger',
+}
+
+// 列表里的「平均分」：avgScore 在后端默认是 0，无评分时必须显示为未评分而不是
+// 0 分（历史问题：0 分被 `avgScore || '-'` 显示成 -）。scoredCount 由后端
+// 列表接口统一填充。
+export function avgScoreText(row: any): string {
+  if (!row) return '-'
+  const scored = Number(row.scoredCount ?? 0)
+  if (!scored || row.avgScore === null || row.avgScore === undefined) return '-'
+  return String(row.avgScore)
+}
+
 export function fileUrl(path?: string): string {
   if (!path) return ''
   if (path.startsWith('http://') || path.startsWith('https://')) return path

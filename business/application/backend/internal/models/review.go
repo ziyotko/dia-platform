@@ -15,6 +15,10 @@ type ReviewAssignment struct {
 	ReviewedAt    *time.Time `json:"reviewedAt"`
 
 	Reviewer *Admin `gorm:"foreignKey:ReviewerID" json:"reviewer,omitempty"`
+
+	// Required by the review-task queries/preloads (`Preload("Application")`),
+	// without which listing assignments fails with "unsupported relations".
+	Application *Application `gorm:"foreignKey:ApplicationID" json:"application,omitempty"`
 }
 
 func (ReviewAssignment) TableName() string {

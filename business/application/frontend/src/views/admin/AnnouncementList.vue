@@ -39,7 +39,15 @@
             <el-option v-for="b in batches" :key="b.id" :label="b.title" :value="b.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="公示内容"><el-input v-model="form.content" type="textarea" :rows="6" /></el-form-item>
+        <el-form-item label="公示内容">
+          <div style="width:100%">
+            <el-button size="small" style="margin-bottom:8px" :disabled="!form.batchId" :loading="previewing" @click="fillFromResults">
+              引用该批次已公示的评审结果
+            </el-button>
+            <el-input v-model="form.content" type="textarea" :rows="8" />
+            <div class="form-hint">引用后仍可手工调整；逐条结果公示与公告现在是同一批数据</div>
+          </div>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -61,6 +69,7 @@ const page = ref(1)
 const pageSize = 10
 const keyword = ref('')
 const loading = ref(false)
+const previewing = ref(false)
 const dialogVisible = ref(false)
 const form = reactive<any>({ id: 0, title: '', batchId: '', content: '' })
 
@@ -80,6 +89,22 @@ function onPage(p: number) { page.value = p; fetch() }
 function openDialog(row?: any) {
   Object.assign(form, row ? { ...row } : { id: 0, title: '', batchId: '', content: '' })
   dialogVisible.value = true
+}
+
+// 把该批次已公示的逐条结果渲染成公告正文，避免两套公示口径不一致
+async function fillFromResults() {
+  previewing.value = true
+  try {
+    const res = await adminApi.getAnnouncementPreview(Number(form.batchId))
+    form.content = res.data.content
+    if (!form.title) {
+      const batch = batches.value.find((b) => b.id === form.batchId)
+      form.title = `${batch?.title || '本批次'}评审结果公示`
+    }
+    ElMessage.success('已引用公示结果')
+  } finally {
+    previewing.value = false
+  }
 }
 
 async function save() {

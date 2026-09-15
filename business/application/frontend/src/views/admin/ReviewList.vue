@@ -43,8 +43,8 @@
         <el-table-column label="状态" width="110">
           <template #default="{ row }"><el-tag :type="applicationStatusType[row.status]">{{ applicationStatusMap[row.status] }}</el-tag></template>
         </el-table-column>
-        <el-table-column label="平均分" width="90">
-          <template #default="{ row }">{{ row.avgScore || '-' }}</template>
+        <el-table-column label="评审平均分" width="110">
+          <template #default="{ row }">{{ avgScoreText(row) }}</template>
         </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
@@ -67,7 +67,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAdminStore } from '@/stores/admin'
 import { adminApi } from '@/api/admin'
-import { applicationStatusMap, applicationStatusType, reviewStatusMap } from '@/utils/constants'
+import { applicationStatusMap, applicationStatusType, avgScoreText, reviewStatusMap } from '@/utils/constants'
 
 const adminStore = useAdminStore()
 const isReviewer = computed(() => adminStore.roleCode === 'reviewer')

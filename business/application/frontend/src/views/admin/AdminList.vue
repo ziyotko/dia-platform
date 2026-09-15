@@ -37,8 +37,9 @@
         <el-form-item label="姓名"><el-input v-model="form.realName" /></el-form-item>
         <el-form-item label="角色">
           <el-select v-model="form.roleCode" style="width:100%">
-            <el-option v-for="r in roles" :key="r.code" :label="r.name" :value="r.code" />
+            <el-option v-for="r in roleOptions" :key="r.code" :label="r.name" :value="r.code" />
           </el-select>
+          <div class="form-hint">评审人账号请通过「专家库」新增，以保证账号与专家档案一一对应</div>
         </el-form-item>
         <el-form-item label="电话"><el-input v-model="form.phone" /></el-form-item>
         <el-form-item label="邮箱"><el-input v-model="form.email" /></el-form-item>
@@ -52,7 +53,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminApi } from '@/api/admin'
 
@@ -75,6 +76,16 @@ function roleType(code: string) {
   return (map[code] || 'info') as any
 }
 
+// 评审人不在账号管理里创建（列表上仍显示既有评审人账号）；
+// 编辑已有评审人时保留其角色选项，否则保存会把角色清空。
+const roleOptions = computed(() => {
+  const list = roles.value.filter((r: any) => r.code !== 'reviewer')
+  if (form.id && form.roleCode === 'reviewer') {
+    return [...list, { code: 'reviewer', name: '评审人' }]
+  }
+  return list
+})
+
 async function fetch() {
   loading.value = true
   try {
@@ -89,7 +100,7 @@ async function fetch() {
 function onPage(p: number) { page.value = p; fetch() }
 
 function openDialog(row?: any) {
-  Object.assign(form, row ? { ...row, password: '' } : { id: 0, username: '', password: '', realName: '', roleCode: 'reviewer', phone: '', email: '' })
+  Object.assign(form, row ? { ...row, password: '' } : { id: 0, username: '', password: '', realName: '', roleCode: 'manager', phone: '', email: '' })
   dialogVisible.value = true
 }
 

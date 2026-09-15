@@ -209,3 +209,15 @@ func (ctrl *ApplicationController) PublishResult(c *gin.Context) {
 	recordAudit(c, "结果公示", "公示申报结果", "id="+c.Param("id"))
 	response.OkWithMessage(c, "结果已公示", nil)
 }
+
+// RevokeResult takes back a published/decided result so it can be corrected.
+func (ctrl *ApplicationController) RevokeResult(c *gin.Context) {
+	id := parseUint(c.Param("id"))
+	message, err := ctrl.service.RevokeResult(id)
+	if err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+	recordAudit(c, "结果公示", "撤回评审结果", "id="+c.Param("id"))
+	response.OkWithMessage(c, message, nil)
+}

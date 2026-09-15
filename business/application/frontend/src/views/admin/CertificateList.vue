@@ -12,9 +12,16 @@
       <el-table-column label="所属项目" min-width="180">
         <template #default="{ row }">{{ row.application?.title || '-' }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="120" fixed="right">
+      <el-table-column label="状态" width="100">
         <template #default="{ row }">
-          <el-button size="small" type="primary" @click="openEdit(row)">编辑</el-button>
+          <el-tag :type="certStatusType[row.status] || 'info'" size="small">{{ certStatusMap[row.status] || row.status }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="220" fixed="right">
+        <template #default="{ row }">
+          <el-button v-if="row.fileUrl" size="small" type="primary" link @click="download(row)">下载</el-button>
+          <el-button size="small" type="primary" :disabled="row.status === 'void'" @click="openEdit(row)">编辑</el-button>
+          <el-button size="small" type="danger" :disabled="row.status === 'void'" @click="voidCert(row)">作废</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -60,8 +67,9 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminApi } from '@/api/admin'
+import { certStatusMap, certStatusType, fileUrl } from '@/utils/constants'
 
 const list = ref<any[]>([])
 const passedApps = ref<any[]>([])
@@ -113,6 +121,22 @@ async function save() {
   ElMessage.success('保存成功')
   dialogVisible.value = false
   fetch()
+}
+
+// 作废后申报会退回「已公示」，可以重新颁发正确的证书
+async function voidCert(row: any) {
+  const { value } = await ElMessageBox.prompt('作废后将通知持有人，且该申报可重新颁发证书。请填写作废原因（可选）：', '作废证书', {
+    type: 'warning',
+    inputPlaceholder: '如：信息填写错误',
+    inputValidator: () => true,
+  })
+  await adminApi.voidCertificate(row.id, { reason: value || '' })
+  ElMessage.success('证书已作废')
+  fetch()
+}
+
+function download(row: any) {
+  window.open(fileUrl(row.fileUrl), '_blank')
 }
 
 // Reuses the shared upload endpoint so a certificate file is picked from disk

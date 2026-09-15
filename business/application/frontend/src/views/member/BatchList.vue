@@ -10,16 +10,16 @@
       <el-table-column label="项目类别" width="140">
         <template #default="{ row }">{{ row.category?.name || '-' }}</template>
       </el-table-column>
-      <el-table-column label="申报截止" width="160">
-        <template #default="{ row }">{{ fmt(row.applyEnd) }}</template>
+      <el-table-column label="申报时间" width="300">
+        <template #default="{ row }">{{ fmt(row.applyStart) }} ~ {{ fmt(row.applyEnd) }}</template>
       </el-table-column>
       <el-table-column label="状态" width="100">
-        <template #default="{ row }"><el-tag :type="batchStatusType[row.status]">{{ batchStatusMap[row.status] }}</el-tag></template>
+        <template #default="{ row }"><el-tag :type="batchStatusType[row.status]">{{ batchStatusMap[row.status] || row.status }}</el-tag></template>
       </el-table-column>
       <el-table-column label="操作" width="200" fixed="right">
         <template #default="{ row }">
           <el-button size="small" @click="viewDetail(row)">申报要求</el-button>
-          <el-button size="small" type="primary" @click="goApply(row)">立即申报</el-button>
+          <el-button size="small" type="primary" :disabled="!row.canApply" @click="goApply(row)">立即申报</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -36,9 +36,16 @@
     <el-dialog v-model="detailVisible" :title="current.title" width="640px">
       <el-descriptions :column="1" border>
         <el-descriptions-item label="项目类别">{{ current.category?.name || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="当前状态">{{ batchStatusMap[current.status] || current.status }}</el-descriptions-item>
         <el-descriptions-item label="申报时间">{{ fmt(current.applyStart) }} ~ {{ fmt(current.applyEnd) }}</el-descriptions-item>
-        <el-descriptions-item label="评审截止">{{ fmt(current.reviewDeadline) }}</el-descriptions-item>
       </el-descriptions>
+      <el-alert
+        v-if="!current.canApply"
+        style="margin-top:12px"
+        type="info"
+        :closable="false"
+        :title="`该批次当前${batchStatusMap[current.status] || current.status}，已不接受新的申报`"
+      />
       <div class="detail-block">
         <h4>申报要求</h4>
         <div class="detail-text">{{ current.requirements || '无' }}</div>
@@ -49,7 +56,7 @@
       </div>
       <template #footer>
         <el-button @click="detailVisible = false">关闭</el-button>
-        <el-button type="primary" @click="goApply(current)">立即申报</el-button>
+        <el-button type="primary" :disabled="!current.canApply" @click="goApply(current)">立即申报</el-button>
       </template>
     </el-dialog>
   </div>
@@ -58,6 +65,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { memberApi } from '@/api/member'
 import { batchStatusMap, batchStatusType, fmt } from '@/utils/constants'
 
@@ -72,7 +80,7 @@ const loading = ref(false)
 async function fetch() {
   loading.value = true
   try {
-    const res = await memberApi.getOpenBatches({ page: page.value, pageSize, keyword: keyword.value })
+    const res = await memberApi.getBatches({ page: page.value, pageSize, keyword: keyword.value })
     list.value = res.data.list
     total.value = res.data.total
   } finally {
@@ -91,6 +99,7 @@ function viewDetail(row: any) {
 }
 
 function goApply(row: any) {
+  if (!row.canApply) return ElMessage.warning('该批次已不接受新的申报')
   router.push({ path: '/member/applications/create', query: { batchId: row.id } })
 }
 

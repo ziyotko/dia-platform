@@ -17,6 +17,10 @@ type ProjectBatch struct {
 	Status         string     `gorm:"size:32;default:draft" json:"status"`
 
 	Category *ProjectCategory `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
+
+	// Transient, filled by the service layer: whether the applicant may still
+	// submit into this batch right now.
+	CanApply bool `gorm:"-" json:"canApply"`
 }
 
 func (ProjectBatch) TableName() string {

@@ -41,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
@@ -53,6 +53,7 @@ const appStore = useAppStore()
 const { collapsed, toggleCollapse } = appStore
 
 const unread = ref(0)
+let timer: number | undefined
 
 async function refreshUnread() {
   try {
@@ -63,9 +64,22 @@ async function refreshUnread() {
   }
 }
 
+// 页面聚焦时立即刷新（例如从后台标签页回来）
+function onVisible() {
+  if (!document.hidden) refreshUnread()
+}
+
 onMounted(() => {
   if (!userStore.userInfo) userStore.fetchUserInfo()
   refreshUnread()
+  // 红点不再只靠路由切换刷新：轮询 + 可见性变化，站内信一到就能看到
+  timer = window.setInterval(refreshUnread, 60000)
+  document.addEventListener('visibilitychange', onVisible)
+})
+
+onUnmounted(() => {
+  if (timer) window.clearInterval(timer)
+  document.removeEventListener('visibilitychange', onVisible)
 })
 
 watch(() => route.fullPath, refreshUnread)

@@ -26,6 +26,13 @@ type Application struct {
 	User      *User                 `gorm:"foreignKey:UserID" json:"user,omitempty"`
 	Materials []ApplicationMaterial `gorm:"foreignKey:ApplicationID" json:"materials,omitempty"`
 	Reviews   []ReviewAssignment    `gorm:"foreignKey:ApplicationID" json:"reviews,omitempty"`
+
+	// Transient, filled by the service layer — never persisted. They let the
+	// list pages tell "no score yet" (avg_score defaults to 0) apart from a real
+	// average of 0, and let the detail page show the issued certificate.
+	Certificate *Certificate `gorm:"-" json:"certificate,omitempty"`
+	ReviewCount int64        `gorm:"-" json:"reviewCount"`
+	ScoredCount int64        `gorm:"-" json:"scoredCount"`
 }
 
 func (Application) TableName() string {

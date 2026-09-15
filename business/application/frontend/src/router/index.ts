@@ -47,6 +47,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'applications', name: 'AdminApplications', component: () => import('@/views/admin/ApplicationList.vue'), meta: { title: '申报管理', roles: MANAGER_ROLES } },
       { path: 'applications/:id', name: 'AdminApplicationDetail', component: () => import('@/views/admin/ApplicationDetail.vue'), meta: { title: '申报详情', roles: MANAGER_ROLES } },
       { path: 'reviews', name: 'AdminReviews', component: () => import('@/views/admin/ReviewList.vue'), meta: { title: '评审管理' } },
+      { path: 'review-tasks', name: 'AdminReviewTasks', component: () => import('@/views/admin/ReviewTaskList.vue'), meta: { title: '评审任务', roles: MANAGER_ROLES } },
       { path: 'reviews/:id', name: 'AdminReviewScore', component: () => import('@/views/admin/ReviewScore.vue'), meta: { title: '专家评审' } },
       { path: 'announcements', name: 'AdminAnnouncements', component: () => import('@/views/admin/AnnouncementList.vue'), meta: { title: '结果公示', roles: MANAGER_ROLES } },
       { path: 'certificates', name: 'AdminCertificates', component: () => import('@/views/admin/CertificateList.vue'), meta: { title: '证书管理', roles: MANAGER_ROLES } },

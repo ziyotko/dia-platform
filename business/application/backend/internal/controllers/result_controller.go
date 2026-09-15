@@ -75,6 +75,32 @@ func (ctrl *ResultController) ListAnnouncements(c *gin.Context) {
 	response.Page(c, list, total)
 }
 
+// AnnouncementPreview renders the published per-application results of a batch
+// as announcement text (结果公示两套实现的桥接).
+func (ctrl *ResultController) AnnouncementPreview(c *gin.Context) {
+	batchID := parseUint(c.Query("batchId"))
+	content, err := ctrl.service.BuildAnnouncementContent(batchID)
+	if err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+	response.Ok(c, gin.H{"content": content})
+}
+
+// ListPublishedResults lists the per-application results already made public.
+// Managers see every batch; applicants use the /member endpoint below.
+func (ctrl *ResultController) ListPublishedResults(c *gin.Context) {
+	page, size := getPage(c)
+	batchID := parseUint(c.Query("batchId"))
+	keyword := c.Query("keyword")
+	list, total, err := ctrl.service.ListPublishedResults(page, size, batchID, keyword)
+	if err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+	response.Page(c, list, total)
+}
+
 // ListPublishedAnnouncements lists only published announcements (frontend)
 func (ctrl *ResultController) ListPublishedAnnouncements(c *gin.Context) {
 	page, size := getPage(c)
@@ -127,6 +153,24 @@ func (ctrl *ResultController) ListCertificates(c *gin.Context) {
 		return
 	}
 	response.Page(c, list, total)
+}
+
+type VoidCertReq struct {
+	Reason string `json:"reason"`
+}
+
+// VoidCertificate invalidates an issued certificate (作废证书).
+func (ctrl *ResultController) VoidCertificate(c *gin.Context) {
+	id := parseUint(c.Param("id"))
+	var req VoidCertReq
+	// A missing body is fine: the reason is optional.
+	_ = c.ShouldBindJSON(&req)
+	if err := ctrl.service.VoidCertificate(id, req.Reason); err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+	recordAudit(c, "证书管理", "作废证书", "id="+c.Param("id"))
+	response.OkWithMessage(c, "证书已作废", nil)
 }
 
 // MyCertificates lists the current applicant's certificates (frontend)

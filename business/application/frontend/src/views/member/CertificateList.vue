@@ -10,6 +10,11 @@
       <el-table-column label="颁发时间" width="170">
         <template #default="{ row }">{{ fmt(row.issuedAt) }}</template>
       </el-table-column>
+      <el-table-column label="状态" width="100">
+        <template #default="{ row }">
+          <el-tag :type="certStatusType[row.status] || 'info'" size="small">{{ certStatusMap[row.status] || row.status }}</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="操作" width="120" fixed="right">
         <template #default="{ row }">
           <el-button v-if="row.fileUrl" size="small" type="primary" @click="download(row)">下载证书</el-button>
@@ -22,7 +27,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { memberApi } from '@/api/member'
-import { fileUrl, fmt } from '@/utils/constants'
+import { certStatusMap, certStatusType, fileUrl, fmt } from '@/utils/constants'
 
 const list = ref<any[]>([])
 const loading = ref(false)

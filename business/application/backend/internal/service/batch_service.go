@@ -10,6 +10,29 @@ import (
 
 type BatchService struct{}
 
+// CreateFromPayload builds a batch from a decoded JSON object instead of binding
+// straight into the model: the model's *time.Time fields only accept RFC3339,
+// while the date pickers send "YYYY-MM-DD HH:mm:ss", which made it impossible to
+// create a batch together with its application window.
+func (s *BatchService) CreateFromPayload(payload map[string]interface{}) (*models.ProjectBatch, error) {
+	clean := pickUpdates(payload, "title", "category_id", "description", "requirements",
+		"apply_start", "apply_end", "review_deadline")
+	normalizeTimeFields(clean, "apply_start", "apply_end", "review_deadline")
+	b := &models.ProjectBatch{
+		Title:          stringOf(clean["title"]),
+		CategoryID:     toUint64(clean["category_id"]),
+		Description:    stringOf(clean["description"]),
+		Requirements:   stringOf(clean["requirements"]),
+		ApplyStart:     timeOf(clean["apply_start"]),
+		ApplyEnd:       timeOf(clean["apply_end"]),
+		ReviewDeadline: timeOf(clean["review_deadline"]),
+	}
+	if err := s.Create(b); err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
 func (s *BatchService) Create(b *models.ProjectBatch) error {
 	if b.Title == "" {
 		return errors.New("请填写批次名称")
@@ -168,23 +191,27 @@ func (s *BatchService) List(page, size int, keyword, status string) ([]models.Pr
 	return list, total, err
 }
 
-// ListOpen returns batches currently open for application (frontend). The
-// result honours the same time window as IsOpen so the list and the submit
-// guard can never disagree.
-func (s *BatchService) ListOpen(page, size int, keyword string) ([]models.ProjectBatch, int64, error) {
+// ListVisible lists the batches an applicant may see: everything that has been
+// published already (申报中 / 评审中 / 已结束). Drafts stay internal, but the
+// applicant now sees the real stage instead of a column that always reads
+// 申报中.
+func (s *BatchService) ListVisible(page, size int, keyword string) ([]models.ProjectBatch, int64, error) {
 	var list []models.ProjectBatch
 	var total int64
-	now := time.Now()
-	query := db.DB.Model(&models.ProjectBatch{}).Where("status = ?", models.BatchStatusOpen).
-		Where("apply_start IS NULL OR apply_start <= ?", now).
-		Where("apply_end IS NULL OR apply_end >= ?", now)
+	query := db.DB.Model(&models.ProjectBatch{}).Where("status <> ?", models.BatchStatusDraft)
 	if keyword != "" {
 		query = query.Where("title LIKE ?", "%"+keyword+"%")
 	}
 	query.Count(&total)
 	err := query.Preload("Category").Order("created_at DESC").
 		Offset((page - 1) * size).Limit(size).Find(&list).Error
-	return list, total, err
+	if err != nil {
+		return list, total, err
+	}
+	for i := range list {
+		list[i].CanApply = s.IsOpen(&list[i])
+	}
+	return list, total, nil
 }
 
 // IsOpen checks whether the batch is still accepting applications

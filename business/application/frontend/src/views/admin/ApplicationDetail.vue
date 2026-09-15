@@ -63,10 +63,32 @@
         <el-alert :closable="false" :title="app.finalOpinion" :type="app.status === 'rejected' ? 'error' : 'success'" />
       </template>
 
+      <!-- Certificate -->
+      <template v-if="app.certificate">
+        <el-divider content-position="left">证书</el-divider>
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="证书编号">{{ app.certificate.certNo || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="证书名称">{{ app.certificate.title || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="持有人">{{ app.certificate.holder || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="颁发时间">{{ fmt(app.certificate.issuedAt) }}</el-descriptions-item>
+        </el-descriptions>
+        <div style="margin-top:8px">
+          <el-button v-if="app.certificate.fileUrl" size="small" type="primary" link @click="downloadCert">下载证书</el-button>
+          <el-button size="small" type="warning" link @click="$router.push('/admin/certificates')">作废证书请前往证书管理</el-button>
+        </div>
+      </template>
+
       <!-- Actions -->
       <template v-if="actionsVisible">
         <el-divider content-position="left">操作</el-divider>
-        <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <el-alert
+          v-if="app.status === 'under_review' && reviewTotal === 0"
+          style="margin-bottom:12px"
+          type="warning"
+          :closable="false"
+          title="该申报当前没有评审人（或评审人已全部移除），可直接确定评审结果结案"
+        />
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
           <template v-if="app.status === 'submitted'">
             <el-button type="success" @click="preliminary(true)">初审通过</el-button>
             <el-button type="danger" @click="preliminary(false)">初审驳回</el-button>
@@ -74,13 +96,22 @@
           <template v-if="app.status === 'under_review' || app.status === 'reviewed'">
             <el-button type="primary" @click="openAssign">分配评审</el-button>
           </template>
-          <template v-if="app.status === 'reviewed'">
+          <template v-if="canDecide">
             <el-button type="success" @click="finalize(true)">确定通过</el-button>
             <el-button type="danger" @click="finalize(false)">确定不通过</el-button>
           </template>
           <template v-if="app.status === 'passed' || app.status === 'rejected'">
             <el-button v-if="!app.publishedAt" type="primary" @click="publishResult">公示结果</el-button>
             <el-tag v-else type="success">结果已公示</el-tag>
+            <el-button type="warning" plain @click="revoke">撤回评审结果</el-button>
+          </template>
+          <template v-if="app.status === 'published'">
+            <el-button type="warning" plain @click="revoke">撤回公示</el-button>
+            <el-button type="primary" @click="openCertify">颁发证书</el-button>
+          </template>
+          <template v-if="app.status === 'certified'">
+            <el-tag type="success">证书已颁发</el-tag>
+            <el-button @click="$router.push('/admin/certificates')">前往证书管理</el-button>
           </template>
         </div>
       </template>
@@ -95,7 +126,14 @@
     </el-dialog>
 
     <el-dialog v-model="assignDialog" title="分配评审专家" width="520px">
-      <el-select v-model="reviewerIds" multiple placeholder="请选择评审人" style="width:100%">
+      <el-alert
+        v-if="app.status === 'under_review' && reviewTotal > 0"
+        style="margin-bottom:12px"
+        type="info"
+        :closable="false"
+        title="取消勾选可移除未评分的评审人；已有评分的评审人无法移除"
+      />
+      <el-select v-model="reviewerIds" multiple placeholder="请选择评审人（不选=清空评审人）" style="width:100%">
         <el-option v-for="r in reviewers" :key="r.id" :label="r.realName" :value="r.id" />
       </el-select>
       <template #footer>
@@ -103,17 +141,45 @@
         <el-button type="primary" @click="confirmAssign">确定分配</el-button>
       </template>
     </el-dialog>
+
+    <!-- 颁发证书：已公示后直接在申报详情内完成，不必再跳去证书管理 -->
+    <el-dialog v-model="certDialog" title="颁发证书" width="560px">
+      <el-form :model="certForm" label-width="90px">
+        <el-form-item label="证书编号">
+          <el-input v-model="certForm.certNo" placeholder="留空则自动生成（CAAM-年份-申报ID）" />
+        </el-form-item>
+        <el-form-item label="证书名称">
+          <el-input v-model="certForm.title" placeholder="留空则使用项目名称" />
+        </el-form-item>
+        <el-form-item label="持有人">
+          <el-input v-model="certForm.holder" placeholder="留空则使用申报人姓名" />
+        </el-form-item>
+        <el-form-item label="证书文件">
+          <div style="display:flex;gap:8px;width:100%">
+            <el-input v-model="certForm.fileUrl" placeholder="可上传或粘贴文件地址" />
+            <el-upload :show-file-list="false" :http-request="uploadCert" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png">
+              <el-button :loading="certUploading">上传</el-button>
+            </el-upload>
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="certDialog = false">取消</el-button>
+        <el-button type="primary" @click="submitCertify">颁发</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminApi } from '@/api/admin'
 import { applicationStatusMap, applicationStatusType, reviewStatusMap, fileUrl, fmt } from '@/utils/constants'
 
 const route = useRoute()
+const router = useRouter()
 const id = Number(route.params.id)
 const loading = ref(false)
 const app = ref<any>({})
@@ -126,12 +192,24 @@ const assignDialog = ref(false)
 const reviewers = ref<any[]>([])
 const reviewerIds = ref<number[]>([])
 
+const certDialog = ref(false)
+const certUploading = ref(false)
+const certForm = ref<any>({ certNo: '', title: '', holder: '', fileUrl: '' })
+
 const actionsVisible = computed(() => {
-  return ['submitted', 'under_review', 'reviewed', 'passed', 'rejected'].includes(app.value.status)
+  return ['submitted', 'under_review', 'reviewed', 'passed', 'rejected', 'published', 'certified'].includes(app.value.status)
 })
 
 // Only assignments that have actually been scored contribute to the average.
 const scoredReviews = computed(() => (app.value.reviews || []).filter((r: any) => r.status === 'scored'))
+const reviewTotal = computed(() => (app.value.reviews || []).length)
+const pendingReviews = computed(() => (app.value.reviews || []).filter((r: any) => r.status !== 'scored'))
+
+// 评审完成，或者根本没人评分（评审人全被移除/未分配）时都能直接确定结果，
+// 否则这种申报会永远卡在「待评审」。
+const canDecide = computed(() =>
+  app.value.status === 'reviewed' ||
+  (app.value.status === 'under_review' && pendingReviews.value.length === 0))
 
 async function fetch() {
   loading.value = true
@@ -186,8 +264,12 @@ async function openAssign() {
 }
 
 async function confirmAssign() {
+  // 清空选择是合法的：它用于把无人评分的评审人全部移除，让申报可以结案。
+  if (!reviewerIds.value.length && reviewTotal.value > 0) {
+    await ElMessageBox.confirm('未选择任何评审人，将移除全部未评分的评审人，确认？', '提示', { type: 'warning' })
+  }
   await adminApi.assignReviewers(id, { reviewerIds: reviewerIds.value })
-  ElMessage.success('分配成功')
+  ElMessage.success(reviewerIds.value.length ? '分配成功' : '已清空评审人')
   assignDialog.value = false
   fetch()
 }
@@ -196,6 +278,59 @@ async function publishResult() {
   await adminApi.publishResult(id)
   ElMessage.success('结果已公示')
   fetch()
+}
+
+// 撤回评审结果 / 撤回公示，让已确定的结果可以重新处理
+async function revoke() {
+  const isPublished = !!app.value.publishedAt
+  await ElMessageBox.confirm(
+    isPublished
+      ? '撤回公示后，该结果将不再对申报人公开展示，确认撤回？'
+      : '撤回评审结果后，申报将回到「评审完成」，需重新确定结果，确认撤回？',
+    '提示',
+    { type: 'warning' },
+  )
+  const res = await adminApi.revokeResult(id)
+  ElMessage.success((res as any).message || '已撤回')
+  fetch()
+}
+
+function openCertify() {
+  certForm.value = {
+    certNo: '',
+    title: app.value.title || '',
+    holder: app.value.user?.realName || '',
+    fileUrl: '',
+  }
+  certDialog.value = true
+}
+
+async function uploadCert(option: any) {
+  certUploading.value = true
+  try {
+    const res = await adminApi.uploadFile(option.file)
+    certForm.value.fileUrl = res.data.fileUrl
+    ElMessage.success('文件已上传')
+  } finally {
+    certUploading.value = false
+  }
+}
+
+async function submitCertify() {
+  await adminApi.issueCertificate({
+    applicationId: id,
+    certNo: certForm.value.certNo,
+    title: certForm.value.title,
+    holder: certForm.value.holder,
+    fileUrl: certForm.value.fileUrl,
+  })
+  ElMessage.success('证书已颁发')
+  certDialog.value = false
+  fetch()
+}
+
+function downloadCert() {
+  window.open(fileUrl(app.value.certificate?.fileUrl), '_blank')
 }
 
 function download(row: any) {

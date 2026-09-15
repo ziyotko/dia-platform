@@ -1,5 +1,13 @@
 <template>
   <div class="page-card">
+    <div class="page-toolbar">
+      <div>
+        <el-tag v-if="unreadCount > 0" type="danger" effect="dark">{{ unreadCount }} 条未读</el-tag>
+        <el-tag v-else type="info">全部已读</el-tag>
+      </div>
+      <el-button type="primary" :disabled="!unreadCount" :loading="markingAll" @click="markAllRead">全部已读</el-button>
+    </div>
+
     <el-table :data="list" v-loading="loading">
       <el-table-column prop="title" label="标题" min-width="220" />
       <el-table-column label="内容" min-width="280">
@@ -40,6 +48,8 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = 10
 const loading = ref(false)
+const markingAll = ref(false)
+const unreadCount = ref(0)
 
 async function fetch() {
   loading.value = true
@@ -47,6 +57,8 @@ async function fetch() {
     const res = await memberApi.getNotifications({ page: page.value, pageSize })
     list.value = res.data.list
     total.value = res.data.total
+    const unread = await memberApi.getUnreadCount()
+    unreadCount.value = unread.data?.count || 0
   } finally {
     loading.value = false
   }
@@ -58,6 +70,18 @@ async function markRead(row: any) {
   await memberApi.markRead(row.id)
   ElMessage.success('已标记已读')
   fetch()
+}
+
+// 一次把全部未读标记为已读，不需要逐条点击
+async function markAllRead() {
+  markingAll.value = true
+  try {
+    const res = await memberApi.markAllRead()
+    ElMessage.success(`已将 ${res.data?.count ?? 0} 条通知标记为已读`)
+    fetch()
+  } finally {
+    markingAll.value = false
+  }
 }
 
 onMounted(fetch)

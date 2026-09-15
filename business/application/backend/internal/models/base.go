@@ -51,6 +51,7 @@ const (
 const (
 	CertStatusDraft  = "draft"
 	CertStatusIssued = "issued"
+	CertStatusVoid   = "void"
 )
 
 // Announcement statuses

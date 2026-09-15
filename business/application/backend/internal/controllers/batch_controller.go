@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"application/internal/models"
 	"application/internal/service"
 	"application/pkg/response"
 
@@ -13,12 +12,15 @@ type BatchController struct {
 }
 
 func (ctrl *BatchController) Create(c *gin.Context) {
-	var batch models.ProjectBatch
-	if err := c.ShouldBindJSON(&batch); err != nil {
+	// Bound as a plain object so the date pickers' "YYYY-MM-DD HH:mm:ss" values
+	// are accepted (the model's *time.Time fields only bind RFC3339).
+	var payload map[string]interface{}
+	if err := c.ShouldBindJSON(&payload); err != nil {
 		response.BadRequest(c, "参数错误")
 		return
 	}
-	if err := ctrl.service.Create(&batch); err != nil {
+	batch, err := ctrl.service.CreateFromPayload(payload)
+	if err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
@@ -103,11 +105,11 @@ func (ctrl *BatchController) List(c *gin.Context) {
 	response.Page(c, list, total)
 }
 
-// ListOpen lists batches currently open for application (frontend)
-func (ctrl *BatchController) ListOpen(c *gin.Context) {
+// ListVisible lists the batches an applicant may see (申报中 / 评审中 / 已结束)
+func (ctrl *BatchController) ListVisible(c *gin.Context) {
 	page, size := getPage(c)
 	keyword := c.Query("keyword")
-	list, total, err := ctrl.service.ListOpen(page, size, keyword)
+	list, total, err := ctrl.service.ListVisible(page, size, keyword)
 	if err != nil {
 		response.Fail(c, err.Error())
 		return
