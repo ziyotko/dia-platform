@@ -43,18 +43,41 @@ func (s *EmailSender) Send(msg Message) error {
 	return d.DialAndSend(m)
 }
 
-func MustLoadEmailSender(get func(key string) string) {
-	port, _ := strconv.Atoi(get("email_port"))
-	if get("email_host") == "" || get("email_username") == "" {
+// LoadEmailSender 按「系统设置 → 邮件配置」（category=email）的键名加载邮件发送器。
+// 注意键名不带前缀：host / port / username / password / from / ssl。
+func LoadEmailSender(get func(key string) string) {
+	port, _ := strconv.Atoi(get("port"))
+	if get("host") == "" || get("username") == "" {
+		Unregister("email")
 		return
 	}
 	cfg := EmailConfig{
-		Host:     get("email_host"),
+		Host:     get("host"),
 		Port:     port,
-		Username: get("email_username"),
-		Password: get("email_password"),
-		From:     get("email_from"),
-		SSL:      get("email_ssl") == "true",
+		Username: get("username"),
+		Password: get("password"),
+		From:     get("from"),
+		SSL:      get("ssl") == "true",
 	}
 	Register("email", NewEmailSender(cfg))
+}
+
+// LoadWeChatSender 加载企业微信群机器人发送器（未配置 webhook 时不注册该渠道）。
+func LoadWeChatSender(get func(key string) string) {
+	url := get("wechat_webhook_url")
+	if url == "" {
+		Unregister("wechat")
+		return
+	}
+	Register("wechat", NewWeChatSender(url))
+}
+
+// LoadSmsSender 加载短信网关发送器（未配置网关地址时不注册该渠道）。
+func LoadSmsSender(get func(key string) string) {
+	url := get("sms_gateway_url")
+	if url == "" {
+		Unregister("sms")
+		return
+	}
+	Register("sms", NewSmsSender(url, get("sms_gateway_token"), get("sms_sign")))
 }

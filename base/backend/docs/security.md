@@ -321,9 +321,40 @@ if tenantID > 0 {
 - 日志写入为**同步**执行：早期用 goroutine 异步写库，进程退出/重启时会丢日志。
 - 导出 CSV 带 UTF-8 BOM 并按 RFC4180 转义字段（中文在 Excel 不乱码、字段含逗号不会错列）。
 
+## 10. 平台级资源与子应用代理
+
+### 10.1 平台级资源只写于平台超管
+
+以下资源全局生效（影响所有租户），因此读可开放、写必须限制为平台超管（`middleware.SuperAdminOnly()`）：
+
+| 资源 | 路由 | 说明 |
+|------|------|------|
+| 系统设置 | `/settings`（GET/PUT/email/test） | SMTP、企微 webhook、短信网关、安全策略 |
+| 应用定义 | `/apps`（POST/PUT/DELETE） | 租户仍可 `GET /apps` 用于查看可开通的应用 |
+| 接口权限点 | `/permissions`（POST/PUT/DELETE） | 权限点是全局基线，租户管理员不得改动 |
+| 菜单 | `/menus`（写入仍限本租户） | 平台内置菜单（tenant_id=0）对租户只读，已由 `tenant_id` 条件 + 命中校验保护 |
+
+### 10.2 通知渠道
+
+- 发送器注册表：`pkg/notifier`（email / wechat / sms），启动与「系统设置保存」后由 `service.ReloadNotifiers()` 重新注册。
+- 未配置的渠道会被 `Unregister`，`GET /messages/channels` 也就不返回，前端渠道下拉自然不出现。
+- 短信采用「HTTP 网关」约定（`POST {gateway}` + `Authorization: Bearer` + `{to,sign,subject,content}`），
+  底座不内置具体厂商 SDK，替换服务商只需改配置。
+
+### 10.3 子应用代理鉴权
+
+`/base/api/v1/app/:appCode/*path` 只挂 JWT，但 handler 内依次校验：
+
+1. 应用已注册且启用，且类型不是 iframe；
+2. 调用方租户已开通并启用该应用（平台超管放行）；
+3. **按应用启用**的接口权限：该 `app_code` 在 `base_permission` 中有登记时，用户需持有匹配的权限点
+   （路径匹配与 base 接口共用 `pkg/permmatch`，支持 `:param` / `*`）；未登记任何权限点时不校验。
+
+❌ 新增子应用后若要做底座代管权限，请在「权限管理」登记 `appCode = 子应用编码` 的权限点。
+
 ---
 
-## 10. 开发 checklist
+## 11. 开发 checklist
 
 新增一个需要按 ID 操作的接口时，请确认：
 
@@ -341,3 +372,5 @@ if tenantID > 0 {
       GORM 命中 0 行时不报错，不校验会出现「提示成功但数据未变」。
 - [ ] 新的删除接口是否需要引用校验与关联表清理（参考 `Role/User/Menu/Permission` 的实现）。
 - [ ] 是否需要在 Redis 中做失效处理（如登出/改密后的 token 吊销）。
+- [ ] 新增的是否为「平台级资源」：若是，写入接口应加 `middleware.SuperAdminOnly()`，并同步前端按钮的 `isSuperAdmin` 控制。
+- [ ] 涉及关联关系时（如用户→机构）是否补充了删除前的引用校验。

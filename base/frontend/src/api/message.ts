@@ -43,6 +43,11 @@ export function getMessageList(params: MessageQuery) {
   return request.get('/messages', { params })
 }
 
+/** 当前已接入（已配置）的站外发送渠道，如 ['email','wechat'] */
+export function getMessageChannels() {
+  return request.get<{ channels: string[] }>('/messages/channels')
+}
+
 /** 发送表单：可直接发送，也可按模板发送（未填标题/内容时后端用模板渲染） */
 export interface SendMessageForm {
   receiverIds: number[]

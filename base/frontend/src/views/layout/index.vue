@@ -101,7 +101,11 @@
           show-icon
           class="empty-menu-alert"
         />
-        <router-view />
+        <router-view v-slot="{ Component }">
+          <keep-alive :include="cachedViewNames">
+            <component :is="Component" />
+          </keep-alive>
+        </router-view>
       </el-main>
     </el-container>
   </el-container>
@@ -239,6 +243,19 @@ const handleMessageCommand = async (command: string) => {
 
 // 侧边栏顶部图标不展示隐藏菜单与按钮类型菜单
 const visibleTopMenus = computed(() => userStore.menus.filter((m) => !m.hidden && m.type !== 'button'))
+
+// 需要缓存的页面：菜单上勾选了「页面缓存」的菜单项（组件名 = 菜单名，见 router/index.ts）
+const cachedViewNames = computed(() => {
+  const names: string[] = []
+  const walk = (list: Menu[]) => {
+    list.forEach((m) => {
+      if (m.type === 'menu' && m.keepAlive && m.target !== 'iframe') names.push(m.name)
+      if (m.children?.length) walk(m.children)
+    })
+  }
+  walk(userStore.menus)
+  return names
+})
 
 onMounted(() => {
   fetchUnread()

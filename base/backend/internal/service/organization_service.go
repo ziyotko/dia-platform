@@ -39,7 +39,7 @@ func (s OrganizationService) Update(o *models.Organization, tenantID uint64) err
 	}).Error
 }
 
-// Delete 删除机构：存在子机构时拒绝删除，避免机构树出现孤儿节点。
+// Delete 删除机构：存在子机构或已被用户引用时拒绝删除，避免机构树出现孤儿节点。
 func (s OrganizationService) Delete(id uint64, tenantID uint64) error {
 	return db.DB.Transaction(func(tx *gorm.DB) error {
 		query := tx.Where("id = ?", id)
@@ -56,6 +56,13 @@ func (s OrganizationService) Delete(id uint64, tenantID uint64) error {
 		}
 		if children > 0 {
 			return fmt.Errorf("该机构下还有 %d 个子机构，请先删除子机构", children)
+		}
+		var members int64
+		if err := tx.Model(&models.User{}).Where("organization_id = ?", org.ID).Count(&members).Error; err != nil {
+			return err
+		}
+		if members > 0 {
+			return fmt.Errorf("该机构下还有 %d 个用户，请先在「用户管理」中调整其所属机构", members)
 		}
 		return tx.Delete(&org).Error
 	})

@@ -33,12 +33,27 @@ func (s UserService) Create(u *models.User) error {
 	if err := validatePassword(u.Password); err != nil {
 		return err
 	}
+	if err := validateOrganization(u.OrganizationID, u.TenantID); err != nil {
+		return err
+	}
 	hash, err := utils.HashPassword(u.Password)
 	if err != nil {
 		return err
 	}
 	u.Password = hash
 	return db.DB.Create(u).Error
+}
+
+// IsAdmin 判断用户是否为租户管理员（base_user.is_admin）。
+// 接口权限中间件与子应用代理入口共用，避免两处各写一份查询。
+func (s UserService) IsAdmin(userID uint64) bool {
+	var count int64
+	if err := db.DB.Model(&models.User{}).
+		Where("id = ? AND is_admin = ?", userID, true).
+		Count(&count).Error; err != nil {
+		return false
+	}
+	return count > 0
 }
 
 // validatePassword 按「系统设置 → 安全策略」的密码最小长度校验明文密码。
@@ -51,14 +66,34 @@ func validatePassword(pwd string) error {
 	return nil
 }
 
+// validateOrganization 校验所属机构存在，且属于该用户所在租户（或为平台内置机构）。
+// orgID = 0 表示不分配机构。
+func validateOrganization(orgID, tenantID uint64) error {
+	if orgID == 0 {
+		return nil
+	}
+	query := db.DB.Model(&models.Organization{}).Where("id = ?", orgID)
+	if tenantID > 0 {
+		query = query.Where("tenant_id = ? OR tenant_id = 0", tenantID)
+	}
+	if err := ensureRecordExists(query, "所选机构不存在或不属于当前租户"); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s UserService) Update(u *models.User, tenantID uint64) error {
 	updates := map[string]interface{}{
-		"real_name": u.RealName,
-		"phone":     u.Phone,
-		"email":     u.Email,
-		"avatar":    u.Avatar,
-		"status":    u.Status,
-		"is_admin":  u.IsAdmin,
+		"real_name":       u.RealName,
+		"phone":           u.Phone,
+		"email":           u.Email,
+		"avatar":          u.Avatar,
+		"status":          u.Status,
+		"is_admin":        u.IsAdmin,
+		"organization_id": u.OrganizationID,
+	}
+	if err := validateOrganization(u.OrganizationID, tenantID); err != nil {
+		return err
 	}
 	if u.Password != "" {
 		hash, err := utils.HashPassword(u.Password)

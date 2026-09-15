@@ -4,6 +4,14 @@
       <template #header>
         <span>系统设置</span>
       </template>
+      <el-alert
+        v-if="!isSuperAdmin"
+        title="系统设置为平台级配置，仅平台超级管理员可查看与修改"
+        type="warning"
+        :closable="false"
+        show-icon
+        style="margin-bottom: 16px"
+      />
       <el-tabs v-model="activeTab">
         <el-tab-pane label="基础配置" name="basic">
           <el-form label-width="120px" style="max-width: 600px">
@@ -78,13 +86,44 @@
             </el-form-item>
           </el-form>
         </el-tab-pane>
+        <el-tab-pane label="通知渠道" name="notify">
+          <el-form label-width="140px" style="max-width: 640px">
+            <el-alert
+              title="未填写的渠道不会注册，也不会出现在消息发送的渠道下拉中"
+              type="info"
+              :closable="false"
+              show-icon
+              style="margin-bottom: 12px"
+            />
+            <el-form-item label="企业微信机器人">
+              <el-input
+                v-model="settings.notify.wechatWebhookUrl"
+                placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx"
+              />
+              <div class="form-tip">群机器人 webhook：发消息时整条消息推送到对应群</div>
+            </el-form-item>
+            <el-form-item label="短信网关地址">
+              <el-input v-model="settings.notify.smsGatewayUrl" placeholder="https://your-sms-gateway/send" />
+              <div class="form-tip">底座按统一约定 POST {to, sign, subject, content}，由网关对接具体短信服务商</div>
+            </el-form-item>
+            <el-form-item label="短信网关 Token">
+              <el-input v-model="settings.notify.smsGatewayToken" type="password" show-password />
+            </el-form-item>
+            <el-form-item label="短信签名">
+              <el-input v-model="settings.notify.smsSign" placeholder="如【Base平台】" />
+            </el-form-item>
+            <el-form-item>
+              <el-button v-if="can('base:setting:save')" type="primary" @click="handleSaveNotify">保存</el-button>
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
       </el-tabs>
     </el-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { getSettings, saveSettings } from '@/api/setting'
 import { testEmail as testEmailApi } from '@/api/setting'
@@ -94,6 +133,8 @@ import { useUserStore } from '@/stores/user'
 const userStore = useUserStore()
 // 按钮级权限：与后端 base:setting:* 权限点对齐
 const can = (code: string) => userStore.can(code)
+// 系统设置为平台级配置，后端仅允许平台超管访问
+const isSuperAdmin = computed(() => userStore.userInfo?.tenantId === 0)
 
 const activeTab = ref('basic')
 const sending = ref(false)
@@ -118,6 +159,12 @@ const settings = reactive({
     password: '',
     from: '',
     ssl: true
+  },
+  notify: {
+    wechatWebhookUrl: '',
+    smsGatewayUrl: '',
+    smsGatewayToken: '',
+    smsSign: ''
   }
 })
 
@@ -154,6 +201,12 @@ const loadSettings = async () => {
     }
     if (data.email) {
       Object.assign(settings.email, parseEmailSettings(data.email))
+    }
+    if (data.notify) {
+      settings.notify.wechatWebhookUrl = data.notify.wechat_webhook_url || ''
+      settings.notify.smsGatewayUrl = data.notify.sms_gateway_url || ''
+      settings.notify.smsGatewayToken = data.notify.sms_gateway_token || ''
+      settings.notify.smsSign = data.notify.sms_sign || ''
     }
   } catch (error) {
     ElMessage.error('加载设置失败')
@@ -199,6 +252,22 @@ const handleSaveSecurity = async () => {
   }
 }
 
+// 通知渠道保存（企业微信机器人 / 短信网关）
+const handleSaveNotify = async () => {
+  const payload: SettingItem[] = [
+    { category: 'notify', key: 'wechat_webhook_url', value: settings.notify.wechatWebhookUrl, type: 'string' },
+    { category: 'notify', key: 'sms_gateway_url', value: settings.notify.smsGatewayUrl, type: 'string' },
+    { category: 'notify', key: 'sms_gateway_token', value: settings.notify.smsGatewayToken, type: 'string' },
+    { category: 'notify', key: 'sms_sign', value: settings.notify.smsSign, type: 'string' }
+  ]
+  try {
+    await saveSettings(payload)
+    ElMessage.success('通知渠道已保存')
+  } catch (error) {
+    ElMessage.error('保存失败')
+  }
+}
+
 const handleTestEmail = async () => {
   if (!testEmail.to) {
     ElMessage.warning('请输入测试收件人邮箱')
@@ -223,7 +292,12 @@ const handleTestEmail = async () => {
   }
 }
 
-onMounted(loadSettings)
+onMounted(() => {
+  // 系统设置仅平台超管可读，非超管不请求接口（后端会返回 403）
+  if (isSuperAdmin.value) {
+    loadSettings()
+  }
+})
 </script>
 
 <style scoped lang="scss">

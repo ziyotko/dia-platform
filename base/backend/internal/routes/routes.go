@@ -73,7 +73,8 @@ func Register(r *gin.Engine) {
 			tenants.GET("", (&controllers.TenantController{}).List)
 		}
 
-		settings := authorized.Group("/settings")
+		// 系统设置是平台级配置（SMTP / 企业微信 / 短信 / 安全策略），仅平台超管可读写
+		settings := authorized.Group("/settings", middleware.SuperAdminOnly())
 		{
 			settings.GET("", (&controllers.SettingsController{}).Get)
 			settings.PUT("", (&controllers.SettingsController{}).Save)
@@ -91,11 +92,12 @@ func Register(r *gin.Engine) {
 			dicts.POST("/:id/items", (&controllers.DictController{}).SaveItems)
 		}
 
+		// 应用定义是平台级资源：租户可读（用于了解自己可开通哪些应用），但只有平台超管能增删改
 		apps := authorized.Group("/apps")
 		{
-			apps.POST("", (&controllers.AppController{}).Create)
-			apps.PUT("/:id", (&controllers.AppController{}).Update)
-			apps.DELETE("/:id", (&controllers.AppController{}).Delete)
+			apps.POST("", middleware.SuperAdminOnly(), (&controllers.AppController{}).Create)
+			apps.PUT("/:id", middleware.SuperAdminOnly(), (&controllers.AppController{}).Update)
+			apps.DELETE("/:id", middleware.SuperAdminOnly(), (&controllers.AppController{}).Delete)
 			apps.GET("/:id", (&controllers.AppController{}).Get)
 			apps.GET("", (&controllers.AppController{}).List)
 		}
@@ -139,11 +141,12 @@ func Register(r *gin.Engine) {
 			menus.GET("/tree", (&controllers.MenuController{}).Tree)
 		}
 
+		// 接口权限点是全局资源（影响所有租户），仅平台超管可维护
 		perms := authorized.Group("/permissions")
 		{
-			perms.POST("", (&controllers.PermissionController{}).Create)
-			perms.PUT("/:id", (&controllers.PermissionController{}).Update)
-			perms.DELETE("/:id", (&controllers.PermissionController{}).Delete)
+			perms.POST("", middleware.SuperAdminOnly(), (&controllers.PermissionController{}).Create)
+			perms.PUT("/:id", middleware.SuperAdminOnly(), (&controllers.PermissionController{}).Update)
+			perms.DELETE("/:id", middleware.SuperAdminOnly(), (&controllers.PermissionController{}).Delete)
 			perms.GET("/tree", (&controllers.PermissionController{}).Tree)
 		}
 
@@ -205,6 +208,7 @@ func Register(r *gin.Engine) {
 		{
 			msgs.GET("", (&controllers.MessageController{}).List)
 			msgs.GET("/unread-count", (&controllers.MessageController{}).UnreadCount)
+			msgs.GET("/channels", (&controllers.MessageController{}).Channels)
 			msgs.GET("/:id", (&controllers.MessageController{}).Get)
 			msgs.POST("", (&controllers.MessageController{}).Create)
 			msgs.PUT("/:id", (&controllers.MessageController{}).Update)

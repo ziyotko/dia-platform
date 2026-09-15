@@ -13,11 +13,37 @@ import (
 
 type TenantService struct{}
 
+// Create 创建租户。
+// 若存在同编码的软删除记录，直接恢复并覆盖字段：唯一索引在软删除后仍占位，
+// 不这样做用户会看到数据库的 Duplicate entry 错误，且永远无法重建同编码租户。
 func (s TenantService) Create(t *models.Tenant) error {
 	if t.Code == "" {
 		t.Code = "T" + utils.RandomDigit(8)
 	}
-	return db.DB.Create(t).Error
+
+	var existing models.Tenant
+	err := db.DB.Unscoped().Where("code = ?", t.Code).First(&existing).Error
+	switch {
+	case err == nil:
+		if !existing.DeletedAt.Valid {
+			return errors.New("租户编码已存在")
+		}
+		if err := db.DB.Unscoped().Model(&models.Tenant{}).Where("id = ?", existing.ID).Updates(map[string]interface{}{
+			"deleted_at":    nil,
+			"name":          t.Name,
+			"status":        t.Status,
+			"contact_name":  t.ContactName,
+			"contact_phone": t.ContactPhone,
+			"description":   t.Description,
+		}).Error; err != nil {
+			return err
+		}
+		return db.DB.Where("id = ?", existing.ID).First(t).Error
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		return db.DB.Create(t).Error
+	default:
+		return err
+	}
 }
 
 func (s TenantService) Update(t *models.Tenant) error {

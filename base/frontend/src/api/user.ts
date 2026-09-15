@@ -16,6 +16,8 @@ export interface User {
   avatar?: string
   status: number
   isAdmin: boolean
+  /** 所属机构 ID（0 表示未分配） */
+  organizationId?: number
   roles?: UserRoleRef[]
 }
 
@@ -35,6 +37,8 @@ export interface UserForm {
   email?: string
   isAdmin: boolean
   status: number
+  /** 所属机构 ID（0 表示未分配） */
+  organizationId?: number
   /** 平台超管可为指定租户创建用户；普通租户用户由后端强制为自身租户 */
   tenantId?: number
 }

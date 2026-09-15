@@ -132,9 +132,9 @@ jwt:
 | 认证 | GET/POST | `/base/api/v1/auth/info` / `change-password` / `logout` | 当前用户、修改密码（改密后旧 token 失效）、登出（token 进黑名单） |
 | 仪表盘 | GET | `/base/api/v1/dashboard/stats` | 仪表盘统计 |
 | 租户 | CRUD | `/base/api/v1/tenants` | 仅限超级管理员 |
-| 系统设置 | GET/PUT/POST | `/base/api/v1/settings` | 含邮件测试 |
+| 系统设置 | GET/PUT/POST | `/base/api/v1/settings` | 仅平台超管；含邮件测试（保存后立即重载通知渠道） |
 | 数据字典 | CRUD | `/base/api/v1/dicts` | 含字典项管理 |
-| 应用 | CRUD | `/base/api/v1/apps` | 应用定义管理 |
+| 应用 | CRUD | `/base/api/v1/apps` | 应用定义（平台级：租户可读，仅平台超管可增删改） |
 | 应用实例 | CRUD | `/base/api/v1/app-instances` | 含我的应用列表 |
 | 用户 | CRUD | `/base/api/v1/users` | 含分配角色、重置密码（需传入新密码，服务端按安全策略校验长度） |
 | 角色 | CRUD | `/base/api/v1/roles` | 含分配菜单、分配权限 |
@@ -145,7 +145,7 @@ jwt:
 | 流程实例 | POST/GET/DELETE | `/base/api/v1/workflow-instances` | `POST` 发起（白名单）、`GET` 列表（非管理员强制只看自己发起的）、`GET /:id` 详情（含任务与流转日志）、`POST /:id/cancel` 撤销、`DELETE /:id` 删除（仅管理员） |
 | 审批任务 | GET/POST | `/base/api/v1/workflow-tasks` | `GET` 我的待办/已办（`box=todo\|done`）、`POST /:id/approve` 通过、`POST /:id/reject` 驳回（均为白名单，归属校验在服务层） |
 | 机构 | CRUD | `/base/api/v1/organizations/tree` | 机构树 |
-| 消息 | CRUD | `/base/api/v1/messages` | 草稿（`POST /messages`、`PUT /messages/:id`、`POST /messages/:id/send`）、发送（`POST /messages/send`，支持 `templateCode` + `vars` 按模板渲染）、未读数、标记已读、全部已读；`box=inbox/sent` 区分收发 |
+| 消息 | CRUD | `/base/api/v1/messages` | 草稿（`POST /messages`、`PUT /messages/:id`、`POST /messages/:id/send`）、发送（`POST /messages/send`，支持 `templateCode` + `vars` 按模板渲染）、可用渠道（`GET /messages/channels`）、未读数、标记已读、全部已读；`box=inbox/sent` 区分收发 |
 | 消息模板 | CRUD | `/base/api/v1/message-templates` | 模板管理 |
 | 操作日志 | GET/POST/GET | `/base/api/v1/operation-logs` | 列表、删除、清空、导出 |
 | 登录日志 | GET/POST/GET | `/base/api/v1/login-logs` | 列表、删除、清空、导出 |

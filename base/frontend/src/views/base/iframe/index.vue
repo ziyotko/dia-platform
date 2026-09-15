@@ -9,24 +9,20 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { buildAppEntryUrl } from '@/utils/appEntry'
 
 const route = useRoute()
 const userStore = useUserStore()
 
-// 与 integration/README.md 约定一致：加载子应用时在 URL 追加底座会话参数，
-// 子应用可用 base_token 调 /base/api/v1/auth/info 校验用户身份。
-const url = computed(() => {
-  const base = (route.meta.url as string) || ''
-  if (!base) return ''
-
-  const params = new URLSearchParams({
-    base_token: userStore.token || '',
-    user_id: String(userStore.userInfo?.id ?? ''),
-    username: userStore.userInfo?.username || '',
-    tenant_id: String(userStore.userInfo?.tenantId ?? 0)
+// 与 integration/README.md 约定一致：加载子应用时追加底座会话参数
+const url = computed(() =>
+  buildAppEntryUrl((route.meta.url as string) || '', {
+    token: userStore.token,
+    userId: userStore.userInfo?.id,
+    username: userStore.userInfo?.username,
+    tenantId: userStore.userInfo?.tenantId
   })
-  return base + (base.includes('?') ? '&' : '?') + params.toString()
-})
+)
 </script>
 
 <style scoped lang="scss">

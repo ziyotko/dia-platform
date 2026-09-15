@@ -122,10 +122,9 @@
         </el-form-item>
         <el-form-item v-if="dialogMode === 'send'" label="发送渠道">
           <el-select v-model="sendForm.channel" style="width: 100%">
-            <el-option label="站内信" value="in-app" />
-            <el-option label="邮件（额外发送，需在系统设置中配置 SMTP）" value="email" />
+            <el-option v-for="c in channelOptions" :key="c.value" :label="c.label" :value="c.value" />
           </el-select>
-          <div class="form-tip">短信 / 企微渠道尚未接入发送器，故未开放</div>
+          <div class="form-tip">站外渠道需先在「系统设置 → 通知渠道」中配置；邮件/短信需指定接收人，企业微信为群推送</div>
         </el-form-item>
         <el-form-item label="消息类型">
           <el-select v-model="sendForm.type" style="width: 100%">
@@ -169,6 +168,7 @@ import { reactive, ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   getMessageList,
+  getMessageChannels,
   sendMessage,
   markMessageRead,
   markAllMessageRead,
@@ -207,6 +207,13 @@ const submitting = ref(false)
 const templates = ref<MessageTemplate[]>([])
 const templateCode = ref('')
 const templateVars = ref<{ key: string; label: string; value: string }[]>([])
+// 发送渠道：站内信始终可用，站外渠道由后端按「是否已配置」下发
+const channelOptions = ref<{ label: string; value: string }[]>([{ label: '站内信', value: 'in-app' }])
+const channelLabels: Record<string, string> = {
+  email: '邮件（额外发送，需在系统设置中配置 SMTP）',
+  wechat: '企业微信（群机器人推送）',
+  sms: '短信（按接收人手机号发送）'
+}
 const sendForm = reactive({
   receiverType: 'user',
   receiverIds: [] as number[],
@@ -292,13 +299,27 @@ const openDialog = async (mode: 'send' | 'draft', draft?: Message) => {
   } catch (error) {
     userOptions.value = []
   }
-  if (mode === 'send' && templates.value.length === 0) {
+  if (mode === 'send') {
+    if (templates.value.length === 0) {
+      try {
+        const res: any = await getMessageTemplateList({ page: 1, size: 200 })
+        templates.value = res.data.list || []
+      } catch (error) {
+        // 无模板权限时降级为手写标题与内容
+        templates.value = []
+      }
+    }
     try {
-      const res: any = await getMessageTemplateList({ page: 1, size: 200 })
-      templates.value = res.data.list || []
+      const res: any = await getMessageChannels()
+      const list: string[] = res.data?.channels || []
+      channelOptions.value = [
+        { label: '站内信', value: 'in-app' },
+        ...list
+          .filter((c) => c !== 'in-app')
+          .map((c) => ({ label: channelLabels[c] || c, value: c }))
+      ]
     } catch (error) {
-      // 无模板权限时降级为手写标题与内容
-      templates.value = []
+      channelOptions.value = [{ label: '站内信', value: 'in-app' }]
     }
   }
 }

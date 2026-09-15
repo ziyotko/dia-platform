@@ -52,6 +52,15 @@ function loadComponent(componentPath: string) {
   ) as (() => Promise<any>) | undefined
 }
 
+/**
+ * 给路由组件注入 name（= 菜单名 = 路由名）。
+ * 页面组件文件名都是 index.vue，默认推断出的组件名不唯一，无法用于 keep-alive 的 include，
+ * 因此在这里统一把菜单名写成组件名，让 Layout 能按菜单精确控制哪些页面需要缓存。
+ */
+function withComponentName(loader: () => Promise<any>, name: string) {
+  return () => loader().then((mod: any) => ({ ...(mod?.default || mod), name }))
+}
+
 export function generateRoutes(menus: Menu[]): any[] {
   const routes: any[] = []
   for (const menu of menus) {
@@ -79,7 +88,7 @@ export function generateRoutes(menus: Menu[]): any[] {
         if (!menu.component) continue
         const comp = loadComponent(menu.component)
         if (!comp) continue
-        route.component = comp
+        route.component = withComponentName(comp, menu.name)
       }
     }
     routes.push(route)

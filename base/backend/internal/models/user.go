@@ -11,7 +11,9 @@ type User struct {
 	Avatar   string `gorm:"size:512;comment:头像" json:"avatar"`
 	Status   int    `gorm:"default:1;comment:状态 1启用 0禁用" json:"status"`
 	IsAdmin  bool   `gorm:"default:false;comment:是否租户管理员" json:"isAdmin"`
-	Roles    []Role `gorm:"many2many:base_user_role;" json:"roles,omitempty"`
+	// OrganizationID 所属机构（0 表示未分配）；机构树见 base_organization
+	OrganizationID uint64 `gorm:"index;comment:所属机构ID" json:"organizationId"`
+	Roles          []Role `gorm:"many2many:base_user_role;" json:"roles,omitempty"`
 }
 
 func (User) TableName() string {

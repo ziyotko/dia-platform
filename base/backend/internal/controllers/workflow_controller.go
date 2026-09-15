@@ -5,7 +5,6 @@ import (
 
 	"base/internal/models"
 	"base/internal/service"
-	"base/pkg/db"
 	"base/pkg/response"
 
 	"github.com/gin-gonic/gin"
@@ -168,12 +167,7 @@ func workflowActor(c *gin.Context) service.WorkflowActor {
 }
 
 // isAdminUser 判断用户是否为租户管理员（base_user.is_admin）。
+// 查询实现放在 service 层，与接口权限中间件、子应用代理入口共用。
 func isAdminUser(userID uint64) bool {
-	var count int64
-	if err := db.DB.Model(&models.User{}).
-		Where("id = ? AND is_admin = ?", userID, true).
-		Count(&count).Error; err != nil {
-		return false
-	}
-	return count > 0
+	return (service.UserService{}).IsAdmin(userID)
 }

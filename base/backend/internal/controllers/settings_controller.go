@@ -41,6 +41,8 @@ func (ctl *SettingsController) Save(c *gin.Context) {
 		response.Fail(c, err.Error())
 		return
 	}
+	// 设置变更后立即重载通知渠道（SMTP / 企微 / 短信）
+	service.ReloadNotifiers()
 	response.OkWithMessage(c, "保存成功", nil)
 }
 

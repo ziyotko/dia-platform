@@ -1,6 +1,9 @@
 package notifier
 
-import "errors"
+import (
+	"errors"
+	"sort"
+)
 
 // Message 通用消息
 type Message struct {
@@ -35,4 +38,19 @@ func Send(channel string, msg Message) error {
 		return err
 	}
 	return sender.Send(msg)
+}
+
+// Names 返回当前已注册（已配置）的发送器名称，供前端渲染可选的发送渠道。
+func Names() []string {
+	names := make([]string, 0, len(senders))
+	for name := range senders {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// Unregister 注销发送器（配置被清空时使用，避免渠道仍可选）。
+func Unregister(name string) {
+	delete(senders, name)
 }

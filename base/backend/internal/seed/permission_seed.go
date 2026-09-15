@@ -92,6 +92,7 @@ var basePermissionSeeds = []permissionSeed{
 	// ---------- 消息管理 ----------
 	{Code: "base:message", Name: "消息管理", Type: "menu"},
 	{Code: "base:message:list", Name: "查看消息", Type: "api", ParentCode: "base:message", Method: "GET", Path: "/messages"},
+	{Code: "base:message:channels", Name: "查看可用渠道", Type: "api", ParentCode: "base:message", Method: "GET", Path: "/messages/channels"},
 	{Code: "base:message:detail", Name: "查看消息详情", Type: "api", ParentCode: "base:message", Method: "GET", Path: "/messages/:id"},
 	{Code: "base:message:create", Name: "新建草稿", Type: "api", ParentCode: "base:message", Method: "POST", Path: "/messages"},
 	{Code: "base:message:update", Name: "编辑草稿", Type: "api", ParentCode: "base:message", Method: "PUT", Path: "/messages/:id"},

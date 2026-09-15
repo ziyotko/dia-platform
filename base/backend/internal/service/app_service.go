@@ -12,8 +12,40 @@ import (
 
 type AppService struct{}
 
+// Create 创建应用。
+// 同编码的软删除记录会被恢复并覆盖字段（原因同租户：软删除不会释放唯一索引）。
 func (s AppService) Create(a *models.App) error {
-	return db.DB.Create(a).Error
+	if a.Code == "" {
+		return errors.New("请填写应用编码")
+	}
+
+	var existing models.App
+	err := db.DB.Unscoped().Where("code = ?", a.Code).First(&existing).Error
+	switch {
+	case err == nil:
+		if !existing.DeletedAt.Valid {
+			return errors.New("应用编码已存在")
+		}
+		if err := db.DB.Unscoped().Model(&models.App{}).Where("id = ?", existing.ID).Updates(map[string]interface{}{
+			"deleted_at":   nil,
+			"name":         a.Name,
+			"icon":         a.Icon,
+			"type":         a.Type,
+			"frontend_url": a.FrontendURL,
+			"backend_url":  a.BackendURL,
+			"api_prefix":   a.ApiPrefix,
+			"status":       a.Status,
+			"sort":         a.Sort,
+			"description":  a.Description,
+		}).Error; err != nil {
+			return err
+		}
+		return db.DB.Where("id = ?", existing.ID).First(a).Error
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		return db.DB.Create(a).Error
+	default:
+		return err
+	}
 }
 
 func (s AppService) Update(a *models.App) error {

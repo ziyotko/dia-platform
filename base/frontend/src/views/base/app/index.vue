@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>应用管理</span>
-          <el-button v-if="can('base:app:create')" type="primary" @click="handleAdd">新增应用</el-button>
+          <el-button v-if="canWrite('base:app:create')" type="primary" @click="handleAdd">新增应用</el-button>
         </div>
       </template>
       <el-table :data="tableData" v-loading="loading" border>
@@ -24,8 +24,8 @@
         </el-table-column>
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button v-if="can('base:app:update')" link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button v-if="can('base:app:delete')" link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="canWrite('base:app:update')" link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="canWrite('base:app:delete')" link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -84,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAppList, createApp, updateApp, deleteApp } from '@/api/app'
 import type { App } from '@/api/app'
@@ -93,6 +93,9 @@ import { useUserStore } from '@/stores/user'
 const userStore = useUserStore()
 // 按钮级权限：与后端 base:app:* 权限点对齐
 const can = (code: string) => userStore.can(code)
+// 应用定义是平台级资源，只有平台超管可增删改（后端同样限制）
+const isSuperAdmin = computed(() => userStore.userInfo?.tenantId === 0)
+const canWrite = (code: string) => isSuperAdmin.value && can(code)
 
 const loading = ref(false)
 const tableData = ref<App[]>([])

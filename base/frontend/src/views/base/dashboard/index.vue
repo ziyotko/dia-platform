@@ -76,6 +76,7 @@ import { getDashboardStats, type DashboardStats } from '@/api/dashboard'
 import { Management, InfoFilled } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
+import { buildAppEntryUrl } from '@/utils/appEntry'
 import type { App } from '@/api/app'
 
 const userStore = useUserStore()
@@ -87,11 +88,18 @@ const isSuperAdmin = computed(() => userStore.userInfo?.tenantId === 0)
 const myApps = computed(() => appStore.myApps)
 
 const openApp = (app: App) => {
-  if (app.frontendUrl) {
-    window.open(app.frontendUrl, '_blank')
+  if (!app.frontendUrl) {
+    ElMessage.info('该应用未配置前端入口，请通过左侧菜单访问')
     return
   }
-  ElMessage.info('该应用未配置前端入口，请通过左侧菜单访问')
+  // 与菜单里的 iframe 入口保持一致：带上底座会话参数，子应用才能识别当前用户
+  const url = buildAppEntryUrl(app.frontendUrl, {
+    token: userStore.token,
+    userId: userStore.userInfo?.id,
+    username: userStore.userInfo?.username,
+    tenantId: userStore.userInfo?.tenantId
+  })
+  window.open(url, '_blank')
 }
 
 const stats = reactive<DashboardStats>({
@@ -118,7 +126,7 @@ const statList = computed(() => {
 
 const features = [
   { title: '多租户管理', desc: '支持租户隔离与平台级资源管理', icon: 'OfficeBuilding', color: '#409EFF', bg: '#e0f2fe' },
-  { title: '应用接入', desc: 'IFrame、API 代理或微应用方式接入', icon: 'Grid', color: '#67C23A', bg: '#dcfce7' },
+  { title: '应用接入', desc: 'IFrame 嵌入或 API 代理接入', icon: 'Grid', color: '#67C23A', bg: '#dcfce7' },
   { title: '权限控制', desc: '基于角色与菜单的细粒度权限控制', icon: 'Lock', color: '#F56C6C', bg: '#fee2e2' },
   { title: '组织架构', desc: '支持多级机构与人员管理', icon: 'Connection', color: '#E6A23C', bg: '#fef3c7' },
   { title: '消息中心', desc: '统一消息模板与通知能力', icon: 'Message', color: '#8E44AD', bg: '#f3e8ff' },

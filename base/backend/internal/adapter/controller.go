@@ -32,6 +32,7 @@ func AdapterController(c *gin.Context) {
 	}
 
 	tenantID := c.GetUint64("tenantID")
+	userID := c.GetUint64("userID")
 	if !models.IsPlatformTenant(tenantID) {
 		enabled, err := (service.AppInstanceService{}).IsEnabled(tenantID, app.ID)
 		if err != nil {
@@ -41,6 +42,19 @@ func AdapterController(c *gin.Context) {
 		if !enabled {
 			response.FailWithCode(c, response.CodeForbidden, "当前租户未开通该应用")
 			return
+		}
+
+		// 子应用接口级权限：按应用启用——该 app_code 未登记权限点时交给子应用自行鉴权
+		if !(service.UserService{}).IsAdmin(userID) {
+			allowed, err := (service.PermissionService{}).HasAppAccess(userID, app.Code, c.Request.Method, c.Param("path"))
+			if err != nil {
+				response.Fail(c, err.Error())
+				return
+			}
+			if !allowed {
+				response.FailWithCode(c, response.CodeForbidden, "无权限访问该子应用接口")
+				return
+			}
 		}
 	}
 	ProxyToApp(c, app)

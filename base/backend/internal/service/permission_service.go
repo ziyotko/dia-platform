@@ -3,9 +3,11 @@ package service
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"base/internal/models"
 	"base/pkg/db"
+	"base/pkg/permmatch"
 
 	"gorm.io/gorm"
 )
@@ -51,6 +53,52 @@ func (s PermissionService) Delete(id uint64) error {
 		}
 		return tx.Delete(&perm).Error
 	})
+}
+
+// UserPermissions 一次性查出该用户所有角色关联的有效接口权限。
+// middleware.PermissionAuth 与子应用代理入口共用，保证口径一致。
+func (s PermissionService) UserPermissions(userID uint64) ([]models.Permission, error) {
+	var perms []models.Permission
+	err := db.DB.
+		Model(&models.Permission{}).
+		Joins("JOIN base_role_permission ON base_role_permission.permission_id = base_permission.id").
+		Joins("JOIN base_user_role ON base_user_role.role_id = base_role_permission.role_id").
+		Where("base_user_role.user_id = ? AND base_permission.status = ?", userID, 1).
+		Find(&perms).Error
+	return perms, err
+}
+
+// HasAppAccess 判断用户能否访问某个子应用的接口。
+//
+// 口径为「按应用启用」：该 app_code 下没有登记任何接口权限点时，视为子应用不使用底座权限
+// （由子应用自行鉴权），直接放行；一旦登记了权限点，就必须由角色显式授权才能访问。
+func (s PermissionService) HasAppAccess(userID uint64, appCode, method, requestPath string) (bool, error) {
+	var appPerms []models.Permission
+	if err := db.DB.Model(&models.Permission{}).
+		Where("app_code = ? AND status = ? AND method <> '' AND path <> ''", appCode, 1).
+		Find(&appPerms).Error; err != nil {
+		return false, err
+	}
+	if len(appPerms) == 0 {
+		return true, nil
+	}
+
+	userPerms, err := s.UserPermissions(userID)
+	if err != nil {
+		return false, err
+	}
+	candidates := permmatch.Candidates(requestPath)
+	for _, p := range userPerms {
+		if p.AppCode != appCode || !strings.EqualFold(p.Method, method) {
+			continue
+		}
+		for _, path := range candidates {
+			if permmatch.Match(p.Path, path) {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }
 
 func (s PermissionService) List(appCode string) ([]models.Permission, error) {

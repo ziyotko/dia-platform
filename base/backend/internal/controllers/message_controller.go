@@ -6,6 +6,7 @@ import (
 
 	"base/internal/models"
 	"base/internal/service"
+	"base/pkg/notifier"
 	"base/pkg/response"
 
 	"github.com/gin-gonic/gin"
@@ -132,13 +133,17 @@ func (ctl *MessageController) Send(c *gin.Context) {
 		return
 	}
 
-	// 站外渠道校验：目前仅接入邮件发送器，其余渠道直接拒绝而不是静默忽略
-	if req.Channel != "in-app" && req.Channel != "email" {
-		response.FailWithCode(c, response.CodeBadRequest, "暂不支持的发送渠道："+req.Channel)
-		return
+	// 站外渠道：必须是已注册（已配置）的发送器，暂不支持的渠道直接拒绝而不是静默忽略
+	if req.Channel != "in-app" {
+		if _, err := notifier.Get(req.Channel); err != nil {
+			response.FailWithCode(c, response.CodeBadRequest,
+				"暂不支持的发送渠道："+req.Channel+"（请在「系统设置 → 通知渠道」中完成配置）")
+			return
+		}
 	}
-	if req.Channel == "email" && req.ReceiverType == "all" {
-		response.FailWithCode(c, response.CodeBadRequest, "全员广播暂不支持邮件渠道，请指定接收用户或改用站内信")
+	// 邮件/短信需要具体的接收人（手机号/邮箱），不支持全员广播；企业微信为群机器人，本身就是群发
+	if req.ReceiverType == "all" && (req.Channel == "email" || req.Channel == "sms") {
+		response.FailWithCode(c, response.CodeBadRequest, "全员广播暂不支持该渠道，请指定接收用户或改用站内信/企业微信")
 		return
 	}
 
@@ -153,27 +158,50 @@ func (ctl *MessageController) Send(c *gin.Context) {
 		return
 	}
 
-	// 邮件渠道：站内信写入后额外发送（失败只记日志，不影响主流程）
-	if req.Channel == "email" {
-		go ctl.sendEmailToUsers(tenantID, req.ReceiverIDs, req.Title, req.Content)
+	// 站外渠道：站内信写入后额外发送（失败只记日志，不影响主流程）
+	if req.Channel != "in-app" {
+		go ctl.sendExternal(tenantID, req.Channel, req.ReceiverIDs, req.ReceiverType, req.Title, req.Content)
 	}
 
 	response.OkWithMessage(c, "发送成功", nil)
 }
 
-func (ctl *MessageController) sendEmailToUsers(tenantID uint64, userIDs []uint64, subject, content string) {
+// sendExternal 按渠道把消息推送到站外（邮件用邮箱、短信用手机号、企业微信用群机器人）。
+// 接收人范围与站内信同一口径：只能触达本租户的用户（平台超管 tenantID=0 时不限租户）。
+func (ctl *MessageController) sendExternal(tenantID uint64, channel string, receiverIDs []uint64, receiverType, subject, content string) {
+	// 企业微信群机器人：一个 webhook 对应一个群，整条消息只推一次
+	if channel == "wechat" {
+		if err := ctl.service.SendExternal(channel, "", subject, content); err != nil {
+			logrus.WithError(err).Warn("推送企业微信消息失败")
+		}
+		return
+	}
+
 	userSvc := service.UserService{}
-	for _, uid := range userIDs {
-		// 与站内信同一口径：只能发给自己租户的用户（平台超管 tenantID=0 时不限租户），
-		// 避免通过指定其他租户的用户 ID 向外发信
+	for _, uid := range receiverIDs {
 		user, err := userSvc.GetByID(uid, tenantID)
-		if err != nil || user.Email == "" {
+		if err != nil {
 			continue
 		}
-		if err := ctl.service.SendExternal("email", user.Email, subject, content); err != nil {
-			logrus.WithError(err).Warnf("发送邮件通知失败: userID=%d email=%s", uid, user.Email)
+		var to string
+		switch channel {
+		case "email":
+			to = user.Email
+		case "sms":
+			to = user.Phone
+		}
+		if to == "" {
+			continue
+		}
+		if err := ctl.service.SendExternal(channel, to, subject, content); err != nil {
+			logrus.WithError(err).Warnf("发送%s通知失败: userID=%d to=%s", channel, uid, to)
 		}
 	}
+}
+
+// Channels 当前已接入（已配置）的发送渠道，供前端渲染发送渠道下拉。
+func (ctl *MessageController) Channels(c *gin.Context) {
+	response.Ok(c, gin.H{"channels": notifier.Names()})
 }
 
 func (ctl *MessageController) Delete(c *gin.Context) {

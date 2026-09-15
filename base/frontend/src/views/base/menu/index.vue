@@ -76,6 +76,10 @@
         <el-form-item label="隐藏">
           <el-switch v-model="form.hidden" />
         </el-form-item>
+        <el-form-item v-if="form.type === 'menu' && form.target !== 'iframe'" label="页面缓存">
+          <el-switch v-model="form.keepAlive" />
+          <div class="form-tip">开启后切换页签不会重新加载该页（keep-alive）</div>
+        </el-form-item>
         <el-form-item label="状态">
           <el-switch v-model="form.status" :active-value="1" :inactive-value="0" />
         </el-form-item>
@@ -118,6 +122,7 @@ const form = reactive<Menu>({
   sort: 0,
   status: 1,
   hidden: false,
+  keepAlive: false,
   target: '_self'
 })
 
@@ -186,6 +191,7 @@ const resetForm = () => {
   form.sort = 0
   form.status = 1
   form.hidden = false
+  form.keepAlive = false
   form.target = '_self'
 }
 

@@ -38,6 +38,9 @@
         <el-table-column prop="realName" label="真实姓名" />
         <el-table-column prop="phone" label="手机号" />
         <el-table-column prop="email" label="邮箱" />
+        <el-table-column label="所属机构" min-width="140">
+          <template #default="{ row }">{{ orgName(row.organizationId) }}</template>
+        </el-table-column>
         <el-table-column v-if="isSuperAdmin" label="所属租户" min-width="140">
           <template #default="{ row }">{{ tenantName(row.tenantId) }}</template>
         </el-table-column>
@@ -89,6 +92,17 @@
         </el-form-item>
         <el-form-item label="邮箱" prop="email">
           <el-input v-model="form.email" />
+        </el-form-item>
+        <el-form-item label="所属机构">
+          <el-tree-select
+            v-model="form.organizationId"
+            :data="orgOptions"
+            :props="{ label: 'name', value: 'id', children: 'children' }"
+            check-strictly
+            clearable
+            placeholder="不选表示未分配"
+            style="width: 100%"
+          />
         </el-form-item>
         <el-form-item label="密码" v-if="!isEdit" prop="password">
           <el-input
@@ -148,6 +162,8 @@ import type { User } from '@/api/user'
 import { getRoleList } from '@/api/role'
 import type { Role } from '@/api/role'
 import { tenantName, ensureTenants } from '@/utils/tenantOptions'
+import { getOrganizationTree } from '@/api/organization'
+import type { Organization } from '@/api/organization'
 import { useUserStore } from '@/stores/user'
 import TenantSelect from '@/components/TenantSelect.vue'
 
@@ -178,8 +194,14 @@ const form = reactive<any>({
   email: '',
   password: '',
   isAdmin: false,
-  status: 1
+  status: 1,
+  organizationId: 0
 })
+
+// 机构树（表单选择）与 id→名称 映射（列表展示）
+const orgOptions = ref<Organization[]>([])
+const orgNameMap = ref<Record<number, string>>({})
+const orgName = (id?: number) => (id ? orgNameMap.value[id] || `机构#${id}` : '-')
 
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
@@ -208,6 +230,26 @@ const fetchData = async () => {
 const handleSearch = () => {
   query.page = 1
   fetchData()
+}
+
+// 拉取机构树：用于表单选择与列表展示机构名称
+const fetchOrgs = async () => {
+  try {
+    const res: any = await getOrganizationTree()
+    orgOptions.value = res.data || []
+    const map: Record<number, string> = {}
+    const walk = (list: Organization[]) => {
+      list.forEach((o) => {
+        map[o.id] = o.name
+        if (o.children?.length) walk(o.children)
+      })
+    }
+    walk(orgOptions.value)
+    orgNameMap.value = map
+  } catch (error) {
+    orgOptions.value = []
+    orgNameMap.value = {}
+  }
 }
 
 const handleReset = () => {
@@ -276,7 +318,8 @@ const handleSubmit = async () => {
       phone: form.phone,
       email: form.email,
       isAdmin: form.isAdmin,
-      status: form.status
+      status: form.status,
+      organizationId: form.organizationId
     })
   } else {
     await createUser({
@@ -287,6 +330,7 @@ const handleSubmit = async () => {
       email: form.email,
       isAdmin: form.isAdmin,
       status: form.status,
+      organizationId: form.organizationId,
       tenantId: isSuperAdmin.value ? form.tenantId : undefined
     })
   }
@@ -305,10 +349,12 @@ const resetForm = () => {
   form.password = ''
   form.isAdmin = false
   form.status = 1
+  form.organizationId = 0
 }
 
 onMounted(() => {
   fetchData()
+  fetchOrgs()
   if (isSuperAdmin.value) {
     ensureTenants()
   }

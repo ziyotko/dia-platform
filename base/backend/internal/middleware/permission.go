@@ -4,7 +4,8 @@ import (
 	"strings"
 
 	"base/internal/models"
-	"base/pkg/db"
+	"base/internal/service"
+	"base/pkg/permmatch"
 	"base/pkg/response"
 
 	"github.com/gin-gonic/gin"
@@ -108,33 +109,20 @@ func PermissionAuth() gin.HandlerFunc {
 
 // isTenantAdmin 判断用户是否为租户管理员（base_user.is_admin）。
 func isTenantAdmin(userID uint64) bool {
-	var user models.User
-	if err := db.DB.Select("id", "is_admin").First(&user, userID).Error; err != nil {
-		return false
-	}
-	return user.IsAdmin
+	return (service.UserService{}).IsAdmin(userID)
 }
 
 // userPermissions 一次性查出该用户所有角色关联的有效接口权限。
+// 查询实现放在 service 层，与子应用代理入口的鉴权共用同一口径。
 func userPermissions(userID uint64) ([]models.Permission, error) {
-	var perms []models.Permission
-	err := db.DB.
-		Model(&models.Permission{}).
-		Joins("JOIN base_role_permission ON base_role_permission.permission_id = base_permission.id").
-		Joins("JOIN base_user_role ON base_user_role.role_id = base_role_permission.role_id").
-		Where("base_user_role.user_id = ? AND base_permission.status = ?", userID, 1).
-		Find(&perms).Error
-	return perms, err
+	return (service.PermissionService{}).UserPermissions(userID)
 }
 
 // matchPermission 判断权限集合是否覆盖请求方法 + 路径。
-// 同时支持完整路径（/base/api/v1/users）和相对路径（/users）两种配置方式。
+// 同时支持完整路径（/base/api/v1/users）和相对路径（/users）两种配置方式；
+// 路径匹配规则与子应用代理入口共用 pkg/permmatch。
 func matchPermission(perms []models.Permission, method, requiredPath string) bool {
-	candidatePaths := []string{requiredPath}
-	if strings.HasPrefix(requiredPath, "/base/api/v1") {
-		candidatePaths = append(candidatePaths, strings.TrimPrefix(requiredPath, "/base/api/v1"))
-	}
-
+	candidatePaths := permmatch.Candidates(requiredPath)
 	for _, p := range perms {
 		if p.Method == "" || p.Path == "" {
 			continue
@@ -143,42 +131,10 @@ func matchPermission(perms []models.Permission, method, requiredPath string) boo
 			continue
 		}
 		for _, path := range candidatePaths {
-			if matchPath(p.Path, path) {
+			if permmatch.Match(p.Path, path) {
 				return true
 			}
 		}
 	}
 	return false
-}
-
-// matchPath 支持 :param 通配符的简单路径匹配。
-func matchPath(permPath, requestPath string) bool {
-	permPath = normalizePath(permPath)
-	requestPath = normalizePath(requestPath)
-
-	permParts := strings.Split(permPath, "/")
-	reqParts := strings.Split(requestPath, "/")
-
-	if len(permParts) != len(reqParts) {
-		return false
-	}
-
-	for i := range permParts {
-		if strings.HasPrefix(permParts[i], ":") || strings.HasPrefix(permParts[i], "*") {
-			continue
-		}
-		if permParts[i] != reqParts[i] {
-			return false
-		}
-	}
-	return true
-}
-
-func normalizePath(path string) string {
-	path = strings.TrimSpace(path)
-	path = strings.TrimSuffix(path, "/")
-	if !strings.HasPrefix(path, "/") {
-		path = "/" + path
-	}
-	return path
 }
