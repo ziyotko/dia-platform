@@ -109,6 +109,9 @@ var baseMenuSeeds = []menuSeed{
 	{AppCode: "base", ParentPath: "/message", Name: "消息模板", Path: "/message/template", Component: "base/message-template/index.vue", Type: "menu", Sort: 2},
 
 	{AppCode: "base", ParentPath: "/workflow", Name: "流程角色", Path: "/workflow/role", Component: "base/workflow-role/index.vue", Type: "menu", Sort: 1},
+	{AppCode: "base", ParentPath: "/workflow", Name: "流程定义", Path: "/workflow/definition", Component: "base/workflow/definition/index.vue", Type: "menu", Sort: 2},
+	{AppCode: "base", ParentPath: "/workflow", Name: "流程实例", Path: "/workflow/instance", Component: "base/workflow/instance/index.vue", Type: "menu", Sort: 3},
+	{AppCode: "base", ParentPath: "/workflow", Name: "我的待办", Path: "/workflow/task", Component: "base/workflow/task/index.vue", Type: "menu", Sort: 4},
 }
 
 type menuSeed struct {

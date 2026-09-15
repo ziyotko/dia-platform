@@ -29,7 +29,9 @@ frontend/
 ├── src/
 │   ├── api/            # API 接口模块（与后端 /base/api/v1 对应）
 │   ├── components/     # 公共组件
-│   │   └── Breadcrumb.vue
+│   │   ├── Breadcrumb.vue
+│   │   ├── TenantSelect.vue        # 租户下拉（仅超管使用）
+│   │   └── WorkflowDetail.vue      # 流程实例详情抽屉（任务 + 流转时间线）
 │   ├── router/         # 动态路由生成
 │   ├── stores/         # Pinia 状态
 │   │   ├── app.ts      # 应用级状态（我的应用列表）
@@ -55,7 +57,11 @@ frontend/
 │       │   ├── setting/
 │       │   ├── tenant/
 │       │   ├── user/
-│       │   └── workflow-role/  # 流程角色（审批角色 + 成员配置）
+│       │   ├── workflow-role/  # 流程角色（审批角色 + 成员配置）
+│       │   └── workflow/       # 工作流
+│       │       ├── definition/ # 流程定义 + 节点编排
+│       │       ├── instance/   # 流程实例（发起 / 我的申请 / 全部）
+│       │       └── task/       # 我的待办（待办 / 已办 + 审批）
 │       ├── error/      # 404
 │       ├── layout/     # 布局与弹出式菜单
 │       ├── login/      # 登录页

@@ -158,6 +158,39 @@ func Register(r *gin.Engine) {
 			wfRoles.POST("/:id/users", (&controllers.WorkflowRoleController{}).AssignUsers)
 		}
 
+		// 流程定义与节点编排（管理员）
+		workflows := authorized.Group("/workflows")
+		{
+			workflows.POST("", (&controllers.WorkflowController{}).Create)
+			workflows.PUT("/:id", (&controllers.WorkflowController{}).Update)
+			workflows.DELETE("/:id", (&controllers.WorkflowController{}).Delete)
+			workflows.GET("/:id", (&controllers.WorkflowController{}).Get)
+			workflows.GET("", (&controllers.WorkflowController{}).List)
+			workflows.PUT("/:id/nodes", (&controllers.WorkflowController{}).SaveNodes)
+			// 以下两个只读接口已加入权限白名单：普通用户发起流程需要选择流程定义
+			workflows.GET("/options", (&controllers.WorkflowController{}).Options)
+			workflows.GET("/approver-options", (&controllers.WorkflowController{}).ApproverOptions)
+		}
+
+		// 流程实例（发起 / 我的申请 / 管理员查看全部）
+		wfInstances := authorized.Group("/workflow-instances")
+		{
+			wfInstances.POST("", (&controllers.WorkflowEngineController{}).Start)
+			wfInstances.GET("", (&controllers.WorkflowEngineController{}).ListInstances)
+			wfInstances.GET("/:id", (&controllers.WorkflowEngineController{}).Detail)
+			wfInstances.POST("/:id/cancel", (&controllers.WorkflowEngineController{}).Cancel)
+			// 删除仅限管理员（未列入权限白名单，需 base:workflow-instance:delete 权限）
+			wfInstances.DELETE("/:id", (&controllers.WorkflowEngineController{}).Delete)
+		}
+
+		// 我的审批任务（待办 / 已办）
+		wfTasks := authorized.Group("/workflow-tasks")
+		{
+			wfTasks.GET("", (&controllers.WorkflowEngineController{}).MyTasks)
+			wfTasks.POST("/:id/approve", (&controllers.WorkflowEngineController{}).Approve)
+			wfTasks.POST("/:id/reject", (&controllers.WorkflowEngineController{}).Reject)
+		}
+
 		orgs := authorized.Group("/organizations")
 		{
 			orgs.POST("", (&controllers.OrganizationController{}).Create)

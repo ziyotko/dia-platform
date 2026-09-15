@@ -138,6 +138,9 @@ jwt:
 | 菜单 | CRUD | `/base/api/v1/menus/tree` | 菜单树 |
 | 权限 | CRUD | `/base/api/v1/permissions/tree` | 权限树 |
 | 流程角色 | CRUD | `/base/api/v1/workflow-roles` | 审批角色定义与成员：`GET /workflow-roles/user-options`（成员选项）、`POST /workflow-roles/:id/users`（覆盖式设置成员） |
+| 流程定义 | CRUD | `/base/api/v1/workflows` | 含节点编排 `PUT /workflows/:id/nodes`（覆盖式保存）；`GET /workflows/options`（启用中的流程，白名单）、`GET /workflows/approver-options`（审批人候选） |
+| 流程实例 | POST/GET/DELETE | `/base/api/v1/workflow-instances` | `POST` 发起（白名单）、`GET` 列表（非管理员强制只看自己发起的）、`GET /:id` 详情（含任务与流转日志）、`POST /:id/cancel` 撤销、`DELETE /:id` 删除（仅管理员） |
+| 审批任务 | GET/POST | `/base/api/v1/workflow-tasks` | `GET` 我的待办/已办（`box=todo\|done`）、`POST /:id/approve` 通过、`POST /:id/reject` 驳回（均为白名单，归属校验在服务层） |
 | 机构 | CRUD | `/base/api/v1/organizations/tree` | 机构树 |
 | 消息 | CRUD | `/base/api/v1/messages` | 含未读数、发送、标记已读、全部已读（`POST /messages/read-all`）；`box=inbox/sent` 区分收发 |
 | 消息模板 | CRUD | `/base/api/v1/message-templates` | 模板管理 |
@@ -180,6 +183,20 @@ jwt:
   - `X-Base-Tenant-ID`
 - IFrame 类型应用不支持 API 代理。
 
+## 工作流引擎
+
+实现位置：`internal/service/workflow_service.go`（流程定义与节点）、`internal/service/workflow_engine_service.go`（引擎与查询）。
+
+- **节点串行 + 或签**：节点按 `sort` 升序执行；一个节点若解析出多个审批人，则每人一条待办，任一人处理即视为节点完成，**同节点其余待办自动置为「已失效」**。
+- **审批人解析**（`resolveApprovers`）：`role` → 流程角色成员（仅 `status=1` 用户）、`user` → 指定用户、`initiator` → 实例发起人。
+- **自动通过**：节点解析不到有效审批人时直接跳过并写一条 `auto-pass` 日志，避免流程卡死。
+- **推进**（`advanceWorkflow`）：审批通过后从当前节点顺序找下一个有审批人的节点；已无后续节点则实例置为「已通过」并记 `finish` 日志。
+- **驳回**：实例置「已驳回」、结束时间落库，实例下所有未处理待办置为「已失效」。
+- **撤销**：实例置「已撤销」，未处理待办失效；仅发起人本人或管理员可撤销。
+- **删除**：仅管理员（`base:workflow-instance:delete`），软删除实例及其任务与流转日志。
+- **可见性**：详情允许发起人、参与审批的人、管理员查看；列表对非管理员强制 `initiator_id = 自己`。
+- **草稿/时间字段**：`end_at`、`handled_at`、`read_at`、`send_at` 均为 `*time.Time`，未发生时写入 `NULL`，避免 MySQL 严格模式（`NO_ZERO_DATE`）拒绝 `0000-00-00`。
+
 ## 数据模型
 
 ### 带租户隔离（含 `tenant_id`）
@@ -187,6 +204,8 @@ jwt:
 - `base_user`
 - `base_role`
 - `base_workflow_role`（流程角色，与系统角色解耦；成员关联表 `base_workflow_role_user`）
+- `base_workflow`（流程定义）与 `base_workflow_node`（流程节点）
+- `base_workflow_instance`（流程实例）、`base_workflow_task`（审批任务）、`base_workflow_log`（流转日志）
 - `base_menu`
 - `base_organization`
 - `base_app_instance`
@@ -198,7 +217,7 @@ jwt:
 - `base_login_log`
 
 > 流程角色（`base_workflow_role`，成员关联表 `base_workflow_role_user`）是「工作流管理」模块的基础数据：
-> 只负责定义审批角色及其成员，供后续审批流程节点选择审批人使用；审批引擎（流程定义/实例/待办）尚未实现。
+> 只负责定义审批角色及其成员，供审批流程节点选择审批人使用。
 
 ### 平台级资源（不含 `tenant_id`）
 

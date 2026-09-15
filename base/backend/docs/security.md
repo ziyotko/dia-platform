@@ -38,10 +38,31 @@
    - `GET /base/api/v1/dashboard/stats`
    - `GET /base/api/v1/app-instances/my`
    - `GET /base/api/v1/messages/unread-count`
+   - 工作流「属于自己的数据」类接口（归属校验均在 service 层，详见 1.4.1）：
+     - `GET /base/api/v1/workflows/options`（发起流程需先选流程定义）
+     - `POST|GET /base/api/v1/workflow-instances`
+     - `GET /base/api/v1/workflow-instances/:id`
+     - `POST /base/api/v1/workflow-instances/:id/cancel`
+     - `GET /base/api/v1/workflow-tasks`
+     - `POST /base/api/v1/workflow-tasks/:id/approve` / `reject`
 4. **未分配任何权限的普通用户**：仅放行 `GET`（只读），写操作（POST/PUT/DELETE）返回 403「未分配该操作的接口权限，请联系管理员」。
 5. 其余请求按 `base_permission` 的 `method + path` 匹配，未命中返回 403「无权限访问该接口」。
 
 > ⚠️ 历史行为（已取消）：早期版本在「用户没有任何权限记录」时 **整体放行**，导致全新部署下所有登录用户可调用全部写接口。
+
+#### 1.4.1 工作流为何部分接口在白名单里
+
+审批是「用户自己的事」：任何被分配了待办的普通用户都必须能查看与处理，而不应依赖管理员再额外分配接口权限。因此这些接口不做接口级校验，改用**归属校验**保证安全：
+
+| 接口 | 归属校验（service 层） |
+|------|------------------------|
+| 发起流程 | 只能发起本租户（平台超管例外）已启用的流程 |
+| 我的申请 / 实例列表 | 非管理员强制 `initiator_id = 当前用户` |
+| 实例详情 | 仅发起人、该实例的审批参与人、管理员可见 |
+| 撤销 | 仅发起人本人或管理员，且实例必须处于「审批中」 |
+| 待办列表 / 审批 / 驳回 | 按 `approver_id = 当前用户` 过滤，且校验任务归属与状态（不能重复处理、不能处理已结束流程） |
+
+而**流程定义（含节点编排）**属于管理动作，仍走权限点 `base:workflow-def:*`；**删除流程实例**属于管理动作，走 `base:workflow-instance:delete`（不在白名单）。
 
 ### 1.5 挂载方式
 
@@ -134,6 +155,8 @@ func (ctl *UserController) Update(c *gin.Context) {
 | User | `Update/Delete/GetByID` | `Update/Delete/Get` |
 | Role | `Update/Delete/GetByID` | `Update/Delete/Get` |
 | WorkflowRole | `Update/Delete/GetByID` | `Update/Delete/Get` |
+| Workflow | `Update/Delete/GetByID` | `Update/Delete/Get/SaveNodes` |
+| WorkflowInstance | `Delete`（按租户） | `Delete`（仅管理员）、`Detail`（发起人/参与人/管理员） |
 | Menu | `Update/Delete/GetByID` | `Update/Delete` |
 | Organization | `Update/Delete/GetByID` | `Update/Delete/Get` |
 | AppInstance | `Update/Delete/GetByID` | `Update/Delete/List` |
@@ -165,7 +188,7 @@ if tenantID > 0 {
 - 平台超级管理员（`tenantID == 0`）：可用请求体中的 `tenantId` 指定目标租户（0 表示平台级）；
 - 普通租户用户：**忽略请求中的 `tenantId`**，强制写入自身租户，防止跨租户写入。
 
-涉及的创建接口：`POST /users`、`POST /roles`、`POST /app-instances`、`POST /dicts`、`POST /organizations`、`POST /message-templates`、`POST /workflow-roles`。
+涉及的创建接口：`POST /users`、`POST /roles`、`POST /app-instances`、`POST /dicts`、`POST /organizations`、`POST /message-templates`、`POST /workflow-roles`、`POST /workflows`。
 
 ### 2.6 不需要租户隔离的模块
 

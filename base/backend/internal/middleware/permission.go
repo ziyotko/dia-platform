@@ -11,7 +11,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// 不需要接口级权限校验的白名单：基础个人信息、菜单、权限、改密、仪表盘、我的应用、未读消息数。
+// 不需要接口级权限校验的白名单：基础个人信息、菜单、权限、改密、仪表盘、我的应用、未读消息数，
+// 以及工作流中「属于自己的数据」类接口（发起、我的申请、待办审批），
+// 这些接口的归属校验在 service 层完成（只能操作自己发起或自己负责的任务）。
 var permissionWhitelist = map[string][]string{
 	"/base/api/v1/auth/info":             {"GET"},
 	"/base/api/v1/auth/menus":            {"GET"},
@@ -20,6 +22,15 @@ var permissionWhitelist = map[string][]string{
 	"/base/api/v1/dashboard/stats":       {"GET"},
 	"/base/api/v1/app-instances/my":      {"GET"},
 	"/base/api/v1/messages/unread-count": {"GET"},
+
+	// 工作流：发起流程需要先选流程定义
+	"/base/api/v1/workflows/options":             {"GET"},
+	"/base/api/v1/workflow-instances":            {"POST", "GET"},
+	"/base/api/v1/workflow-instances/:id":        {"GET"},
+	"/base/api/v1/workflow-instances/:id/cancel": {"POST"},
+	"/base/api/v1/workflow-tasks":                {"GET"},
+	"/base/api/v1/workflow-tasks/:id/approve":    {"POST"},
+	"/base/api/v1/workflow-tasks/:id/reject":     {"POST"},
 }
 
 // PermissionAuth 基于 base_permission 表的接口级权限校验中间件。

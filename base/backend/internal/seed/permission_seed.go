@@ -117,6 +117,30 @@ var basePermissionSeeds = []permissionSeed{
 	{Code: "base:workflow-role:assign-user", Name: "配置流程角色成员", Type: "api", ParentCode: "base:workflow-role", Method: "POST", Path: "/workflow-roles/:id/users"},
 	{Code: "base:workflow-role:user-options", Name: "查看可选成员", Type: "api", ParentCode: "base:workflow-role", Method: "GET", Path: "/workflow-roles/user-options"},
 
+	// ---------- 流程定义（工作流） ----------
+	{Code: "base:workflow-def", Name: "流程定义", Type: "menu"},
+	{Code: "base:workflow-def:list", Name: "查看流程列表", Type: "api", ParentCode: "base:workflow-def", Method: "GET", Path: "/workflows"},
+	{Code: "base:workflow-def:detail", Name: "查看流程详情", Type: "api", ParentCode: "base:workflow-def", Method: "GET", Path: "/workflows/:id"},
+	{Code: "base:workflow-def:create", Name: "新增流程", Type: "api", ParentCode: "base:workflow-def", Method: "POST", Path: "/workflows"},
+	{Code: "base:workflow-def:update", Name: "编辑流程", Type: "api", ParentCode: "base:workflow-def", Method: "PUT", Path: "/workflows/:id"},
+	{Code: "base:workflow-def:delete", Name: "删除流程", Type: "api", ParentCode: "base:workflow-def", Method: "DELETE", Path: "/workflows/:id"},
+	{Code: "base:workflow-def:nodes", Name: "保存流程节点", Type: "api", ParentCode: "base:workflow-def", Method: "PUT", Path: "/workflows/:id/nodes"},
+	{Code: "base:workflow-def:approver-options", Name: "查看审批人候选", Type: "api", ParentCode: "base:workflow-def", Method: "GET", Path: "/workflows/approver-options"},
+
+	// ---------- 流程实例（工作流） ----------
+	{Code: "base:workflow-instance", Name: "流程实例", Type: "menu"},
+	{Code: "base:workflow-instance:list", Name: "查看流程实例", Type: "api", ParentCode: "base:workflow-instance", Method: "GET", Path: "/workflow-instances"},
+	{Code: "base:workflow-instance:detail", Name: "查看流程实例详情", Type: "api", ParentCode: "base:workflow-instance", Method: "GET", Path: "/workflow-instances/:id"},
+	{Code: "base:workflow-instance:start", Name: "发起流程", Type: "api", ParentCode: "base:workflow-instance", Method: "POST", Path: "/workflow-instances"},
+	{Code: "base:workflow-instance:cancel", Name: "撤销流程", Type: "api", ParentCode: "base:workflow-instance", Method: "POST", Path: "/workflow-instances/:id/cancel"},
+	{Code: "base:workflow-instance:delete", Name: "删除流程实例", Type: "api", ParentCode: "base:workflow-instance", Method: "DELETE", Path: "/workflow-instances/:id"},
+
+	// ---------- 待办任务（工作流） ----------
+	{Code: "base:workflow-task", Name: "待办任务", Type: "menu"},
+	{Code: "base:workflow-task:list", Name: "查看我的待办", Type: "api", ParentCode: "base:workflow-task", Method: "GET", Path: "/workflow-tasks"},
+	{Code: "base:workflow-task:approve", Name: "审批通过", Type: "api", ParentCode: "base:workflow-task", Method: "POST", Path: "/workflow-tasks/:id/approve"},
+	{Code: "base:workflow-task:reject", Name: "审批驳回", Type: "api", ParentCode: "base:workflow-task", Method: "POST", Path: "/workflow-tasks/:id/reject"},
+
 	// ---------- 操作日志 ----------
 	{Code: "base:operation-log", Name: "操作日志", Type: "menu"},
 	{Code: "base:operation-log:list", Name: "查看操作日志", Type: "api", ParentCode: "base:operation-log", Method: "GET", Path: "/operation-logs"},

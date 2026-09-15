@@ -11,8 +11,9 @@ import (
 type MessageService struct{}
 
 func (s MessageService) Create(m *models.Message) error {
-	if m.Status == 3 && m.SendAt.IsZero() {
-		m.SendAt = time.Now()
+	if m.Status == 3 && m.SendAt == nil {
+		now := time.Now()
+		m.SendAt = &now
 	}
 	return db.DB.Create(m).Error
 }
@@ -126,13 +127,14 @@ func (s MessageService) SendToUsers(senderID uint64, senderName string, tenantID
 			Type:         msgType,
 			Priority:     priority,
 			Status:       3,
-			SendAt:       now,
+			SendAt:       &now,
 		})
 	}
 	return db.DB.CreateInBatches(msgs, 100).Error
 }
 
 func (s MessageService) Broadcast(senderID uint64, senderName string, tenantID uint64, title, content, msgType, priority string) error {
+	now := time.Now()
 	return db.DB.Create(&models.Message{
 		TenantID:     tenantID,
 		SenderID:     senderID,
@@ -144,7 +146,7 @@ func (s MessageService) Broadcast(senderID uint64, senderName string, tenantID u
 		Type:         msgType,
 		Priority:     priority,
 		Status:       3,
-		SendAt:       time.Now(),
+		SendAt:       &now,
 	}).Error
 }
 
