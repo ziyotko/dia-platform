@@ -1,11 +1,14 @@
 package service
 
 import (
+	"errors"
+
 	"base/internal/models"
 	"base/pkg/db"
 	"base/pkg/jwt"
 	"base/pkg/utils"
-	"errors"
+
+	"gorm.io/gorm"
 )
 
 type AuthService struct{}
@@ -110,34 +113,35 @@ func (s AuthService) GetUserPermissions(userID uint64) ([]string, error) {
 // 返回是否本次新建。平台超级管理员是底座唯一的初始账号，实现只保留在这里，
 // 启动流程（main）与 /auth/init 接口共用，避免两份实现口径不一致。
 func (s AuthService) EnsureSuperAdmin(password string) (bool, error) {
-	var count int64
-	if err := db.DB.Model(&models.User{}).
+	var existing models.User
+	err := db.DB.Unscoped().
 		Where("tenant_id = ? AND username = ?", models.PlatformTenantID, "admin").
-		Count(&count).Error; err != nil {
+		First(&existing).Error
+	switch {
+	case err == nil:
+		if !existing.DeletedAt.Valid {
+			return false, nil
+		}
+		// 已被软删除：唯一索引 (tenant_id, username) 仍占位，继续 Create 会撞唯一键，
+		// 交给 UserService.Create 走恢复分支（下面保留 username=admin 即会命中）。
+	case errors.Is(err, gorm.ErrRecordNotFound):
+	default:
 		return false, err
 	}
-	if count > 0 {
-		return false, nil
-	}
+
 	if password == "" {
 		password = "admin123"
-	}
-	if err := validatePassword(password); err != nil {
-		return false, err
-	}
-	hash, err := utils.HashPassword(password)
-	if err != nil {
-		return false, err
 	}
 	admin := models.User{
 		TenantID: models.PlatformTenantID,
 		Username: "admin",
-		Password: hash,
+		Password: password,
 		RealName: "超级管理员",
 		Status:   1,
 		IsAdmin:  true,
 	}
-	if err := db.DB.Create(&admin).Error; err != nil {
+	// 密码策略（pwdMinLength）与用户名唯一性统一由 UserService.Create 负责，避免这里再写一份
+	if err := (UserService{}).Create(&admin); err != nil {
 		return false, err
 	}
 	return true, nil

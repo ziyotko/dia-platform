@@ -2,8 +2,10 @@ package models
 
 type User struct {
 	BaseModel
-	TenantID uint64 `gorm:"index;comment:租户ID" json:"tenantId"`
-	Username string `gorm:"size:64;index;comment:用户名" json:"username"`
+	// 用户名唯一性由数据库唯一索引 (tenant_id, username) 保证：同租户内不能重名，跨租户可同名。
+	// 只靠 service 层校验在并发下会漏（两个请求同时通过校验 → 两条同名记录），必须落索引兜底。
+	TenantID uint64 `gorm:"index;uniqueIndex:uk_base_user_tenant_username;comment:租户ID" json:"tenantId"`
+	Username string `gorm:"size:64;uniqueIndex:uk_base_user_tenant_username;comment:用户名" json:"username"`
 	Password string `gorm:"size:128;comment:密码" json:"-"`
 	RealName string `gorm:"size:64;comment:真实姓名" json:"realName"`
 	Phone    string `gorm:"size:32;comment:手机号" json:"phone"`

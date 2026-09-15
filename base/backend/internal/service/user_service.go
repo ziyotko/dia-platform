@@ -14,15 +14,24 @@ import (
 
 type UserService struct{}
 
+// Create 创建用户。
+//
+// 用户名唯一性由数据库唯一索引 (tenant_id, username) 保证，这里的预检查只为给出友好提示：
+// 并发下两个请求可能同时通过预检查，必须靠索引兜底（否则会出现同租户重名账号）。
+// 唯一索引在软删除后仍占位，因此同租户同名的软删除记录直接恢复并覆盖字段，
+// 口径与租户/应用的「软删除重建」一致。
 func (s UserService) Create(u *models.User) error {
-	var count int64
-	if err := db.DB.Model(&models.User{}).
-		Where("tenant_id = ? AND username = ?", u.TenantID, u.Username).
-		Count(&count).Error; err != nil {
+	var existing models.User
+	err := db.DB.Unscoped().Where("tenant_id = ? AND username = ?", u.TenantID, u.Username).First(&existing).Error
+	switch {
+	case err == nil:
+		if !existing.DeletedAt.Valid {
+			return errors.New("该租户下用户名已存在")
+		}
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		existing = models.User{}
+	default:
 		return err
-	}
-	if count > 0 {
-		return errors.New("该租户下用户名已存在")
 	}
 
 	// 初始密码由管理员显式指定：不再隐式默认 123456
@@ -41,7 +50,51 @@ func (s UserService) Create(u *models.User) error {
 		return err
 	}
 	u.Password = hash
-	return db.DB.Create(u).Error
+
+	if existing.ID == 0 {
+		if err := db.DB.Create(u).Error; err != nil {
+			if isDuplicateEntry(err) {
+				return errors.New("该租户下用户名已存在")
+			}
+			return err
+		}
+		return nil
+	}
+
+	if err := restoreDeletedUser(&existing, u); err != nil {
+		return err
+	}
+	var restored models.User
+	if err := db.DB.Where("id = ?", existing.ID).First(&restored).Error; err != nil {
+		return err
+	}
+	*u = restored
+	return nil
+}
+
+// restoreDeletedUser 恢复被软删除的同名用户：覆盖字段、清空删除标记，并清掉上一轮遗留的角色关联。
+func restoreDeletedUser(existing *models.User, u *models.User) error {
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		for _, sql := range []string{
+			"DELETE FROM base_user_role WHERE user_id = ?",
+			"DELETE FROM base_workflow_role_user WHERE user_id = ?",
+		} {
+			if err := tx.Exec(sql, existing.ID).Error; err != nil {
+				return err
+			}
+		}
+		return tx.Unscoped().Model(&models.User{}).Where("id = ?", existing.ID).Updates(map[string]interface{}{
+			"deleted_at":      nil,
+			"password":        u.Password,
+			"real_name":       u.RealName,
+			"phone":           u.Phone,
+			"email":           u.Email,
+			"avatar":          u.Avatar,
+			"status":          u.Status,
+			"is_admin":        u.IsAdmin,
+			"organization_id": u.OrganizationID,
+		}).Error
+	})
 }
 
 // IsAdmin 判断用户是否为租户管理员（base_user.is_admin）。

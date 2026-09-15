@@ -7,6 +7,17 @@
           <el-button type="primary" @click="handleAdd">新增租户</el-button>
         </div>
       </template>
+
+      <el-form :inline="true" class="search-form">
+        <el-form-item label="关键字">
+          <el-input v-model="query.keyword" placeholder="租户名称 / 编码" clearable style="width: 220px" @keyup.enter="handleSearch" />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleSearch">查询</el-button>
+          <el-button @click="handleReset">重置</el-button>
+        </el-form-item>
+      </el-form>
+
       <el-table :data="tableData" v-loading="loading" border>
         <el-table-column prop="code" label="租户编码" width="140" />
         <el-table-column prop="name" label="租户名称" />
@@ -100,6 +111,17 @@ const fetchData = async () => {
   loading.value = false
 }
 
+const handleSearch = () => {
+  query.page = 1
+  fetchData()
+}
+
+const handleReset = () => {
+  query.keyword = ''
+  query.page = 1
+  fetchData()
+}
+
 const handleAdd = () => {
   isEdit.value = false
   resetForm()
@@ -151,6 +173,9 @@ onMounted(fetchData)
     display: flex;
     justify-content: space-between;
     align-items: center;
+  }
+  .search-form {
+    margin-bottom: 16px;
   }
   .pagination {
     margin-top: 16px;

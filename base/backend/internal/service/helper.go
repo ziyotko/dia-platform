@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -32,6 +33,23 @@ func ensureDeleteAffected(res *gorm.DB, message string) error {
 		return errors.New(message)
 	}
 	return nil
+}
+
+// isDuplicateEntry 判断错误是否来自唯一索引冲突（MySQL 1062）。
+//
+// 为什么需要：唯一性最终由数据库索引保证，service 层的前置查询只是友好提示，
+// 并发下两个请求可能都通过预检查；此时必须把驱动返回的
+// "Error 1062: Duplicate entry '1-john' for key 'uk_base_user_tenant_username'"
+// 转成可读文案，而不是把 SQL 细节抛给用户。
+func isDuplicateEntry(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, gorm.ErrDuplicatedKey) {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "duplicate entry") || strings.Contains(msg, "error 1062")
 }
 
 // 平台内置数据（tenant_id = 0）对租户可见但不可由租户修改/删除，统一提示文案。
