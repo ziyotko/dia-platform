@@ -133,6 +133,7 @@ func (ctl *UserController) Update(c *gin.Context) {
 |------|-------------|----------------|
 | User | `Update/Delete/GetByID` | `Update/Delete/Get` |
 | Role | `Update/Delete/GetByID` | `Update/Delete/Get` |
+| WorkflowRole | `Update/Delete/GetByID` | `Update/Delete/Get` |
 | Menu | `Update/Delete/GetByID` | `Update/Delete` |
 | Organization | `Update/Delete/GetByID` | `Update/Delete/Get` |
 | AppInstance | `Update/Delete/GetByID` | `Update/Delete/List` |
@@ -141,7 +142,9 @@ func (ctl *UserController) Update(c *gin.Context) {
 | Dict | `Update/Delete/GetByID` | `Update/Delete/Get` |
 | File | `Delete`（按租户列表） | `Delete/List/Upload`（上传记录当前租户） |
 
-> 注：Role 的 `AssignMenus`、`AssignPermissions`，User 的 `AssignRoles`、`ResetPassword`，以及各模块的 `List/Tree` 查询均已按当前租户过滤。
+> 注：Role 的 `AssignMenus`、`AssignPermissions`，User 的 `AssignRoles`、`ResetPassword`，
+> WorkflowRole 的 `AssignUsers`（成员必须与角色同租户，否则报错）与 `ListUserOptions`，
+> 以及各模块的 `List/Tree` 查询均已按当前租户过滤。
 
 ### 2.4 List 查询与跨租户管理
 
@@ -162,7 +165,7 @@ if tenantID > 0 {
 - 平台超级管理员（`tenantID == 0`）：可用请求体中的 `tenantId` 指定目标租户（0 表示平台级）；
 - 普通租户用户：**忽略请求中的 `tenantId`**，强制写入自身租户，防止跨租户写入。
 
-涉及的创建接口：`POST /users`、`POST /roles`、`POST /app-instances`、`POST /dicts`、`POST /organizations`、`POST /message-templates`。
+涉及的创建接口：`POST /users`、`POST /roles`、`POST /app-instances`、`POST /dicts`、`POST /organizations`、`POST /message-templates`、`POST /workflow-roles`。
 
 ### 2.6 不需要租户隔离的模块
 

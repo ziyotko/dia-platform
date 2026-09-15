@@ -107,6 +107,16 @@ var basePermissionSeeds = []permissionSeed{
 	{Code: "base:message-template:update", Name: "编辑模板", Type: "api", ParentCode: "base:message-template", Method: "PUT", Path: "/message-templates/:id"},
 	{Code: "base:message-template:delete", Name: "删除模板", Type: "api", ParentCode: "base:message-template", Method: "DELETE", Path: "/message-templates/:id"},
 
+	// ---------- 流程角色（工作流） ----------
+	{Code: "base:workflow-role", Name: "流程角色", Type: "menu"},
+	{Code: "base:workflow-role:list", Name: "查看流程角色列表", Type: "api", ParentCode: "base:workflow-role", Method: "GET", Path: "/workflow-roles"},
+	{Code: "base:workflow-role:detail", Name: "查看流程角色详情", Type: "api", ParentCode: "base:workflow-role", Method: "GET", Path: "/workflow-roles/:id"},
+	{Code: "base:workflow-role:create", Name: "新增流程角色", Type: "api", ParentCode: "base:workflow-role", Method: "POST", Path: "/workflow-roles"},
+	{Code: "base:workflow-role:update", Name: "编辑流程角色", Type: "api", ParentCode: "base:workflow-role", Method: "PUT", Path: "/workflow-roles/:id"},
+	{Code: "base:workflow-role:delete", Name: "删除流程角色", Type: "api", ParentCode: "base:workflow-role", Method: "DELETE", Path: "/workflow-roles/:id"},
+	{Code: "base:workflow-role:assign-user", Name: "配置流程角色成员", Type: "api", ParentCode: "base:workflow-role", Method: "POST", Path: "/workflow-roles/:id/users"},
+	{Code: "base:workflow-role:user-options", Name: "查看可选成员", Type: "api", ParentCode: "base:workflow-role", Method: "GET", Path: "/workflow-roles/user-options"},
+
 	// ---------- 操作日志 ----------
 	{Code: "base:operation-log", Name: "操作日志", Type: "menu"},
 	{Code: "base:operation-log:list", Name: "查看操作日志", Type: "api", ParentCode: "base:operation-log", Method: "GET", Path: "/operation-logs"},

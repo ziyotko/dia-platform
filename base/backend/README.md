@@ -137,6 +137,7 @@ jwt:
 | 角色 | CRUD | `/base/api/v1/roles` | 含分配菜单、分配权限 |
 | 菜单 | CRUD | `/base/api/v1/menus/tree` | 菜单树 |
 | 权限 | CRUD | `/base/api/v1/permissions/tree` | 权限树 |
+| 流程角色 | CRUD | `/base/api/v1/workflow-roles` | 审批角色定义与成员：`GET /workflow-roles/user-options`（成员选项）、`POST /workflow-roles/:id/users`（覆盖式设置成员） |
 | 机构 | CRUD | `/base/api/v1/organizations/tree` | 机构树 |
 | 消息 | CRUD | `/base/api/v1/messages` | 含未读数、发送、标记已读、全部已读（`POST /messages/read-all`）；`box=inbox/sent` 区分收发 |
 | 消息模板 | CRUD | `/base/api/v1/message-templates` | 模板管理 |
@@ -185,6 +186,7 @@ jwt:
 
 - `base_user`
 - `base_role`
+- `base_workflow_role`（流程角色，与系统角色解耦；成员关联表 `base_workflow_role_user`）
 - `base_menu`
 - `base_organization`
 - `base_app_instance`
@@ -194,6 +196,9 @@ jwt:
 - `base_uploaded_file`
 - `base_operation_log`
 - `base_login_log`
+
+> 流程角色（`base_workflow_role`，成员关联表 `base_workflow_role_user`）是「工作流管理」模块的基础数据：
+> 只负责定义审批角色及其成员，供后续审批流程节点选择审批人使用；审批引擎（流程定义/实例/待办）尚未实现。
 
 ### 平台级资源（不含 `tenant_id`）
 

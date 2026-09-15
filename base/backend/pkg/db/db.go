@@ -60,6 +60,8 @@ func migrate() error {
 		&models.Role{},
 		&models.Permission{},
 		&models.RolePermission{},
+		&models.WorkflowRole{},
+		&models.WorkflowRoleUser{},
 		&models.Menu{},
 		&models.OperationLog{},
 		&models.Setting{},

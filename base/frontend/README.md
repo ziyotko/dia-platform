@@ -50,11 +50,12 @@ frontend/
 │       │   ├── message/
 │       │   ├── message-template/
 │       │   ├── organization/
+│       │   ├── permission/     # 接口权限管理
 │       │   ├── role/
 │       │   ├── setting/
 │       │   ├── tenant/
 │       │   ├── user/
-│       │   └── workflow/       # 工作流模型/实例/任务/设计器
+│       │   └── workflow-role/  # 流程角色（审批角色 + 成员配置）
 │       ├── error/      # 404
 │       ├── layout/     # 布局与弹出式菜单
 │       ├── login/      # 登录页

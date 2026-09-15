@@ -7,6 +7,7 @@ import (
 	"base/pkg/db"
 	"base/pkg/utils"
 
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -15,12 +16,44 @@ func Run() error {
 	if err := seedSuperAdmin(); err != nil {
 		return err
 	}
+	if err := cleanupObsoleteMenus(); err != nil {
+		return err
+	}
 	if err := seedBaseMenus(); err != nil {
 		return err
 	}
 	if err := seedBasePermissions(); err != nil {
 		return err
 	}
+	return nil
+}
+
+// obsoleteMenuComponents 历史遗留的占位菜单组件路径：这些页面文件已删除，
+// 但旧版本的种子已写入数据库，保留会让用户点击后落到 404，因此启动时幂等清理。
+var obsoleteMenuComponents = []string{
+	"base/workflow/model/index.vue",
+	"base/workflow/instance/index.vue",
+	"base/workflow/task/index.vue",
+	"base/workflow/designer/index.vue",
+}
+
+// cleanupObsoleteMenus 软删除废弃菜单，并解除其与角色的菜单关联。
+func cleanupObsoleteMenus() error {
+	var ids []uint64
+	if err := db.DB.Model(&models.Menu{}).Where("component IN ?", obsoleteMenuComponents).Pluck("id", &ids).Error; err != nil {
+		return err
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	// 先清关联表，避免角色菜单里残留指向已删除菜单的记录
+	if err := db.DB.Exec("DELETE FROM base_role_menu WHERE menu_id IN ?", ids).Error; err != nil {
+		return err
+	}
+	if err := db.DB.Delete(&models.Menu{}, ids).Error; err != nil {
+		return err
+	}
+	logrus.Infof("已清理 %d 个历史遗留的占位菜单", len(ids))
 	return nil
 }
 
@@ -56,6 +89,7 @@ var baseMenuSeeds = []menuSeed{
 	{AppCode: "base", Name: "控制台", Path: "/index", Component: "base/dashboard/index.vue", Type: "menu", Icon: "HomeFilled", Sort: 1},
 	{AppCode: "base", Name: "系统管理", Path: "/system", Type: "directory", Icon: "Setting", Sort: 100},
 	{AppCode: "base", Name: "消息管理", Path: "/message", Type: "directory", Icon: "Message", Sort: 200},
+	{AppCode: "base", Name: "工作流管理", Path: "/workflow", Type: "directory", Icon: "Share", Sort: 300},
 
 	{AppCode: "base", ParentPath: "/system", Name: "租户管理", Path: "/system/tenant", Component: "base/tenant/index.vue", Type: "menu", Sort: 1},
 	{AppCode: "base", ParentPath: "/system", Name: "应用管理", Path: "/system/app", Component: "base/app/index.vue", Type: "menu", Sort: 2},
@@ -73,6 +107,8 @@ var baseMenuSeeds = []menuSeed{
 
 	{AppCode: "base", ParentPath: "/message", Name: "消息列表", Path: "/message/list", Component: "base/message/index.vue", Type: "menu", Sort: 1},
 	{AppCode: "base", ParentPath: "/message", Name: "消息模板", Path: "/message/template", Component: "base/message-template/index.vue", Type: "menu", Sort: 2},
+
+	{AppCode: "base", ParentPath: "/workflow", Name: "流程角色", Path: "/workflow/role", Component: "base/workflow-role/index.vue", Type: "menu", Sort: 1},
 }
 
 type menuSeed struct {

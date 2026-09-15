@@ -146,6 +146,18 @@ func Register(r *gin.Engine) {
 			perms.GET("/tree", (&controllers.PermissionController{}).Tree)
 		}
 
+		// 流程角色（工作流模块）：审批角色的定义与成员，与系统角色解耦
+		wfRoles := authorized.Group("/workflow-roles")
+		{
+			wfRoles.POST("", (&controllers.WorkflowRoleController{}).Create)
+			wfRoles.PUT("/:id", (&controllers.WorkflowRoleController{}).Update)
+			wfRoles.DELETE("/:id", (&controllers.WorkflowRoleController{}).Delete)
+			wfRoles.GET("/:id", (&controllers.WorkflowRoleController{}).Get)
+			wfRoles.GET("", (&controllers.WorkflowRoleController{}).List)
+			wfRoles.GET("/user-options", (&controllers.WorkflowRoleController{}).UserOptions)
+			wfRoles.POST("/:id/users", (&controllers.WorkflowRoleController{}).AssignUsers)
+		}
+
 		orgs := authorized.Group("/organizations")
 		{
 			orgs.POST("", (&controllers.OrganizationController{}).Create)
