@@ -6,6 +6,7 @@ import (
 	"base/internal/models"
 	"base/internal/service"
 	"base/pkg/response"
+	"base/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,7 +21,10 @@ func (ctl *RoleController) Create(c *gin.Context) {
 		response.FailWithCode(c, response.CodeBadRequest, "参数错误")
 		return
 	}
-	r.TenantID = c.GetUint64("tenantID")
+	r.TenantID = resolveTenantID(c, r.TenantID)
+	if r.Code == "" {
+		r.Code = "role_" + utils.RandomDigit(6)
+	}
 	if err := ctl.service.Create(&r); err != nil {
 		response.Fail(c, err.Error())
 		return
@@ -66,10 +70,11 @@ func (ctl *RoleController) Get(c *gin.Context) {
 
 func (ctl *RoleController) List(c *gin.Context) {
 	tenantID := c.GetUint64("tenantID")
+	filterTenantID, _ := strconv.ParseUint(c.Query("tenantId"), 10, 64)
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
 	keyword := c.Query("keyword")
-	list, total, err := ctl.service.List(tenantID, page, size, keyword)
+	list, total, err := ctl.service.List(tenantID, filterTenantID, page, size, keyword)
 	if err != nil {
 		response.Fail(c, err.Error())
 		return

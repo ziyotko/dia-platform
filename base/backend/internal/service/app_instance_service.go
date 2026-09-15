@@ -40,10 +40,18 @@ func (s AppInstanceService) GetByID(id uint64, tenantID uint64) (*models.AppInst
 	return &i, err
 }
 
-func (s AppInstanceService) ListByTenant(tenantID uint64, page, size int) ([]models.AppInstance, int64, error) {
+// List 分页查询应用实例。tenantID 为当前登录用户所属租户：
+//   - 普通租户用户（tenantID > 0）只能看到本租户；
+//   - 平台超管（tenantID == 0）不传 filterTenantID 时查看全部租户，传则只看指定租户。
+func (s AppInstanceService) List(tenantID, filterTenantID uint64, page, size int) ([]models.AppInstance, int64, error) {
 	var list []models.AppInstance
 	var total int64
-	query := db.DB.Model(&models.AppInstance{}).Where("tenant_id = ?", tenantID).Preload("App")
+	query := db.DB.Model(&models.AppInstance{}).Preload("App")
+	if tenantID > 0 {
+		query = query.Where("tenant_id = ?", tenantID)
+	} else if filterTenantID > 0 {
+		query = query.Where("tenant_id = ?", filterTenantID)
+	}
 	query.Count(&total)
 	err := query.Order("created_at DESC").Offset((page - 1) * size).Limit(size).Find(&list).Error
 	return list, total, err

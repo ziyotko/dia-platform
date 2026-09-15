@@ -8,7 +8,7 @@
       </div>
       <div class="menu-icons">
         <div
-          v-for="menu in userStore.menus"
+          v-for="menu in visibleTopMenus"
           :key="menu.id"
           class="menu-icon-item"
           :class="{ active: isTopActive(menu), 'popup-open': popupMenu?.id === menu.id }"
@@ -106,7 +106,8 @@ import type { Menu } from '@/api/menu'
 import SubMenu from './components/SubMenu.vue'
 import Breadcrumb from '@/components/Breadcrumb.vue'
 import { Management, ArrowDown, Bell, UserFilled } from '@element-plus/icons-vue'
-import { getUnreadCount } from '@/api/message'
+import { getUnreadCount, markAllMessageRead } from '@/api/message'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
@@ -115,6 +116,7 @@ const unreadCount = ref(0)
 const popupMenu = ref<Menu | null>(null)
 let showTimer: number | null = null
 let hideTimer: number | null = null
+let timer: number | null = null
 
 const activeMenu = computed(() => route.path)
 
@@ -215,21 +217,31 @@ const handleMessageCommand = async (command: string) => {
   if (command === 'inbox') {
     router.push('/message/list')
   } else if (command === 'mark-all') {
-    const res: any = await getUnreadCount()
-    if (res.data > 0) {
-      fetchUnread()
+    if (unreadCount.value === 0) {
+      ElMessage.info('没有未读消息')
+      return
     }
+    await ElMessageBox.confirm('确认将全部未读消息标为已读？', '提示', { type: 'warning' })
+    const res: any = await markAllMessageRead()
+    ElMessage.success(`已标记 ${res.data?.count ?? 0} 条为已读`)
+    fetchUnread()
   }
 }
 
+// 侧边栏顶部图标不展示隐藏菜单与按钮类型菜单
+const visibleTopMenus = computed(() => userStore.menus.filter((m) => !m.hidden && m.type !== 'button'))
+
 onMounted(() => {
   fetchUnread()
-  const timer = setInterval(fetchUnread, 30000)
-  onUnmounted(() => {
-    clearInterval(timer)
-    if (showTimer) clearTimeout(showTimer)
-    if (hideTimer) clearTimeout(hideTimer)
-  })
+  timer = window.setInterval(fetchUnread, 30000)
+  window.addEventListener('base:unread-changed', fetchUnread)
+})
+
+onUnmounted(() => {
+  if (timer) clearInterval(timer)
+  if (showTimer) clearTimeout(showTimer)
+  if (hideTimer) clearTimeout(hideTimer)
+  window.removeEventListener('base:unread-changed', fetchUnread)
 })
 </script>
 

@@ -1,7 +1,14 @@
 import request from '@/utils/request'
 
+export interface UserRoleRef {
+  id: number
+  code?: string
+  name: string
+}
+
 export interface User {
   id: number
+  tenantId: number
   username: string
   realName?: string
   phone?: string
@@ -9,17 +16,38 @@ export interface User {
   avatar?: string
   status: number
   isAdmin: boolean
+  roles?: UserRoleRef[]
 }
 
-export function getUserList(params: { page: number; size: number; keyword?: string }) {
+export interface UserQuery {
+  page: number
+  size: number
+  keyword?: string
+  /** 平台超管可按租户过滤，不传表示全部租户 */
+  tenantId?: number
+}
+
+export interface UserForm {
+  username: string
+  password?: string
+  realName?: string
+  phone?: string
+  email?: string
+  isAdmin: boolean
+  status: number
+  /** 平台超管可为指定租户创建用户；普通租户用户由后端强制为自身租户 */
+  tenantId?: number
+}
+
+export function getUserList(params: UserQuery) {
   return request.get('/users', { params })
 }
 
-export function createUser(data: User) {
+export function createUser(data: UserForm) {
   return request.post('/users', data)
 }
 
-export function updateUser(id: number, data: User) {
+export function updateUser(id: number, data: Partial<User>) {
   return request.put(`/users/${id}`, data)
 }
 

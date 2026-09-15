@@ -4,7 +4,15 @@
       <template #header>
         <div class="card-header">
           <span>消息管理</span>
-          <el-button type="primary" @click="handleSend">发送消息</el-button>
+          <div class="header-actions">
+            <el-radio-group v-model="query.isRead" v-if="activeTab === 'inbox'" @change="handleFilterChange">
+              <el-radio-button :label="-1">全部</el-radio-button>
+              <el-radio-button :label="0">未读</el-radio-button>
+              <el-radio-button :label="1">已读</el-radio-button>
+            </el-radio-group>
+            <el-button v-if="activeTab === 'inbox'" @click="handleMarkAll">全部标为已读</el-button>
+            <el-button type="primary" @click="handleSend">发送消息</el-button>
+          </div>
         </div>
       </template>
       <el-tabs v-model="activeTab" @tab-change="handleTabChange">
@@ -18,16 +26,16 @@
                 <el-tag :type="priorityMap[row.priority]?.type">{{ priorityMap[row.priority]?.label }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="status" label="状态" width="100">
+            <el-table-column label="状态" width="100">
               <template #default="{ row }">
-                <el-tag :type="row.status === 1 ? 'info' : 'danger'">{{ row.status === 1 ? '已读' : '未读' }}</el-tag>
+                <el-tag :type="row.isRead ? 'info' : 'danger'">{{ row.isRead ? '已读' : '未读' }}</el-tag>
               </template>
             </el-table-column>
             <el-table-column prop="sendAt" label="发送时间" width="180" />
             <el-table-column label="操作" width="180" fixed="right">
               <template #default="{ row }">
                 <el-button link type="primary" @click="handleView(row)">查看</el-button>
-                <el-button v-if="row.status === 0" link type="primary" @click="handleRead(row)">标为已读</el-button>
+                <el-button v-if="!row.isRead" link type="primary" @click="handleRead(row)">标为已读</el-button>
                 <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
               </template>
             </el-table-column>
@@ -39,6 +47,11 @@
             <el-table-column prop="receiverType" label="接收类型" width="120" />
             <el-table-column prop="type" label="类型" width="100" />
             <el-table-column prop="priority" label="优先级" width="100" />
+            <el-table-column label="状态" width="100">
+              <template #default="{ row }">
+                <el-tag :type="row.status === 2 ? 'warning' : 'success'">{{ row.status === 2 ? '草稿' : '已发送' }}</el-tag>
+              </template>
+            </el-table-column>
             <el-table-column prop="sendAt" label="发送时间" width="180" />
             <el-table-column label="操作" width="120" fixed="right">
               <template #default="{ row }">
@@ -119,15 +132,18 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getMessageList, sendMessage, markMessageRead, deleteMessage } from '@/api/message'
+import { getMessageList, sendMessage, markMessageRead, markAllMessageRead, deleteMessage } from '@/api/message'
 import { getUserList } from '@/api/user'
 import type { Message } from '@/api/message'
+
+// 通知外层布局刷新未读红点
+const notifyUnreadChanged = () => window.dispatchEvent(new Event('base:unread-changed'))
 
 const loading = ref(false)
 const tableData = ref<Message[]>([])
 const total = ref(0)
 const activeTab = ref('inbox')
-const query = reactive({ page: 1, size: 10, status: -1 })
+const query = reactive<{ page: number; size: number; isRead: number }>({ page: 1, size: 10, isRead: -1 })
 const sendDialogVisible = ref(false)
 const viewDialogVisible = ref(false)
 const currentMessage = ref<Message | null>(null)
@@ -157,16 +173,38 @@ const sendRules = {
 
 const fetchData = async () => {
   loading.value = true
-  const status = activeTab.value === 'inbox' ? query.status : 3
-  const res: any = await getMessageList({ page: query.page, size: query.size, status })
-  tableData.value = res.data.list
-  total.value = res.data.total
-  loading.value = false
+  try {
+    const isInbox = activeTab.value === 'inbox'
+    const res: any = await getMessageList({
+      page: query.page,
+      size: query.size,
+      box: isInbox ? 'inbox' : 'sent',
+      isRead: isInbox ? query.isRead : -1
+    })
+    tableData.value = res.data.list || []
+    total.value = res.data.total || 0
+  } finally {
+    loading.value = false
+  }
 }
 
 const handleTabChange = () => {
   query.page = 1
   fetchData()
+}
+
+const handleFilterChange = () => {
+  query.page = 1
+  fetchData()
+}
+
+// 全部标为已读
+const handleMarkAll = async () => {
+  await ElMessageBox.confirm('确认将收件箱中全部未读消息标为已读？', '提示', { type: 'warning' })
+  const res: any = await markAllMessageRead()
+  ElMessage.success(`已标记 ${res.data?.count ?? 0} 条为已读`)
+  fetchData()
+  notifyUnreadChanged()
 }
 
 const handleSend = async () => {
@@ -193,8 +231,11 @@ const handleSendSubmit = async () => {
 const handleView = (row: Message) => {
   currentMessage.value = row
   viewDialogVisible.value = true
-  if (row.status === 0) {
-    markMessageRead(row.id).then(fetchData)
+  if (!row.isRead) {
+    markMessageRead(row.id).then(() => {
+      fetchData()
+      notifyUnreadChanged()
+    })
   }
 }
 
@@ -202,6 +243,7 @@ const handleRead = async (row: Message) => {
   await markMessageRead(row.id)
   ElMessage.success('已标记为已读')
   fetchData()
+  notifyUnreadChanged()
 }
 
 const handleDelete = async (row: Message) => {
@@ -209,6 +251,9 @@ const handleDelete = async (row: Message) => {
   await deleteMessage(row.id)
   ElMessage.success('删除成功')
   fetchData()
+  if (!row.isRead) {
+    notifyUnreadChanged()
+  }
 }
 
 onMounted(fetchData)
@@ -219,6 +264,11 @@ onMounted(fetchData)
   .card-header {
     display: flex;
     justify-content: space-between;
+    align-items: center;
+  }
+  .header-actions {
+    display: flex;
+    gap: 10px;
     align-items: center;
   }
   .pagination {

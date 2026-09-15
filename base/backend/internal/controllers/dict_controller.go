@@ -20,7 +20,7 @@ func (ctl *DictController) Create(c *gin.Context) {
 		response.FailWithCode(c, response.CodeBadRequest, "参数错误")
 		return
 	}
-	d.TenantID = c.GetUint64("tenantID")
+	d.TenantID = resolveTenantID(c, d.TenantID)
 	if err := ctl.service.Create(&d); err != nil {
 		response.Fail(c, err.Error())
 		return

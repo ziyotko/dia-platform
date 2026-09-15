@@ -71,8 +71,3 @@ func (ctl *TenantController) List(c *gin.Context) {
 	}
 	response.Page(c, list, total)
 }
-
-func parseID(c *gin.Context) int {
-	id, _ := strconv.Atoi(c.Param("id"))
-	return id
-}

@@ -5,12 +5,21 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"base/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
+
+// setBaseUserHeaders 向子应用注入底座用户上下文。
+// 注意：userID / tenantID 在 gin 上下文里是 uint64，不能用 GetString 读取（会得到空串）。
+func setBaseUserHeaders(req *http.Request, c *gin.Context) {
+	req.Header.Set("X-Base-User-ID", strconv.FormatUint(c.GetUint64("userID"), 10))
+	req.Header.Set("X-Base-Username", c.GetString("username"))
+	req.Header.Set("X-Base-Tenant-ID", strconv.FormatUint(c.GetUint64("tenantID"), 10))
+}
 
 // ProxyToApp 将请求代理到子应用后端
 func ProxyToApp(c *gin.Context, backendURL string) {
@@ -28,9 +37,7 @@ func ProxyToApp(c *gin.Context, backendURL string) {
 		req.URL.Path = singleJoiningSlash(target.Path, c.Param("path"))
 		req.URL.RawQuery = c.Request.URL.RawQuery
 		// 注入底座用户信息
-		req.Header.Set("X-Base-User-ID", c.GetString("userID"))
-		req.Header.Set("X-Base-Username", c.GetString("username"))
-		req.Header.Set("X-Base-Tenant-ID", c.GetString("tenantID"))
+		setBaseUserHeaders(req, c)
 	}
 	proxy.ModifyResponse = func(resp *http.Response) error {
 		resp.Header.Del("Access-Control-Allow-Origin")
@@ -59,9 +66,7 @@ func ForwardRequest(c *gin.Context, backendURL string, path string) (*http.Respo
 		return nil, err
 	}
 	req.Header = c.Request.Header.Clone()
-	req.Header.Set("X-Base-User-ID", c.GetString("userID"))
-	req.Header.Set("X-Base-Username", c.GetString("username"))
-	req.Header.Set("X-Base-Tenant-ID", c.GetString("tenantID"))
+	setBaseUserHeaders(req, c)
 	client := &http.Client{}
 	return client.Do(req)
 }

@@ -41,7 +41,7 @@ func (s *LocalStorage) Put(filename string, reader io.Reader, size int64) (strin
 	if _, err := io.Copy(file, reader); err != nil {
 		return "", "", err
 	}
-	url := s.BaseURL + "/uploads/" + key
+	url := s.BaseURL + "/" + key
 	return key, url, nil
 }
 

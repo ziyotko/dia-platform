@@ -20,7 +20,7 @@ func (ctl *AppInstanceController) Create(c *gin.Context) {
 		response.FailWithCode(c, response.CodeBadRequest, "参数错误")
 		return
 	}
-	i.TenantID = c.GetUint64("tenantID")
+	i.TenantID = resolveTenantID(c, i.TenantID)
 	if err := ctl.service.Create(&i); err != nil {
 		response.Fail(c, err.Error())
 		return
@@ -55,9 +55,10 @@ func (ctl *AppInstanceController) Delete(c *gin.Context) {
 
 func (ctl *AppInstanceController) List(c *gin.Context) {
 	tenantID := c.GetUint64("tenantID")
+	filterTenantID, _ := strconv.ParseUint(c.Query("tenantId"), 10, 64)
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
-	list, total, err := ctl.service.ListByTenant(tenantID, page, size)
+	list, total, err := ctl.service.List(tenantID, filterTenantID, page, size)
 	if err != nil {
 		response.Fail(c, err.Error())
 		return

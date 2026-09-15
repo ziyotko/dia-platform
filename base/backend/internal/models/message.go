@@ -13,7 +13,8 @@ type Message struct {
 	Content      string    `gorm:"type:text;comment:内容" json:"content"`
 	Type         string    `gorm:"size:32;comment:类型 notice/system/private" json:"type"`
 	Priority     string    `gorm:"size:16;comment:优先级 low/normal/high/urgent" json:"priority"`
-	Status       int       `gorm:"default:0;comment:状态 0未读 1已读 2草稿 3已发送" json:"status"`
+	Status       int       `gorm:"default:3;comment:状态 2草稿 3已发送" json:"status"`
+	IsRead       bool      `gorm:"default:false;comment:是否已读" json:"isRead"`
 	ReadAt       time.Time `gorm:"comment:读取时间" json:"readAt"`
 	SendAt       time.Time `gorm:"comment:发送时间" json:"sendAt"`
 }

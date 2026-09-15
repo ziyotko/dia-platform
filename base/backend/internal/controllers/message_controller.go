@@ -110,12 +110,19 @@ func (ctl *MessageController) Get(c *gin.Context) {
 }
 
 func (ctl *MessageController) List(c *gin.Context) {
-	tenantID := c.GetUint64("tenantID")
-	receiverID := c.GetUint64("userID")
 	status, _ := strconv.Atoi(c.DefaultQuery("status", "-1"))
+	isRead, _ := strconv.Atoi(c.DefaultQuery("isRead", "-1"))
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	size, _ := strconv.Atoi(c.DefaultQuery("size", "10"))
-	list, total, err := ctl.service.List(tenantID, receiverID, status, page, size)
+	list, total, err := ctl.service.List(service.MessageListQuery{
+		TenantID: c.GetUint64("tenantID"),
+		UserID:   c.GetUint64("userID"),
+		Box:      c.DefaultQuery("box", "inbox"),
+		Status:   status,
+		IsRead:   isRead,
+		Page:     page,
+		Size:     size,
+	})
 	if err != nil {
 		response.Fail(c, err.Error())
 		return
@@ -141,4 +148,14 @@ func (ctl *MessageController) MarkRead(c *gin.Context) {
 		return
 	}
 	response.OkWithMessage(c, "已标记为已读", nil)
+}
+
+// MarkAllRead 将当前用户的全部未读消息标为已读
+func (ctl *MessageController) MarkAllRead(c *gin.Context) {
+	count, err := ctl.service.MarkAllRead(c.GetUint64("userID"), c.GetUint64("tenantID"))
+	if err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+	response.OkWithMessage(c, "已全部标为已读", gin.H{"count": count})
 }

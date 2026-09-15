@@ -6,12 +6,15 @@ import (
 	"base/pkg/utils"
 )
 
-// Run 初始化默认数据：超级管理员、底座菜单
+// Run 初始化默认数据：超级管理员、底座菜单、底座权限点
 func Run() error {
 	if err := seedSuperAdmin(); err != nil {
 		return err
 	}
 	if err := seedBaseMenus(); err != nil {
+		return err
+	}
+	if err := seedBasePermissions(); err != nil {
 		return err
 	}
 	return nil

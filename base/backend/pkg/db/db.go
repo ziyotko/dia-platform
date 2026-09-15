@@ -36,7 +36,19 @@ func Init(cfg *config.MySQL) error {
 	}
 	sqlDB.SetMaxOpenConns(cfg.MaxOpen)
 	sqlDB.SetMaxIdleConns(cfg.MaxIdle)
-	return migrate()
+	if err := migrate(); err != nil {
+		return err
+	}
+	return normalizeLegacyData()
+}
+
+// normalizeLegacyData 兼容历史数据的幂等修正。
+// 早期消息表用 status 同时表示已读状态（0 未读 / 1 已读）与发送状态，现已拆分为 is_read + status(2 草稿 / 3 已发送)。
+func normalizeLegacyData() error {
+	if err := DB.Model(&models.Message{}).Where("status = ?", 1).Update("is_read", true).Error; err != nil {
+		return err
+	}
+	return DB.Model(&models.Message{}).Where("status IN ?", []int{0, 1}).Update("status", 3).Error
 }
 
 func migrate() error {

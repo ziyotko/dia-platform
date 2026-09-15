@@ -34,7 +34,7 @@ export function getMyApps() {
   return request.get('/app-instances/my')
 }
 
-export function getAppInstances(params: { page: number; size: number }) {
+export function getAppInstances(params: { page: number; size: number; tenantId?: number }) {
   return request.get('/app-instances', { params })
 }
 

@@ -20,7 +20,7 @@ func (ctl *MessageTemplateController) Create(c *gin.Context) {
 		response.FailWithCode(c, response.CodeBadRequest, "参数错误")
 		return
 	}
-	t.TenantID = c.GetUint64("tenantID")
+	t.TenantID = resolveTenantID(c, t.TenantID)
 	if err := ctl.service.Create(&t); err != nil {
 		response.Fail(c, err.Error())
 		return

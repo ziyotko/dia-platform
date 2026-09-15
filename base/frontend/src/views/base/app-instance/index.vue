@@ -8,11 +8,23 @@
         </div>
       </template>
 
+      <el-form v-if="isSuperAdmin" :inline="true" class="search-form">
+        <el-form-item label="所属租户">
+          <tenant-select v-model="query.tenantId" placeholder="全部租户" clearable style="width: 240px" />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleSearch">查询</el-button>
+          <el-button @click="handleReset">重置</el-button>
+        </el-form-item>
+      </el-form>
+
       <el-table :data="tableData" v-loading="loading" border>
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="app.name" label="应用名称" min-width="150" />
         <el-table-column prop="app.code" label="应用编码" min-width="120" />
-        <el-table-column prop="tenantId" label="租户ID" width="100" />
+        <el-table-column label="所属租户" min-width="160">
+          <template #default="{ row }">{{ tenantName(row.tenantId) }}</template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'danger'">{{ row.status === 1 ? '启用' : '禁用' }}</el-tag>
@@ -40,6 +52,10 @@
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑应用实例' : '开通应用'" width="600px">
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
+        <el-form-item v-if="isSuperAdmin" label="所属租户" prop="tenantId">
+          <tenant-select v-model="form.tenantId" :disabled="isEdit" :clearable="!isEdit" />
+          <div class="form-tip">编辑时不允许变更实例所属租户</div>
+        </el-form-item>
         <el-form-item label="应用" prop="appId">
           <el-select v-model="form.appId" placeholder="请选择应用" :disabled="isEdit" style="width: 100%">
             <el-option v-for="app in appList" :key="app.id" :label="app.name" :value="app.id" />
@@ -61,11 +77,14 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue'
+import { computed, reactive, ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAppInstances, createAppInstance, updateAppInstance, deleteAppInstance } from '@/api/app'
 import { getAppList } from '@/api/app'
 import type { App } from '@/api/app'
+import { tenantName, ensureTenants } from '@/utils/tenantOptions'
+import { useUserStore } from '@/stores/user'
+import TenantSelect from '@/components/TenantSelect.vue'
 
 interface AppInstance {
   id: number
@@ -80,10 +99,13 @@ const loading = ref(false)
 const tableData = ref<AppInstance[]>([])
 const appList = ref<App[]>([])
 const total = ref(0)
-const query = reactive({ page: 1, size: 10 })
+const query = reactive<{ page: number; size: number; tenantId?: number }>({ page: 1, size: 10, tenantId: undefined })
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const formRef = ref()
+const userStore = useUserStore()
+// 仅平台超级管理员（tenantId === 0）可以跨租户开通应用
+const isSuperAdmin = computed(() => userStore.userInfo?.tenantId === 0)
 const form = reactive<{
   id?: number
   tenantId: number
@@ -125,12 +147,23 @@ const handleAdd = () => {
   isEdit.value = false
   Object.assign(form, {
     id: undefined,
-    tenantId: 0,
+    tenantId: userStore.userInfo?.tenantId || 0,
     appId: undefined,
     status: 1,
     config: ''
   })
   dialogVisible.value = true
+}
+
+const handleSearch = () => {
+  query.page = 1
+  fetchData()
+}
+
+const handleReset = () => {
+  query.tenantId = undefined
+  query.page = 1
+  fetchData()
 }
 
 const handleEdit = (row: AppInstance) => {
@@ -157,7 +190,7 @@ const handleSubmit = async () => {
       })
     } else {
       await createAppInstance({
-        tenantId: form.tenantId,
+        tenantId: isSuperAdmin.value ? form.tenantId : 0,
         appId: form.appId as number,
         status: form.status,
         config: form.config
@@ -182,6 +215,9 @@ const handleDelete = (row: AppInstance) => {
 onMounted(() => {
   fetchData()
   fetchApps()
+  if (isSuperAdmin.value) {
+    ensureTenants()
+  }
 })
 </script>
 
@@ -196,6 +232,13 @@ onMounted(() => {
     margin-top: 20px;
     display: flex;
     justify-content: flex-end;
+  }  .search-form {
+    margin-bottom: 16px;
   }
-}
+  .form-tip {
+    width: 100%;
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.6;
+  }}
 </style>

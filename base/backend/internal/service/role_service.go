@@ -1,6 +1,8 @@
 package service
 
 import (
+	"errors"
+
 	"base/internal/models"
 	"base/pkg/db"
 )
@@ -25,11 +27,19 @@ func (s RoleService) Update(r *models.Role, tenantID uint64) error {
 }
 
 func (s RoleService) Delete(id uint64, tenantID uint64) error {
-	db := db.DB
+	query := db.DB.Where("id = ?", id)
 	if tenantID > 0 {
-		db = db.Where("tenant_id = ?", tenantID)
+		query = query.Where("tenant_id = ?", tenantID)
 	}
-	return db.Delete(&models.Role{BaseModel: models.BaseModel{ID: id}}).Error
+	var role models.Role
+	if err := query.First(&role).Error; err != nil {
+		return err
+	}
+	// 平台内置超级管理员角色是权限基线，不允许删除
+	if role.TenantID == 0 && role.Code == "super_admin" {
+		return errors.New("平台超级管理员角色不允许删除")
+	}
+	return db.DB.Delete(&role).Error
 }
 
 func (s RoleService) GetByID(id uint64, tenantID uint64) (*models.Role, error) {
@@ -42,10 +52,18 @@ func (s RoleService) GetByID(id uint64, tenantID uint64) (*models.Role, error) {
 	return &r, err
 }
 
-func (s RoleService) List(tenantID uint64, page, size int, keyword string) ([]models.Role, int64, error) {
+// List 分页查询角色。tenantID 为当前登录用户所属租户：
+//   - 普通租户用户（tenantID > 0）只能看到本租户；
+//   - 平台超管（tenantID == 0）不传 filterTenantID 时查看全部租户，传则只看指定租户。
+func (s RoleService) List(tenantID, filterTenantID uint64, page, size int, keyword string) ([]models.Role, int64, error) {
 	var list []models.Role
 	var total int64
-	query := db.DB.Model(&models.Role{}).Where("tenant_id = ?", tenantID)
+	query := db.DB.Model(&models.Role{})
+	if tenantID > 0 {
+		query = query.Where("tenant_id = ?", tenantID)
+	} else if filterTenantID > 0 {
+		query = query.Where("tenant_id = ?", filterTenantID)
+	}
 	if keyword != "" {
 		query = query.Where("name LIKE ? OR code LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
 	}
@@ -72,6 +90,12 @@ func (s RoleService) AssignMenus(roleID uint64, menuIDs []uint64, tenantID uint6
 		if err := menuQuery.Find(&menus).Error; err != nil {
 			return err
 		}
+		// 菜单树只会上报全选节点，目录类父节点往往是半选状态，需要补齐祖先节点
+		completed, err := completeMenuAncestors(menus)
+		if err != nil {
+			return err
+		}
+		menus = completed
 	}
 	return db.DB.Model(&role).Association("Menus").Replace(menus)
 }

@@ -17,6 +17,18 @@ func (s MessageService) Create(m *models.Message) error {
 	return db.DB.Create(m).Error
 }
 
+// MessageListQuery 消息列表查询条件。
+// Box=inbox 收件箱（别人发给我的 + 广播）；Box=sent 发件箱（我发出的，按 sender_id）。
+type MessageListQuery struct {
+	TenantID uint64
+	UserID   uint64
+	Box      string
+	Status   int // -1 全部
+	IsRead   int // -1 全部，0 未读，1 已读
+	Page     int
+	Size     int
+}
+
 func (s MessageService) Update(m *models.Message, tenantID uint64) error {
 	db := db.DB.Model(m)
 	if tenantID > 0 {
@@ -51,27 +63,36 @@ func (s MessageService) GetByID(id uint64, tenantID uint64) (*models.Message, er
 	return &m, err
 }
 
-func (s MessageService) List(tenantID, receiverID uint64, status int, page, size int) ([]models.Message, int64, error) {
+func (s MessageService) List(q MessageListQuery) ([]models.Message, int64, error) {
 	var list []models.Message
 	var total int64
 	query := db.DB.Model(&models.Message{})
-	if tenantID > 0 {
-		query = query.Where("tenant_id = ? OR tenant_id = 0", tenantID)
+	if q.TenantID > 0 {
+		query = query.Where("tenant_id = ? OR tenant_id = 0", q.TenantID)
 	}
-	if receiverID > 0 {
-		query = query.Where("receiver_id = ? OR receiver_id = 0", receiverID)
+	if q.Box == "sent" {
+		// 发件箱：我发出的消息（草稿与已发送均在列）
+		query = query.Where("sender_id = ?", q.UserID)
+	} else {
+		// 收件箱：别人发给我或广播给我，且已发送（不含草稿）
+		query = query.Where("receiver_id = ? OR receiver_id = 0", q.UserID).Where("status = ?", 3)
 	}
-	if status >= 0 {
-		query = query.Where("status = ?", status)
+	if q.Status >= 0 {
+		query = query.Where("status = ?", q.Status)
+	}
+	if q.IsRead >= 0 {
+		query = query.Where("is_read = ?", q.IsRead == 1)
 	}
 	query.Count(&total)
-	err := query.Order("created_at DESC").Offset((page - 1) * size).Limit(size).Find(&list).Error
+	err := query.Order("created_at DESC").Offset((q.Page - 1) * q.Size).Limit(q.Size).Find(&list).Error
 	return list, total, err
 }
 
+// GetUnreadCount 当前用户未读数（收件箱中未读的已发送消息）。
 func (s MessageService) GetUnreadCount(receiverID uint64, tenantID uint64) (int64, error) {
 	var count int64
-	query := db.DB.Model(&models.Message{}).Where("(receiver_id = ? OR receiver_id = 0) AND status = ?", receiverID, 0)
+	query := db.DB.Model(&models.Message{}).
+		Where("(receiver_id = ? OR receiver_id = 0) AND status = ? AND is_read = ?", receiverID, 3, false)
 	if tenantID > 0 {
 		query = query.Where("tenant_id = ? OR tenant_id = 0", tenantID)
 	}
@@ -81,7 +102,7 @@ func (s MessageService) GetUnreadCount(receiverID uint64, tenantID uint64) (int6
 
 func (s MessageService) MarkRead(id uint64, receiverID uint64, tenantID uint64) error {
 	updates := map[string]interface{}{
-		"status":  1,
+		"is_read": true,
 		"read_at": time.Now(),
 	}
 	query := db.DB.Model(&models.Message{}).Where("id = ? AND (receiver_id = ? OR receiver_id = 0)", id, receiverID)
@@ -89,6 +110,20 @@ func (s MessageService) MarkRead(id uint64, receiverID uint64, tenantID uint64) 
 		query = query.Where("tenant_id = ? OR tenant_id = 0", tenantID)
 	}
 	return query.Updates(updates).Error
+}
+
+// MarkAllRead 将当前用户的全部未读消息标为已读，返回影响行数。
+func (s MessageService) MarkAllRead(receiverID uint64, tenantID uint64) (int64, error) {
+	query := db.DB.Model(&models.Message{}).
+		Where("(receiver_id = ? OR receiver_id = 0) AND is_read = ?", receiverID, false)
+	if tenantID > 0 {
+		query = query.Where("tenant_id = ? OR tenant_id = 0", tenantID)
+	}
+	res := query.Updates(map[string]interface{}{
+		"is_read": true,
+		"read_at": time.Now(),
+	})
+	return res.RowsAffected, res.Error
 }
 
 func (s MessageService) Send(m *models.Message) error {

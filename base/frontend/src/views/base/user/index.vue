@@ -19,19 +19,43 @@
           <span>用户列表</span>
         </div>
       </template>
+
+      <el-form :inline="true" class="search-form">
+        <el-form-item label="关键字">
+          <el-input v-model="query.keyword" placeholder="用户名 / 姓名 / 手机号" clearable style="width: 220px" @keyup.enter="handleSearch" />
+        </el-form-item>
+        <el-form-item v-if="isSuperAdmin" label="所属租户">
+          <tenant-select v-model="query.tenantId" placeholder="全部租户" clearable style="width: 220px" />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleSearch">查询</el-button>
+          <el-button @click="handleReset">重置</el-button>
+        </el-form-item>
+      </el-form>
+
       <el-table :data="tableData" v-loading="loading" border>
         <el-table-column prop="username" label="用户名" />
         <el-table-column prop="realName" label="真实姓名" />
         <el-table-column prop="phone" label="手机号" />
         <el-table-column prop="email" label="邮箱" />
+        <el-table-column v-if="isSuperAdmin" label="所属租户" min-width="140">
+          <template #default="{ row }">{{ tenantName(row.tenantId) }}</template>
+        </el-table-column>
+        <el-table-column label="角色" min-width="160">
+          <template #default="{ row }">
+            <span v-if="row.roles?.length">{{ row.roles.map((r: any) => r.name).join('、') }}</span>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'danger'">{{ row.status === 1 ? '启用' : '禁用' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="220" fixed="right">
+        <el-table-column label="操作" width="300" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button link type="primary" @click="handleAssignRole(row)">分配角色</el-button>
             <el-button link type="primary" @click="handleResetPwd(row)">重置密码</el-button>
             <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
@@ -50,6 +74,10 @@
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑用户' : '新增用户'" width="600px">
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
+        <el-form-item v-if="isSuperAdmin" label="所属租户" prop="tenantId">
+          <tenant-select v-model="form.tenantId" :disabled="isEdit" :clearable="!isEdit" />
+          <div class="form-tip">编辑时不允许变更用户所属租户</div>
+        </el-form-item>
         <el-form-item label="用户名" prop="username">
           <el-input v-model="form.username" :disabled="isEdit" />
         </el-form-item>
@@ -59,14 +87,15 @@
         <el-form-item label="手机号">
           <el-input v-model="form.phone" />
         </el-form-item>
-        <el-form-item label="邮箱">
+        <el-form-item label="邮箱" prop="email">
           <el-input v-model="form.email" />
         </el-form-item>
-        <el-form-item label="密码" v-if="!isEdit">
-          <el-input v-model="form.password" type="password" show-password placeholder="默认 123456" />
+        <el-form-item label="密码" v-if="!isEdit" prop="password">
+          <el-input v-model="form.password" type="password" show-password placeholder="不填则默认为 123456，长度 6-64 位" />
         </el-form-item>
         <el-form-item label="管理员">
           <el-switch v-model="form.isAdmin" />
+          <div class="form-tip">开启后在本租户内拥有全部接口权限与菜单</div>
         </el-form-item>
         <el-form-item label="状态">
           <el-switch v-model="form.status" :active-value="1" :inactive-value="0" />
@@ -77,25 +106,64 @@
         <el-button type="primary" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="roleDialogVisible" title="分配角色" width="520px">
+      <el-alert
+        :title="`用户：${currentUser?.username || ''}（仅可选择同租户的角色）`"
+        type="info"
+        :closable="false"
+        show-icon
+        style="margin-bottom: 12px"
+      />
+      <el-select v-model="selectedRoleIds" multiple placeholder="请选择角色" style="width: 100%">
+        <el-option v-for="r in roleOptions" :key="r.id" :label="`${r.name}（${r.code}）`" :value="r.id" />
+      </el-select>
+      <template #footer>
+        <el-button @click="roleDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSaveRoles">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue'
+import { computed, reactive, ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { User as UserIcon, Plus } from '@element-plus/icons-vue'
-import { getUserList, createUser, updateUser, deleteUser, resetUserPassword } from '@/api/user'
+import {
+  getUserList,
+  createUser,
+  updateUser,
+  deleteUser,
+  resetUserPassword,
+  assignUserRoles
+} from '@/api/user'
 import type { User } from '@/api/user'
+import { getRoleList } from '@/api/role'
+import type { Role } from '@/api/role'
+import { tenantName, ensureTenants } from '@/utils/tenantOptions'
+import { useUserStore } from '@/stores/user'
+import TenantSelect from '@/components/TenantSelect.vue'
+
+const userStore = useUserStore()
+// 仅平台超级管理员（tenantId === 0）可以跨租户管理
+const isSuperAdmin = computed(() => userStore.userInfo?.tenantId === 0)
 
 const loading = ref(false)
 const tableData = ref<User[]>([])
 const total = ref(0)
-const query = reactive({ page: 1, size: 10, keyword: '' })
+const query = reactive<{ page: number; size: number; keyword: string; tenantId?: number }>({
+  page: 1,
+  size: 10,
+  keyword: '',
+  tenantId: undefined
+})
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const formRef = ref<any>(null)
 const form = reactive<any>({
   id: 0,
+  tenantId: 0,
   username: '',
   realName: '',
   phone: '',
@@ -106,15 +174,38 @@ const form = reactive<any>({
 })
 
 const rules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }]
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  password: [{ min: 6, max: 64, message: '密码长度 6-64 位', trigger: 'blur' }],
+  email: [{ type: 'email', message: '邮箱格式不正确', trigger: 'blur' }]
 }
+
+// 分配角色
+const roleDialogVisible = ref(false)
+const currentUser = ref<User | null>(null)
+const roleOptions = ref<Role[]>([])
+const selectedRoleIds = ref<number[]>([])
 
 const fetchData = async () => {
   loading.value = true
-  const res: any = await getUserList(query)
-  tableData.value = res.data.list
-  total.value = res.data.total
-  loading.value = false
+  try {
+    const res: any = await getUserList(query)
+    tableData.value = res.data.list
+    total.value = res.data.total
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleSearch = () => {
+  query.page = 1
+  fetchData()
+}
+
+const handleReset = () => {
+  query.keyword = ''
+  query.tenantId = undefined
+  query.page = 1
+  fetchData()
 }
 
 const handleAdd = () => {
@@ -142,13 +233,44 @@ const handleResetPwd = async (row: User) => {
   ElMessage.success('密码已重置')
 }
 
+const handleAssignRole = async (row: User) => {
+  currentUser.value = row
+  selectedRoleIds.value = (row.roles || []).map((r) => r.id)
+  const res: any = await getRoleList({ page: 1, size: 1000, tenantId: row.tenantId })
+  roleOptions.value = res.data.list || []
+  roleDialogVisible.value = true
+}
+
+const handleSaveRoles = async () => {
+  if (!currentUser.value) return
+  await assignUserRoles(currentUser.value.id, selectedRoleIds.value)
+  ElMessage.success('角色分配成功')
+  roleDialogVisible.value = false
+  fetchData()
+}
+
 const handleSubmit = async () => {
   const valid = await formRef.value?.validate().catch(() => false)
   if (!valid) return
   if (isEdit.value) {
-    await updateUser(form.id, form)
+    await updateUser(form.id, {
+      realName: form.realName,
+      phone: form.phone,
+      email: form.email,
+      isAdmin: form.isAdmin,
+      status: form.status
+    })
   } else {
-    await createUser(form)
+    await createUser({
+      username: form.username,
+      password: form.password || undefined,
+      realName: form.realName,
+      phone: form.phone,
+      email: form.email,
+      isAdmin: form.isAdmin,
+      status: form.status,
+      tenantId: isSuperAdmin.value ? form.tenantId : undefined
+    })
   }
   ElMessage.success('保存成功')
   dialogVisible.value = false
@@ -157,6 +279,7 @@ const handleSubmit = async () => {
 
 const resetForm = () => {
   form.id = 0
+  form.tenantId = userStore.userInfo?.tenantId || 0
   form.username = ''
   form.realName = ''
   form.phone = ''
@@ -166,7 +289,12 @@ const resetForm = () => {
   form.status = 1
 }
 
-onMounted(fetchData)
+onMounted(() => {
+  fetchData()
+  if (isSuperAdmin.value) {
+    ensureTenants()
+  }
+})
 </script>
 
 <style scoped lang="scss">
@@ -216,6 +344,17 @@ onMounted(fetchData)
     align-items: center;
     font-weight: 600;
     color: #1e293b;
+  }
+
+  .search-form {
+    margin-bottom: 16px;
+  }
+
+  .form-tip {
+    width: 100%;
+    font-size: 12px;
+    color: #94a3b8;
+    line-height: 1.6;
   }
 
   .pagination {

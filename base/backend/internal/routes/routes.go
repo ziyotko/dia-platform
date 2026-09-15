@@ -14,6 +14,9 @@ func Register(r *gin.Engine) {
 
 	api := r.Group("/base/api/v1")
 
+	// 文件控制器持有存储依赖，需实例化后复用（不能用 &FileController{} 零值）
+	fileCtl := controllers.NewFileController()
+
 	// 公开接口
 	auth := api.Group("/auth")
 	{
@@ -22,9 +25,8 @@ func Register(r *gin.Engine) {
 		auth.GET("/captcha", (&controllers.AuthController{}).Captcha)
 	}
 
-	// 需要登录
-	// 文件公开访问
-	api.GET("/files/:key", (&controllers.FileController{}).Serve)
+	// 文件公开访问（key 含日期目录，使用通配路由）
+	api.GET("/files/*key", fileCtl.Serve)
 
 	authorized := api.Group("", middleware.JWTAuth())
 	authorized.Use(middleware.OperationLog())
@@ -136,6 +138,7 @@ func Register(r *gin.Engine) {
 			msgs.GET("/:id", (&controllers.MessageController{}).Get)
 			msgs.POST("", (&controllers.MessageController{}).Create)
 			msgs.POST("/send", (&controllers.MessageController{}).Send)
+			msgs.POST("/read-all", (&controllers.MessageController{}).MarkAllRead)
 			msgs.POST("/:id/read", (&controllers.MessageController{}).MarkRead)
 			msgs.DELETE("/:id", (&controllers.MessageController{}).Delete)
 		}
@@ -167,9 +170,9 @@ func Register(r *gin.Engine) {
 
 		files := authorized.Group("/files")
 		{
-			files.POST("/upload", (&controllers.FileController{}).Upload)
-			files.GET("", (&controllers.FileController{}).List)
-			files.DELETE("/:id", (&controllers.FileController{}).Delete)
+			files.POST("/upload", fileCtl.Upload)
+			files.GET("", fileCtl.List)
+			files.DELETE("/:id", fileCtl.Delete)
 		}
 	}
 

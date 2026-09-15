@@ -83,16 +83,29 @@ func buildMenuTree(list []models.Menu, parentID uint64) []models.Menu {
 	return tree
 }
 
+// GetUserMenus 按用户角色聚合可见菜单树。
+// 平台超管（tenantID == 0）与租户管理员（is_admin）返回租户可见的全部启用菜单。
 func (s MenuService) GetUserMenus(userID, tenantID uint64) ([]models.Menu, error) {
 	// 通过用户的角色聚合菜单
 	var user models.User
 	if err := db.DB.Preload("Roles.Menus").First(&user, userID).Error; err != nil {
 		return nil, err
 	}
-	// 超级管理员或租户管理员返回所有可用菜单
+	// 超级管理员或租户管理员返回全部启用菜单
 	if user.IsAdmin {
-		return s.GetTree(tenantID, "")
+		all, err := s.List(tenantID, "")
+		if err != nil {
+			return nil, err
+		}
+		enabled := make([]models.Menu, 0, len(all))
+		for _, m := range all {
+			if m.Status == 1 {
+				enabled = append(enabled, m)
+			}
+		}
+		return buildMenuTree(enabled, 0), nil
 	}
+
 	menuMap := make(map[uint64]models.Menu)
 	for _, role := range user.Roles {
 		for _, m := range role.Menus {
@@ -101,9 +114,58 @@ func (s MenuService) GetUserMenus(userID, tenantID uint64) ([]models.Menu, error
 			}
 		}
 	}
-	var list []models.Menu
+	list := make([]models.Menu, 0, len(menuMap))
 	for _, m := range menuMap {
 		list = append(list, m)
 	}
-	return buildMenuTree(list, 0), nil
+
+	// 容错：历史数据可能只给角色分配了子菜单，需补齐父级，否则整棵子树不会出现在菜单树里
+	list, err := completeMenuAncestors(list)
+	if err != nil {
+		return nil, err
+	}
+	visible := make([]models.Menu, 0, len(list))
+	for _, m := range list {
+		if m.TenantID == 0 || m.TenantID == tenantID {
+			visible = append(visible, m)
+		}
+	}
+	return buildMenuTree(visible, 0), nil
+}
+
+// completeMenuAncestors 补齐给定菜单的所有祖先节点（按 id 去重）。
+func completeMenuAncestors(menus []models.Menu) ([]models.Menu, error) {
+	var all []models.Menu
+	if err := db.DB.Find(&all).Error; err != nil {
+		return nil, err
+	}
+	byID := make(map[uint64]models.Menu, len(all))
+	for _, m := range all {
+		byID[m.ID] = m
+	}
+
+	result := make(map[uint64]models.Menu, len(menus))
+	for _, m := range menus {
+		result[m.ID] = m
+	}
+	for _, m := range menus {
+		parentID := m.ParentID
+		for parentID != 0 {
+			if _, ok := result[parentID]; ok {
+				break
+			}
+			parent, ok := byID[parentID]
+			if !ok {
+				break
+			}
+			result[parentID] = parent
+			parentID = parent.ParentID
+		}
+	}
+
+	out := make([]models.Menu, 0, len(result))
+	for _, m := range result {
+		out = append(out, m)
+	}
+	return out, nil
 }

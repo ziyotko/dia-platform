@@ -11,6 +11,16 @@ import (
 type UserService struct{}
 
 func (s UserService) Create(u *models.User) error {
+	var count int64
+	if err := db.DB.Model(&models.User{}).
+		Where("tenant_id = ? AND username = ?", u.TenantID, u.Username).
+		Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		return errors.New("该租户下用户名已存在")
+	}
+
 	if u.Password == "" {
 		u.Password = "123456"
 	}
@@ -69,10 +79,18 @@ func (s UserService) GetByUsername(username string) (*models.User, error) {
 	return &u, err
 }
 
-func (s UserService) List(tenantID uint64, page, size int, keyword string) ([]models.User, int64, error) {
+// List 分页查询用户。tenantID 为当前登录用户所属租户：
+//   - 普通租户用户（tenantID > 0）只能看到本租户；
+//   - 平台超管（tenantID == 0）不传 filterTenantID 时查看全部租户，传则只看指定租户。
+func (s UserService) List(tenantID, filterTenantID uint64, page, size int, keyword string) ([]models.User, int64, error) {
 	var list []models.User
 	var total int64
-	query := db.DB.Model(&models.User{}).Where("tenant_id = ?", tenantID)
+	query := db.DB.Model(&models.User{})
+	if tenantID > 0 {
+		query = query.Where("tenant_id = ?", tenantID)
+	} else if filterTenantID > 0 {
+		query = query.Where("tenant_id = ?", filterTenantID)
+	}
 	if keyword != "" {
 		query = query.Where("username LIKE ? OR real_name LIKE ? OR phone LIKE ?", "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
 	}
@@ -92,12 +110,12 @@ func (s UserService) AssignRoles(userID uint64, roleIDs []uint64, tenantID uint6
 	}
 	var roles []models.Role
 	if len(roleIDs) > 0 {
-		roleQuery := db.DB.Where("id IN ?", roleIDs)
-		if tenantID > 0 {
-			roleQuery = roleQuery.Where("tenant_id = ?", tenantID)
-		}
-		if err := roleQuery.Find(&roles).Error; err != nil {
+		// 角色必须与用户同租户，避免把其他租户的角色分配给本租户用户
+		if err := db.DB.Where("id IN ? AND tenant_id = ?", roleIDs, user.TenantID).Find(&roles).Error; err != nil {
 			return err
+		}
+		if len(roles) == 0 {
+			return errors.New("所选角色不属于该用户所在租户")
 		}
 	}
 	return db.DB.Model(&user).Association("Roles").Replace(roles)

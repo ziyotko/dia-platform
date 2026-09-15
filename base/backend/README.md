@@ -21,7 +21,8 @@ go run cmd/server/main.go
 
 - 超级管理员：`admin / admin123`
 - 底座默认菜单（控制台、系统管理、消息管理、工作流管理及其子菜单）
-- 默认超级管理员角色，并关联所有底座菜单
+- 默认超级管理员角色，并关联所有底座菜单与全部接口权限点
+- 底座接口权限点（`base_permission`，按 `code` 幂等写入，新增接口只需在 `internal/seed/permission_seed.go` 补登记）
 
 ### 命令行参数
 
@@ -112,7 +113,7 @@ log:
 | POST | `/base/api/v1/auth/login` | 登录（支持租户编码、验证码） |
 | POST | `/base/api/v1/auth/init` | 初始化/重置超级管理员 |
 | GET  | `/base/api/v1/auth/captcha` | 获取图形验证码 |
-| GET  | `/base/api/v1/files/:key` | 文件公开访问 |
+| GET  | `/base/api/v1/files/*key` | 文件公开访问（key 含日期目录，如 `20260101/xxx.png`） |
 
 ### 登录后接口（均需要 JWT，并经过操作审计、接口权限校验）
 
@@ -130,7 +131,7 @@ log:
 | 菜单 | CRUD | `/base/api/v1/menus/tree` | 菜单树 |
 | 权限 | CRUD | `/base/api/v1/permissions/tree` | 权限树 |
 | 机构 | CRUD | `/base/api/v1/organizations/tree` | 机构树 |
-| 消息 | CRUD | `/base/api/v1/messages` | 含未读数、发送、标记已读 |
+| 消息 | CRUD | `/base/api/v1/messages` | 含未读数、发送、标记已读、全部已读（`POST /messages/read-all`）；`box=inbox/sent` 区分收发 |
 | 消息模板 | CRUD | `/base/api/v1/message-templates` | 模板管理 |
 | 操作日志 | GET/POST/GET | `/base/api/v1/operation-logs` | 列表、删除、清空、导出 |
 | 登录日志 | GET/POST/GET | `/base/api/v1/login-logs` | 列表、删除、清空、导出 |
@@ -143,12 +144,14 @@ log:
 
 - 所有登录接口默认挂载 `PermissionAuth` 中间件。
 - 基于 `base_permission` 表的 `method` + `path` 进行匹配，支持 `:param` 通配符。
-- 超级管理员（`tenantID == 0`）、白名单接口、空权限表场景均直接放行。
+- 放行顺序：平台超管（`tenantID == 0`）→ 租户管理员（`is_admin`）→ 白名单接口 → 未分配权限的普通用户仅放行 `GET`；其余按权限点精确匹配，未命中返回 403。
 - 详见 [docs/security.md](./docs/security.md)。
 
 ### 租户数据隔离
 
 - 带 `tenant_id` 的模型，按 ID 操作时 service 层接收 `tenantID` 参数，普通租户自动追加 `WHERE tenant_id = ?`，超级管理员不过滤。
+- 创建时统一使用 `controllers.resolveTenantID`：平台超管可通过请求体的 `tenantId` 指定目标租户，普通租户用户强制写入自身租户。
+- 列表查询：普通租户只看本租户；平台超管传 `tenantId` 查询参数则过滤，不传则查看全部租户。
 - `Tenant`、`App`、`Permission`、`Setting` 属于平台级资源，不执行租户隔离。
 - 详见 [docs/security.md](./docs/security.md)。
 

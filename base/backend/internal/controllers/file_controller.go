@@ -1,8 +1,9 @@
 package controllers
 
 import (
-	"fmt"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"base/internal/service"
 	"base/pkg/response"
@@ -66,8 +67,13 @@ func (ctl *FileController) Delete(c *gin.Context) {
 	response.OkWithMessage(c, "删除成功", nil)
 }
 
+// Serve 公开读取已上传文件。
+// 路由为 /base/api/v1/files/*key（key 形如 20260101/1700000000000000000_name.png，含目录分隔符）。
 func (ctl *FileController) Serve(c *gin.Context) {
-	key := c.Param("key")
-	path := fmt.Sprintf("./uploads/%s", key)
-	c.File(path)
+	key := strings.TrimPrefix(c.Param("key"), "/")
+	if key == "" || strings.Contains(key, "..") {
+		response.FailWithCode(c, response.CodeBadRequest, "非法文件路径")
+		return
+	}
+	c.File(filepath.Join("./uploads", filepath.FromSlash(key)))
 }

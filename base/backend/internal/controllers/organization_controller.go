@@ -18,7 +18,7 @@ func (ctl *OrganizationController) Create(c *gin.Context) {
 		response.FailWithCode(c, response.CodeBadRequest, "参数错误")
 		return
 	}
-	o.TenantID = c.GetUint64("tenantID")
+	o.TenantID = resolveTenantID(c, o.TenantID)
 	if err := ctl.service.Create(&o); err != nil {
 		response.Fail(c, err.Error())
 		return

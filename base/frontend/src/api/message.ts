@@ -10,9 +10,21 @@ export interface Message {
   content: string
   type: string
   priority: string
+  /** 2草稿 3已发送 */
   status: number
+  isRead: boolean
   readAt?: string
   sendAt?: string
+}
+
+export interface MessageQuery {
+  page: number
+  size: number
+  /** inbox 收件箱 / sent 发件箱 */
+  box?: 'inbox' | 'sent'
+  /** -1 全部，0 未读，1 已读 */
+  isRead?: number
+  status?: number
 }
 
 export interface MessageTemplate {
@@ -27,7 +39,7 @@ export interface MessageTemplate {
   description?: string
 }
 
-export function getMessageList(params: { page: number; size: number; status?: number }) {
+export function getMessageList(params: MessageQuery) {
   return request.get('/messages', { params })
 }
 
@@ -48,6 +60,11 @@ export function getUnreadCount() {
 
 export function markMessageRead(id: number) {
   return request.post(`/messages/${id}/read`)
+}
+
+/** 全部标为已读 */
+export function markAllMessageRead() {
+  return request.post('/messages/read-all', {})
 }
 
 export function deleteMessage(id: number) {

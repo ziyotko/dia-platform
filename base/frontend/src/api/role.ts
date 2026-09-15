@@ -2,14 +2,30 @@ import request from '@/utils/request'
 
 export interface Role {
   id: number
+  tenantId?: number
   code: string
   name: string
   status: number
   remark?: string
+  menus?: { id: number }[]
+  permissions?: { id: number }[]
 }
 
-export function getRoleList(params: { page: number; size: number; keyword?: string }) {
+export interface RoleQuery {
+  page: number
+  size: number
+  keyword?: string
+  /** 平台超管可按租户过滤，不传表示全部租户 */
+  tenantId?: number
+}
+
+export function getRoleList(params: RoleQuery) {
   return request.get('/roles', { params })
+}
+
+/** 角色详情（含已分配菜单与权限） */
+export function getRole(id: number) {
+  return request.get(`/roles/${id}`)
 }
 
 export function createRole(data: Role) {

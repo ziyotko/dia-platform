@@ -25,6 +25,10 @@ request.interceptors.request.use(
 
 request.interceptors.response.use(
   (response) => {
+    // 文件下载/导出等非统一响应体：直接返回原始数据，跳过 {code} 校验
+    if (response.config.responseType === 'blob' || (response.config as any).raw) {
+      return (response.config as any).raw ? response : response.data
+    }
     const res = response.data
     if (res.code !== 0 && res.code !== 200) {
       ElMessage.error(res.message || '请求失败')
@@ -38,7 +42,11 @@ request.interceptors.response.use(
     return res
   },
   (error) => {
-    ElMessage.error(error.response?.data?.message || '网络错误')
+    // raw / 下载请求由调用方自行处理错误提示，避免重复弹窗
+    const config: any = error.config || {}
+    if (!config.raw && config.responseType !== 'blob') {
+      ElMessage.error(error.response?.data?.message || '网络错误')
+    }
     return Promise.reject(error)
   }
 )

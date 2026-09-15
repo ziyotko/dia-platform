@@ -26,17 +26,22 @@
 
 ### 1.4 放行策略
 
-中间件对以下情况直接放行：
+中间件按以下顺序判定：
 
-1. **超级管理员**：`tenantID == 0` 的用户直接放行。
-2. **白名单接口**：用户基础信息、菜单、权限、改密、仪表盘、我的应用等基础接口。
+1. **平台超级管理员**：`tenantID == 0` 的用户直接放行。
+2. **租户管理员**：`base_user.is_admin = 1` 的用户在本租户内直接放行（与「管理员可见全部菜单」保持同一口径；数据仍由 service 层的 `tenant_id` 条件隔离）。
+3. **白名单接口**：用户基础信息、菜单、权限、改密、仪表盘、我的应用、未读消息数等基础接口。
    - `GET /base/api/v1/auth/info`
    - `GET /base/api/v1/auth/menus`
    - `GET /base/api/v1/auth/permissions`
    - `POST /base/api/v1/auth/change-password`
    - `GET /base/api/v1/dashboard/stats`
    - `GET /base/api/v1/app-instances/my`
-3. **空权限表兼容**：若用户没有任何角色关联的有效权限记录，直接放行，避免新系统或历史数据导致全部接口不可用。
+   - `GET /base/api/v1/messages/unread-count`
+4. **未分配任何权限的普通用户**：仅放行 `GET`（只读），写操作（POST/PUT/DELETE）返回 403「未分配该操作的接口权限，请联系管理员」。
+5. 其余请求按 `base_permission` 的 `method + path` 匹配，未命中返回 403「无权限访问该接口」。
+
+> ⚠️ 历史行为（已取消）：早期版本在「用户没有任何权限记录」时 **整体放行**，导致全新部署下所有登录用户可调用全部写接口。
 
 ### 1.5 挂载方式
 
@@ -50,7 +55,15 @@ authorized.Use(middleware.PermissionAuth())
 
 ### 1.6 权限配置示例
 
-在 `base_permission` 表中新增一条记录：
+底座已内置权限种子 `internal/seed/permission_seed.go`（幂等，按 `code` 写入/更新），启动时自动写入：
+
+- 各模块的分组节点（`type=menu`，仅用于权限树展示，不参与接口匹配）；
+- 每个接口的权限点（`type=api`，`method` + 相对路径，如 `POST /users`、`PUT /users/:id`）；
+- 全部底座权限点会自动授予平台超级管理员角色（`tenant_id=0, code=super_admin`），保证升级后平台管理员不被拦截。
+
+新增接口时，在 `basePermissionSeeds` 中补一条即可，无需手工建数据；普通用户角色的权限请在「角色管理 → 分配权限」中勾选。
+
+手工新增权限记录时，字段含义如下：
 
 | app_code | code | name | type | method | path | status |
 |----------|------|------|------|--------|------|--------|
@@ -122,7 +135,7 @@ func (ctl *UserController) Update(c *gin.Context) {
 | Role | `Update/Delete/GetByID` | `Update/Delete/Get` |
 | Menu | `Update/Delete/GetByID` | `Update/Delete` |
 | Organization | `Update/Delete/GetByID` | `Update/Delete/Get` |
-| AppInstance | `Update/Delete/GetByID` | `Update/Delete/List`（Create 已强制当前租户） |
+| AppInstance | `Update/Delete/GetByID` | `Update/Delete/List` |
 | Message | `Update/Delete/GetByID` | `Delete/Get`（无 Update 接口） |
 | MessageTemplate | `Update/Delete/GetByID` | `Update/Delete/Get` |
 | Dict | `Update/Delete/GetByID` | `Update/Delete/Get` |
@@ -130,15 +143,28 @@ func (ctl *UserController) Update(c *gin.Context) {
 
 > 注：Role 的 `AssignMenus`、`AssignPermissions`，User 的 `AssignRoles`、`ResetPassword`，以及各模块的 `List/Tree` 查询均已按当前租户过滤。
 
-### 2.4 List/Tree 查询
+### 2.4 List 查询与跨租户管理
 
-列表和树形接口本身已按 `tenantID` 过滤：
+列表接口的租户口径统一为：
 
 ```go
-query := db.DB.Model(&models.User{}).Where("tenant_id = ?", tenantID)
+if tenantID > 0 {
+    query = query.Where("tenant_id = ?", tenantID)      // 普通租户：只能看本租户
+} else if filterTenantID > 0 {
+    query = query.Where("tenant_id = ?", filterTenantID) // 平台超管：按 tenantId 查询参数过滤
+}                                                        // 平台超管不传 tenantId：查看全部租户
 ```
 
-### 2.5 不需要租户隔离的模块
+### 2.5 创建时的目标租户（重要）
+
+带 `tenant_id` 的资源在创建时统一使用 `controllers.resolveTenantID(c, requested)`：
+
+- 平台超级管理员（`tenantID == 0`）：可用请求体中的 `tenantId` 指定目标租户（0 表示平台级）；
+- 普通租户用户：**忽略请求中的 `tenantId`**，强制写入自身租户，防止跨租户写入。
+
+涉及的创建接口：`POST /users`、`POST /roles`、`POST /app-instances`、`POST /dicts`、`POST /organizations`、`POST /message-templates`。
+
+### 2.6 不需要租户隔离的模块
 
 #### Tenant 租户管理
 
@@ -161,6 +187,7 @@ query := db.DB.Model(&models.User{}).Where("tenant_id = ?", tenantID)
 - [ ] 模型是否包含 `tenant_id` 字段。
 - [ ] `Update`/`Delete`/`GetByID` 方法是否接收并使用了 `tenantID` 参数。
 - [ ] Controller 是否从 `c.GetUint64("tenantID")` 获取当前租户 ID 并传入 service。
+- [ ] 创建接口是否使用 `resolveTenantID(c, requested)` 而不是直接赋值 `c.GetUint64("tenantID")`。
 - [ ] 超级管理员（`tenantID == 0`）行为是否符合预期。
 - [ ] 跨租户请求是否返回"资源不存在"或 403，而不是泄露其他租户数据。
-- [ ] 该接口是否已在 `base_permission` 表中配置，并分配给需要访问的角色。
+- [ ] 该接口是否已在 `internal/seed/permission_seed.go` 的 `basePermissionSeeds` 中登记。
