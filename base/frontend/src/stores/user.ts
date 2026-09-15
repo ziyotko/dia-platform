@@ -70,6 +70,8 @@ export const useUserStore = defineStore('user', () => {
   }
 
   function logout() {
+    // 尽力通知服务端吊销 token（失败也不阻断前端登出）
+    authApi.logout(token.value).catch(() => undefined)
     clearSession()
     router.push('/login')
   }

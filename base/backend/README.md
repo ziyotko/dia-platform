@@ -32,7 +32,7 @@ go run cmd/server/main.go -mock-data    # 额外插入模拟机构数据（仅�
 
 ### 手动初始化管理员
 
-若需要重置超级管理员密码，可调用公开接口：
+初始化超管接口（仅在平台还没有 admin 账号时创建，不提供重置密码——重置请由管理员登录后在「用户管理 → 重置密码」操作）：
 
 ```bash
 POST /base/api/v1/auth/init
@@ -86,6 +86,9 @@ server:
   captcha_rate_window_seconds: 60
   init_rate_limit: 5
   init_rate_window_seconds: 60
+  # 上传目录与单文件大小上限（MB）
+  upload_dir: ./uploads
+  max_upload_mb: 50
 
 mysql:
   host: 127.0.0.1
@@ -115,7 +118,7 @@ jwt:
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | POST | `/base/api/v1/auth/login` | 登录（支持租户编码、验证码） |
-| POST | `/base/api/v1/auth/init` | 初始化/重置超级管理员 |
+| POST | `/base/api/v1/auth/init` | 首次部署时创建超级管理员（已存在则报错） |
 | GET  | `/base/api/v1/auth/captcha` | 获取图形验证码（5 位数字+字母，返回 `captcha_id` / `captcha_img`） |
 | GET  | `/base/api/v1/site-info` | 站点公开配置（`captchaEnabled`，登录页据此决定是否展示验证码） |
 | GET  | `/base/api/v1/files/*key` | 文件公开访问（key 含日期目录，如 `20260101/xxx.png`） |
@@ -126,7 +129,7 @@ jwt:
 
 | 分组 | 方法 | 路径 | 说明 |
 |------|------|------|------|
-| 认证 | GET/POST | `/base/api/v1/auth/info` / `change-password` | 当前用户、修改密码 |
+| 认证 | GET/POST | `/base/api/v1/auth/info` / `change-password` / `logout` | 当前用户、修改密码（改密后旧 token 失效）、登出（token 进黑名单） |
 | 仪表盘 | GET | `/base/api/v1/dashboard/stats` | 仪表盘统计 |
 | 租户 | CRUD | `/base/api/v1/tenants` | 仅限超级管理员 |
 | 系统设置 | GET/PUT/POST | `/base/api/v1/settings` | 含邮件测试 |
@@ -142,7 +145,7 @@ jwt:
 | 流程实例 | POST/GET/DELETE | `/base/api/v1/workflow-instances` | `POST` 发起（白名单）、`GET` 列表（非管理员强制只看自己发起的）、`GET /:id` 详情（含任务与流转日志）、`POST /:id/cancel` 撤销、`DELETE /:id` 删除（仅管理员） |
 | 审批任务 | GET/POST | `/base/api/v1/workflow-tasks` | `GET` 我的待办/已办（`box=todo\|done`）、`POST /:id/approve` 通过、`POST /:id/reject` 驳回（均为白名单，归属校验在服务层） |
 | 机构 | CRUD | `/base/api/v1/organizations/tree` | 机构树 |
-| 消息 | CRUD | `/base/api/v1/messages` | 含未读数、发送、标记已读、全部已读（`POST /messages/read-all`）；`box=inbox/sent` 区分收发 |
+| 消息 | CRUD | `/base/api/v1/messages` | 草稿（`POST /messages`、`PUT /messages/:id`、`POST /messages/:id/send`）、发送（`POST /messages/send`，支持 `templateCode` + `vars` 按模板渲染）、未读数、标记已读、全部已读；`box=inbox/sent` 区分收发 |
 | 消息模板 | CRUD | `/base/api/v1/message-templates` | 模板管理 |
 | 操作日志 | GET/POST/GET | `/base/api/v1/operation-logs` | 列表、删除、清空、导出 |
 | 登录日志 | GET/POST/GET | `/base/api/v1/login-logs` | 列表、删除、清空、导出 |

@@ -106,20 +106,52 @@ func (s AuthService) GetUserPermissions(userID uint64) ([]string, error) {
 	return list, nil
 }
 
-func (s AuthService) InitSuperAdmin(password string) error {
+// EnsureSuperAdmin 幂等地保证平台超级管理员存在（首次部署/被误删后可恢复）。
+// 返回是否本次新建。平台超级管理员是底座唯一的初始账号，实现只保留在这里，
+// 启动流程（main）与 /auth/init 接口共用，避免两份实现口径不一致。
+func (s AuthService) EnsureSuperAdmin(password string) (bool, error) {
 	var count int64
-	db.DB.Model(&models.User{}).Where("tenant_id = ?", 0).Count(&count)
-	if count > 0 {
-		return errors.New("超级管理员已存在")
+	if err := db.DB.Model(&models.User{}).
+		Where("tenant_id = ? AND username = ?", models.PlatformTenantID, "admin").
+		Count(&count).Error; err != nil {
+		return false, err
 	}
-	hash, _ := utils.HashPassword(password)
+	if count > 0 {
+		return false, nil
+	}
+	if password == "" {
+		password = "admin123"
+	}
+	if err := validatePassword(password); err != nil {
+		return false, err
+	}
+	hash, err := utils.HashPassword(password)
+	if err != nil {
+		return false, err
+	}
 	admin := models.User{
-		TenantID: 0,
+		TenantID: models.PlatformTenantID,
 		Username: "admin",
 		Password: hash,
 		RealName: "超级管理员",
 		Status:   1,
 		IsAdmin:  true,
 	}
-	return db.DB.Create(&admin).Error
+	if err := db.DB.Create(&admin).Error; err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// InitSuperAdmin 首次部署时创建平台超级管理员（/auth/init）。
+// 已存在时返回错误而不会重置密码：重置请由管理员登录后在「用户管理 → 重置密码」操作。
+func (s AuthService) InitSuperAdmin(password string) error {
+	created, err := s.EnsureSuperAdmin(password)
+	if err != nil {
+		return err
+	}
+	if !created {
+		return errors.New("超级管理员已存在")
+	}
+	return nil
 }

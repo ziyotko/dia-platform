@@ -74,7 +74,8 @@ func (ctl *UserController) Update(c *gin.Context) {
 func (ctl *UserController) Delete(c *gin.Context) {
 	id := uint64(parseID(c))
 	tenantID := c.GetUint64("tenantID")
-	if err := ctl.service.Delete(id, tenantID); err != nil {
+	// 传入操作者 ID：不允许删除当前登录用户（避免把自己删掉后无法管理）
+	if err := ctl.service.Delete(id, c.GetUint64("userID"), tenantID); err != nil {
 		response.Fail(c, err.Error())
 		return
 	}

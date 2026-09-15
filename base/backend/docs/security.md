@@ -281,7 +281,49 @@ if tenantID > 0 {
 
 ---
 
-## 6. 开发 checklist
+## 6. Token 吊销（登出 / 改密）
+
+实现：`internal/service/token_service.go` + `internal/middleware/auth.go`。全部状态存 Redis，不新增数据表：
+
+| Key | 写入时机 | 含义 |
+|-----|----------|------|
+| `auth:token:revoked:<jti>` | `POST /auth/logout` | 该 token 已登出，TTL = 剩余有效期 |
+| `auth:user:revoked-before:<userID>` | 修改密码成功后 | 该时刻之前签发的 token 全部失效，TTL = JWT 有效期 |
+
+- `JWTAuth` 在解析后校验 `jti` 黑名单与用户级失效时间，命中返回 `401 登录状态已失效，请重新登录`。
+- Redis 不可用时 **fail-open**（放行并记 warn 日志）：宁可短暂失去吊销能力，也不能让全部用户无法登录。
+- 前端 `stores/user.ts` 的 `logout()` 会尽力调用登出接口（显式携带 token），随后清理本地会话；
+  拦截器遇到 401 时只调 `clearSession()`（不再调 `logout()`，避免递归请求）。
+
+## 7. 写操作保护（删除/引用）
+
+- **引用校验**：租户（用户/角色/应用实例/流程角色/流程定义/流程实例）、应用（应用实例）、机构（子机构）、
+  菜单（子菜单）、权限（子权限）在存在下级或引用时拒绝删除，并返回具体数量。
+- **级联清理**：删除用户时清理 `base_user_role` / `base_workflow_role_user`；删除角色时清理
+  `base_role_menu` / `base_role_permission` / `base_user_role`；删除菜单清理 `base_role_menu`；
+  删除权限清理 `base_role_permission`。均在事务内完成。
+- **账号保护**：不能删除当前登录用户；平台内置 `admin` 账号与 `tenant_id=0, code=super_admin` 角色不可删除。
+- **应用实例唯一**：同一租户同一应用不可重复开通（应用层校验，软删除后允许重新开通）。
+
+## 8. 文件上传
+
+- 单文件大小上限：`server.max_upload_mb`（默认 50），控制器按 header 快速拒绝，存储层再用 `io.LimitReader` 流式兜底
+  并删除超限的临时文件。
+- 扩展名白名单：见 `FileService.IsAllowedType`。
+- 文件名净化：`storage.sanitizeFileName` 去掉目录部分与危险字符/控制字符，避免 `../` 目录穿越与超长文件名。
+- 存储根目录在初始化时转为**绝对路径**（`filepath.Abs`），读取（`Resolve`）与写入都校验结果位于根目录内；
+  `GET /files/*key` 也走同一个校验，不再依赖进程工作目录。
+
+## 9. 审计日志
+
+- 请求体中含密码的接口（改密、重置密码、`PUT /settings`）**不记录原始 body**，只写 `[敏感参数已脱敏]`。
+- 请求体/响应体写入长度上限 4KB（超出截断），避免大响应把审计表撑爆。
+- 日志写入为**同步**执行：早期用 goroutine 异步写库，进程退出/重启时会丢日志。
+- 导出 CSV 带 UTF-8 BOM 并按 RFC4180 转义字段（中文在 Excel 不乱码、字段含逗号不会错列）。
+
+---
+
+## 10. 开发 checklist
 
 新增一个需要按 ID 操作的接口时，请确认：
 
@@ -295,3 +337,7 @@ if tenantID > 0 {
 - [ ] 跨租户请求是否返回"资源不存在"或 403，而不是泄露其他租户数据。
 - [ ] 该接口是否已在 `internal/seed/permission_seed.go` 的 `basePermissionSeeds` 中登记。
 - [ ] 若前端需要控制按钮显隐，权限点的 `code` 是否与 `userStore.can('base:xxx:yyy')` 中使用的字符串一致（超管/租户管理员由 `can()` 自动放行）。
+- [ ] 更新前是否校验记录存在/归属（`ensureRecordExists`），删除后是否校验命中行数（`ensureDeleteAffected`）——
+      GORM 命中 0 行时不报错，不校验会出现「提示成功但数据未变」。
+- [ ] 新的删除接口是否需要引用校验与关联表清理（参考 `Role/User/Menu/Permission` 的实现）。
+- [ ] 是否需要在 Redis 中做失效处理（如登出/改密后的 token 吊销）。

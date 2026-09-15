@@ -11,6 +11,7 @@
               <el-radio-button :label="1">已读</el-radio-button>
             </el-radio-group>
             <el-button v-if="activeTab === 'inbox' && can('base:message:read-all')" @click="handleMarkAll">全部标为已读</el-button>
+            <el-button v-if="can('base:message:create')" @click="handleNewDraft">新建草稿</el-button>
             <el-button v-if="can('base:message:send')" type="primary" @click="handleSend">发送消息</el-button>
           </div>
         </div>
@@ -53,8 +54,12 @@
               </template>
             </el-table-column>
             <el-table-column prop="sendAt" label="发送时间" width="180" />
-            <el-table-column label="操作" width="120" fixed="right">
+            <el-table-column label="操作" width="220" fixed="right">
               <template #default="{ row }">
+                <template v-if="row.status === 2">
+                  <el-button v-if="can('base:message:update')" link type="primary" @click="handleEditDraft(row)">编辑</el-button>
+                  <el-button v-if="can('base:message:send-draft')" link type="success" @click="handleSendDraft(row)">发送</el-button>
+                </template>
                 <el-button v-if="can('base:message:delete')" link type="danger" @click="handleDelete(row)">删除</el-button>
               </template>
             </el-table-column>
@@ -72,20 +77,50 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="sendDialogVisible" title="发送消息" width="600px">
+    <el-dialog
+      v-model="sendDialogVisible"
+      :title="dialogTitle"
+      width="620px"
+      @closed="resetDialog"
+    >
       <el-form :model="sendForm" :rules="sendRules" ref="sendFormRef" label-width="100px">
+        <el-form-item v-if="dialogMode === 'send'" label="使用模板">
+          <el-select
+            v-model="templateCode"
+            clearable
+            placeholder="可不选，直接在下方填写标题与内容"
+            style="width: 100%"
+            @change="handleTemplateChange"
+          >
+            <el-option v-for="t in templates" :key="t.code" :label="`${t.name}（${t.code}）`" :value="t.code" />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="templateVars.length" label="模板变量">
+          <div class="template-vars">
+            <div v-for="v in templateVars" :key="v.key" class="template-var">
+              <span class="template-var-key">{{ v.key }}</span>
+              <el-input v-model="v.value" :placeholder="v.label" @input="applyTemplate" />
+            </div>
+          </div>
+        </el-form-item>
         <el-form-item label="接收类型" prop="receiverType">
           <el-radio-group v-model="sendForm.receiverType">
             <el-radio-button label="user">指定用户</el-radio-button>
             <el-radio-button label="all">全员广播</el-radio-button>
           </el-radio-group>
+          <div v-if="dialogMode === 'draft'" class="form-tip">草稿支持单个接收人或全员广播</div>
         </el-form-item>
         <el-form-item label="接收用户" v-if="sendForm.receiverType === 'user'">
-          <el-select v-model="sendForm.receiverIds" multiple placeholder="请选择" style="width: 100%">
+          <el-select
+            v-model="sendForm.receiverIds"
+            :multiple="dialogMode === 'send'"
+            placeholder="请选择"
+            style="width: 100%"
+          >
             <el-option v-for="u in userOptions" :key="u.id" :label="u.username" :value="u.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="发送渠道">
+        <el-form-item v-if="dialogMode === 'send'" label="发送渠道">
           <el-select v-model="sendForm.channel" style="width: 100%">
             <el-option label="站内信" value="in-app" />
             <el-option label="邮件（额外发送，需在系统设置中配置 SMTP）" value="email" />
@@ -116,7 +151,8 @@
       </el-form>
       <template #footer>
         <el-button @click="sendDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSendSubmit">发送</el-button>
+        <el-button v-if="dialogMode === 'draft'" type="primary" :loading="submitting" @click="handleSubmitDialog">{{ editingDraftId ? '保存草稿' : '创建草稿' }}</el-button>
+        <el-button v-else type="primary" :loading="submitting" @click="handleSubmitDialog">发送</el-button>
       </template>
     </el-dialog>
 
@@ -129,11 +165,22 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getMessageList, sendMessage, markMessageRead, markAllMessageRead, deleteMessage } from '@/api/message'
+import {
+  getMessageList,
+  sendMessage,
+  markMessageRead,
+  markAllMessageRead,
+  deleteMessage,
+  createMessageDraft,
+  updateMessageDraft,
+  sendMessageDraft,
+  getMessageTemplateList,
+  renderMessageTemplate
+} from '@/api/message'
 import { getUserList } from '@/api/user'
-import type { Message } from '@/api/message'
+import type { Message, MessageTemplate } from '@/api/message'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
@@ -153,6 +200,13 @@ const viewDialogVisible = ref(false)
 const currentMessage = ref<Message | null>(null)
 const sendFormRef = ref<any>(null)
 const userOptions = ref<any[]>([])
+// 弹窗模式：send 直接发送 / draft 存为草稿
+const dialogMode = ref<'send' | 'draft'>('send')
+const editingDraftId = ref<number | null>(null)
+const submitting = ref(false)
+const templates = ref<MessageTemplate[]>([])
+const templateCode = ref('')
+const templateVars = ref<{ key: string; label: string; value: string }[]>([])
 const sendForm = reactive({
   receiverType: 'user',
   receiverIds: [] as number[],
@@ -161,6 +215,11 @@ const sendForm = reactive({
   priority: 'normal',
   title: '',
   content: ''
+})
+
+const dialogTitle = computed(() => {
+  if (dialogMode.value === 'draft') return editingDraftId.value ? '编辑草稿' : '新建草稿'
+  return '发送消息'
 })
 
 const priorityMap: Record<string, { label: string; type: any }> = {
@@ -211,24 +270,134 @@ const handleMarkAll = async () => {
   notifyUnreadChanged()
 }
 
-const handleSend = async () => {
-  sendFormRef.value?.resetFields()
-  sendForm.receiverIds = []
-  sendForm.receiverType = 'user'
+// 打开弹窗（mode=send 发送 / draft 草稿）
+const openDialog = async (mode: 'send' | 'draft', draft?: Message) => {
+  dialogMode.value = mode
+  editingDraftId.value = draft?.id ?? null
+  sendForm.receiverType = draft && draft.receiverId === 0 ? 'all' : 'user'
+  sendForm.receiverIds = draft && draft.receiverId ? [draft.receiverId] : []
   sendForm.channel = 'in-app'
-  sendForm.title = ''
-  sendForm.content = ''
+  sendForm.type = draft?.type || 'notice'
+  sendForm.priority = draft?.priority || 'normal'
+  sendForm.title = draft?.title || ''
+  sendForm.content = draft?.content || ''
+  templateCode.value = ''
+  templateVars.value = []
   sendDialogVisible.value = true
-  const res: any = await getUserList({ page: 1, size: 1000 })
-  userOptions.value = res.data.list || []
+
+  // 接收人下拉：复用用户列表；模板仅发送模式需要
+  try {
+    const res: any = await getUserList({ page: 1, size: 1000 })
+    userOptions.value = res.data.list || []
+  } catch (error) {
+    userOptions.value = []
+  }
+  if (mode === 'send' && templates.value.length === 0) {
+    try {
+      const res: any = await getMessageTemplateList({ page: 1, size: 200 })
+      templates.value = res.data.list || []
+    } catch (error) {
+      // 无模板权限时降级为手写标题与内容
+      templates.value = []
+    }
+  }
 }
 
-const handleSendSubmit = async () => {
+const handleSend = () => openDialog('send')
+const handleNewDraft = () => openDialog('draft')
+const handleEditDraft = (row: Message) => openDialog('draft', row)
+
+// 选择模板：填入标题/内容，并按 variables 定义生成变量输入框
+const handleTemplateChange = () => {
+  templateVars.value = []
+  const tpl = templates.value.find((t) => t.code === templateCode.value)
+  if (!tpl) return
+  let parsed: Record<string, string> = {}
+  if (tpl.variables) {
+    try {
+      parsed = JSON.parse(tpl.variables)
+    } catch (error) {
+      parsed = {}
+    }
+  }
+  templateVars.value = Object.keys(parsed).map((key) => ({ key, label: parsed[key], value: '' }))
+  applyTemplate()
+}
+
+// 用模板 + 变量渲染标题与内容（未填变量的占位符原样保留，便于人工补齐）
+const applyTemplate = () => {
+  const tpl = templates.value.find((t) => t.code === templateCode.value)
+  if (!tpl) return
+  const vars: Record<string, string> = {}
+  templateVars.value.forEach((v) => (vars[v.key] = v.value))
+  sendForm.title = renderMessageTemplate(tpl.subject || '', vars)
+  sendForm.content = renderMessageTemplate(tpl.content || '', vars)
+}
+
+const resetDialog = () => {
+  editingDraftId.value = null
+  templateCode.value = ''
+  templateVars.value = []
+  submitting.value = false
+}
+
+const handleSubmitDialog = async () => {
   const valid = await sendFormRef.value?.validate().catch(() => false)
   if (!valid) return
-  await sendMessage({ ...sendForm })
+
+  const isBroadcast = sendForm.receiverType === 'all'
+  const receiverIds = isBroadcast ? [] : sendForm.receiverIds
+  if (!isBroadcast && receiverIds.length === 0) {
+    ElMessage.warning('请选择接收用户')
+    return
+  }
+  if (dialogMode.value === 'draft' && receiverIds.length > 1) {
+    ElMessage.warning('草稿支持单个接收人，请只选择一个用户')
+    return
+  }
+
+  submitting.value = true
+  try {
+    if (dialogMode.value === 'draft') {
+      const payload = {
+        receiverId: isBroadcast ? 0 : receiverIds[0],
+        title: sendForm.title,
+        content: sendForm.content,
+        type: sendForm.type,
+        priority: sendForm.priority
+      }
+      if (editingDraftId.value) {
+        await updateMessageDraft(editingDraftId.value, payload)
+        ElMessage.success('草稿已保存')
+      } else {
+        await createMessageDraft(payload)
+        ElMessage.success('草稿已创建')
+      }
+      activeTab.value = 'sent'
+    } else {
+      await sendMessage({
+        receiverType: isBroadcast ? 'all' : 'user',
+        receiverIds,
+        channel: sendForm.channel,
+        type: sendForm.type,
+        priority: sendForm.priority,
+        title: sendForm.title,
+        content: sendForm.content
+      })
+      ElMessage.success('发送成功')
+    }
+    sendDialogVisible.value = false
+    fetchData()
+  } finally {
+    submitting.value = false
+  }
+}
+
+// 发送已有草稿
+const handleSendDraft = async (row: Message) => {
+  await ElMessageBox.confirm('确认发送该草稿？', '提示', { type: 'warning' })
+  await sendMessageDraft(row.id)
   ElMessage.success('发送成功')
-  sendDialogVisible.value = false
   fetchData()
 }
 
@@ -281,6 +450,26 @@ onMounted(fetchData)
     font-size: 12px;
     color: #94a3b8;
     line-height: 1.6;
+  }
+  .template-vars {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .template-var {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .template-var-key {
+      flex: 0 0 auto;
+      font-size: 12px;
+      color: #64748b;
+      background: #f1f5f9;
+      border-radius: 4px;
+      padding: 2px 6px;
+    }
   }
   .pagination {
     margin-top: 16px;

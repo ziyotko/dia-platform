@@ -1,8 +1,7 @@
 package service
 
 import (
-	"fmt"
-	"strings"
+	"strconv"
 	"time"
 
 	"base/internal/models"
@@ -80,20 +79,20 @@ func (s LoginLogService) Export(q LoginLogListQuery) (string, error) {
 		return "", err
 	}
 
-	var sb strings.Builder
+	var sb = newCSVBuilder()
 	sb.WriteString("ID,租户ID,用户ID,用户名,IP,UserAgent,状态,消息,登录时间\n")
 	for _, log := range list {
 		status := "成功"
 		if log.Status == 0 {
 			status = "失败"
 		}
-		sb.WriteString(fmt.Sprintf("%d,%d,%d,%s,%s,\"%s\",%s,%s,%s\n",
-			log.ID,
-			log.TenantID,
-			log.UserID,
+		sb.WriteString(csvLine(
+			strconv.FormatUint(log.ID, 10),
+			strconv.FormatUint(log.TenantID, 10),
+			strconv.FormatUint(log.UserID, 10),
 			log.Username,
 			log.IP,
-			strings.ReplaceAll(log.Agent, "\"", "\"\""),
+			log.Agent,
 			status,
 			log.Message,
 			log.CreatedAt.Format(time.DateTime),

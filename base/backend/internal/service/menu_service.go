@@ -1,8 +1,13 @@
 package service
 
 import (
+	"errors"
+	"fmt"
+
 	"base/internal/models"
 	"base/pkg/db"
+
+	"gorm.io/gorm"
 )
 
 type MenuService struct{}
@@ -38,23 +43,29 @@ func (s MenuService) Update(m *models.Menu, tenantID uint64) error {
 	}).Error
 }
 
+// Delete 删除菜单：存在子菜单时拒绝删除；同时解除与角色的关联，避免角色菜单里残留脏数据。
 func (s MenuService) Delete(id uint64, tenantID uint64) error {
-	db := db.DB.Where("id = ?", id)
-	if tenantID > 0 {
-		db = db.Where("tenant_id = ?", tenantID)
-	}
-	return ensureDeleteAffected(db.Delete(&models.Menu{}), msgNotOwnedOrMissingDelete)
-}
-
-func (s MenuService) GetByID(id uint64, tenantID uint64) (*models.Menu, error) {
-	var m models.Menu
-	query := db.DB.Where("id = ?", id)
-	// 读取口径：本租户 + 平台内置（tenant_id = 0）均可读；写操作仍限本租户
-	if tenantID > 0 {
-		query = query.Where("tenant_id = ? OR tenant_id = 0", tenantID)
-	}
-	err := query.First(&m).Error
-	return &m, err
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		query := tx.Where("id = ?", id)
+		if tenantID > 0 {
+			query = query.Where("tenant_id = ?", tenantID)
+		}
+		var menu models.Menu
+		if err := query.First(&menu).Error; err != nil {
+			return errors.New(msgNotOwnedOrMissingDelete)
+		}
+		var children int64
+		if err := tx.Model(&models.Menu{}).Where("parent_id = ?", menu.ID).Count(&children).Error; err != nil {
+			return err
+		}
+		if children > 0 {
+			return fmt.Errorf("该菜单下还有 %d 个子菜单，请先删除子菜单", children)
+		}
+		if err := tx.Exec("DELETE FROM base_role_menu WHERE menu_id = ?", menu.ID).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&menu).Error
+	})
 }
 
 func (s MenuService) List(tenantID uint64, appCode string) ([]models.Menu, error) {

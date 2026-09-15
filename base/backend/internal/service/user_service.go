@@ -8,6 +8,8 @@ import (
 	"base/internal/models"
 	"base/pkg/db"
 	"base/pkg/utils"
+
+	"gorm.io/gorm"
 )
 
 type UserService struct{}
@@ -77,12 +79,32 @@ func (s UserService) Update(u *models.User, tenantID uint64) error {
 	return query.Updates(updates).Error
 }
 
-func (s UserService) Delete(id uint64, tenantID uint64) error {
-	query := db.DB.Where("id = ?", id)
-	if tenantID > 0 {
-		query = query.Where("tenant_id = ?", tenantID)
+// Delete 删除用户：不能删除自己；平台内置 admin 账号受保护；
+// 同时清理角色与流程角色关联，避免残留脏关联数据。
+func (s UserService) Delete(id, operatorID uint64, tenantID uint64) error {
+	if id == operatorID {
+		return errors.New("不能删除当前登录用户")
 	}
-	return ensureDeleteAffected(query.Delete(&models.User{}), "用户不存在或不属于当前租户")
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		var user models.User
+		query := tx.Where("id = ?", id)
+		if tenantID > 0 {
+			query = query.Where("tenant_id = ?", tenantID)
+		}
+		if err := query.First(&user).Error; err != nil {
+			return errors.New("用户不存在或不属于当前租户")
+		}
+		if models.IsPlatformTenant(user.TenantID) && user.Username == "admin" {
+			return errors.New("平台超级管理员账号不允许删除")
+		}
+		if err := tx.Exec("DELETE FROM base_user_role WHERE user_id = ?", user.ID).Error; err != nil {
+			return err
+		}
+		if err := tx.Exec("DELETE FROM base_workflow_role_user WHERE user_id = ?", user.ID).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&user).Error
+	})
 }
 
 func (s UserService) GetByID(id uint64, tenantID uint64) (*models.User, error) {
@@ -92,12 +114,6 @@ func (s UserService) GetByID(id uint64, tenantID uint64) (*models.User, error) {
 		db = db.Where("tenant_id = ?", tenantID)
 	}
 	err := db.First(&u, id).Error
-	return &u, err
-}
-
-func (s UserService) GetByUsername(username string) (*models.User, error) {
-	var u models.User
-	err := db.DB.Where("username = ?", username).First(&u).Error
 	return &u, err
 }
 

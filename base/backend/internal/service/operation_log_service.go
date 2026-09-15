@@ -1,8 +1,7 @@
 package service
 
 import (
-	"fmt"
-	"strings"
+	"strconv"
 	"time"
 
 	"base/internal/models"
@@ -96,17 +95,17 @@ func (s OperationLogService) Export(q LogListQuery) (string, error) {
 		return "", err
 	}
 
-	var sb strings.Builder
+	var sb = newCSVBuilder()
 	sb.WriteString("ID,租户ID,用户ID,用户名,模块,操作,方法,路径,IP,状态,耗时(ms),操作时间\n")
 	for _, log := range list {
 		status := "成功"
 		if log.Status == 0 {
 			status = "失败"
 		}
-		sb.WriteString(fmt.Sprintf("%d,%d,%d,%s,%s,%s,%s,%s,%s,%s,%d,%s\n",
-			log.ID,
-			log.TenantID,
-			log.UserID,
+		sb.WriteString(csvLine(
+			strconv.FormatUint(log.ID, 10),
+			strconv.FormatUint(log.TenantID, 10),
+			strconv.FormatUint(log.UserID, 10),
 			log.Username,
 			log.Module,
 			log.Action,
@@ -114,7 +113,7 @@ func (s OperationLogService) Export(q LogListQuery) (string, error) {
 			log.Path,
 			log.IP,
 			status,
-			log.Duration,
+			strconv.FormatInt(log.Duration, 10),
 			log.OperationAt.Format(time.DateTime),
 		))
 	}

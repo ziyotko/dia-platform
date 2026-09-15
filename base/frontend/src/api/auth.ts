@@ -46,3 +46,10 @@ export function getUserPermissions() {
 export function changePassword(data: { oldPwd: string; newPwd: string }) {
   return request.post('/auth/change-password', data)
 }
+
+/** 登出：服务端把当前 token 加入黑名单（失败也不影响前端清理本地会话）。
+ * token 显式传入：调用方会紧接着清空 store，不能依赖请求拦截器再去读取。 */
+export function logout(token?: string) {
+  const config = token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
+  return request.post('/auth/logout', null, config)
+}

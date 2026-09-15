@@ -199,6 +199,7 @@ func (s WorkflowService) ApproverOptions(tenantID uint64) (*WorkflowApproverOpti
 }
 
 // SaveNodes 覆盖式保存流程节点（按传入顺序重新编号 Sort，保证顺序连续）。
+// 存在审批中的实例时拒绝修改：节点行会被重建，运行中实例的 node_id 将失效。
 func (s WorkflowService) SaveNodes(workflowID uint64, nodes []models.WorkflowNode, tenantID uint64) error {
 	return db.DB.Transaction(func(tx *gorm.DB) error {
 		var wf models.Workflow
@@ -208,6 +209,16 @@ func (s WorkflowService) SaveNodes(workflowID uint64, nodes []models.WorkflowNod
 		}
 		if err := query.First(&wf).Error; err != nil {
 			return errors.New("流程定义不存在")
+		}
+
+		var running int64
+		if err := tx.Model(&models.WorkflowInstance{}).
+			Where("workflow_id = ? AND status = ?", workflowID, models.WorkflowInstanceRunning).
+			Count(&running).Error; err != nil {
+			return err
+		}
+		if running > 0 {
+			return errors.New("该流程还有审批中的实例，节点已被运行中的实例引用，请处理完成后再修改")
 		}
 
 		if err := tx.Where("workflow_id = ?", workflowID).Delete(&models.WorkflowNode{}).Error; err != nil {

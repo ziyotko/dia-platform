@@ -1,8 +1,13 @@
 package service
 
 import (
+	"errors"
+	"fmt"
+
 	"base/internal/models"
 	"base/pkg/db"
+
+	"gorm.io/gorm"
 )
 
 type OrganizationService struct{}
@@ -34,12 +39,26 @@ func (s OrganizationService) Update(o *models.Organization, tenantID uint64) err
 	}).Error
 }
 
+// Delete 删除机构：存在子机构时拒绝删除，避免机构树出现孤儿节点。
 func (s OrganizationService) Delete(id uint64, tenantID uint64) error {
-	db := db.DB.Where("id = ?", id)
-	if tenantID > 0 {
-		db = db.Where("tenant_id = ?", tenantID)
-	}
-	return ensureDeleteAffected(db.Delete(&models.Organization{}), msgNotOwnedOrMissingDelete)
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		query := tx.Where("id = ?", id)
+		if tenantID > 0 {
+			query = query.Where("tenant_id = ?", tenantID)
+		}
+		var org models.Organization
+		if err := query.First(&org).Error; err != nil {
+			return errors.New(msgNotOwnedOrMissingDelete)
+		}
+		var children int64
+		if err := tx.Model(&models.Organization{}).Where("parent_id = ?", org.ID).Count(&children).Error; err != nil {
+			return err
+		}
+		if children > 0 {
+			return fmt.Errorf("该机构下还有 %d 个子机构，请先删除子机构", children)
+		}
+		return tx.Delete(&org).Error
+	})
 }
 
 func (s OrganizationService) GetByID(id uint64, tenantID uint64) (*models.Organization, error) {

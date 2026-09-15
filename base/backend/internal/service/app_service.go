@@ -1,8 +1,13 @@
 package service
 
 import (
+	"errors"
+	"fmt"
+
 	"base/internal/models"
 	"base/pkg/db"
+
+	"gorm.io/gorm"
 )
 
 type AppService struct{}
@@ -28,19 +33,30 @@ func (s AppService) Update(a *models.App) error {
 	}).Error
 }
 
+// Delete 删除应用。仍有租户开通该应用时拒绝删除，避免产生无归属的应用实例。
 func (s AppService) Delete(id uint64) error {
-	return ensureDeleteAffected(db.DB.Where("id = ?", id).Delete(&models.App{}), "应用不存在")
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		var count int64
+		if err := tx.Model(&models.App{}).Where("id = ?", id).Count(&count).Error; err != nil {
+			return err
+		}
+		if count == 0 {
+			return errors.New("应用不存在")
+		}
+		var instances int64
+		if err := tx.Model(&models.AppInstance{}).Where("app_id = ?", id).Count(&instances).Error; err != nil {
+			return err
+		}
+		if instances > 0 {
+			return fmt.Errorf("已有 %d 个租户开通了该应用，请先在「应用实例」中删除后再删除应用", instances)
+		}
+		return tx.Where("id = ?", id).Delete(&models.App{}).Error
+	})
 }
 
 func (s AppService) GetByID(id uint64) (*models.App, error) {
 	var a models.App
 	err := db.DB.First(&a, id).Error
-	return &a, err
-}
-
-func (s AppService) GetByCode(code string) (*models.App, error) {
-	var a models.App
-	err := db.DB.Where("code = ?", code).First(&a).Error
 	return &a, err
 }
 

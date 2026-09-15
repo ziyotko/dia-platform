@@ -1,25 +1,50 @@
 package service
 
 import (
+	"errors"
 	"io"
 	"path/filepath"
 	"strings"
 
+	"base/config"
 	"base/internal/models"
 	"base/pkg/db"
 	"base/pkg/storage"
+
+	"github.com/sirupsen/logrus"
 )
 
 type FileService struct {
 	storage storage.Storage
 }
 
+// NewFileService 创建文件服务。上传目录与单文件大小上限来自配置
+// （server.upload_dir / server.max_upload_mb），存储层会把目录转成绝对路径。
 func NewFileService() *FileService {
-	s, _ := storage.NewLocalStorage("./uploads", "/base/api/v1/files")
+	dir := config.Cfg.Server.UploadDir
+	if dir == "" {
+		dir = "./uploads"
+	}
+	maxSize := int64(config.Cfg.Server.MaxUploadMB) * 1024 * 1024
+	s, err := storage.NewLocalStorage(dir, "/base/api/v1/files", maxSize)
+	if err != nil {
+		logrus.WithError(err).Warn("初始化本地存储失败，文件上传功能不可用")
+	}
 	return &FileService{storage: s}
 }
 
+// ResolvePath 把存储 key 解析为绝对路径（已校验不会越出上传目录）。
+func (s *FileService) ResolvePath(key string) (string, error) {
+	if s.storage == nil {
+		return "", errors.New("存储未初始化")
+	}
+	return s.storage.Resolve(key)
+}
+
 func (s *FileService) Upload(tenantID, userID uint64, filename string, reader io.Reader, size int64) (*models.UploadedFile, error) {
+	if s.storage == nil {
+		return nil, errors.New("存储未初始化，请联系管理员")
+	}
 	key, url, err := s.storage.Put(filename, reader, size)
 	if err != nil {
 		return nil, err

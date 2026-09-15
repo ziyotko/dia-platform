@@ -15,6 +15,10 @@ type Server struct {
 	Port string `mapstructure:"port"`
 	Mode string `mapstructure:"mode"`
 
+	// 上传目录与单文件大小上限（MB）
+	UploadDir   string `mapstructure:"upload_dir"`
+	MaxUploadMB int    `mapstructure:"max_upload_mb"`
+
 	// 可信反向代理地址，决定 gin 是否信任 X-Forwarded-For / X-Real-IP（否则一律使用 RemoteAddr，防伪造头绕过限流）
 	TrustedProxies []string `mapstructure:"trusted_proxies"`
 
@@ -83,6 +87,13 @@ func (c *Config) applyDefaults() {
 	setRateLimit(&c.Server.LoginRateLimit, &c.Server.LoginRateWindowSecs, 10, 60)
 	setRateLimit(&c.Server.CaptchaRateLimit, &c.Server.CaptchaRateWindowSecs, 30, 60)
 	setRateLimit(&c.Server.InitRateLimit, &c.Server.InitRateWindowSecs, 5, 60)
+
+	if c.Server.UploadDir == "" {
+		c.Server.UploadDir = "./uploads"
+	}
+	if c.Server.MaxUploadMB <= 0 {
+		c.Server.MaxUploadMB = 50
+	}
 }
 
 func setRateLimit(limit, windowSecs *int, defaultLimit, defaultWindowSecs int) {

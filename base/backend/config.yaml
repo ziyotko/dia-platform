@@ -13,6 +13,9 @@ server:
   # 初始化超管接口限流
   init_rate_limit: 5
   init_rate_window_seconds: 60
+  # 上传目录（相对或绝对路径）与单文件大小上限（MB）
+  upload_dir: ./uploads
+  max_upload_mb: 50
 
 mysql:
   host: 127.0.0.1

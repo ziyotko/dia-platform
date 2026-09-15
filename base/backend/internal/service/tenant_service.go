@@ -1,9 +1,14 @@
 package service
 
 import (
+	"errors"
+	"fmt"
+
 	"base/internal/models"
 	"base/pkg/db"
 	"base/pkg/utils"
+
+	"gorm.io/gorm"
 )
 
 type TenantService struct{}
@@ -28,8 +33,40 @@ func (s TenantService) Update(t *models.Tenant) error {
 	}).Error
 }
 
+// Delete 删除租户。租户下还有业务数据时拒绝删除（避免产生孤儿数据），
+// 需要先清理用户/角色/应用实例/流程数据。
 func (s TenantService) Delete(id uint64) error {
-	return ensureDeleteAffected(db.DB.Where("id = ?", id).Delete(&models.Tenant{}), "租户不存在")
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		var count int64
+		if err := tx.Model(&models.Tenant{}).Where("id = ?", id).Count(&count).Error; err != nil {
+			return err
+		}
+		if count == 0 {
+			return errors.New("租户不存在")
+		}
+
+		refs := []struct {
+			model interface{}
+			name  string
+		}{
+			{&models.User{}, "用户"},
+			{&models.Role{}, "角色"},
+			{&models.AppInstance{}, "应用实例"},
+			{&models.WorkflowRole{}, "流程角色"},
+			{&models.Workflow{}, "流程定义"},
+			{&models.WorkflowInstance{}, "流程实例"},
+		}
+		for _, ref := range refs {
+			var n int64
+			if err := tx.Model(ref.model).Where("tenant_id = ?", id).Count(&n).Error; err != nil {
+				return err
+			}
+			if n > 0 {
+				return fmt.Errorf("该租户下还有 %d 条%s数据，请先清理后再删除租户", n, ref.name)
+			}
+		}
+		return tx.Where("id = ?", id).Delete(&models.Tenant{}).Error
+	})
 }
 
 func (s TenantService) GetByID(id uint64) (*models.Tenant, error) {

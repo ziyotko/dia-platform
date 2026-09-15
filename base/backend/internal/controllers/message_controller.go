@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"strconv"
+	"strings"
 
 	"base/internal/models"
 	"base/internal/service"
@@ -15,32 +16,81 @@ type MessageController struct {
 	service service.MessageService
 }
 
+// Create 新建草稿（草稿不会直接投递，发送请用 /messages/send 或 /messages/:id/send）
 func (ctl *MessageController) Create(c *gin.Context) {
-	var m models.Message
-	if err := c.ShouldBindJSON(&m); err != nil {
-		response.FailWithCode(c, response.CodeBadRequest, "参数错误")
+	in, ok := bindDraftInput(c)
+	if !ok {
 		return
 	}
-	m.SenderID = c.GetUint64("userID")
-	m.SenderName = c.GetString("username")
-	m.TenantID = c.GetUint64("tenantID")
-	// 仅新建草稿，发送请走 /messages/send（那里会校验接收人归属与启用状态）
-	if err := ctl.service.Create(&m); err != nil {
+	draft, err := ctl.service.CreateDraft(c.GetUint64("userID"), c.GetString("username"), c.GetUint64("tenantID"), in)
+	if err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
-	response.Ok(c, m)
+	response.Ok(c, draft)
+}
+
+// Update 编辑草稿（仅本人的草稿）
+func (ctl *MessageController) Update(c *gin.Context) {
+	in, ok := bindDraftInput(c)
+	if !ok {
+		return
+	}
+	if err := ctl.service.UpdateDraft(uint64(parseID(c)), c.GetUint64("userID"), c.GetUint64("tenantID"), in); err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+	response.OkWithMessage(c, "草稿已保存", nil)
+}
+
+// SendDraft 发送已有草稿
+func (ctl *MessageController) SendDraft(c *gin.Context) {
+	if err := ctl.service.SendDraft(uint64(parseID(c)), c.GetUint64("userID"), c.GetUint64("tenantID")); err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+	response.OkWithMessage(c, "发送成功", nil)
+}
+
+// bindDraftInput 解析草稿请求体
+func bindDraftInput(c *gin.Context) (service.DraftInput, bool) {
+	var req struct {
+		ReceiverID uint64 `json:"receiverId"`
+		Title      string `json:"title"`
+		Content    string `json:"content"`
+		Type       string `json:"type"`
+		Priority   string `json:"priority"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.FailWithCode(c, response.CodeBadRequest, "参数错误")
+		return service.DraftInput{}, false
+	}
+	if req.Type == "" {
+		req.Type = "system"
+	}
+	if req.Priority == "" {
+		req.Priority = "normal"
+	}
+	return service.DraftInput{
+		ReceiverID: req.ReceiverID,
+		Title:      req.Title,
+		Content:    req.Content,
+		Type:       req.Type,
+		Priority:   req.Priority,
+	}, true
 }
 
 func (ctl *MessageController) Send(c *gin.Context) {
 	var req struct {
-		ReceiverIDs  []uint64 `json:"receiverIds"`
-		ReceiverType string   `json:"receiverType"`
-		Title        string   `json:"title" binding:"required"`
-		Content      string   `json:"content" binding:"required"`
-		Type         string   `json:"type"`
-		Priority     string   `json:"priority"`
-		Channel      string   `json:"channel"`
+		ReceiverIDs  []uint64          `json:"receiverIds"`
+		ReceiverType string            `json:"receiverType"`
+		Title        string            `json:"title"`
+		Content      string            `json:"content"`
+		Type         string            `json:"type"`
+		Priority     string            `json:"priority"`
+		Channel      string            `json:"channel"`
+		TemplateCode string            `json:"templateCode"`
+		Vars         map[string]string `json:"vars"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.FailWithCode(c, response.CodeBadRequest, "参数错误")
@@ -56,8 +106,30 @@ func (ctl *MessageController) Send(c *gin.Context) {
 	if req.Priority == "" {
 		req.Priority = "normal"
 	}
+
+	// 按模板发送：未显式提供标题/渠道/内容时取模板，并用 vars 渲染 {{占位符}}
+	if req.TemplateCode != "" {
+		tpl, err := (service.MessageTemplateService{}).GetByCode(req.TemplateCode, tenantID)
+		if err != nil {
+			response.FailWithCode(c, response.CodeBadRequest, "消息模板不存在或已停用："+req.TemplateCode)
+			return
+		}
+		if req.Channel == "" {
+			req.Channel = tpl.Channel
+		}
+		if req.Title == "" {
+			req.Title = service.RenderMessageTemplate(tpl.Subject, req.Vars)
+		}
+		if req.Content == "" {
+			req.Content = service.RenderMessageTemplate(tpl.Content, req.Vars)
+		}
+	}
 	if req.Channel == "" {
 		req.Channel = "in-app"
+	}
+	if strings.TrimSpace(req.Title) == "" || strings.TrimSpace(req.Content) == "" {
+		response.FailWithCode(c, response.CodeBadRequest, "请填写标题与内容")
+		return
 	}
 
 	// 站外渠道校验：目前仅接入邮件发送器，其余渠道直接拒绝而不是静默忽略

@@ -313,7 +313,9 @@ func (s WorkflowEngineService) ListInstances(q WorkflowInstanceQuery) ([]models.
 	return list, total, err
 }
 
-// MyTasks 我的审批任务（box: todo 待办 / done 已办）。
+// MyTasks 我的审批任务。
+// box=todo 待我处理；box=done 我已处理（仅已通过/已驳回，
+// 被他人处理而失效的任务不算「我已办」，否则会把从未处理过的任务列进来）。
 func (s WorkflowEngineService) MyTasks(actor WorkflowActor, box string, page, size int) ([]models.WorkflowTask, int64, error) {
 	var list []models.WorkflowTask
 	var total int64
@@ -322,7 +324,7 @@ func (s WorkflowEngineService) MyTasks(actor WorkflowActor, box string, page, si
 		query = query.Where("tenant_id = ?", actor.TenantID)
 	}
 	if box == "done" {
-		query = query.Where("status <> ?", models.WorkflowTaskPending)
+		query = query.Where("status IN ?", []int{models.WorkflowTaskApproved, models.WorkflowTaskRejected})
 	} else {
 		query = query.Where("status = ?", models.WorkflowTaskPending)
 	}

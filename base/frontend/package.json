@@ -23,6 +23,7 @@
     "@vue/eslint-config-prettier": "^9.0.0",
     "@vue/eslint-config-typescript": "^13.0.0",
     "eslint": "^8.57.0",
+    "eslint-plugin-vue": "^9.33.0",
     "prettier": "^3.2.5",
     "sass-embedded": "^1.75.0",
     "typescript": "^5.4.5",

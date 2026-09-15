@@ -1,8 +1,13 @@
 package service
 
 import (
+	"errors"
+	"fmt"
+
 	"base/internal/models"
 	"base/pkg/db"
+
+	"gorm.io/gorm"
 )
 
 type PermissionService struct{}
@@ -27,8 +32,25 @@ func (s PermissionService) Update(p *models.Permission) error {
 	}).Error
 }
 
+// Delete 删除权限：存在子权限时拒绝删除；同时解除与角色的关联。
 func (s PermissionService) Delete(id uint64) error {
-	return ensureDeleteAffected(db.DB.Where("id = ?", id).Delete(&models.Permission{}), "权限不存在")
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		var perm models.Permission
+		if err := tx.Where("id = ?", id).First(&perm).Error; err != nil {
+			return errors.New("权限不存在")
+		}
+		var children int64
+		if err := tx.Model(&models.Permission{}).Where("parent_id = ?", perm.ID).Count(&children).Error; err != nil {
+			return err
+		}
+		if children > 0 {
+			return fmt.Errorf("该权限下还有 %d 个子权限，请先删除子权限", children)
+		}
+		if err := tx.Exec("DELETE FROM base_role_permission WHERE permission_id = ?", perm.ID).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&perm).Error
+	})
 }
 
 func (s PermissionService) List(appCode string) ([]models.Permission, error) {

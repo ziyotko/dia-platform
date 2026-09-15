@@ -37,6 +37,14 @@ func main() {
 		logrus.WithError(err).Warn("加载应用注册表失败")
 	}
 
+	// 平台超级管理员（唯一实现）：幂等创建，必须在 seed.Run 之前——
+	// seed 会把菜单授予该 admin 账号（seedSuperAdminRole 依赖它已存在）
+	if created, err := (service.AuthService{}).EnsureSuperAdmin("admin123"); err != nil {
+		logrus.WithError(err).Fatal("初始化平台超级管理员失败")
+	} else if created {
+		logrus.Info("已创建平台超级管理员: admin / admin123")
+	}
+
 	if err := seed.Run(); err != nil {
 		logrus.WithError(err).Fatal("初始化默认数据失败")
 	}

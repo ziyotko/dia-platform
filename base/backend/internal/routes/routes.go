@@ -60,6 +60,7 @@ func Register(r *gin.Engine) {
 		authorized.GET("/auth/menus", (&controllers.AuthController{}).Menus)
 		authorized.GET("/auth/permissions", (&controllers.AuthController{}).Permissions)
 		authorized.POST("/auth/change-password", (&controllers.AuthController{}).ChangePassword)
+		authorized.POST("/auth/logout", (&controllers.AuthController{}).Logout)
 
 		authorized.GET("/dashboard/stats", (&controllers.DashboardController{}).Stats)
 
@@ -206,7 +207,9 @@ func Register(r *gin.Engine) {
 			msgs.GET("/unread-count", (&controllers.MessageController{}).UnreadCount)
 			msgs.GET("/:id", (&controllers.MessageController{}).Get)
 			msgs.POST("", (&controllers.MessageController{}).Create)
+			msgs.PUT("/:id", (&controllers.MessageController{}).Update)
 			msgs.POST("/send", (&controllers.MessageController{}).Send)
+			msgs.POST("/:id/send", (&controllers.MessageController{}).SendDraft)
 			msgs.POST("/read-all", (&controllers.MessageController{}).MarkAllRead)
 			msgs.POST("/:id/read", (&controllers.MessageController{}).MarkRead)
 			msgs.DELETE("/:id", (&controllers.MessageController{}).Delete)

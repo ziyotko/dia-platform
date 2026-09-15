@@ -1,11 +1,15 @@
 package controllers
 
 import (
+	"time"
+
+	"base/config"
 	"base/internal/models"
 	"base/internal/service"
 	"base/pkg/response"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 type AuthController struct {
@@ -85,6 +89,22 @@ func (ctl *AuthController) Captcha(c *gin.Context) {
 	})
 }
 
+// Logout 登出：把当前 token 加入 Redis 黑名单，使其在剩余有效期内立即失效。
+// 前端在调用后清空本地会话（即使本接口失败也不阻断前端登出）。
+func (ctl *AuthController) Logout(c *gin.Context) {
+	expiresAt := time.Now().Add(time.Duration(config.Cfg.JWT.ExpireHours) * time.Hour)
+	if v, ok := c.Get("tokenExp"); ok {
+		if t, ok := v.(time.Time); ok {
+			expiresAt = t
+		}
+	}
+	if err := (service.TokenService{}).RevokeToken(c.GetString("tokenID"), expiresAt); err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+	response.OkWithMessage(c, "已退出登录", nil)
+}
+
 func (ctl *AuthController) Info(c *gin.Context) {
 	userID := c.GetUint64("userID")
 	user, err := ctl.authService.GetUserInfo(userID)
@@ -146,5 +166,9 @@ func (ctl *AuthController) ChangePassword(c *gin.Context) {
 		response.Fail(c, err.Error())
 		return
 	}
-	response.OkWithMessage(c, "密码修改成功", nil)
+	// 改密后让该用户此前签发的 token 全部失效，避免旧 token 继续可用
+	if err := (service.TokenService{}).RevokeUserTokensBefore(userID, time.Now()); err != nil {
+		logrus.WithError(err).Warn("改密后吊销旧 token 失败")
+	}
+	response.OkWithMessage(c, "密码修改成功，请重新登录", nil)
 }

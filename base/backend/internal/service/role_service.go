@@ -5,6 +5,8 @@ import (
 
 	"base/internal/models"
 	"base/pkg/db"
+
+	"gorm.io/gorm"
 )
 
 type RoleService struct{}
@@ -31,6 +33,7 @@ func (s RoleService) Update(r *models.Role, tenantID uint64) error {
 	}).Error
 }
 
+// Delete 删除角色：平台内置超管角色受保护；同时清理菜单/权限/用户关联，避免残留脏关联。
 func (s RoleService) Delete(id uint64, tenantID uint64) error {
 	query := db.DB.Where("id = ?", id)
 	if tenantID > 0 {
@@ -38,13 +41,24 @@ func (s RoleService) Delete(id uint64, tenantID uint64) error {
 	}
 	var role models.Role
 	if err := query.First(&role).Error; err != nil {
-		return err
+		return errors.New("角色不存在或不属于当前租户")
 	}
 	// 平台内置超级管理员角色是权限基线，不允许删除
-	if role.TenantID == 0 && role.Code == "super_admin" {
+	if models.IsPlatformTenant(role.TenantID) && role.Code == "super_admin" {
 		return errors.New("平台超级管理员角色不允许删除")
 	}
-	return db.DB.Delete(&role).Error
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		for _, sql := range []string{
+			"DELETE FROM base_role_menu WHERE role_id = ?",
+			"DELETE FROM base_role_permission WHERE role_id = ?",
+			"DELETE FROM base_user_role WHERE role_id = ?",
+		} {
+			if err := tx.Exec(sql, role.ID).Error; err != nil {
+				return err
+			}
+		}
+		return tx.Delete(&role).Error
+	})
 }
 
 func (s RoleService) GetByID(id uint64, tenantID uint64) (*models.Role, error) {

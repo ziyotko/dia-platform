@@ -33,8 +33,9 @@ request.interceptors.response.use(
     if (res.code !== 0 && res.code !== 200) {
       ElMessage.error(res.message || '请求失败')
       if (res.code === 401) {
+        // 只清本地会话（不要调 logout 接口：token 已失效会再次 401，造成递归请求）
         const userStore = useUserStore()
-        userStore.logout()
+        userStore.clearSession()
         window.location.href = '/base/login'
       }
       return Promise.reject(new Error(res.message || '请求失败'))

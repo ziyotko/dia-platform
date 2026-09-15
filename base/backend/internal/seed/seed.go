@@ -5,17 +5,15 @@ import (
 
 	"base/internal/models"
 	"base/pkg/db"
-	"base/pkg/utils"
 
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
-// Run 初始化默认数据：超级管理员、底座菜单、底座权限点
+// Run 初始化默认数据：底座菜单、底座权限点。
+// 注意：平台超级管理员由 service.AuthService.EnsureSuperAdmin 创建（唯一实现），
+// 需在调用 Run 之前完成——seedSuperAdminRole 会把菜单授予该 admin 用户。
 func Run() error {
-	if err := seedSuperAdmin(); err != nil {
-		return err
-	}
 	if err := cleanupObsoleteMenus(); err != nil {
 		return err
 	}
@@ -55,30 +53,6 @@ func cleanupObsoleteMenus() error {
 	}
 	logrus.Infof("已清理 %d 个历史遗留的占位菜单", len(ids))
 	return nil
-}
-
-func seedSuperAdmin() error {
-	var count int64
-	if err := db.DB.Model(&models.User{}).
-		Where("tenant_id = ? AND username = ?", models.PlatformTenantID, "admin").
-		Count(&count).Error; err != nil {
-		return err
-	}
-	if count > 0 {
-		return nil
-	}
-	hash, err := utils.HashPassword("admin123")
-	if err != nil {
-		return err
-	}
-	return db.DB.Create(&models.User{
-		TenantID: models.PlatformTenantID,
-		Username: "admin",
-		Password: hash,
-		RealName: "超级管理员",
-		Status:   1,
-		IsAdmin:  true,
-	}).Error
 }
 
 // baseMenuSeeds 底座默认菜单。

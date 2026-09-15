@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"base/internal/models"
@@ -19,14 +20,29 @@ type MessageService struct{}
 // 因此广播的已读状态存放在 base_message_read，定向消息继续使用 base_message.is_read。
 const broadcastReadExists = "EXISTS (SELECT 1 FROM base_message_read mr WHERE mr.message_id = base_message.id AND mr.user_id = ? AND mr.deleted_at IS NULL)"
 
-// Create 新建消息。POST /messages 是「新建草稿」入口，发送必须走 /messages/send，
-// 因此这里强制落为草稿，避免绕过接收人校验（同租户 + 启用状态）直接投递。
-func (s MessageService) Create(m *models.Message) error {
-	m.Status = models.MessageStatusDraft
-	m.IsRead = false
-	m.ReadAt = nil
-	m.SendAt = nil
-	return db.DB.Create(m).Error
+// CreateDraft 新建草稿。草稿不会进入任何人的收件箱，发送需走 /messages/send（新建发送）
+// 或 /messages/:id/send（发送已有草稿）。
+func (s MessageService) CreateDraft(senderID uint64, senderName string, tenantID uint64, in DraftInput) (*models.Message, error) {
+	updates, err := s.normalizeDraft(tenantID, in)
+	if err != nil {
+		return nil, err
+	}
+	m := models.Message{
+		TenantID:     tenantID,
+		SenderID:     senderID,
+		SenderName:   senderName,
+		ReceiverID:   in.ReceiverID,
+		ReceiverType: updates["receiver_type"].(string),
+		Title:        updates["title"].(string),
+		Content:      in.Content,
+		Type:         in.Type,
+		Priority:     in.Priority,
+		Status:       models.MessageStatusDraft,
+	}
+	if err := db.DB.Create(&m).Error; err != nil {
+		return nil, err
+	}
+	return &m, nil
 }
 
 // MessageListQuery 消息列表查询条件。
@@ -39,6 +55,84 @@ type MessageListQuery struct {
 	IsRead   int // -1 全部，0 未读，1 已读
 	Page     int
 	Size     int
+}
+
+// DraftInput 草稿内容（新建/编辑共用）。
+// ReceiverID = 0 表示全员广播草稿。
+type DraftInput struct {
+	ReceiverID uint64
+	Title      string
+	Content    string
+	Type       string
+	Priority   string
+}
+
+// normalizeDraft 校验并归一化草稿字段：标题/内容必填；指定接收人时必须同租户且启用。
+func (s MessageService) normalizeDraft(tenantID uint64, in DraftInput) (map[string]interface{}, error) {
+	title := strings.TrimSpace(in.Title)
+	if title == "" {
+		return nil, errors.New("请填写标题")
+	}
+	content := strings.TrimSpace(in.Content)
+	if content == "" {
+		return nil, errors.New("请填写内容")
+	}
+	receiverType := "all"
+	if in.ReceiverID != 0 {
+		if _, err := s.recipients(tenantID, []uint64{in.ReceiverID}); err != nil {
+			return nil, err
+		}
+		receiverType = "user"
+	}
+	return map[string]interface{}{
+		"receiver_id":   in.ReceiverID,
+		"receiver_type": receiverType,
+		"title":         title,
+		"content":       content,
+		"type":          in.Type,
+		"priority":      in.Priority,
+	}, nil
+}
+
+// UpdateDraft 编辑本人的草稿（仅草稿状态可编辑）。
+func (s MessageService) UpdateDraft(id, senderID, tenantID uint64, in DraftInput) error {
+	updates, err := s.normalizeDraft(tenantID, in)
+	if err != nil {
+		return err
+	}
+	query := db.DB.Model(&models.Message{}).Where("id = ? AND sender_id = ? AND status = ?", id, senderID, models.MessageStatusDraft)
+	if tenantID > 0 {
+		query = query.Where("tenant_id = ?", tenantID)
+	}
+	// 先确认草稿归属与状态，避免「值没变」时把 RowsAffected=0 误判为失败
+	if err := ensureRecordExists(db.DB.Model(&models.Message{}).
+		Where("id = ? AND sender_id = ? AND status = ?", id, senderID, models.MessageStatusDraft), "草稿不存在或已发送"); err != nil {
+		return err
+	}
+	return query.Updates(updates).Error
+}
+
+// SendDraft 发送本人的草稿：重新校验接收人后置为已发送。
+func (s MessageService) SendDraft(id, senderID, tenantID uint64) error {
+	var draft models.Message
+	query := db.DB.Where("id = ? AND sender_id = ? AND status = ?", id, senderID, models.MessageStatusDraft)
+	if tenantID > 0 {
+		query = query.Where("tenant_id = ?", tenantID)
+	}
+	if err := query.First(&draft).Error; err != nil {
+		return errors.New("草稿不存在或已发送")
+	}
+	if draft.ReceiverID != 0 {
+		if _, err := s.recipients(tenantID, []uint64{draft.ReceiverID}); err != nil {
+			return err
+		}
+	}
+	now := time.Now()
+	return db.DB.Model(&models.Message{}).Where("id = ?", draft.ID).
+		Updates(map[string]interface{}{
+			"status":  models.MessageStatusSent,
+			"send_at": now,
+		}).Error
 }
 
 // GetByID 按 ID 读取消息，并校验可见性：
