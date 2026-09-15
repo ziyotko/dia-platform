@@ -15,6 +15,21 @@ type Config struct {
 type Server struct {
 	Port string `mapstructure:"port"`
 	Mode string `mapstructure:"mode"`
+
+	// 可信反向代理地址，决定 gin 是否信任 X-Forwarded-For / X-Real-IP（否则一律使用 RemoteAddr，防伪造头绕过限流）
+	TrustedProxies []string `mapstructure:"trusted_proxies"`
+
+	// 登录接口限流（防暴力破解，按真实客户端 IP）
+	LoginRateLimit      int `mapstructure:"login_rate_limit"`          // 每窗口允许的最大请求数
+	LoginRateWindowSecs int `mapstructure:"login_rate_window_seconds"` // 限流窗口（秒）
+
+	// 验证码接口限流（防刷验证码，按真实客户端 IP）
+	CaptchaRateLimit      int `mapstructure:"captcha_rate_limit"`
+	CaptchaRateWindowSecs int `mapstructure:"captcha_rate_window_seconds"`
+
+	// 初始化超管接口限流（公开写接口，防被反复调用）
+	InitRateLimit      int `mapstructure:"init_rate_limit"`
+	InitRateWindowSecs int `mapstructure:"init_rate_window_seconds"`
 }
 
 type MySQL struct {
@@ -59,6 +74,30 @@ func Load(path string) (*Config, error) {
 	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, err
 	}
+	cfg.applyDefaults()
 	Cfg = &cfg
 	return &cfg, nil
+}
+
+// applyDefaults 为未配置的项补充默认值（兼容旧版 config.yaml，未新增限流配置时也能正常工作）。
+func (c *Config) applyDefaults() {
+	if c.Server.Mode == "" {
+		c.Server.Mode = "release"
+	}
+	if len(c.Server.TrustedProxies) == 0 {
+		c.Server.TrustedProxies = []string{"127.0.0.1"}
+	}
+
+	setRateLimit(&c.Server.LoginRateLimit, &c.Server.LoginRateWindowSecs, 10, 60)
+	setRateLimit(&c.Server.CaptchaRateLimit, &c.Server.CaptchaRateWindowSecs, 30, 60)
+	setRateLimit(&c.Server.InitRateLimit, &c.Server.InitRateWindowSecs, 5, 60)
+}
+
+func setRateLimit(limit, windowSecs *int, defaultLimit, defaultWindowSecs int) {
+	if *limit <= 0 {
+		*limit = defaultLimit
+	}
+	if *windowSecs <= 0 {
+		*windowSecs = defaultWindowSecs
+	}
 }

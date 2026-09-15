@@ -1,6 +1,18 @@
 server:
   port: 8080
   mode: debug
+  # 可信反向代理地址：仅当请求来自这些地址时才信任 X-Forwarded-For / X-Real-IP
+  trusted_proxies:
+    - 127.0.0.1
+  # 登录接口限流（防暴力破解，按真实客户端 IP）
+  login_rate_limit: 10
+  login_rate_window_seconds: 60
+  # 验证码接口限流（防刷验证码）
+  captcha_rate_limit: 30
+  captcha_rate_window_seconds: 60
+  # 初始化超管接口限流
+  init_rate_limit: 5
+  init_rate_window_seconds: 60
 
 mysql:
   host: 127.0.0.1

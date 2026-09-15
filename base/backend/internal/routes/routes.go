@@ -1,28 +1,46 @@
 package routes
 
 import (
+	"time"
+
+	"base/config"
 	"base/internal/adapter"
 	"base/internal/controllers"
 	"base/internal/middleware"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
 )
 
 func Register(r *gin.Engine) {
 	r.Use(middleware.CORS())
-	r.SetTrustedProxies([]string{"127.0.0.1"})
+	// 可信反向代理：仅当请求来自这些地址时才信任 X-Forwarded-For / X-Real-IP，
+	// 否则一律使用 RemoteAddr，防伪造头绕过按 IP 的限流
+	if err := r.SetTrustedProxies(config.Cfg.Server.TrustedProxies); err != nil {
+		logrus.WithError(err).Warn("设置可信代理失败，将只使用 RemoteAddr 作为客户端 IP")
+	}
 
+	srv := config.Cfg.Server
 	api := r.Group("/base/api/v1")
 
 	// 文件控制器持有存储依赖，需实例化后复用（不能用 &FileController{} 零值）
 	fileCtl := controllers.NewFileController()
 
-	// 公开接口
+	// 公开接口（均按真实客户端 IP 限流，参数见 config.yaml 的 server.*_rate_limit）
 	auth := api.Group("/auth")
 	{
-		auth.POST("/login", (&controllers.AuthController{}).Login)
-		auth.POST("/init", (&controllers.AuthController{}).InitAdmin)
-		auth.GET("/captcha", (&controllers.AuthController{}).Captcha)
+		auth.POST("/login", middleware.RateLimitMiddleware(
+			srv.LoginRateLimit,
+			time.Duration(srv.LoginRateWindowSecs)*time.Second,
+		), (&controllers.AuthController{}).Login)
+		auth.POST("/init", middleware.RateLimitMiddleware(
+			srv.InitRateLimit,
+			time.Duration(srv.InitRateWindowSecs)*time.Second,
+		), (&controllers.AuthController{}).InitAdmin)
+		auth.GET("/captcha", middleware.RateLimitMiddleware(
+			srv.CaptchaRateLimit,
+			time.Duration(srv.CaptchaRateWindowSecs)*time.Second,
+		), (&controllers.AuthController{}).Captcha)
 	}
 
 	// 文件公开访问（key 含日期目录，使用通配路由）

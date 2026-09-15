@@ -13,12 +13,13 @@ type Result struct {
 }
 
 const (
-	CodeSuccess = 0
-	CodeError   = 500
-	CodeUnauthorized = 401
-	CodeForbidden    = 403
-	CodeNotFound     = 404
-	CodeBadRequest   = 400
+	CodeSuccess         = 0
+	CodeError           = 500
+	CodeUnauthorized    = 401
+	CodeForbidden       = 403
+	CodeNotFound        = 404
+	CodeBadRequest      = 400
+	CodeTooManyRequests = 429
 )
 
 func Ok(c *gin.Context, data interface{}) {
