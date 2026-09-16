@@ -1,6 +1,6 @@
 server.exe
-application.exe
+base.exe
 logs/
 *.log
 uploads/
-application
+base

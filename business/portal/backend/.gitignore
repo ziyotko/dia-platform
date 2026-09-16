@@ -6,3 +6,5 @@ logs/
 uploads/*
 caam
 process/*
+portal
+portal.exe
