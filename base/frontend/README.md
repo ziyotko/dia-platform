@@ -10,8 +10,8 @@ npm install
 npm run dev
 ```
 
-默认端口 `3000`，开发服务器代理 `/base/api` 到 `http://127.0.0.1:8080`。
-访问地址：`http://localhost:3000/base/`，登录 admin / admin123。
+默认端口 `3000`，开发服务器代理 `/business_base/api` 到 `http://127.0.0.1:8080`。
+访问地址：`http://localhost:3000/business_base/`，登录 admin / admin123。
 
 ## 脚本说明
 
@@ -27,7 +27,7 @@ npm run lint     # ESLint 自动修复
 ```
 frontend/
 ├── src/
-│   ├── api/            # API 接口模块（与后端 /base/api/v1 对应）
+│   ├── api/            # API 接口模块（与后端 /business_base/api/v1 对应）
 │   ├── components/     # 公共组件
 │   │   ├── Breadcrumb.vue
 │   │   ├── TenantSelect.vue        # 租户下拉（仅超管使用）
@@ -72,32 +72,54 @@ frontend/
 
 ## 开发配置
 
-[vite.config.ts](vite.config.ts) 关键配置：
+部署子路径与 API 前缀统一放在 [.env](.env)（与 portal / member / application 一致）：
+
+```
+VITE_BASE_PATH=/business_base/
+VITE_API_BASE_URL=/business_base/api/v1
+```
+
+[vite.config.ts](vite.config.ts) 据此生成 `base` 与 dev 代理（代理键 = `VITE_API_BASE_URL`，必须与 `utils/request.ts` 的 `baseURL` 一致）：
 
 ```ts
-export default defineConfig({
-  plugins: [vue()],
-  base: '/base/',
-  resolve: {
-    alias: {
-      '@': resolve(__dirname, 'src')
-    }
-  },
-  server: {
-    port: 3000,
-    proxy: {
-      '/base/api': {
-        target: 'http://127.0.0.1:8080',
-        changeOrigin: true
+import { defineConfig, loadEnv } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import { fileURLToPath, URL } from 'url'
+
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), 'VITE_')
+  const basePath = env.VITE_BASE_PATH || '/base/'
+  const apiBase = env.VITE_API_BASE_URL || '/base/api/v1'
+
+  return {
+    base: basePath,
+    plugins: [vue()],
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url))
+      }
+    },
+    server: {
+      port: 3000,
+      proxy: {
+        [apiBase]: {
+          target: 'http://127.0.0.1:8080',
+          changeOrigin: true
+        }
       }
     }
   }
 })
 ```
 
+> 路由基路径用 `createWebHistory(import.meta.env.BASE_URL)`、跳登录页用 `${import.meta.env.BASE_URL}login`，
+> 不要硬编码子路径，否则改名后会出现路由不匹配、登录跳转 404。
+> 后端前缀（/business_base/api/v1）由 `pkg/permmatch.APIPrefix` 统一提供（路由注册 / 权限白名单 / 文件 URL / 路径匹配共用），
+> 改名时前后端需同时改。
+
 ## 动态路由
 
-菜单从后端 `/base/api/v1/auth/menus` 获取后，在 [src/router/index.ts](src/router/index.ts) 中按 `type` 生成路由：
+菜单从后端 `/business_base/api/v1/auth/menus` 获取后，在 [src/router/index.ts](src/router/index.ts) 中按 `type` 生成路由：
 
 - `directory`：生成嵌套路由（无组件，用于组织子菜单）。
 - `menu`：绑定 `component` 字段对应的 `.vue` 文件。

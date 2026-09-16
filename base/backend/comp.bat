@@ -1,3 +1,3 @@
 set goos=linux
 
-go build -o base cmd/server/main.go
+go build -o base main.go

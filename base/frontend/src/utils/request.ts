@@ -36,7 +36,8 @@ request.interceptors.response.use(
         // 只清本地会话（不要调 logout 接口：token 已失效会再次 401，造成递归请求）
         const userStore = useUserStore()
         userStore.clearSession()
-        window.location.href = '/base/login'
+        // 跳登录页必须带上部署子路径（BASE_URL = vite base），否则子路径部署下会跳到不存在的 /login
+        window.location.href = `${import.meta.env.BASE_URL || '/'}login`
       }
       return Promise.reject(new Error(res.message || '请求失败'))
     }

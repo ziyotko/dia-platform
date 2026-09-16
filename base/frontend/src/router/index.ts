@@ -22,7 +22,8 @@ const notFoundRoute = {
 }
 
 const router = createRouter({
-  history: createWebHistory('/base/'),
+  // 基路径跟随 vite base（由 .env 的 VITE_BASE_PATH 决定），避免与部署子路径不一致
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: constantRoutes
 })
 

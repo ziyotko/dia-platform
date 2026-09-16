@@ -75,7 +75,7 @@ func (ctl *FileController) Delete(c *gin.Context) {
 }
 
 // Serve 公开读取已上传文件。
-// 路由为 /base/api/v1/files/*key（key 形如 20260101/1700000000000000000_name.png，含目录分隔符）。
+// 路由为 /business_base/api/v1/files/*key（key 形如 20260101/1700000000000000000_name.png，含目录分隔符）。
 // 路径校验（含 `..` 过滤 + 根目录包含性检查）与绝对路径解析都在 storage 层完成。
 func (ctl *FileController) Serve(c *gin.Context) {
 	key := strings.TrimPrefix(c.Param("key"), "/")

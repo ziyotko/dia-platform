@@ -7,6 +7,11 @@ package permmatch
 
 import "strings"
 
+// APIPrefix 底座 HTTP 路由前缀（routes.Register 的挂载点）。
+// 全仓库唯一来源：路由注册、权限白名单、审计脱敏判定、文件 URL、路径匹配均引用它，
+// 避免改名时漏改某处导致 404 或权限误判。
+const APIPrefix = "/business_base/api/v1"
+
 // Normalize 规整路径：去除首尾空格与结尾斜杠，保证以 / 开头。
 func Normalize(p string) string {
 	p = strings.TrimSpace(p)
@@ -22,13 +27,13 @@ func Normalize(p string) string {
 	return p
 }
 
-// Candidates 返回请求路径的候选集合：完整路径 +（若有）去掉 /base/api/v1 前缀后的相对路径，
+// Candidates 返回请求路径的候选集合：完整路径 +（若有）去掉 APIPrefix 前缀后的相对路径，
 // 这样权限点里写完整路径或相对路径都能命中。
 func Candidates(requestPath string) []string {
 	normalized := Normalize(requestPath)
 	paths := []string{normalized}
-	if strings.HasPrefix(normalized, "/base/api/v1") {
-		relative := strings.TrimPrefix(normalized, "/base/api/v1")
+	if strings.HasPrefix(normalized, APIPrefix) {
+		relative := strings.TrimPrefix(normalized, APIPrefix)
 		if relative == "" {
 			relative = "/"
 		}

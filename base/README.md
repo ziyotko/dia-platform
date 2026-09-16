@@ -70,7 +70,7 @@ npm install
 npm run dev
 ```
 
-默认访问 `http://localhost:3000/base/`，登录 admin / admin123。
+默认访问 `http://localhost:3000/business_base/`，登录 admin / admin123。
 
 ## 核心概念
 

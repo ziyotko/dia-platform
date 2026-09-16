@@ -9,6 +9,7 @@ import (
 	"base/config"
 	"base/internal/models"
 	"base/pkg/db"
+	"base/pkg/permmatch"
 	"base/pkg/storage"
 
 	"github.com/sirupsen/logrus"
@@ -26,7 +27,7 @@ func NewFileService() *FileService {
 		dir = "./uploads"
 	}
 	maxSize := int64(config.Cfg.Server.MaxUploadMB) * 1024 * 1024
-	s, err := storage.NewLocalStorage(dir, "/base/api/v1/files", maxSize)
+	s, err := storage.NewLocalStorage(dir, permmatch.APIPrefix+"/files", maxSize)
 	if err != nil {
 		logrus.WithError(err).Warn("初始化本地存储失败，文件上传功能不可用")
 	}

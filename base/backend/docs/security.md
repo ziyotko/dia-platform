@@ -20,8 +20,8 @@
 
 中间件使用当前请求的 **HTTP Method + 路由模板** 去匹配权限表的 `method` 和 `path` 字段：
 
-- 路由模板示例：`/base/api/v1/users/:id`
-- 权限表 `path` 可配置完整路径 `/base/api/v1/users/:id`，也可配置相对路径 `/users/:id`。
+- 路由模板示例：`/business_base/api/v1/users/:id`
+- 权限表 `path` 可配置完整路径 `/business_base/api/v1/users/:id`，也可配置相对路径 `/users/:id`。
 - 支持 `:param` 通配符匹配，暂不支持 `*any` 通配符。
 
 ### 1.4 放行策略
@@ -31,23 +31,23 @@
 1. **平台超级管理员**：`tenantID == 0` 的用户直接放行。
 2. **租户管理员**：`base_user.is_admin = 1` 的用户在本租户内直接放行（与「管理员可见全部菜单」保持同一口径；数据仍由 service 层的 `tenant_id` 条件隔离）。
 3. **白名单接口**：用户基础信息、菜单、权限、改密、仪表盘、我的应用、未读消息数等基础接口。
-   - `GET /base/api/v1/auth/info`
-   - `GET /base/api/v1/auth/menus`
-   - `GET /base/api/v1/auth/permissions`
-   - `POST /base/api/v1/auth/change-password`
-   - `GET /base/api/v1/dashboard/stats`
-   - `GET /base/api/v1/app-instances/my`
-   - `GET /base/api/v1/messages/unread-count`
+   - `GET /business_base/api/v1/auth/info`
+   - `GET /business_base/api/v1/auth/menus`
+   - `GET /business_base/api/v1/auth/permissions`
+   - `POST /business_base/api/v1/auth/change-password`
+   - `GET /business_base/api/v1/dashboard/stats`
+   - `GET /business_base/api/v1/app-instances/my`
+   - `GET /business_base/api/v1/messages/unread-count`
    - 工作流「属于自己的数据」类接口（归属校验均在 service 层，详见 1.4.1）：
-     - `GET /base/api/v1/workflows/options`（发起流程需先选流程定义）
-     - `POST|GET /base/api/v1/workflow-instances`
-     - `GET /base/api/v1/workflow-instances/:id`
-     - `POST /base/api/v1/workflow-instances/:id/cancel`
-     - `GET /base/api/v1/workflow-tasks`
-     - `GET /base/api/v1/workflow-tasks/approver-options`（转办/加签的候选人选项，只返回本租户启用用户）
-     - `POST /base/api/v1/workflow-tasks/:id/approve` / `reject`
-     - `POST /base/api/v1/workflow-tasks/:id/transfer`（转办）
-     - `POST /base/api/v1/workflow-tasks/:id/add-approver`（加签）
+     - `GET /business_base/api/v1/workflows/options`（发起流程需先选流程定义）
+     - `POST|GET /business_base/api/v1/workflow-instances`
+     - `GET /business_base/api/v1/workflow-instances/:id`
+     - `POST /business_base/api/v1/workflow-instances/:id/cancel`
+     - `GET /business_base/api/v1/workflow-tasks`
+     - `GET /business_base/api/v1/workflow-tasks/approver-options`（转办/加签的候选人选项，只返回本租户启用用户）
+     - `POST /business_base/api/v1/workflow-tasks/:id/approve` / `reject`
+     - `POST /business_base/api/v1/workflow-tasks/:id/transfer`（转办）
+     - `POST /business_base/api/v1/workflow-tasks/:id/add-approver`（加签）
 4. **未分配任何权限的普通用户**：除白名单接口外一律返回 403「未分配任何接口权限，请联系管理员在「角色管理 → 分配权限」中授权」。
    （旧行为是「只读放行所有 `GET`」，会让零权限用户读到 `/settings`（含 SMTP 密码）、`/users`、`/operation-logs` 等敏感数据，已收窄。）
 5. 其余请求按 `base_permission` 的 `method + path` 匹配，未命中返回 403「无权限访问该接口」。
@@ -238,10 +238,10 @@ if tenantID > 0 {
   图片尺寸 100x300（宽:高 = 3:1），对应前端 150x50 容器 + `object-fit: cover`，避免裁切。
 - **存储**：仅 Redis（key 为 `captcha:<id>`，TTL 5 分钟），已去除内存 store，多实例部署校验一致。
 - **校验**：一次性（无论对错校验后立即删除）、大小写不敏感、忽畸首尾空格；`id` 或 `code` 为空直接失败。
-- **接口字段**：`GET /base/api/v1/auth/captcha` 返回 `{ captcha_id, captcha_img }`；
+- **接口字段**：`GET /business_base/api/v1/auth/captcha` 返回 `{ captcha_id, captcha_img }`；
   登录请求体使用 `captcha_id` + `captcha_code`（与 portal / member / application 一致）。
 - **开关**：是否启用验证码由「系统设置 → 安全策略 → 登录验证码」控制（`settings.security.captchaEnabled`）。
-  登录页先调 `GET /base/api/v1/site-info` 获取 `captchaEnabled`，关闭时不渲染验证码输入框、不提交验证码字段，后端同样不校验。
+  登录页先调 `GET /business_base/api/v1/site-info` 获取 `captchaEnabled`，关闭时不渲染验证码输入框、不提交验证码字段，后端同样不校验。
 - **失败处理**：验证码错误或密码错误均计入 `login_fail:<tenantID>:<username>`，窗口与阈值由安全策略配置（默认 5 次 / 30 分钟）。
 
 ---
@@ -277,9 +277,9 @@ if tenantID > 0 {
 
 | 接口 | 限制 | 配置项 |
 |------|------|--------|
-| `POST /base/api/v1/auth/login` | 10 次/分钟 | `login_rate_limit` / `login_rate_window_seconds` |
-| `GET /base/api/v1/auth/captcha` | 30 次/分钟 | `captcha_rate_limit` / `captcha_rate_window_seconds` |
-| `POST /base/api/v1/auth/init` | 5 次/分钟 | `init_rate_limit` / `init_rate_window_seconds` |
+| `POST /business_base/api/v1/auth/login` | 10 次/分钟 | `login_rate_limit` / `login_rate_window_seconds` |
+| `GET /business_base/api/v1/auth/captcha` | 30 次/分钟 | `captcha_rate_limit` / `captcha_rate_window_seconds` |
+| `POST /business_base/api/v1/auth/init` | 5 次/分钟 | `init_rate_limit` / `init_rate_window_seconds` |
 
 **要点**：
 
@@ -361,7 +361,7 @@ if tenantID > 0 {
 
 ### 10.3 子应用代理鉴权
 
-`/base/api/v1/app/:appCode/*path` 只挂 JWT，但 handler 内依次校验：
+`/business_base/api/v1/app/:appCode/*path` 只挂 JWT，但 handler 内依次校验：
 
 1. 应用已注册且启用，且类型不是 iframe；
 2. 调用方租户已开通并启用该应用（平台超管放行）；

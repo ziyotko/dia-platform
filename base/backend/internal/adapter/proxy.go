@@ -23,7 +23,7 @@ func setBaseUserHeaders(req *http.Request, c *gin.Context) {
 
 // ProxyToApp 将请求代理到子应用后端。
 // 转发路径 = target 路径 + App.ApiPrefix（子应用自己的 API 前缀，如 /caamm/api）+ 通配符路径，
-// 这样前端只需调 `/base/api/v1/app/{appCode}/{业务路径}`，子应用无需感知底座前缀。
+// 这样前端只需调 `/business_base/api/v1/app/{appCode}/{业务路径}`，子应用无需感知底座前缀。
 func ProxyToApp(c *gin.Context, app *models.App) {
 	target, err := url.Parse(app.BackendURL)
 	if err != nil {

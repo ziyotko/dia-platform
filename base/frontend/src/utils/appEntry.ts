@@ -2,7 +2,7 @@
  * 子应用入口 URL 组装。
  *
  * 与 integration/README.md 的约定保持一致：无论从菜单（iframe 容器）还是「我的应用」卡片进入，
- * 都要带上底座会话参数，子应用才能用 base_token 调 /base/api/v1/auth/info 校验用户身份。
+ * 都要带上底座会话参数，子应用才能用 base_token 调 /business_base/api/v1/auth/info 校验用户身份。
  */
 export interface BaseSession {
   token?: string

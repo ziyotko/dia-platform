@@ -15,30 +15,30 @@ import (
 // 以及工作流中「属于自己的数据」类接口（发起、我的申请、待办审批），
 // 这些接口的归属校验在 service 层完成（只能操作自己发起或自己负责的任务）。
 var permissionWhitelist = map[string][]string{
-	"/base/api/v1/auth/info":             {"GET"},
-	"/base/api/v1/auth/menus":            {"GET"},
-	"/base/api/v1/auth/permissions":      {"GET"},
-	"/base/api/v1/auth/change-password":  {"POST"},
-	"/base/api/v1/auth/logout":           {"POST"},
-	"/base/api/v1/dashboard/stats":       {"GET"},
-	"/base/api/v1/app-instances/my":      {"GET"},
-	"/base/api/v1/messages/unread-count": {"GET"},
+	permmatch.APIPrefix + "/auth/info":             {"GET"},
+	permmatch.APIPrefix + "/auth/menus":            {"GET"},
+	permmatch.APIPrefix + "/auth/permissions":      {"GET"},
+	permmatch.APIPrefix + "/auth/change-password":  {"POST"},
+	permmatch.APIPrefix + "/auth/logout":           {"POST"},
+	permmatch.APIPrefix + "/dashboard/stats":       {"GET"},
+	permmatch.APIPrefix + "/app-instances/my":      {"GET"},
+	permmatch.APIPrefix + "/messages/unread-count": {"GET"},
 
 	// 工作流：发起流程需要先选流程定义
-	"/base/api/v1/workflows/options":               {"GET"},
-	"/base/api/v1/workflow-instances":              {"POST", "GET"},
-	"/base/api/v1/workflow-instances/:id":          {"GET"},
-	"/base/api/v1/workflow-instances/:id/cancel":   {"POST"},
-	"/base/api/v1/workflow-tasks":                  {"GET"},
-	"/base/api/v1/workflow-tasks/approver-options": {"GET"},
-	"/base/api/v1/workflow-tasks/:id/approve":      {"POST"},
-	"/base/api/v1/workflow-tasks/:id/reject":       {"POST"},
-	"/base/api/v1/workflow-tasks/:id/transfer":     {"POST"},
-	"/base/api/v1/workflow-tasks/:id/add-approver": {"POST"},
+	permmatch.APIPrefix + "/workflows/options":               {"GET"},
+	permmatch.APIPrefix + "/workflow-instances":              {"POST", "GET"},
+	permmatch.APIPrefix + "/workflow-instances/:id":          {"GET"},
+	permmatch.APIPrefix + "/workflow-instances/:id/cancel":   {"POST"},
+	permmatch.APIPrefix + "/workflow-tasks":                  {"GET"},
+	permmatch.APIPrefix + "/workflow-tasks/approver-options": {"GET"},
+	permmatch.APIPrefix + "/workflow-tasks/:id/approve":      {"POST"},
+	permmatch.APIPrefix + "/workflow-tasks/:id/reject":       {"POST"},
+	permmatch.APIPrefix + "/workflow-tasks/:id/transfer":     {"POST"},
+	permmatch.APIPrefix + "/workflow-tasks/:id/add-approver": {"POST"},
 }
 
 // PermissionAuth 基于 base_permission 表的接口级权限校验中间件。
-// 匹配规则：当前请求方法 + 路由模板（或去除 /base/api/v1 前缀后的路径）与权限表中的 method/path 匹配。
+// 匹配规则：当前请求方法 + 路由模板（或去除 permmatch.APIPrefix 前缀后的路径）与权限表中的 method/path 匹配。
 //
 // 放行策略（自上而下）：
 //  1. 平台超级管理员（`models.IsPlatformTenant`）直接放行；
@@ -122,7 +122,7 @@ func userPermissions(userID uint64) ([]models.Permission, error) {
 }
 
 // matchPermission 判断权限集合是否覆盖请求方法 + 路径。
-// 同时支持完整路径（/base/api/v1/users）和相对路径（/users）两种配置方式；
+// 同时支持完整路径（permmatch.APIPrefix + /users）和相对路径（/users）两种配置方式；
 // 路径匹配规则与子应用代理入口共用 pkg/permmatch。
 func matchPermission(perms []models.Permission, method, requiredPath string) bool {
 	candidatePaths := permmatch.Candidates(requiredPath)
