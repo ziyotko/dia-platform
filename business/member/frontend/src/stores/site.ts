@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authApi } from '@/api/auth'
 
-// Centralized site config loaded from GET /member/api/site-info
+// Centralized site config loaded from GET /business_member/api/site-info
 // (backed by the member_system_configs table). Used for global page titles.
 export const useSiteStore = defineStore('site', () => {
   const siteInfo = ref<Record<string, string>>({})

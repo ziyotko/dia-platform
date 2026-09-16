@@ -4,7 +4,7 @@ server:
   port: 8085
   # 生产环境务必使用 release；可用环境变量 MEMBER_MODE 覆盖
   mode: release
-  api_prefix: /member/api
+  api_prefix: /business_member/api
   max_concurrent_ips: 100
   upload_dir_prefix: 
   # CORS 白名单（前端来源），生产环境请按实际域名配置，不要使用 *

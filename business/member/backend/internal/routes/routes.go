@@ -3,6 +3,7 @@ package routes
 import (
 	"time"
 
+	"member/config"
 	"member/internal/controllers"
 	"member/internal/middleware"
 
@@ -10,7 +11,12 @@ import (
 )
 
 func Register(r *gin.Engine) {
-	prefix := "/member/api"
+	// 与 portal 一致：API 前缀由 config.yaml 的 server.api_prefix 决定（缺失时回退到默认值），
+	// 便于部署时只改配置，无需改代码。
+	prefix := config.Cfg.Server.APIPrefix
+	if prefix == "" {
+		prefix = "/member/api"
+	}
 
 	// 限流统一走 Redis 版 middleware.RateLimitMiddleware（与 portal 一致：多实例共享计数，Redis 不可用时进程内兜底）
 
