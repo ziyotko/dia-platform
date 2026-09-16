@@ -27,7 +27,7 @@ npm run lint     # ESLint 自动修复
 ```
 frontend/
 ├── src/
-│   ├── api/            # API 接口模块（与后端 /business_base/api/v1 对应）
+│   ├── api/            # API 接口模块（与后端 /business_base/api 对应）
 │   ├── components/     # 公共组件
 │   │   ├── Breadcrumb.vue
 │   │   ├── TenantSelect.vue        # 租户下拉（仅超管使用）
@@ -76,7 +76,7 @@ frontend/
 
 ```
 VITE_BASE_PATH=/business_base/
-VITE_API_BASE_URL=/business_base/api/v1
+VITE_API_BASE_URL=/business_base/api
 ```
 
 [vite.config.ts](vite.config.ts) 据此生成 `base` 与 dev 代理（代理键 = `VITE_API_BASE_URL`，必须与 `utils/request.ts` 的 `baseURL` 一致）：
@@ -88,8 +88,8 @@ import { fileURLToPath, URL } from 'url'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
-  const basePath = env.VITE_BASE_PATH || '/base/'
-  const apiBase = env.VITE_API_BASE_URL || '/base/api/v1'
+  const basePath = env.VITE_BASE_PATH || '/business_base/'
+  const apiBase = env.VITE_API_BASE_URL || '/business_base/api'
 
   return {
     base: basePath,
@@ -114,12 +114,12 @@ export default defineConfig(({ mode }) => {
 
 > 路由基路径用 `createWebHistory(import.meta.env.BASE_URL)`、跳登录页用 `${import.meta.env.BASE_URL}login`，
 > 不要硬编码子路径，否则改名后会出现路由不匹配、登录跳转 404。
-> 后端前缀（/business_base/api/v1）由 `pkg/permmatch.APIPrefix` 统一提供（路由注册 / 权限白名单 / 文件 URL / 路径匹配共用），
-> 改名时前后端需同时改。
+> 后端前缀由 `config.yaml` 的 `server.api_prefix` 提供（兜底值 `config.DefaultAPIPrefix`），
+> 路由注册、权限白名单、审计脱敏、文件 URL 均通过 `pkg/permmatch.APIPrefix()` 取，改名只需同步前端 `.env` 与后端配置。
 
 ## 动态路由
 
-菜单从后端 `/business_base/api/v1/auth/menus` 获取后，在 [src/router/index.ts](src/router/index.ts) 中按 `type` 生成路由：
+菜单从后端 `/business_base/api/auth/menus` 获取后，在 [src/router/index.ts](src/router/index.ts) 中按 `type` 生成路由：
 
 - `directory`：生成嵌套路由（无组件，用于组织子菜单）。
 - `menu`：绑定 `component` 字段对应的 `.vue` 文件。

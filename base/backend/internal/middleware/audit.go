@@ -24,11 +24,11 @@ const maskedBody = "[敏感参数已脱敏]"
 // 注意：这里只针对会携带密码的写接口，其余接口仍保留完整请求体便于追溯。
 func isSensitiveBody(path string) bool {
 	switch {
-	case path == permmatch.APIPrefix+"/auth/change-password":
+	case path == permmatch.APIPrefix()+"/auth/change-password":
 		return true
-	case path == permmatch.APIPrefix+"/settings": // SMTP 密码等配置项
+	case path == permmatch.APIPrefix()+"/settings": // SMTP 密码等配置项
 		return true
-	case strings.HasPrefix(path, permmatch.APIPrefix+"/users/") && strings.HasSuffix(path, "/reset-password"):
+	case strings.HasPrefix(path, permmatch.APIPrefix()+"/users/") && strings.HasSuffix(path, "/reset-password"):
 		return true
 	}
 	return false

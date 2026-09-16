@@ -11,9 +11,16 @@ type Config struct {
 	JWT    JWT    `mapstructure:"jwt"`
 }
 
+// DefaultAPIPrefix 底座 HTTP 路由前缀的兜底值（config.yaml 未配 server.api_prefix 时使用）。
+// 与前端 .env 的 VITE_API_BASE_URL、portal/member/application 的口径保持一致：/business_<模块>/api
+const DefaultAPIPrefix = "/business_base/api"
+
 type Server struct {
 	Port string `mapstructure:"port"`
 	Mode string `mapstructure:"mode"`
+
+	// HTTP 路由前缀（如 /business_base/api）；路由注册、权限白名单匹配、审计脱敏、文件 URL 均以此为唯一来源
+	APIPrefix string `mapstructure:"api_prefix"`
 
 	// 上传目录与单文件大小上限（MB）
 	UploadDir   string `mapstructure:"upload_dir"`
@@ -82,6 +89,9 @@ func Load(path string) (*Config, error) {
 func (c *Config) applyDefaults() {
 	if c.Server.Mode == "" {
 		c.Server.Mode = "release"
+	}
+	if c.Server.APIPrefix == "" {
+		c.Server.APIPrefix = DefaultAPIPrefix
 	}
 	if len(c.Server.TrustedProxies) == 0 {
 		c.Server.TrustedProxies = []string{"127.0.0.1"}

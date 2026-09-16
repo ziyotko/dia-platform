@@ -9,7 +9,7 @@ import (
 )
 
 // AdapterController 子应用统一代理入口
-// 路由：/business_base/api/v1/app/:appCode/*path（前缀常量：pkg/permmatch.APIPrefix）
+// 路由：/business_base/api/app/:appCode/*path（前缀来自 config.yaml 的 server.api_prefix）
 //
 // 鉴权口径：入口只挂了 JWT（子应用的接口权限由子应用自己控制），
 // 但必须校验「调用方租户已开通并启用该应用」，避免任意登录用户直接穿透到子应用后端。

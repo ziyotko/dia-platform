@@ -77,7 +77,7 @@ func RateLimitMiddleware(limit int, window time.Duration) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		ip := c.ClientIP()
-		// 路由模板（如 /business_base/api/v1/auth/login），未匹配时退化为实际路径
+		// 路由模板（如 /business_base/api/auth/login），未匹配时退化为实际路径
 		scope := c.FullPath()
 		if scope == "" {
 			scope = c.Request.URL.Path

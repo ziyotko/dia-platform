@@ -34,7 +34,7 @@ cd base/backend
 # 确保数据库已存在
 
 go mod tidy
-go run cmd/server/main.go
+go run main.go
 ```
 
 服务默认监听 `:8080`，首次启动会自动创建：
@@ -51,7 +51,7 @@ go run cmd/server/main.go
 可选参数：
 
 ```bash
-go run cmd/server/main.go -mock-data    # 额外插入模拟机构数据（本地测试）
+go run main.go -mock-data    # 额外插入模拟机构数据（本地测试）
 ```
 
 关键配置（`config.yaml`）：
@@ -59,6 +59,7 @@ go run cmd/server/main.go -mock-data    # 额外插入模拟机构数据（本�
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
 | `server.port` | `8080` | 后端监听端口 |
+| `server.api_prefix` | `/business_base/api` | HTTP 路由前缀（与前端 `.env` 的 `VITE_API_BASE_URL` 一致） |
 | `server.max_upload_mb` | `50` | 单文件上传大小上限（MB） |
 | `server.workflow_remind_interval_seconds` | `600` | 工作流超时提醒扫描周期（秒），`<= 0` 表示关闭提醒 |
 

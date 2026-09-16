@@ -14,27 +14,46 @@ import (
 // 不需要接口级权限校验的白名单：基础个人信息、菜单、权限、改密、仪表盘、我的应用、未读消息数，
 // 以及工作流中「属于自己的数据」类接口（发起、我的申请、待办审批），
 // 这些接口的归属校验在 service 层完成（只能操作自己发起或自己负责的任务）。
+// 白名单键统一用**相对路径**（不含 APIPrefix，如 /auth/info）：
+// 匹配时对请求路径取 permmatch.Candidates（完整路径 + 去前缀后的相对路径）逐个查表，
+// 因此改前缀不需要动这里；写成完整路径也仍可命中。
 var permissionWhitelist = map[string][]string{
-	permmatch.APIPrefix + "/auth/info":             {"GET"},
-	permmatch.APIPrefix + "/auth/menus":            {"GET"},
-	permmatch.APIPrefix + "/auth/permissions":      {"GET"},
-	permmatch.APIPrefix + "/auth/change-password":  {"POST"},
-	permmatch.APIPrefix + "/auth/logout":           {"POST"},
-	permmatch.APIPrefix + "/dashboard/stats":       {"GET"},
-	permmatch.APIPrefix + "/app-instances/my":      {"GET"},
-	permmatch.APIPrefix + "/messages/unread-count": {"GET"},
+	"/auth/info":             {"GET"},
+	"/auth/menus":            {"GET"},
+	"/auth/permissions":      {"GET"},
+	"/auth/change-password":  {"POST"},
+	"/auth/logout":           {"POST"},
+	"/dashboard/stats":       {"GET"},
+	"/app-instances/my":      {"GET"},
+	"/messages/unread-count": {"GET"},
 
 	// 工作流：发起流程需要先选流程定义
-	permmatch.APIPrefix + "/workflows/options":               {"GET"},
-	permmatch.APIPrefix + "/workflow-instances":              {"POST", "GET"},
-	permmatch.APIPrefix + "/workflow-instances/:id":          {"GET"},
-	permmatch.APIPrefix + "/workflow-instances/:id/cancel":   {"POST"},
-	permmatch.APIPrefix + "/workflow-tasks":                  {"GET"},
-	permmatch.APIPrefix + "/workflow-tasks/approver-options": {"GET"},
-	permmatch.APIPrefix + "/workflow-tasks/:id/approve":      {"POST"},
-	permmatch.APIPrefix + "/workflow-tasks/:id/reject":       {"POST"},
-	permmatch.APIPrefix + "/workflow-tasks/:id/transfer":     {"POST"},
-	permmatch.APIPrefix + "/workflow-tasks/:id/add-approver": {"POST"},
+	"/workflows/options":               {"GET"},
+	"/workflow-instances":              {"POST", "GET"},
+	"/workflow-instances/:id":          {"GET"},
+	"/workflow-instances/:id/cancel":   {"POST"},
+	"/workflow-tasks":                  {"GET"},
+	"/workflow-tasks/approver-options": {"GET"},
+	"/workflow-tasks/:id/approve":      {"POST"},
+	"/workflow-tasks/:id/reject":       {"POST"},
+	"/workflow-tasks/:id/transfer":     {"POST"},
+	"/workflow-tasks/:id/add-approver": {"POST"},
+}
+
+// inWhitelist 判断「方法 + 请求路径」是否命中白名单（请求路径的完整/相对形式都查）。
+func inWhitelist(method, requestPath string) bool {
+	for _, p := range permmatch.Candidates(requestPath) {
+		methods, ok := permissionWhitelist[p]
+		if !ok {
+			continue
+		}
+		for _, m := range methods {
+			if strings.EqualFold(m, method) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // PermissionAuth 基于 base_permission 表的接口级权限校验中间件。
@@ -67,13 +86,9 @@ func PermissionAuth() gin.HandlerFunc {
 		}
 
 		// 白名单接口直接放行（放在租户管理员判定之前，避免高频接口多一次查库）
-		if methods, ok := permissionWhitelist[requiredPath]; ok {
-			for _, m := range methods {
-				if strings.EqualFold(m, requiredMethod) {
-					c.Next()
-					return
-				}
-			}
+		if inWhitelist(requiredMethod, requiredPath) {
+			c.Next()
+			return
 		}
 
 		uid := userID.(uint64)

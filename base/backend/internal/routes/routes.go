@@ -7,7 +7,6 @@ import (
 	"base/internal/adapter"
 	"base/internal/controllers"
 	"base/internal/middleware"
-	"base/pkg/permmatch"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -22,7 +21,7 @@ func Register(r *gin.Engine) {
 	}
 
 	srv := config.Cfg.Server
-	api := r.Group(permmatch.APIPrefix)
+	api := r.Group(srv.APIPrefix)
 
 	// 文件控制器持有存储依赖，需实例化后复用（不能用 &FileController{} 零值）
 	fileCtl := controllers.NewFileController()
@@ -257,5 +256,5 @@ func Register(r *gin.Engine) {
 	}
 
 	// 子应用统一代理入口
-	r.Any(permmatch.APIPrefix+"/app/:appCode/*path", middleware.JWTAuth(), adapter.AdapterController)
+	r.Any(srv.APIPrefix+"/app/:appCode/*path", middleware.JWTAuth(), adapter.AdapterController)
 }

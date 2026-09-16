@@ -11,7 +11,7 @@ import (
 
 // permissionSeed 权限点种子。Code 全局唯一，作为幂等键。
 // Type=menu 的为分组节点（不参与接口匹配，仅用于前端权限树展示）；Type=api 的参与
-// middleware.PermissionAuth 的 method + path 匹配，Path 使用去除 /business_base/api/v1 前缀的相对路径。
+// middleware.PermissionAuth 的 method + path 匹配，Path 使用去除 server.api_prefix 前缀的相对路径。
 type permissionSeed struct {
 	Code       string
 	Name       string

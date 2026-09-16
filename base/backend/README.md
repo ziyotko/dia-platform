@@ -14,7 +14,7 @@ go mod tidy
 # 3. 确保 MySQL 数据库已存在（配置文件中的 dbname）
 
 # 4. 启动服务
-go run cmd/server/main.go
+go run main.go
 ```
 
 服务默认监听 `:8080`。首次启动会自动执行数据初始化：
@@ -27,7 +27,7 @@ go run cmd/server/main.go
 ### 命令行参数
 
 ```bash
-go run cmd/server/main.go -mock-data    # 额外插入模拟机构数据（仅本地测试）
+go run main.go -mock-data    # 额外插入模拟机构数据（仅本地测试）
 ```
 
 ### 手动初始化管理员
@@ -35,7 +35,7 @@ go run cmd/server/main.go -mock-data    # 额外插入模拟机构数据（仅�
 初始化超管接口（仅在平台还没有 admin 账号时创建，不提供重置密码——重置请由管理员登录后在「用户管理 → 重置密码」操作）：
 
 ```bash
-POST /business_base/api/v1/auth/init
+POST /business_base/api/auth/init
 { "password": "admin123" }
 ```
 
@@ -43,13 +43,13 @@ POST /business_base/api/v1/auth/init
 
 ```
 backend/
-├── cmd/server/          # 服务启动入口
+├── main.go              # 服务启动入口（与 config.yaml 同级）
 ├── config/
 │   └── config.go        # 配置结构定义与加载
 ├── config.yaml          # 运行时配置文件（需自行修改数据库连接）
 ├── internal/
 │   ├── adapter/         # 子应用注册表与统一代理
-│   │   ├── controller.go   # /business_base/api/v1/app/:appCode/* 入口
+│   │   ├── controller.go   # /business_base/api/app/:appCode/* 入口
 │   │   ├── proxy.go        # 反向代理实现
 │   │   └── registry.go     # 应用配置内存缓存
 │   ├── controllers/     # HTTP 控制器
@@ -119,11 +119,11 @@ jwt:
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/business_base/api/v1/auth/login` | 登录（支持租户编码、验证码） |
-| POST | `/business_base/api/v1/auth/init` | 首次部署时创建超级管理员（已存在则报错） |
-| GET  | `/business_base/api/v1/auth/captcha` | 获取图形验证码（5 位数字+字母，返回 `captcha_id` / `captcha_img`） |
-| GET  | `/business_base/api/v1/site-info` | 站点公开配置（`captchaEnabled`，登录页据此决定是否展示验证码） |
-| GET  | `/business_base/api/v1/files/*key` | 文件公开访问（key 含日期目录，如 `20260101/xxx.png`） |
+| POST | `/business_base/api/auth/login` | 登录（支持租户编码、验证码） |
+| POST | `/business_base/api/auth/init` | 首次部署时创建超级管理员（已存在则报错） |
+| GET  | `/business_base/api/auth/captcha` | 获取图形验证码（5 位数字+字母，返回 `captcha_id` / `captcha_img`） |
+| GET  | `/business_base/api/site-info` | 站点公开配置（`captchaEnabled`，登录页据此决定是否展示验证码） |
+| GET  | `/business_base/api/files/*key` | 文件公开访问（key 含日期目录，如 `20260101/xxx.png`） |
 
 > 三个公开接口（`login` / `captcha` / `init`）均按真实客户端 IP 限流，超限返回 `code=429`，各自独立额度，可在 `server` 配置段调整。
 
@@ -131,28 +131,28 @@ jwt:
 
 | 分组 | 方法 | 路径 | 说明 |
 |------|------|------|------|
-| 认证 | GET/POST | `/business_base/api/v1/auth/info` / `change-password` / `logout` | 当前用户、修改密码（改密后旧 token 失效）、登出（token 进黑名单） |
-| 仪表盘 | GET | `/business_base/api/v1/dashboard/stats` | 仪表盘统计：资源概览、今日新增/登录成功/登录失败、「我的」未读/待办/我发起的进行中流程、近 7 天趋势（按角色收敛范围，见 [工作流引擎](#工作流引擎) 上文「仪表盘口径」） |
-| 租户 | CRUD | `/business_base/api/v1/tenants` | 仅限超级管理员 |
-| 系统设置 | GET/PUT/POST | `/business_base/api/v1/settings` | 仅平台超管；含邮件测试（保存后立即重载通知渠道） |
-| 数据字典 | CRUD | `/business_base/api/v1/dicts` | 含字典项管理 |
-| 应用 | CRUD | `/business_base/api/v1/apps` | 应用定义（平台级：租户可读，仅平台超管可增删改） |
-| 应用实例 | CRUD | `/business_base/api/v1/app-instances` | 含我的应用列表 |
-| 用户 | CRUD | `/business_base/api/v1/users` | 含分配角色、重置密码（需传入新密码，服务端按安全策略校验长度） |
-| 角色 | CRUD | `/business_base/api/v1/roles` | 含分配菜单、分配权限 |
-| 菜单 | CRUD | `/business_base/api/v1/menus/tree` | 菜单树 |
-| 权限 | CRUD | `/business_base/api/v1/permissions/tree` | 权限树 |
-| 流程角色 | CRUD | `/business_base/api/v1/workflow-roles` | 审批角色定义与成员：`GET /workflow-roles/user-options`（成员选项）、`POST /workflow-roles/:id/users`（覆盖式设置成员） |
-| 流程定义 | CRUD | `/business_base/api/v1/workflows` | 含节点编排 `PUT /workflows/:id/nodes`（覆盖式保存）；`GET /workflows/options`（启用中的流程，白名单）、`GET /workflows/approver-options`（审批人候选） |
-| 流程实例 | POST/GET/DELETE | `/business_base/api/v1/workflow-instances` | `POST` 发起（白名单）、`GET` 列表（非管理员强制只看自己发起的）、`GET /:id` 详情（含任务与流转日志）、`POST /:id/cancel` 撤销、`DELETE /:id` 删除（仅管理员） |
-| 审批任务 | GET/POST | `/business_base/api/v1/workflow-tasks` | `GET` 我的待办/已办（`box=todo\|done`）、`GET /approver-options` 转办/加签可选用户（同租户启用用户，白名单）、`POST /:id/approve` 通过、`POST /:id/reject` 驳回、`POST /:id/transfer` 转办、`POST /:id/add-approver` 加签（均为白名单，归属校验在服务层） |
-| 机构 | CRUD | `/business_base/api/v1/organizations/tree` | 机构树 |
-| 消息 | CRUD | `/business_base/api/v1/messages` | 草稿（`POST /messages`、`PUT /messages/:id`、`POST /messages/:id/send`）、发送（`POST /messages/send`，支持 `templateCode` + `vars` 按模板渲染）、可用渠道（`GET /messages/channels`）、未读数、标记已读、全部已读；`box=inbox/sent` 区分收发 |
-| 消息模板 | CRUD | `/business_base/api/v1/message-templates` | 模板管理 |
-| 操作日志 | GET/POST/GET | `/business_base/api/v1/operation-logs` | 列表、删除、清空、导出 |
-| 登录日志 | GET/POST/GET | `/business_base/api/v1/login-logs` | 列表、删除、清空、导出 |
-| 文件 | POST/GET/DELETE | `/business_base/api/v1/files/*` | 上传、列表、删除 |
-| 子应用代理 | ANY | `/business_base/api/v1/app/:appCode/*path` | 统一反向代理入口 |
+| 认证 | GET/POST | `/business_base/api/auth/info` / `change-password` / `logout` | 当前用户、修改密码（改密后旧 token 失效）、登出（token 进黑名单） |
+| 仪表盘 | GET | `/business_base/api/dashboard/stats` | 仪表盘统计：资源概览、今日新增/登录成功/登录失败、「我的」未读/待办/我发起的进行中流程、近 7 天趋势（按角色收敛范围，见 [工作流引擎](#工作流引擎) 上文「仪表盘口径」） |
+| 租户 | CRUD | `/business_base/api/tenants` | 仅限超级管理员 |
+| 系统设置 | GET/PUT/POST | `/business_base/api/settings` | 仅平台超管；含邮件测试（保存后立即重载通知渠道） |
+| 数据字典 | CRUD | `/business_base/api/dicts` | 含字典项管理 |
+| 应用 | CRUD | `/business_base/api/apps` | 应用定义（平台级：租户可读，仅平台超管可增删改） |
+| 应用实例 | CRUD | `/business_base/api/app-instances` | 含我的应用列表 |
+| 用户 | CRUD | `/business_base/api/users` | 含分配角色、重置密码（需传入新密码，服务端按安全策略校验长度） |
+| 角色 | CRUD | `/business_base/api/roles` | 含分配菜单、分配权限 |
+| 菜单 | CRUD | `/business_base/api/menus/tree` | 菜单树 |
+| 权限 | CRUD | `/business_base/api/permissions/tree` | 权限树 |
+| 流程角色 | CRUD | `/business_base/api/workflow-roles` | 审批角色定义与成员：`GET /workflow-roles/user-options`（成员选项）、`POST /workflow-roles/:id/users`（覆盖式设置成员） |
+| 流程定义 | CRUD | `/business_base/api/workflows` | 含节点编排 `PUT /workflows/:id/nodes`（覆盖式保存）；`GET /workflows/options`（启用中的流程，白名单）、`GET /workflows/approver-options`（审批人候选） |
+| 流程实例 | POST/GET/DELETE | `/business_base/api/workflow-instances` | `POST` 发起（白名单）、`GET` 列表（非管理员强制只看自己发起的）、`GET /:id` 详情（含任务与流转日志）、`POST /:id/cancel` 撤销、`DELETE /:id` 删除（仅管理员） |
+| 审批任务 | GET/POST | `/business_base/api/workflow-tasks` | `GET` 我的待办/已办（`box=todo\|done`）、`GET /approver-options` 转办/加签可选用户（同租户启用用户，白名单）、`POST /:id/approve` 通过、`POST /:id/reject` 驳回、`POST /:id/transfer` 转办、`POST /:id/add-approver` 加签（均为白名单，归属校验在服务层） |
+| 机构 | CRUD | `/business_base/api/organizations/tree` | 机构树 |
+| 消息 | CRUD | `/business_base/api/messages` | 草稿（`POST /messages`、`PUT /messages/:id`、`POST /messages/:id/send`）、发送（`POST /messages/send`，支持 `templateCode` + `vars` 按模板渲染）、可用渠道（`GET /messages/channels`）、未读数、标记已读、全部已读；`box=inbox/sent` 区分收发 |
+| 消息模板 | CRUD | `/business_base/api/message-templates` | 模板管理 |
+| 操作日志 | GET/POST/GET | `/business_base/api/operation-logs` | 列表、删除、清空、导出 |
+| 登录日志 | GET/POST/GET | `/business_base/api/login-logs` | 列表、删除、清空、导出 |
+| 文件 | POST/GET/DELETE | `/business_base/api/files/*` | 上传、列表、删除 |
+| 子应用代理 | ANY | `/business_base/api/app/:appCode/*path` | 统一反向代理入口 |
 
 ## 安全与隔离
 
@@ -181,7 +181,7 @@ jwt:
 ## 子应用代理
 
 - 应用在 `base_app` 表中注册后，内存注册表 `adapter.DefaultRegistry` 会自动重载。
-- 代理路径：`/business_base/api/v1/app/{appCode}/{原应用API路径}`。
+- 代理路径：`/business_base/api/app/{appCode}/{原应用API路径}`。
 - 代理时会在请求头注入当前用户信息：
   - `X-Base-User-ID`
   - `X-Base-Username`

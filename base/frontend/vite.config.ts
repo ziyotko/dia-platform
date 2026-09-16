@@ -6,8 +6,8 @@ export default defineConfig(({ mode }) => {
   // 与 portal / member / application 一致：部署子路径与 API 前缀统一从 .env 读取
   // （VITE_BASE_PATH / VITE_API_BASE_URL），保证 build 产物资源路径与 request.ts 的 baseURL 同源同值。
   const env = loadEnv(mode, process.cwd(), 'VITE_')
-  const basePath = env.VITE_BASE_PATH || '/base/'
-  const apiBase = env.VITE_API_BASE_URL || '/base/api/v1'
+  const basePath = env.VITE_BASE_PATH || '/business_base/'
+  const apiBase = env.VITE_API_BASE_URL || '/business_base/api'
 
   return {
     base: basePath,

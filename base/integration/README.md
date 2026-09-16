@@ -18,7 +18,7 @@
 - 应用独立部署。
 - Base 前端通过 iframe 加载应用前端地址（菜单 `target = iframe` 时，地址取自菜单的组件/路径字段）。
 - 底座在 iframe 地址后自动追加查询参数（已有 query 会以 `&` 追加）：`base_token`、`user_id`、`username`、`tenant_id`。
-- 子应用前端解析 `base_token`，调用底座 `GET /business_base/api/v1/auth/info` 校验用户信息。
+- 子应用前端解析 `base_token`，调用底座 `GET /business_base/api/auth/info` 校验用户信息。
 - 适合已有系统改动成本低的场景。
 
 ### 2. API 代理接入（推荐）
@@ -29,9 +29,9 @@
   - `X-Base-Username`
   - `X-Base-Tenant-ID`
 - 应用后端读取请求头完成鉴权与数据隔离。
-- 代理路径：`/business_base/api/v1/app/{appCode}/{原应用API路径}`，实际转发地址为
+- 代理路径：`/business_base/api/app/{appCode}/{原应用API路径}`，实际转发地址为
   `{backendUrl}{API前缀}{原应用API路径}`（例如 `backendUrl=http://127.0.0.1:8081`、`API前缀=/api` 时，
-  `/business_base/api/v1/app/demo/users` 会转发到 `http://127.0.0.1:8081/api/users`）。
+  `/business_base/api/app/demo/users` 会转发到 `http://127.0.0.1:8081/api/users`）。
 - IFrame 类型应用不支持 API 代理。
 - 代理入口的鉴权口径：**已登录** + **调用方租户已开通并启用该应用**（在「应用实例」中开通；平台超管放行）。
   未开通时返回 `403 当前租户未开通该应用`。子应用自身的业务权限仍由子应用负责。
