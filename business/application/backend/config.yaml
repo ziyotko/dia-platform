@@ -23,8 +23,8 @@ mysql:
 redis:
   addr: 127.0.0.1:6379
   password:
-  captcha_db: 8
-  anti_replay_db: 9
+  captcha_db: 2
+  anti_replay_db: 3
 
 jwt:
   secret: application-jwt-secret-key-2026

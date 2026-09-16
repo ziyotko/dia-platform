@@ -30,8 +30,8 @@ mysql:
 redis:
   addr: 127.0.0.1:6379
   password: ""
-  captcha_db: 11
-  anti_replay_db: 12
+  captcha_db: 4
+  anti_replay_db: 5
 
 jwt:
   # 请使用环境变量 MEMBER_JWT_SECRET 注入强随机密钥
