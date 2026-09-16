@@ -1,5 +1,5 @@
 server:
-  port: 8087
+  port: 8094
   mode: debug
   api_prefix: /business_application/api
   # 上传文件挂载前缀：实际挂在 <upload_dir_prefix>/uploads（与前端 VITE_BASE_PATH 去尾斜杠一致）

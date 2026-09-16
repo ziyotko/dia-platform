@@ -1,7 +1,7 @@
 server:
   # 监听地址，0.0.0.0 表示所有网卡
   host: 0.0.0.0
-  port: 8085
+  port: 8093
   # 生产环境务必使用 release；可用环境变量 MEMBER_MODE 覆盖
   mode: release
   api_prefix: /business_member/api

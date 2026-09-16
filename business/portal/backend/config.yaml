@@ -1,5 +1,5 @@
 server:
-  port: 8084
+  port: 8092
   host: 0.0.0.0
   # 生产环境务必使用 release；可用环境变量覆盖
   mode: release
