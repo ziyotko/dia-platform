@@ -49,6 +49,11 @@
         "npm run build": true,
         "npm run lint": true,
         ">": true,
-        "git checkout": true
+        "git checkout": true,
+        "Get-Command": true,
+        "/^python -V; python -c \"import pymysql, sys; print\\('pymysql ok'\\)\" 2>\\$null; python -c \"import MySQLdb\" 2>\\$null; if \\(\\$LASTEXITCODE -ne 0\\) \\{ 'no mysql driver' \\}$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
     }
 }
