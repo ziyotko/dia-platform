@@ -17,8 +17,8 @@ server:
     - 127.0.0.1
 
 mysql:
-  host: 127.0.0.1
-  port: 3305
+  host: 10.3.1.95
+  port: 63400
   user: root
   # 请使用环境变量 MEMBER_DB_PASSWORD 注入，勿提交真实密码到仓库
   password: MEMBER_DB_PASSWORD
