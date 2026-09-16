@@ -34,7 +34,8 @@ export const useUserStore = defineStore('user', () => {
     menus.value = []
     localStorage.clear()
     sessionStorage.clear()
-    window.location.href = '/member/login'
+    // 跳登录页必须带上部署子路径（BASE_URL = vite base），否则子路径部署下会跳到不存在的 /login
+    window.location.href = `${import.meta.env.BASE_URL || '/'}login`
   }
 
   return { token, userInfo, menus, isLoggedIn, isAdmin, setToken, login, fetchUserInfo, logout }

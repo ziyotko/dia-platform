@@ -3,6 +3,7 @@ package routes
 import (
 	"time"
 
+	"application/config"
 	"application/internal/controllers"
 	"application/internal/middleware"
 
@@ -10,7 +11,13 @@ import (
 )
 
 func Register(r *gin.Engine) {
-	api := r.Group("/application/api")
+	// 与 portal / member 一致：API 前缀由 config.yaml 的 server.api_prefix 决定（缺失时回退到默认值），
+	// 便于部署时只改配置，无需改代码。
+	apiPrefix := config.Cfg.Server.APIPrefix
+	if apiPrefix == "" {
+		apiPrefix = "/application/api"
+	}
+	api := r.Group(apiPrefix)
 
 	// === Controllers ===
 	authCtrl := &controllers.AuthController{}

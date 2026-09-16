@@ -1,7 +1,7 @@
 server:
   port: 8087
   mode: debug
-  api_prefix: /application/api
+  api_prefix: /business_application/api
   max_concurrent_ips: 100
   upload_dir_prefix: ""
   # 可信反向代理 IP 列表（用于正确获取客户端真实 IP；限流/审计均按真实 IP 计数）

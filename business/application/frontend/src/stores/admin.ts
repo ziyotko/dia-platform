@@ -42,7 +42,7 @@ export const useAdminStore = defineStore('admin', () => {
     adminInfo.value = null
     localStorage.removeItem('application-admin-token')
     localStorage.removeItem('application-admin-role')
-    window.location.href = '/application/admin/login'
+    window.location.href = `${import.meta.env.BASE_URL || '/'}admin/login`
   }
 
   return { token, adminInfo, isLoggedIn, roleCode, setToken, login, fetchAdminInfo, logout }

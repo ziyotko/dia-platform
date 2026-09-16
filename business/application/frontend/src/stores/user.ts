@@ -29,7 +29,7 @@ export const useUserStore = defineStore('user', () => {
     token.value = ''
     userInfo.value = null
     localStorage.removeItem('application-member-token')
-    window.location.href = '/application/login'
+    window.location.href = `${import.meta.env.BASE_URL || '/'}login`
   }
 
   return { token, userInfo, isLoggedIn, setToken, login, fetchUserInfo, logout }
