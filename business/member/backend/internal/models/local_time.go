@@ -12,7 +12,7 @@ type LocalTime struct {
 }
 
 func (t LocalTime) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf("\"%s\"", t.Format("2006-01-02 15:04:05"))), nil
+	return fmt.Appendf(nil, "\"%s\"", t.Format("2006-01-02 15:04:05")), nil
 }
 
 func (t *LocalTime) UnmarshalJSON(data []byte) error {
