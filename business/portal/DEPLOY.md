@@ -34,7 +34,8 @@ business/portal/
 
 - `server.port`: 8084（对外可改，注意与 Nginx 一致）
 - `server.mode`: 生产用 `release`
-- `server.api_prefix`: `/xxxxx/api`（与前端一致即可，前端依赖）
+- `server.api_prefix`: `/xxxxx/api`（与前端一致即可，前端依赖；本仓库当前值为 `/business_portal/api`）
+- `server.upload_dir_prefix`: `/xxxxx`（上传文件挂载点前缀，需与 `VITE_BASE_PATH` 去尾斜杠一致；本仓库当前值为 `/business_portal`）
 - `server.allowed_origins`: 生产环境改为实际前端域名，不要用 `*`（开发默认值需与 `frontend/vite.config.ts` 的 `server.port` 一致，当前为 `http://localhost:3000`、`http://127.0.0.1:3000`）
 - `database` / `redis`: 按实际环境修改
 
@@ -100,8 +101,9 @@ npm run build        # 等价 vue-tsc && vite build
 
 ### 2. 关键配置
 
-- `.env`：`VITE_BASE_PATH=/xxxxx/`（部署在 `/xxxxx/` 子路径下）、`VITE_API_BASE_URL=/xxxxx/api`
-- 若部署路径变化，修改 `VITE_BASE_PATH` 后重新构建
+- `.env`：`VITE_BASE_PATH=/xxxxx/`（部署在 `/xxxxx/` 子路径下）、`VITE_API_BASE_URL=/xxxxx/api`（本仓库当前为 `/business_portal/` + `/business_portal/api`）
+- 若部署路径变化，修改 `VITE_BASE_PATH` 后重新构建；同时在 `backend/config.yaml` 同步 `server.api_prefix`（`/xxxxx/api`）与 `server.upload_dir_prefix`（`/xxxxx`）
+- dev 代理键由 `.env` 推导（`[apiBase]` 与 `[basePath]/uploads`），不要再手写成别的前缀——否则 dev 下请求不会被转发（历史问题：`/portal/api` 代理键对不上 `/business_portal/api`）
 
 ### 3. 部署
 
