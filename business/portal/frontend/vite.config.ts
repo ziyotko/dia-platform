@@ -18,12 +18,12 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       open: false,
       proxy: {
-        '/caamm/api': {
+        '/portal/api': {
           target: 'http://127.0.0.1:8084',
           changeOrigin: true,
           secure: false
         },
-        '/caamm/uploads': {
+        '/portal/uploads': {
           target: 'http://127.0.0.1:8084',
           changeOrigin: true,
           secure: false

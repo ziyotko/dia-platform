@@ -3,8 +3,8 @@ server:
   host: 0.0.0.0
   # 生产环境务必使用 release；可用环境变量覆盖
   mode: release
-  api_prefix: /caamm/api
-  upload_dir_prefix: "/caamm"
+  api_prefix: /portal/api
+  upload_dir_prefix: "/portal"
   max_concurrent_ips: 50
   # 可信反向代理地址，决定 gin 是否信任 X-Forwarded-For / X-Real-IP。
   # 生产环境若经 Nginx 等反向代理，请填入代理实际地址；本机回环保留 127.0.0.1。
