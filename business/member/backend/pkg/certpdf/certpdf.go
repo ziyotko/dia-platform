@@ -1,5 +1,5 @@
-// Package certpdf 生成会员证书 PDF（A4 横向）。
-// 使用纯 Go 的 go-pdf/fpdf，中文通过内嵌 TTF/OTF 字体子集实现，无需外部依赖。
+// Package certpdf 生成会员证书 PDF（默认 A4 横向；也可按上传的 PDF 模板套打）。
+// 使用纯 Go 的 go-pdf/fpdf（叠加 gofpdi 导入模板页），中文通过内嵌 TTF/OTF 字体子集实现。
 package certpdf
 
 import (
@@ -13,12 +13,14 @@ import (
 	"time"
 
 	"github.com/go-pdf/fpdf"
+	"github.com/phpdave11/gofpdi"
 )
 
-// 页面尺寸（A4 横向，单位 mm）
+// 默认版式页面尺寸（A4 横向，单位 mm）与单位换算
 const (
-	pageW = 297.0
-	pageH = 210.0
+	pageW  = 297.0
+	pageH  = 210.0
+	ptToMM = 25.4 / 72.0
 )
 
 // Data 渲染证书所需的业务数据。
@@ -92,34 +94,8 @@ func Generate(d Data, fontPath string) ([]byte, error) {
 	pdf.Line(pageW/2-45, 64, pageW/2+45, 64)
 
 	// ---- 信息行 ----
-	rows := [][2]string{
-		{"会员名称", fallback(d.MemberName, "-")},
-		{"会员类型", fallback(d.MemberType, "-")},
-		{"会员等级", fallback(d.LevelName, "-")},
-		{"证书编号", fallback(d.CertNo, "-")},
-		{"有效期至", formatDate(d.ExpireAt)},
-		{"颁发日期", formatDate(d.IssuedAt)},
-	}
-	const (
-		labelW  = 30.0
-		valueW  = 130.0
-		rowH    = 10.5
-		labelX  = pageW/2 - 70
-		valueX  = labelX + labelW + 6
-		rowsTop = 76.0
-	)
-	for i, r := range rows {
-		y := rowsTop + float64(i)*rowH
-		pdf.SetFont("cert", "", 12)
-		pdf.SetTextColor(122, 122, 122)
-		pdf.SetXY(labelX, y)
-		pdf.CellFormat(labelW, 8, r[0], "", 0, "R", false, 0, "")
-
-		pdf.SetFont("cert", "", 13)
-		pdf.SetTextColor(34, 34, 34)
-		pdf.SetXY(valueX, y)
-		pdf.CellFormat(valueW, 8, r[1], "", 0, "L", false, 0, "")
-	}
+	rows := infoRows(d)
+	drawInfoRows(pdf, rows, pageW, rowsTopCentered(pageH, len(rows)))
 
 	// ---- 页脚说明 + 发证机构 ----
 	pdf.SetFont("cert", "", 9)
@@ -135,6 +111,56 @@ func Generate(d Data, fontPath string) ([]byte, error) {
 		pdf.CellFormat(90, 8, issuer+"（盖章）", "", 0, "R", false, 0, "")
 	}
 
+	return outputBytes(pdf)
+}
+
+// infoRows 证书上的信息行（标签, 值）。
+func infoRows(d Data) [][2]string {
+	return [][2]string{
+		{"会员名称", fallback(d.MemberName, "-")},
+		{"会员类型", fallback(d.MemberType, "-")},
+		{"会员等级", fallback(d.LevelName, "-")},
+		{"证书编号", fallback(d.CertNo, "-")},
+		{"有效期至", formatDate(d.ExpireAt)},
+		{"颁发日期", formatDate(d.IssuedAt)},
+	}
+}
+
+// drawInfoRows 居中绘制信息行（标签右对齐 + 值左对齐）；默认版式与模板套打共用。
+func drawInfoRows(pdf *fpdf.Fpdf, rows [][2]string, pageWidth, topY float64) {
+	const (
+		labelW = 30.0
+		valueW = 130.0
+		rowH   = 10.5
+	)
+	labelX := pageWidth/2 - 70
+	valueX := labelX + labelW + 6
+	for i, r := range rows {
+		y := topY + float64(i)*rowH
+		pdf.SetFont("cert", "", 12)
+		pdf.SetTextColor(122, 122, 122)
+		pdf.SetXY(labelX, y)
+		pdf.CellFormat(labelW, 8, r[0], "", 0, "R", false, 0, "")
+
+		pdf.SetFont("cert", "", 13)
+		pdf.SetTextColor(34, 34, 34)
+		pdf.SetXY(valueX, y)
+		pdf.CellFormat(valueW, 8, r[1], "", 0, "L", false, 0, "")
+	}
+}
+
+// rowsTopCentered 信息块在给定页高下垂直居中。
+func rowsTopCentered(pageHeight float64, rowCount int) float64 {
+	const rowH = 10.5
+	top := (pageHeight - float64(rowCount)*rowH) / 2
+	if top < 20 {
+		top = 20
+	}
+	return top
+}
+
+// outputBytes 输出 PDF 字节并检查延迟错误。
+func outputBytes(pdf *fpdf.Fpdf) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := pdf.Output(&buf); err != nil {
 		return nil, err
@@ -143,6 +169,64 @@ func Generate(d Data, fontPath string) ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// GenerateWithTemplate 以模板 PDF 第 1 页为底图套打会员数据。
+// 页面尺寸直接取模板的 MediaBox（不强制 A4），只叠加信息行（边框/标题由模板提供）。
+// gofpdi 内部失败会 panic，这里统一 recover 转成错误，避免拖垮调用方。
+func GenerateWithTemplate(templatePath string, d Data, fontPath string) (out []byte, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			out, err = nil, fmt.Errorf("解析证书模板失败：%v", r)
+		}
+	}()
+
+	path, err := resolveFont(fontPath)
+	if err != nil {
+		return nil, err
+	}
+
+	imp := gofpdi.NewImporter()
+	imp.SetSourceFile(templatePath)
+
+	sizes := imp.GetPageSizes()
+	box, ok := sizes[1]["/MediaBox"]
+	if !ok || box["w"] <= 0 || box["h"] <= 0 {
+		return nil, errors.New("证书模板第 1 页缺少有效的 MediaBox")
+	}
+	wMM := box["w"] * ptToMM
+	hMM := box["h"] * ptToMM
+
+	pdf := fpdf.NewCustom(&fpdf.InitType{UnitStr: "mm", Size: fpdf.SizeType{Wd: wMM, Ht: hMM}})
+	pdf.SetMargins(0, 0, 0)
+	pdf.SetAutoPageBreak(false, 0)
+	pdf.AddPage()
+	pdf.AddUTF8Font("cert", "", path)
+	if e := pdf.Error(); e != nil {
+		return nil, fmt.Errorf("加载证书字体失败（仅支持 TTF/OTF）：%w", e)
+	}
+
+	// 导入模板第 1 页，作为铺满整页的背景 XObject。
+	// 注意顺序：必须先 PutFormXobjectsUnordered（gofpdi 在此真正构建并记录导入对象），
+	// 再取对象内容/引用位置/模板名映射，否则 XObject 资源指向空对象（渲染为空白）。
+	tplID := imp.ImportPage(1, "/MediaBox")
+	tplNameToHash := imp.PutFormXobjectsUnordered()
+	pdf.ImportObjects(imp.GetImportedObjectsUnordered())
+	pdf.ImportObjPos(imp.GetImportedObjHashPos())
+	pdf.ImportTemplates(tplNameToHash)
+	// fpdf 的 UseImportedTemplate 参数顺序为 (scaleX, scaleY, tX, tY)，
+	// 与 gofpdi UseTemplate 的返回值顺序一致，切勿打乱（打乱会得到退化矩阵，渲染为空白页）
+	name, scaleX, scaleY, tx, ty := imp.UseTemplate(tplID, 0, 0, wMM, hMM)
+	if name == "" {
+		return nil, errors.New("证书模板导入失败")
+	}
+	pdf.UseImportedTemplate(name, scaleX, scaleY, tx, ty)
+
+	// 套打数据行（不画边框/标题/页脚，模板自带）
+	rows := infoRows(d)
+	drawInfoRows(pdf, rows, wMM, rowsTopCentered(hMM, len(rows)))
+
+	return outputBytes(pdf)
 }
 
 // FindFont 查找系统中可用的中文字体（TTF/OTF，按平台常见路径）。

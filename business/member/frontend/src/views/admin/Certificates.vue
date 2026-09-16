@@ -141,7 +141,8 @@
               <template v-else>
                 <el-icon size="28"><Plus /></el-icon>
                 <span>上传PDF模板</span>
-                <span class="upload-hint">A4横向（297×210mm）</span>
+                <span class="upload-hint">第 1 页作为证书底图，尺寸自动适配</span>
+                <span class="upload-hint">会员数据居中套印在模板上</span>
               </template>
             </div>
           </el-upload>

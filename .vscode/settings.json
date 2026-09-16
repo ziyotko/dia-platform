@@ -48,6 +48,7 @@
         "git check-ignore": true,
         "npm run build": true,
         "npm run lint": true,
-        ">": true
+        ">": true,
+        "git checkout": true
     }
 }

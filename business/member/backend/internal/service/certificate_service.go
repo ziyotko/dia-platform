@@ -139,7 +139,7 @@ func (s *CertificateService) GenerateFileForCertificate(cert *models.Certificate
 		fontPath = config.Cfg.Certificate.FontPath
 	}
 
-	data, err := certpdf.Generate(certpdf.Data{
+	renderData := certpdf.Data{
 		Title:      certificatePDFTitle(cert),
 		OrgName:    certificateOrgName(&member),
 		IssuerName: certificateIssuerName(),
@@ -149,9 +149,25 @@ func (s *CertificateService) GenerateFileForCertificate(cert *models.Certificate
 		CertNo:     cert.CertNo,
 		IssuedAt:   issuedAt,
 		ExpireAt:   expireAt,
-	}, fontPath)
-	if err != nil {
-		return err
+	}
+
+	// 优先按该等级上传的 PDF 模板套打；模板缺失/无法解析时回退到默认版式
+	var (
+		data     []byte
+		renderEr error
+	)
+	if tplFile, ok := certificateTemplateFile(cert.CertTemplateID); ok {
+		data, renderEr = certpdf.GenerateWithTemplate(tplFile, renderData, fontPath)
+		if renderEr != nil {
+			utils.LogWarn("按模板套打证书失败，回退默认版式（cert_id=%d, template=%s）：%v", cert.ID, tplFile, renderEr)
+			data = nil
+		}
+	}
+	if data == nil {
+		data, renderEr = certpdf.Generate(renderData, fontPath)
+		if renderEr != nil {
+			return renderEr
+		}
 	}
 
 	path, err := utils.SaveBytes("certificates", certificateFileName(cert), data)
@@ -164,6 +180,19 @@ func (s *CertificateService) GenerateFileForCertificate(cert *models.Certificate
 	}
 	cert.FilePath = path
 	return nil
+}
+
+// certificateTemplateFile 返回该证书样式模板的本地文件路径；
+// 未配置样式、文件不存在或路径非法时返回 ok=false（调用方回退默认版式）。
+func certificateTemplateFile(templateID uint64) (string, bool) {
+	if templateID == 0 {
+		return "", false
+	}
+	var tpl models.MemberCertificateTemplate
+	if err := db.DB.First(&tpl, templateID).Error; err != nil {
+		return "", false
+	}
+	return utils.LocalUploadPath(tpl.TemplateFile)
 }
 
 // ListCertificates 分页返回证书发放记录（admin）。
