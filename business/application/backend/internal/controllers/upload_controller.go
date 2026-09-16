@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"application/config"
 	"application/pkg/response"
 
 	"github.com/gin-gonic/gin"
@@ -50,7 +51,7 @@ func (ctrl *UploadController) Upload(c *gin.Context) {
 
 	response.Ok(c, gin.H{
 		"name":     file.Filename,
-		"fileUrl":  "/" + filepath.ToSlash(dst),
+		"fileUrl":  config.Cfg.Server.UploadDirPrefix + "/" + filepath.ToSlash(dst),
 		"fileType": strings.TrimPrefix(ext, "."),
 		"fileSize": file.Size,
 	})

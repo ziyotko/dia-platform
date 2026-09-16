@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"member/config"
+
 	"github.com/google/uuid"
 )
 
@@ -40,10 +42,14 @@ func SaveBytes(subDir, name string, data []byte) (string, error) {
 	return filepath.ToSlash(dst), nil
 }
 
-// LocalUploadPath 把数据库/上传接口里的路径（如 /uploads/templates/x.pdf、uploads\templates\x.pdf）
-// 解析为本地相对路径。仅允许 uploads/ 下的已存在文件，防路径穿越与任意文件读取。
+// LocalUploadPath 把数据库/上传接口里的路径（如 /uploads/templates/x.pdf、uploads\templates\x.pdf、
+// 带部署前缀的 /business_member/uploads/x.pdf）解析为本地相对路径。
+// 仅允许 uploads/ 下的已存在文件，防路径穿越与任意文件读取。
 func LocalUploadPath(p string) (string, bool) {
 	p = strings.TrimSpace(strings.ReplaceAll(p, "\\", "/"))
+	if prefix := strings.TrimSuffix(config.Cfg.Server.UploadDirPrefix, "/"); prefix != "" {
+		p = strings.TrimPrefix(p, prefix)
+	}
 	p = strings.TrimPrefix(p, "./")
 	p = strings.TrimPrefix(p, "/")
 	if p == "" || !strings.HasPrefix(p, "uploads/") || strings.Contains(p, "..") {

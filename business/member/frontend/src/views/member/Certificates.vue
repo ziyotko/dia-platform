@@ -79,7 +79,11 @@ function downloadCert(row: any) {
 
 function fileUrl(path?: string) {
   if (!path) return ''
-  return /^https?:\/\//i.test(path) ? path : '/' + path.replace(/^\//, '')
+  if (/^https?:\/\//i.test(path)) return path
+  // 兼容 `uploads/...`（相对）、`/uploads/...`（旧绝对）与带部署前缀的绝对路径，统一指向当前部署子路径
+  const base = import.meta.env.BASE_URL || '/'
+  const clean = path.replace(/^\.?\//, '')
+  return clean.startsWith('uploads/') ? `${base}${clean}` : `/${clean}`
 }
 
 async function renewCert() {

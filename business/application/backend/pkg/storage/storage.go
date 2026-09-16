@@ -6,9 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"application/config"
 )
 
-// uploadRoot mirrors the static mount in main.go (`r.Static("/uploads", "./uploads")`).
+// uploadRoot 是上传目录名（磁盘上的目录），外部访问前缀 = server.upload_dir_prefix + "/uploads"（见 main.go 的 r.Static）。
 const uploadRoot = "uploads"
 
 // RemoveByURL deletes the file a stored file URL points at. Best effort: an
@@ -33,9 +35,11 @@ func RemoveAll(fileURLs []string) {
 	}
 }
 
-// resolve maps a public file URL ("/uploads/20240101/x.pdf") to a path relative
-// to the working directory. Anything outside the uploads directory — including
-// traversal attempts such as "/uploads/../../config.yaml" — is rejected.
+// resolve maps a public file URL to a path relative to the working directory.
+// 兼容三种历史形态：`uploads/20240101/x.pdf`（相对）、`/uploads/20240101/x.pdf`（旧绝对）、
+// `/business_application/uploads/...`（带当前部署前缀）。
+// Anything outside the uploads directory — including traversal attempts such as
+// "/uploads/../../config.yaml" — is rejected.
 func resolve(fileURL string) (string, bool) {
 	u := strings.TrimSpace(fileURL)
 	if u == "" {
@@ -45,10 +49,25 @@ func resolve(fileURL string) (string, bool) {
 	if strings.HasPrefix(u, "http://") || strings.HasPrefix(u, "https://") {
 		return "", false
 	}
-	clean := filepath.Clean(filepath.FromSlash(strings.TrimPrefix(u, "/")))
+	u = filepath.ToSlash(u)
+	u = strings.TrimPrefix(u, "./")
+	u = strings.TrimPrefix(u, "/")
+	// 去掉部署前缀（如 business_application ），统一归一化到 uploads/ 开头
+	if prefix := uploadPrefix(); prefix != "" {
+		u = strings.TrimPrefix(u, prefix+string('/'))
+	}
+	clean := filepath.Clean(filepath.FromSlash(u))
 	root := filepath.Clean(uploadRoot)
 	if !strings.HasPrefix(clean, root+string(os.PathSeparator)) {
 		return "", false
 	}
 	return clean, true
+}
+
+// uploadPrefix 返回 server.upload_dir_prefix 去掉首尾斜杠的形式（未配置时为空）。
+func uploadPrefix() string {
+	if config.Cfg == nil {
+		return ""
+	}
+	return strings.Trim(strings.TrimSpace(config.Cfg.Server.UploadDirPrefix), "/")
 }

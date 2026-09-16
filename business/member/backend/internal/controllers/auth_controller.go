@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"member/config"
 	"member/internal/middleware"
 	"member/internal/service"
 	"member/pkg/captcha"
@@ -243,7 +244,7 @@ func (ctrl *AuthController) UploadFile(c *gin.Context) {
 	}
 
 	response.Success(c, gin.H{
-		"url":  "/" + path,
+		"url":  config.Cfg.Server.UploadDirPrefix + "/" + path,
 		"name": file.Filename,
 	})
 }

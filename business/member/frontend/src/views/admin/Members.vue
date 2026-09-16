@@ -499,7 +499,10 @@ function fmt(d: string) { return d ? d.replace('T', ' ').slice(0, 16) : '-' }
 function fileUrl(path?: string) {
   if (!path) return ''
   if (/^https?:\/\//i.test(path)) return path
-  return '/' + path.replace(/^\//, '')
+  // 兼容 `uploads/...`（相对）、`/uploads/...`（旧绝对）与带部署前缀的绝对路径，统一指向当前部署子路径
+  const base = import.meta.env.BASE_URL || '/'
+  const clean = path.replace(/^\.?\//, '')
+  return clean.startsWith('uploads/') ? `${base}${clean}` : `/${clean}`
 }
 function tableRowClassName() { return 'members-row' }
 

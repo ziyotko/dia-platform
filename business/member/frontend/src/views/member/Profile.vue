@@ -314,8 +314,11 @@ async function handleCertUpload(event: Event) {
 
 function fileUrl(path: string) {
   if (!path) return ''
-  if (path.startsWith('http://') || path.startsWith('https://')) return path
-  return '/' + path.replace(/^\//, '')
+  if (/^https?:\/\//i.test(path)) return path
+  // 兼容 `uploads/...`（相对）、`/uploads/...`（旧绝对）与带部署前缀的绝对路径，统一指向当前部署子路径
+  const base = import.meta.env.BASE_URL || '/'
+  const clean = path.replace(/^\.?\//, '')
+  return clean.startsWith('uploads/') ? `${base}${clean}` : `/${clean}`
 }
 
 async function changePwd() {

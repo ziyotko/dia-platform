@@ -8,6 +8,8 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
   const basePath = env.VITE_BASE_PATH || '/member/'
   const apiBase = env.VITE_API_BASE_URL || '/member/api'
+  // 上传目录挂在同一个部署子路径下（后端 server.upload_dir_prefix = VITE_BASE_PATH 去尾斜杠）
+  const uploadsBase = `${basePath.replace(/\/+$/, '')}/uploads`
 
   return {
     base: basePath,
@@ -27,7 +29,7 @@ export default defineConfig(({ mode }) => {
           target: 'http://127.0.0.1:8085',
           changeOrigin: true
         },
-        '/uploads': {
+        [uploadsBase]: {
           target: 'http://127.0.0.1:8085',
           changeOrigin: true
         }

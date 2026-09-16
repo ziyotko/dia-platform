@@ -2,8 +2,9 @@ server:
   port: 8087
   mode: debug
   api_prefix: /business_application/api
+  # 上传文件挂载前缀：实际挂在 <upload_dir_prefix>/uploads（与前端 VITE_BASE_PATH 去尾斜杠一致）
+  upload_dir_prefix: /business_application
   max_concurrent_ips: 100
-  upload_dir_prefix: ""
   # 可信反向代理 IP 列表（用于正确获取客户端真实 IP；限流/审计均按真实 IP 计数）
   # 生产环境请填入 Nginx 等代理的实际地址；本机回环保留 127.0.0.1。
   trusted_proxies:
