@@ -842,27 +842,11 @@ func (s *MemberService) CreateMember(req CreateMemberRequest, operator string) (
 		}
 	}
 
-	// 生成会员证书（带等级与证书模板）
+	// 生成会员证书（含等级、样式与 PDF 文件）
 	if req.LevelID > 0 {
-		now := time.Now()
-		var tpl models.MemberCertificateTemplate
-		if err := db.DB.Where("level_id = ?", req.LevelID).First(&tpl).Error; err != nil {
-			// 未配置该等级证书样式时，回退到最低等级样式
-			db.DB.Joins("JOIN member_levels ml ON ml.id = member_certificate_templates.level_id").
-				Order("ml.level ASC").
-				First(&tpl)
+		if _, err := (&CertificateService{}).CreateCertificateForMember(member.ID, req.LevelID, levelName); err != nil {
+			utils.LogWarn("新增会员生成证书失败（member_id=%d）：%v", member.ID, err)
 		}
-		cert := models.Certificate{
-			MemberID:       member.ID,
-			CertNo:         "XXXXXX-" + now.Format("2006") + "-" + padLeftGen(member.ID),
-			IssuedAt:       &models.LocalTime{Time: now},
-			ExpireAt:       &models.LocalTime{Time: time.Date(now.Year(), 12, 31, 23, 59, 59, 0, now.Location())},
-			Status:         models.CertStatusActive,
-			LevelID:        req.LevelID,
-			LevelName:      levelName,
-			CertTemplateID: tpl.ID,
-		}
-		db.DB.Create(&cert)
 	}
 
 	// 插入会籍变更记录（按所选总会新增入会）

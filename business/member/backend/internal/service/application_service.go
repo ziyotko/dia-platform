@@ -4,6 +4,7 @@ import (
 	"errors"
 	"member/internal/models"
 	"member/pkg/db"
+	"member/pkg/utils"
 	"time"
 )
 
@@ -128,6 +129,8 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 	}
 
 	tx := db.DB.Begin()
+	// 审批通过时创建的证书 ID，用于事务提交后补生成 PDF（事务外执行）
+	var newCertID uint64
 
 	// Update application
 	if err := tx.Model(&app).Updates(map[string]interface{}{
@@ -189,17 +192,8 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 			}
 		}
 
-		// Look up certificate template for this level; fallback to lowest level's template
-		var certTplID uint64
-		var tpl models.MemberCertificateTemplate
-		if err := db.DB.Where("level_id = ?", levelID).First(&tpl).Error; err != nil {
-			db.DB.Joins("JOIN member_levels ml ON ml.id = member_certificate_templates.level_id").
-				Order("ml.level ASC").
-				First(&tpl)
-		}
-		if tpl.ID > 0 {
-			certTplID = tpl.ID
-		}
+		// 证书样式（含最低等级回退）由 certTemplateIDForLevel 统一处理
+		certTplID := certTemplateIDForLevel(levelID)
 
 		cert := models.Certificate{
 			MemberID:       app.MemberID,
@@ -215,6 +209,7 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 			tx.Rollback()
 			return err
 		}
+		newCertID = cert.ID
 
 		// 首年会费记录：机构为总会，会费标准按总会等级
 		fee := models.FeeRecord{
@@ -253,7 +248,20 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 		}
 	}
 
-	return tx.Commit().Error
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+
+	// 事务提交后再生成证书 PDF：生成失败不影响审批结果，管理员可在证书管理页重新生成。
+	if newCertID > 0 {
+		var cert models.Certificate
+		if err := db.DB.First(&cert, newCertID).Error; err == nil {
+			if err := (&CertificateService{}).GenerateFileForCertificate(&cert); err != nil {
+				utils.LogWarn("审批通过后生成证书 PDF 失败（cert_id=%d）：%v", newCertID, err)
+			}
+		}
+	}
+	return nil
 }
 
 // findMinOrgLevel 返回机构支持的最小会员等级（按等级升序），未配置时返回错误。

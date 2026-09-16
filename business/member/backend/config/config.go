@@ -8,11 +8,18 @@ import (
 )
 
 type Config struct {
-	Server ServerConfig `mapstructure:"server"`
-	MySQL  MySQLConfig  `mapstructure:"mysql"`
-	Redis  RedisConfig  `mapstructure:"redis"`
-	JWT    JWTConfig    `mapstructure:"jwt"`
-	Log    LogConfig    `mapstructure:"log"`
+	Server      ServerConfig      `mapstructure:"server"`
+	MySQL       MySQLConfig       `mapstructure:"mysql"`
+	Redis       RedisConfig       `mapstructure:"redis"`
+	JWT         JWTConfig         `mapstructure:"jwt"`
+	Log         LogConfig         `mapstructure:"log"`
+	Certificate CertificateConfig `mapstructure:"certificate"`
+}
+
+// CertificateConfig 会员证书 PDF 生成配置。
+type CertificateConfig struct {
+	// 中文字体文件（TTF/OTF，不支持 TTC）；留空则按系统常见字体自动查找
+	FontPath string `mapstructure:"font_path"`
 }
 
 type ServerConfig struct {
@@ -84,6 +91,9 @@ func applyEnvOverrides() {
 	}
 	if v := os.Getenv("MEMBER_MODE"); v != "" {
 		Cfg.Server.Mode = v
+	}
+	if v := os.Getenv("MEMBER_CERT_FONT"); v != "" {
+		Cfg.Certificate.FontPath = v
 	}
 
 	if Cfg.Server.Mode == "" {

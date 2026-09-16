@@ -1,13 +1,87 @@
 <template>
-  <div class="admin-certs" v-loading="loading">
-    <div class="page-header">
-      <h3>证书样式管理</h3>
-      <el-button type="primary" @click="openCreate" :disabled="availableLevels.length === 0">
-        {{ availableLevels.length === 0 ? '所有等级已创建' : '新增样式' }}
-      </el-button>
-    </div>
+  <div class="admin-certs">
+    <el-tabs v-model="activeTab" class="cert-tabs">
+      <el-tab-pane label="证书发放记录" name="records">
+        <el-card v-loading="recLoading">
+          <div class="filters">
+            <el-input
+              v-model="recKeyword"
+              placeholder="搜索证书编号/会员名称"
+              clearable
+              style="width:240px"
+              @clear="searchRecords"
+              @keyup.enter="searchRecords"
+            />
+            <el-select v-model="recStatus" placeholder="状态" clearable style="width:130px" @change="searchRecords">
+              <el-option label="有效" value="active" />
+              <el-option label="已过期" value="expired" />
+            </el-select>
+            <el-button type="primary" @click="searchRecords">查询</el-button>
+          </div>
 
-    <el-card>
+          <el-table :data="records" stripe style="width:100%">
+            <el-table-column prop="cert_no" label="证书编号" min-width="170" />
+            <el-table-column label="会员" min-width="200">
+              <template #default="{ row }">{{ memberLabel(row) }}</template>
+            </el-table-column>
+            <el-table-column prop="level_name" label="会员等级" min-width="110">
+              <template #default="{ row }">{{ row.level_name || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="颁发日期" width="120">
+              <template #default="{ row }">{{ fmtDay(row.issued_at) }}</template>
+            </el-table-column>
+            <el-table-column label="有效期至" width="120">
+              <template #default="{ row }">{{ fmtDay(row.expire_at) }}</template>
+            </el-table-column>
+            <el-table-column label="状态" width="90">
+              <template #default="{ row }">
+                <el-tag :type="row.status === 'active' ? 'success' : 'info'">
+                  {{ row.status === 'active' ? '有效' : '已过期' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="证书文件" width="110">
+              <template #default="{ row }">
+                <a v-if="row.file_path" :href="fileUrl(row.file_path)" target="_blank" class="file-link">下载</a>
+                <span v-else class="no-file">未生成</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="130">
+              <template #default="{ row }">
+                <el-button
+                  text
+                  size="small"
+                  type="primary"
+                  :loading="generatingId === row.id"
+                  @click="regenerate(row)"
+                >{{ row.file_path ? '重新生成' : '生成文件' }}</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <el-empty v-if="!recLoading && records.length === 0" description="暂无证书发放记录" />
+          <div class="pagination">
+            <el-pagination
+              background
+              layout="prev, pager, next, total"
+              :total="recTotal"
+              :page-size="recSize"
+              v-model:current-page="recPage"
+              @change="fetchRecords"
+            />
+          </div>
+        </el-card>
+      </el-tab-pane>
+
+      <el-tab-pane label="证书样式" name="templates">
+        <div v-loading="loading">
+          <div class="page-header">
+            <h3>证书样式管理</h3>
+            <el-button type="primary" @click="openCreate" :disabled="availableLevels.length === 0">
+              {{ availableLevels.length === 0 ? '所有等级已创建' : '新增样式' }}
+            </el-button>
+          </div>
+
+          <el-card>
       <el-table :data="list" stripe>
         <el-table-column prop="name" label="样式名称" min-width="180" />
         <el-table-column label="所属等级" width="150">
@@ -33,6 +107,9 @@
       </el-table>
       <el-empty v-if="!loading && list.length === 0" description="暂无证书样式" />
     </el-card>
+        </div>
+      </el-tab-pane>
+    </el-tabs>
 
     <!-- Create/Edit Dialog -->
     <el-dialog v-model="showDialog" :title="editingId ? '编辑样式' : '新增样式'" width="600px">
@@ -92,6 +169,17 @@ const showDialog = ref(false)
 const saving = ref(false)
 const editingId = ref<number | null>(null)
 
+// 证书发放记录
+const activeTab = ref('records')
+const records = ref<any[]>([])
+const recLoading = ref(false)
+const recPage = ref(1)
+const recSize = ref(10)
+const recTotal = ref(0)
+const recKeyword = ref('')
+const recStatus = ref('')
+const generatingId = ref<number | null>(null)
+
 const form = reactive({
   name: '',
   levelId: null as number | null,
@@ -105,8 +193,45 @@ const availableLevels = computed(() => {
 })
 
 function formatDate(d: string) { return d ? d.replace('T', ' ').slice(0, 16) : '' }
+function fmtDay(d: string) { return d ? d.slice(0, 10) : '-' }
+function fileUrl(path?: string) {
+  if (!path) return ''
+  return /^https?:\/\//i.test(path) ? path : '/' + path.replace(/^\//, '')
+}
+function memberLabel(row: any) {
+  const m = row.member
+  if (!m) return '-'
+  const name = m.member_type === 'personal' ? (m.name || m.username) : (m.company_name || m.username)
+  return `${name}（${m.username}）`
+}
+
+async function fetchRecords() {
+  recLoading.value = true
+  try {
+    const res = await adminApi.getCertificates({
+      page: recPage.value,
+      size: recSize.value,
+      keyword: recKeyword.value,
+      status: recStatus.value
+    })
+    records.value = res.data?.list || []
+    recTotal.value = res.data?.total || 0
+  } catch {} finally { recLoading.value = false }
+}
+
+function searchRecords() { recPage.value = 1; fetchRecords() }
+
+async function regenerate(row: any) {
+  generatingId.value = row.id
+  try {
+    await adminApi.regenerateCertificate(row.id)
+    ElMessage.success('证书文件已生成')
+    fetchRecords()
+  } catch {} finally { generatingId.value = null }
+}
 
 onMounted(async () => {
+  fetchRecords()
   try {
     const [tplRes, lvRes] = await Promise.all([
       adminApi.getCertTemplates(),
@@ -208,6 +333,9 @@ async function deleteTemplate(row: any) {
   display: inline-flex; align-items: center; gap: 4px; color: #002fa7; text-decoration: none;
   &:hover { text-decoration: underline; }
 }
+.filters { display: flex; gap: 12px; margin-bottom: 16px; }
+.pagination { display: flex; justify-content: center; padding: 20px 0; }
+.cert-tabs :deep(.el-tabs__header) { margin-bottom: 18px; }
 .no-file { color: #999; font-size: 13px; }
 .upload-area {
   display: flex; flex-direction: column; align-items: center; gap: 6px;

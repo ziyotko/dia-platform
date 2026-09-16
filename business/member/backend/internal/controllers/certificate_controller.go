@@ -2,7 +2,9 @@ package controllers
 
 import (
 	"member/internal/middleware"
+	"member/internal/models"
 	"member/internal/service"
+	"member/pkg/db"
 	"member/pkg/response"
 
 	"github.com/gin-gonic/gin"
@@ -45,6 +47,41 @@ func (ctrl *CertificateController) CreateCertificate(c *gin.Context) {
 		return
 	}
 	response.SuccessWithMessage(c, "创建成功", cert)
+}
+
+// ListCertificates lists issued certificates (admin)
+func (ctrl *CertificateController) ListCertificates(c *gin.Context) {
+	page := parseIntDefault(c.Query("page"), 1)
+	size := parseIntDefault(c.Query("size"), 10)
+	keyword := c.Query("keyword")
+	status := c.Query("status")
+
+	list, total, err := ctrl.certService.ListCertificates(page, size, keyword, status)
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+	response.Success(c, gin.H{
+		"list":  list,
+		"total": total,
+		"page":  page,
+		"size":  size,
+	})
+}
+
+// RegenerateCertificate (re)generates the certificate PDF file (admin)
+func (ctrl *CertificateController) RegenerateCertificate(c *gin.Context) {
+	id := parseUint(c.Param("id"))
+	var cert models.Certificate
+	if err := db.DB.First(&cert, id).Error; err != nil {
+		response.NotFound(c, "证书不存在")
+		return
+	}
+	if err := ctrl.certService.GenerateFileForCertificate(&cert); err != nil {
+		response.BadRequest(c, err.Error())
+		return
+	}
+	response.SuccessWithMessage(c, "证书文件已生成", cert)
 }
 
 func (ctrl *CertificateController) UpdateCertificate(c *gin.Context) {

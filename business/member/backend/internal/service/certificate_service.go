@@ -2,9 +2,15 @@ package service
 
 import (
 	"errors"
-	"member/internal/models"
-	"member/pkg/db"
+	"fmt"
+	"strings"
 	"time"
+
+	"member/config"
+	"member/internal/models"
+	"member/pkg/certpdf"
+	"member/pkg/db"
+	"member/pkg/utils"
 )
 
 type CertificateService struct{}
@@ -59,20 +65,188 @@ func (s *CertificateService) UpdateCertificate(id uint64, filePath, status *stri
 	return db.DB.Model(&models.Certificate{}).Where("id = ?", id).Updates(updates).Error
 }
 
-// GenerateCertificateForMember generates a certificate for a member (admin)
+// GenerateCertificateForMember generates a certificate for a member (admin/renew):
+// 作废原生效证书 → 建新证书 → 生成 PDF 并写入 file_path。
+// 等级取会员当前等级；没有等级时证书仍会发出，只是等级为空。
 func (s *CertificateService) GenerateCertificateForMember(memberID uint64) (*models.Certificate, error) {
+	return s.CreateCertificateForMember(memberID, 0, "")
+}
+
+// CreateCertificateForMember 创建并落盘会员证书。
+// levelID/levelName 由调用方确定（如新增会员/审批通过时选定的等级）；为 0 时回退会员当前等级。
+// 返回的证书已含 file_path（PDF 生成失败时 file_path 为空，同时通过日志告警）。
+func (s *CertificateService) CreateCertificateForMember(memberID, levelID uint64, levelName string) (*models.Certificate, error) {
+	var member models.Member
+	if err := db.DB.First(&member, memberID).Error; err != nil {
+		return nil, errors.New("会员不存在")
+	}
+	if levelID == 0 {
+		levelID, levelName = resolveMemberLevel(member.MemberLevel)
+	}
+	if levelName == "" {
+		levelName = memberLevelNameByID(levelID)
+	}
+
 	now := time.Now()
+	// 同一会员同时只有一张生效证书
+	db.DB.Model(&models.Certificate{}).
+		Where("member_id = ? AND status = ?", memberID, models.CertStatusActive).
+		Update("status", models.CertStatusExpired)
+
 	cert := models.Certificate{
-		MemberID: memberID,
-		CertNo:   "XXXXXX-" + now.Format("2006") + "-" + padLeftGen(memberID),
-		IssuedAt: &models.LocalTime{Time: now},
-		ExpireAt: &models.LocalTime{Time: time.Date(now.Year(), 12, 31, 23, 59, 59, 0, now.Location())},
-		Status:   models.CertStatusActive,
+		MemberID:       memberID,
+		CertNo:         generateCertNo(memberID),
+		IssuedAt:       &models.LocalTime{Time: now},
+		ExpireAt:       &models.LocalTime{Time: time.Date(now.Year(), 12, 31, 23, 59, 59, 0, now.Location())},
+		Status:         models.CertStatusActive,
+		LevelID:        levelID,
+		LevelName:      levelName,
+		CertTemplateID: certTemplateIDForLevel(levelID),
 	}
 	if err := db.DB.Create(&cert).Error; err != nil {
 		return nil, err
 	}
+
+	if err := s.GenerateFileForCertificate(&cert); err != nil {
+		// PDF 生成失败不阻断发证：证书记录仍可用，管理员可在「证书管理」重新生成
+		utils.LogWarn("生成证书 PDF 失败（cert_id=%d）：%v", cert.ID, err)
+	}
 	return &cert, nil
+}
+
+// GenerateFileForCertificate 渲染证书 PDF 并把相对路径回写到 member_certificates.file_path。
+// 供发证、审批通过、续证、管理员重新生成等入口统一调用。
+func (s *CertificateService) GenerateFileForCertificate(cert *models.Certificate) error {
+	if cert == nil || cert.ID == 0 {
+		return errors.New("证书不存在")
+	}
+	var member models.Member
+	if err := db.DB.First(&member, cert.MemberID).Error; err != nil {
+		return errors.New("会员不存在")
+	}
+
+	issuedAt := time.Now()
+	if cert.IssuedAt != nil && !cert.IssuedAt.Time.IsZero() {
+		issuedAt = cert.IssuedAt.Time
+	}
+	expireAt := time.Date(issuedAt.Year(), 12, 31, 23, 59, 59, 0, issuedAt.Location())
+	if cert.ExpireAt != nil && !cert.ExpireAt.Time.IsZero() {
+		expireAt = cert.ExpireAt.Time
+	}
+
+	fontPath := ""
+	if config.Cfg != nil {
+		fontPath = config.Cfg.Certificate.FontPath
+	}
+
+	data, err := certpdf.Generate(certpdf.Data{
+		Title:      certificatePDFTitle(cert),
+		OrgName:    certificateOrgName(&member),
+		IssuerName: certificateIssuerName(),
+		MemberName: memberDisplayName(&member),
+		MemberType: memberTypeLabel(member.MemberType),
+		LevelName:  cert.LevelName,
+		CertNo:     cert.CertNo,
+		IssuedAt:   issuedAt,
+		ExpireAt:   expireAt,
+	}, fontPath)
+	if err != nil {
+		return err
+	}
+
+	path, err := utils.SaveBytes("certificates", certificateFileName(cert), data)
+	if err != nil {
+		return err
+	}
+	if err := db.DB.Model(&models.Certificate{}).Where("id = ?", cert.ID).
+		Update("file_path", path).Error; err != nil {
+		return err
+	}
+	cert.FilePath = path
+	return nil
+}
+
+// ListCertificates 分页返回证书发放记录（admin）。
+func (s *CertificateService) ListCertificates(page, size int, keyword, status string) ([]models.Certificate, int64, error) {
+	var list []models.Certificate
+	var total int64
+
+	query := db.DB.Model(&models.Certificate{}).Preload("Member")
+	if status != "" {
+		query = query.Where("status = ?", status)
+	}
+	if keyword != "" {
+		kw := "%" + keyword + "%"
+		query = query.Where(
+			"cert_no LIKE ? OR level_name LIKE ? OR member_id IN (SELECT id FROM member_users WHERE username LIKE ? OR company_name LIKE ? OR name LIKE ?)",
+			kw, kw, kw, kw, kw)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if err := query.Order("id DESC").Offset((page - 1) * size).Limit(size).Find(&list).Error; err != nil {
+		return nil, 0, err
+	}
+	return list, total, nil
+}
+
+// certificatePDFTitle 证书标题：优先使用该等级配置的证书样式名称。
+func certificatePDFTitle(cert *models.Certificate) string {
+	if cert.CertTemplateID > 0 {
+		var tpl models.MemberCertificateTemplate
+		if err := db.DB.First(&tpl, cert.CertTemplateID).Error; err == nil && strings.TrimSpace(tpl.Name) != "" {
+			return tpl.Name
+		}
+	}
+	return "会员证书"
+}
+
+// certificateOrgName 证书上的入会机构：会员的主入会机构。
+func certificateOrgName(member *models.Member) string {
+	if _, name := (&MemberService{}).primaryOrg(member); name != "" {
+		return name
+	}
+	return certificateIssuerName()
+}
+
+// certificateIssuerName 发证机构：总会（parent_id = 0 的顶级机构）名称。
+func certificateIssuerName() string {
+	var root models.Organization
+	if err := db.DB.Where("parent_id = 0").Order("id ASC").First(&root).Error; err == nil {
+		return root.Name
+	}
+	return ""
+}
+
+// certTemplateIDForLevel 取该等级配置的证书样式，未配置时回退到最低等级样式。
+func certTemplateIDForLevel(levelID uint64) uint64 {
+	var tpl models.MemberCertificateTemplate
+	if levelID > 0 {
+		if err := db.DB.Where("level_id = ?", levelID).First(&tpl).Error; err == nil {
+			return tpl.ID
+		}
+	}
+	db.DB.Joins("JOIN member_levels ml ON ml.id = member_certificate_templates.level_id").
+		Order("ml.level ASC").
+		First(&tpl)
+	return tpl.ID
+}
+
+// certificateFileName 证书 PDF 文件名：证书编号（去掉不安全字符）+ 证书 ID，保证唯一。
+func certificateFileName(cert *models.Certificate) string {
+	base := strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-', r == '_':
+			return r
+		default:
+			return -1
+		}
+	}, cert.CertNo)
+	if base == "" {
+		base = "cert"
+	}
+	return fmt.Sprintf("%s-%d.pdf", base, cert.ID)
 }
 
 // RenewMyCertificate marks old certificates as expired and creates a new one (member self-service).
@@ -97,15 +271,8 @@ func (s *CertificateService) RenewMyCertificate(memberID uint64) (*models.Certif
 		return nil, errors.New("当年尚未缴费，暂不能续证")
 	}
 
-	// Expire all active certificates for this member
-	if err := db.DB.Model(&models.Certificate{}).
-		Where("member_id = ? AND status = ?", memberID, models.CertStatusActive).
-		Update("status", models.CertStatusExpired).Error; err != nil {
-		return nil, err
-	}
-
-	// Create a new certificate
-	cert, err := s.GenerateCertificateForMember(memberID)
+	// 重新发证：作废原生效证书 + 生成带等级/样式的证书与 PDF（由 CreateCertificateForMember 完成）
+	cert, err := s.CreateCertificateForMember(memberID, 0, "")
 	if err != nil {
 		return nil, err
 	}
@@ -130,17 +297,4 @@ type CreateCertRequest struct {
 	IssuedAt *models.LocalTime `json:"issued_at"`
 	ExpireAt *models.LocalTime `json:"expire_at"`
 	FilePath string            `json:"file_path"`
-}
-
-func padLeftGen(id uint64) string {
-	result := ""
-	n := id
-	for n > 0 {
-		result = string(rune('0'+n%10)) + result
-		n /= 10
-	}
-	for len(result) < 6 {
-		result = "0" + result
-	}
-	return result
 }

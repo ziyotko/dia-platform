@@ -43,3 +43,9 @@ log:
   max_size: 100
   max_backups: 30
   max_age: 180
+
+certificate:
+  # 证书 PDF 使用的中文字体文件（TTF/OTF，不支持 TTC 字体集合）；
+  # 留空则按系统常见字体自动查找（Windows: simhei/Deng，Linux: Noto Sans CJK 等）。
+  # 也可用环境变量 MEMBER_CERT_FONT 覆盖。
+  font_path: ""

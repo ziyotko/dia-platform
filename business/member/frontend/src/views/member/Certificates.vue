@@ -71,10 +71,15 @@ function downloadCert(row: any) {
     return
   }
   if (row.file_path) {
-    window.open(row.file_path, '_blank')
+    window.open(fileUrl(row.file_path), '_blank')
   } else {
     ElMessage.info('证书文件暂未生成，请联系管理员')
   }
+}
+
+function fileUrl(path?: string) {
+  if (!path) return ''
+  return /^https?:\/\//i.test(path) ? path : '/' + path.replace(/^\//, '')
 }
 
 async function renewCert() {

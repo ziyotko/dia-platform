@@ -156,6 +156,8 @@ func Register(r *gin.Engine) {
 
 		// Certificate management
 		admin.POST("/admin/certificates", certCtrl.CreateCertificate)
+		admin.GET("/admin/certificates", certCtrl.ListCertificates)
+		admin.POST("/admin/certificates/:id/generate", certCtrl.RegenerateCertificate)
 		admin.PUT("/admin/certificates/:id", certCtrl.UpdateCertificate)
 		// Certificate template management
 		admin.GET("/admin/certificate-templates", certTplCtrl.List)
