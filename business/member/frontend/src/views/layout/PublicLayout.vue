@@ -11,7 +11,7 @@
           <router-link to="/charter">协会章程</router-link>
           <router-link to="/login">会员登录</router-link>
           <router-link to="/register">
-            <el-button type="primary" size="small">注册会员</el-button>
+            <el-button type="primary" size="small">申请入会</el-button>
           </router-link>
         </nav>
       </div>

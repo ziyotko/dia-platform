@@ -12,7 +12,7 @@
         <div class="header-icon">
           <el-icon :size="32"><UserFilled /></el-icon>
         </div>
-        <h2>注册会员</h2>
+        <h2>申请入会</h2>
         <p class="header-desc">加入我们，享受更多会员服务</p>
         <el-steps :active="step" simple align-center class="custom-steps">
           <el-step title="账户注册">
