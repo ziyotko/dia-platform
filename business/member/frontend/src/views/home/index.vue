@@ -24,12 +24,6 @@
           以环保机械和资源综合利用装备制造厂商为主干。协会围绕行业调研、团体标准制定、科技成果评议与国际
           交流合作开展工作，本平台为会员单位提供在线入会、会费管理、证书下载与信息共享等一站式服务。
         </p>
-        <div class="hero-actions">
-          <el-button class="hero-btn-primary" size="large" @click="$router.push('/register')">
-            立即申请入会 <el-icon class="el-icon--right"><ArrowRight /></el-icon>
-          </el-button>
-          <el-button class="hero-btn-ghost" size="large" @click="$router.push('/login')">会员登录</el-button>
-        </div>
         <div class="hero-features">
           <div class="hf-item" v-for="f in heroFeatures" :key="f"><el-icon><Check /></el-icon>{{ f }}</div>
         </div>
@@ -40,84 +34,6 @@
         </svg>
       </div>
     </section>
-
-    <!-- ═══════════════ 会员服务 ═══════════════ -->
-    <section class="services" id="services">
-      <div class="container">
-        <div class="section-head">
-          <span class="section-eyebrow">SERVICES</span>
-          <h2>会员服务</h2>
-          <p>面向环保装备行业会员单位的一站式数字化服务</p>
-        </div>
-        <div class="service-grid">
-          <div class="service-card" v-for="f in features" :key="f.title" @click="goService(f)">
-            <div class="service-icon" :style="{ background: f.bg, color: f.color }">
-              <el-icon :size="26"><component :is="f.icon" /></el-icon>
-            </div>
-            <h3>{{ f.title }}</h3>
-            <p>{{ f.desc }}</p>
-            <span class="service-more">了解更多 <el-icon><ArrowRight /></el-icon></span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ═══════════════ 公告 + 会员等级 ═══════════════ -->
-    <section class="news-section">
-      <div class="container">
-        <div class="news-grid">
-          <!-- 公告动态 -->
-          <div class="news-card announcements-card">
-            <div class="card-head">
-              <h3><el-icon><Bell /></el-icon>公告动态</h3>
-              <el-button text type="primary" size="small" @click="$router.push('/announcements')">
-                查看全部 <el-icon><ArrowRight /></el-icon>
-              </el-button>
-            </div>
-            <div class="type-tabs">
-              <span
-                v-for="t in tabs" :key="t.value"
-                :class="['tab', { active: activeTab === t.value }]"
-                @click="activeTab = t.value"
-              >{{ t.label }}</span>
-            </div>
-            <div v-loading="loadingAnn" class="announce-list">
-              <div
-                class="announce-item"
-                v-for="a in filteredAnnouncements" :key="a.id"
-                @click="$router.push(`/announcements/${a.id}`)"
-              >
-                <el-tag v-if="a.is_pinned" size="small" type="danger" effect="dark" class="pin-tag">置顶</el-tag>
-                <el-tag v-else size="small" :type="typeTag(a.type)" effect="plain">{{ typeLabel(a.type) }}</el-tag>
-                <span class="announce-title">{{ a.title }}</span>
-                <span class="announce-meta">
-                  <span class="views"><el-icon><View /></el-icon>{{ a.view_count || 0 }}</span>
-                  <span class="date">{{ formatDate(a.published_at) }}</span>
-                </span>
-              </div>
-              <el-empty v-if="!loadingAnn && filteredAnnouncements.length === 0" description="暂无公告" :image-size="70" />
-            </div>
-          </div>
-          <!-- 会员等级 -->
-          <div class="news-card levels-card">
-            <div class="card-head">
-              <h3><el-icon><Medal /></el-icon>会员等级</h3>
-            </div>
-            <div v-loading="loadingLevels" class="level-list">
-              <div class="level-item" v-for="(lv, i) in levels" :key="lv.id">
-                <div class="level-rank" :style="{ background: rankColors[i % rankColors.length] }">{{ i + 1 }}</div>
-                <div class="level-info">
-                  <div class="level-name">{{ lv.name }}</div>
-                  <div class="level-desc">{{ lv.description || '加入协会即可享受相应等级的会员权益与服务' }}</div>
-                </div>
-              </div>
-              <el-empty v-if="!loadingLevels && levels.length === 0" description="暂无等级配置" :image-size="70" />
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- ═══════════════ 入会流程 ═══════════════ -->
     <section class="process-section">
       <div class="container">
@@ -134,42 +50,6 @@
             </div>
             <h4>{{ s.title }}</h4>
             <p>{{ s.desc }}</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ═══════════════ 分支机构 ═══════════════ -->
-    <section class="org-section" v-if="divisions.length">
-      <div class="container">
-        <div class="section-head">
-          <span class="section-eyebrow">BRANCHES</span>
-          <h2>分支机构</h2>
-          <p>按专业领域设置的协会分支机构与代表机构</p>
-        </div>
-        <div class="org-grid">
-          <div class="org-card" v-for="o in divisions" :key="o.id">
-            <div class="org-head">
-              <div class="org-icon"><el-icon :size="22"><OfficeBuilding /></el-icon></div>
-              <div class="org-name">{{ o.name }}</div>
-            </div>
-            <p
-              class="org-desc"
-              :class="{ expanded: introExpanded(introKey(o)) }"
-              :ref="setIntroRef(introKey(o))"
-            >{{ o.description || '暂无介绍' }}</p>
-            <button
-              v-if="introOverflowed(introKey(o))"
-              type="button"
-              class="intro-toggle"
-              @click="toggleIntro(introKey(o))"
-            >{{ introExpanded(introKey(o)) ? '收起' : '展开' }}</button>
-            <div class="org-foot">
-              <span class="org-type">{{ orgTypeLabel(o.type) }}</span>
-              <span v-if="o.contact_info" class="org-contact" :title="o.contact_info">
-                <el-icon><Phone /></el-icon>{{ o.contact_info }}
-              </span>
-            </div>
           </div>
         </div>
       </div>
