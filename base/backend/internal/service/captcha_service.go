@@ -54,13 +54,18 @@ func (s redisCaptchaStore) Verify(id, answer string, clear bool) bool {
 	return strings.EqualFold(val, strings.TrimSpace(answer))
 }
 
-// Generate 生成验证码：5 位数字 + 大写字母，带干扰线（与 portal 保持一致的样式与字符集）。
+// Generate 生成验证码：5 位数字 + 大写字母，仅保留少量噪点与细干扰线（与 portal 保持一致的样式与字符集）。
 func (s CaptchaService) Generate() (id string, b64s string, err error) {
 	// 尺寸保持 100x300（宽:高 = 3:1），契合前端 150x50 的 object-fit 容器，避免裁切。
 	driver := base64Captcha.NewDriverString(
 		100, 300, // height, width
-		30, // noiseCount 噪点（拉丁字符笔画细，噪点过多会明显影响可读性）
-		base64Captcha.OptionShowHollowLine|base64Captcha.OptionShowSlimeLine|base64Captcha.OptionShowSineLine,
+		// noiseCount 噪点（拉丁字符笔画细，噪点过多会明显影响可读性）
+		8,
+		// 干扰线只保留 1px 细斜线（OptionShowSlimeLine），降低对文字的遮挡：
+		//   - OptionShowHollowLine：绘制 height/20 粗的实心正弦带，遮挡笔画最严重；
+		//   - OptionShowSineLine：每列填充 height/5 个像素，形成很宽的波浪带。
+		// 两者均已移除，仅保留最轻的细线，兼顾可读性与防 OCR。
+		base64Captcha.OptionShowSlimeLine,
 		5,             // Length 字符个数
 		captchaSource, // 字符集（数字 + 大写字母，剔除易混字符）
 		nil,           // 背景颜色（随机浅色）
