@@ -31,6 +31,18 @@
           </div>
         </el-card>
       </el-tab-pane>
+      <el-tab-pane label="协会章程" name="charter">
+        <el-card v-loading="charterLoading">
+          <div v-if="charterContent" class="rich-text-content" v-html="charterContent"></div>
+          <el-empty v-else-if="!charterLoading" description="章程暂未维护" />
+          <div class="charter-actions" v-if="charterFile || charterContent">
+            <el-button v-if="charterFile" type="primary" plain size="small" @click="downloadCharterPdf">
+              <el-icon><Download /></el-icon> 下载章程 PDF
+            </el-button>
+            <el-button size="small" @click="$router.push('/charter')">在新页面打开</el-button>
+          </div>
+        </el-card>
+      </el-tab-pane>
     </el-tabs>
 
     <!-- 文章详情 -->
@@ -47,7 +59,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
-import { announcementApi, articleApi } from '@/api/index'
+import { announcementApi, articleApi, charterApi } from '@/api/index'
 
 const activeTab = ref('announcements')
 const announcements = ref<any[]>([])
@@ -77,7 +89,29 @@ onMounted(() => {
 watch(activeTab, () => {
   if (activeTab.value === 'announcements' && announcements.value.length === 0) fetchAnnouncements()
   if (activeTab.value === 'articles' && pubArticles.value.length === 0) fetchArticles()
+  if (activeTab.value === 'charter' && !charterLoaded.value) fetchCharter()
 })
+
+/* ---- 协会章程（后台用富文本编辑器维护） ---- */
+const charterContent = ref('')
+const charterFile = ref<any>(null)
+const charterLoading = ref(false)
+const charterLoaded = ref(false)
+
+async function fetchCharter() {
+  charterLoading.value = true
+  try {
+    const res = await charterApi.getContent()
+    charterContent.value = res.data?.content || ''
+    charterFile.value = res.data?.file || null
+    charterLoaded.value = true
+  } catch {} finally { charterLoading.value = false }
+}
+
+function downloadCharterPdf() {
+  const base = import.meta.env.VITE_API_BASE_URL || '/business_member/api'
+  window.open(`${base}/charter`, '_blank')
+}
 
 async function fetchAnnouncements() {
   loading.value = true
@@ -123,4 +157,12 @@ function typeLabel(t: string) { return typeMap[t] || t }
 }
 .article-meta { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; font-size: 13px; color: #6b7280; }
 .article-content { line-height: 1.8; }
+/* 协会章程标签页：正文用全局 .rich-text-content，这里只加操作区 */
+.charter-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--app-border);
+}
 </style>

@@ -52,3 +52,8 @@ export const announcementApi = {
   getPublished: (params?: any) => request.get('/announcements', { params }),
   getDetail: (id: number) => request.get(`/announcements/${id}`)
 }
+
+// 协会章程（富文本正文，公开可查看）
+export const charterApi = {
+  getContent: () => request.get('/charter-content')
+}

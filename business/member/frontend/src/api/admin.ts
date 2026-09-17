@@ -87,6 +87,17 @@ export const adminApi = {
   updateSystemConfig: (id: number, data: { key?: string; value?: string; description?: string }) => request.put(`/admin/system-configs/${id}`, data),
   deleteSystemConfig: (id: number) => request.delete(`/admin/system-configs/${id}`),
 
+  // 协会章程（富文本正文，用富文本编辑器维护）
+  getCharter: () => request.get('/admin/charter-content'),
+  saveCharter: (content: string) => request.put('/admin/charter-content', { content }),
+  // 协会章程 PDF 附件（供会员端「入会章程」下载）
+  uploadCharterFile: (file: File) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return request.post('/admin/charter-file', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+  },
+  deleteCharterFile: () => request.delete('/admin/charter-file'),
+
   // Operation logs
   getOperationLogs: (params?: any) => request.get('/admin/operation-logs', { params })
 }

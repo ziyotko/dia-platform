@@ -64,11 +64,15 @@ const cfgForm = reactive({ key: '', value: '', description: '' })
 
 onMounted(fetchData)
 
+// 协会章程是富文本正文（HTML），有专门的「协会章程」页面用富文本编辑器维护，
+// 不在本页以纯文本形式展示，避免误改 HTML 结构。
+const HIDDEN_KEYS = ['charter_content']
+
 async function fetchData() {
   loading.value = true
   try {
     const r = await adminApi.getSystemConfigs()
-    list.value = r.data || []
+    list.value = (r.data || []).filter((c: any) => !HIDDEN_KEYS.includes(c.key))
   } catch {} finally {
     loading.value = false
   }

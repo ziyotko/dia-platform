@@ -26,6 +26,7 @@
         <el-menu-item index="/admin/messages"><el-icon><ChatDotRound /></el-icon><span>会员留言</span></el-menu-item>
         <el-menu-item index="/admin/articles"><el-icon><Document /></el-icon><span>文章管理</span></el-menu-item>
         <el-menu-item index="/admin/announcements"><el-icon><Notification /></el-icon><span>公告管理</span></el-menu-item>
+        <el-menu-item index="/admin/charter"><el-icon><Notebook /></el-icon><span>协会章程</span></el-menu-item>
         <el-menu-item index="/admin/system-config"><el-icon><Setting /></el-icon><span>系统管理</span></el-menu-item>
         <el-menu-item index="/admin/profile"><el-icon><User /></el-icon><span>我的资料</span></el-menu-item>
         <el-menu-item index="/admin/member-level-changes"><el-icon><Switch /></el-icon><span>会籍记录</span></el-menu-item>

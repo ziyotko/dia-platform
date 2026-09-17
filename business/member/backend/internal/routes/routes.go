@@ -36,6 +36,7 @@ func Register(r *gin.Engine) {
 	dashCtrl := controllers.DashboardController{}
 	certTplCtrl := controllers.CertificateTemplateController{}
 	sysConfigCtrl := controllers.SystemConfigController{}
+	charterCtrl := controllers.CharterController{}
 	opLogCtrl := controllers.OperationLogController{}
 
 	// === Public routes (no auth) ===
@@ -57,8 +58,11 @@ func Register(r *gin.Engine) {
 		// Download application template
 		public.GET("/application-template", authCtrl.DownloadApplicationTemplate)
 
-		// Download charter document
-		public.GET("/charter", authCtrl.DownloadCharter)
+		// Download charter document（优先返回后台上传的 PDF，回退到 uploads/charter/ 下的历史文件）
+		public.GET("/charter", charterCtrl.DownloadCharter)
+
+		// 协会章程正文 + PDF 附件信息（富文本，后台「协会章程」维护）
+		public.GET("/charter-content", charterCtrl.GetCharter)
 
 		// Announcements (public)
 		public.GET("/announcements", announceCtrl.GetPublishedAnnouncements)
@@ -219,6 +223,13 @@ func Register(r *gin.Engine) {
 		admin.POST("/admin/system-configs", sysConfigCtrl.Create)
 		admin.PUT("/admin/system-configs/:id", sysConfigCtrl.Update)
 		admin.DELETE("/admin/system-configs/:id", sysConfigCtrl.Delete)
+
+		// 协会章程（富文本正文 + PDF 附件）
+		admin.GET("/admin/charter-content", charterCtrl.GetCharter)
+		admin.PUT("/admin/charter-content", charterCtrl.SaveCharter)
+		admin.GET("/admin/charter-file", charterCtrl.GetCharterFile)
+		admin.POST("/admin/charter-file", charterCtrl.UploadCharterFile)
+		admin.DELETE("/admin/charter-file", charterCtrl.DeleteCharterFile)
 
 		// Operation logs
 		admin.GET("/admin/operation-logs", opLogCtrl.List)

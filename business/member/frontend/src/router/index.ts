@@ -40,6 +40,13 @@ const router = createRouter({
           meta: { public: true }
         },
         {
+          // 协会章程（内容由后台「协会章程」用富文本编辑器维护）
+          path: 'charter',
+          name: 'Charter',
+          component: () => import('@/views/charter/index.vue'),
+          meta: { public: true }
+        },
+        {
           path: '/:pathMatch(.*)*',
           name: 'NotFound',
           component: () => import('@/views/error/404.vue'),
@@ -82,6 +89,7 @@ const router = createRouter({
         { path: 'messages', name: 'AdminMessages', meta: { title: '会员留言' }, component: () => import('@/views/admin/Messages.vue') },
         { path: 'articles', name: 'AdminArticles', meta: { title: '文章管理' }, component: () => import('@/views/admin/Articles.vue') },
         { path: 'announcements', name: 'AdminAnnouncements', meta: { title: '公告管理' }, component: () => import('@/views/admin/Announcements.vue') },
+        { path: 'charter', name: 'AdminCharter', meta: { title: '协会章程' }, component: () => import('@/views/admin/Charter.vue') },
         { path: 'system-config', name: 'AdminSystemConfig', meta: { title: '系统管理' }, component: () => import('@/views/admin/SystemConfig.vue') },
         { path: 'operation-logs', name: 'AdminOperationLogs', meta: { title: '操作日志' }, component: () => import('@/views/admin/OperationLogs.vue') },
         { path: 'profile', name: 'AdminProfile', meta: { title: '我的资料' }, component: () => import('@/views/admin/Profile.vue') }
