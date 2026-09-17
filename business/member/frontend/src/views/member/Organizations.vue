@@ -14,7 +14,18 @@
         <div class="card-body">
           <div class="card-left">
             <div class="org-name">{{ item.org?.name || '未知机构' }}</div>
-            <div v-if="item._intro" class="org-intro">{{ item._intro }}</div>
+            <div
+              v-if="item._intro"
+              class="org-intro"
+              :class="{ expanded: introExpanded(introKey(item)) }"
+              :ref="setIntroRef(introKey(item))"
+            >{{ item._intro }}</div>
+            <button
+              v-if="item._intro && introOverflowed(introKey(item))"
+              type="button"
+              class="intro-toggle"
+              @click="toggleIntro(introKey(item))"
+            >{{ introExpanded(introKey(item)) ? '收起' : '展开' }}</button>
             <div class="card-meta">
               <el-tag type="warning" effect="plain" size="small">
                 {{ itemLevelName(item) }}
@@ -126,6 +137,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { orgApi, applicationApi, feeApi } from '@/api/index'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Check } from '@element-plus/icons-vue'
+import { useIntroToggle } from '@/utils/introToggle'
 
 const myOrgs = ref<any[]>([])
 const memberLevel = ref('')
@@ -155,6 +167,12 @@ const orgIntroMap = computed(() => {
 function orgIntroOf(item: any) {
   const id = Number(item.org_id ?? item.org?.id)
   return item.org?.description || orgIntroMap.value.get(id) || ''
+}
+
+// 简介「展开/收起」：key 需在列表刷新前后保持稳定（用记录的唯一 _key）
+const { setIntroRef, introExpanded, introOverflowed, toggleIntro, measureIntro } = useIntroToggle()
+function introKey(item: any) {
+  return 'org-intro-' + item._key
 }
 
 const combinedList = computed(() => {
@@ -211,6 +229,9 @@ const combinedList = computed(() => {
 
   return list.map((it) => ({ ...it, _intro: orgIntroOf(it) }))
 })
+
+// 数据/文本变化后重新测量是否被截断（已展开的项不会被误判）
+watch(combinedList, () => { void measureIntro() }, { immediate: true })
 
 // 是否有通过缴费加入的组织（已批准入会申请，或已缴费/免缴的会费记录）
 const hasPaidOrg = computed(() => approvedApps.value.length > 0 || paidFees.value.length > 0)
@@ -476,11 +497,28 @@ function itemLevelName(item: any) {
   line-height: 1.7;
   color: #606266;
   margin-bottom: 10px;
-  /* 卡片内最多展示两行，保持列表紧凑 */
+  /* 卡片内最多展示两行，保持列表紧凑；点击「展开」看全文 */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  &.expanded {
+    display: block;
+    -webkit-line-clamp: unset;
+    overflow: visible;
+  }
+}
+.intro-toggle {
+  display: inline-block;
+  margin: -6px 0 10px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #002fa7;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  &:hover { text-decoration: underline; }
 }
 .card-meta {
   display: flex;

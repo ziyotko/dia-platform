@@ -152,7 +152,17 @@
               <div class="org-icon"><el-icon :size="22"><OfficeBuilding /></el-icon></div>
               <div class="org-name">{{ o.name }}</div>
             </div>
-            <p class="org-desc">{{ o.description || '暂无介绍' }}</p>
+            <p
+              class="org-desc"
+              :class="{ expanded: introExpanded(introKey(o)) }"
+              :ref="setIntroRef(introKey(o))"
+            >{{ o.description || '暂无介绍' }}</p>
+            <button
+              v-if="introOverflowed(introKey(o))"
+              type="button"
+              class="intro-toggle"
+              @click="toggleIntro(introKey(o))"
+            >{{ introExpanded(introKey(o)) ? '收起' : '展开' }}</button>
             <div class="org-foot">
               <span class="org-type">{{ orgTypeLabel(o.type) }}</span>
               <span v-if="o.contact_info" class="org-contact" :title="o.contact_info">
@@ -187,10 +197,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { announcementApi, orgApi } from '@/api/index'
 import { useSiteStore } from '@/stores/site'
+import { useIntroToggle } from '@/utils/introToggle'
 
 const router = useRouter()
 const siteStore = useSiteStore()
@@ -247,6 +258,11 @@ const rankColors = ['#002fa7', '#0ea5e9', '#8b5cf6', '#f59e0b', '#22c55e']
 
 // ── Divisions ──
 const divisions = ref<any[]>([])
+
+// 机构简介「展开/收起」：key 用机构 id，列表刷新前后保持稳定
+const { setIntroRef, introExpanded, introOverflowed, toggleIntro, measureIntro } = useIntroToggle()
+function introKey(o: any) { return 'home-org-' + o.id }
+watch(divisions, () => { void measureIntro() }, { immediate: true })
 
 // ── Process ──
 const processSteps = [
@@ -754,6 +770,25 @@ $bg-soft: #f5f7fb;
     line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    /* 展开态：去掉行数限制，完整展示简介 */
+    &.expanded {
+      display: block;
+      -webkit-line-clamp: unset;
+      line-clamp: unset;
+      overflow: visible;
+    }
+  }
+  .intro-toggle {
+    display: inline-block;
+    margin: -10px 0 14px;
+    padding: 0;
+    border: none;
+    background: none;
+    color: $primary;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+    &:hover { text-decoration: underline; }
   }
   .org-foot {
     display: flex;

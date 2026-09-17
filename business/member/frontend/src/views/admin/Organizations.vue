@@ -81,7 +81,7 @@
             type="textarea"
             :rows="3"
             placeholder="机构简介，将展示在会员端「加入的组织机构」与官网首页"
-            maxlength="500"
+            maxlength="1024"
             show-word-limit
           />
         </el-form-item>
@@ -114,7 +114,7 @@
             type="textarea"
             :rows="3"
             placeholder="机构简介，将展示在会员端「加入的组织机构」与官网首页"
-            maxlength="500"
+            maxlength="1024"
             show-word-limit
           />
         </el-form-item>
