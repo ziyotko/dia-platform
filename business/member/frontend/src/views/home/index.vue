@@ -15,13 +15,14 @@
       <div class="container hero-content">
         <div class="hero-badge">
           <el-icon><Promotion /></el-icon>
-          <span>数字化会员服务平台</span>
+          <span>全国性行业社会团体 · 会员服务平台</span>
         </div>
         <h1>{{ siteStore.site_name }}</h1>
-        <p class="hero-subtitle">数字化会员服务 · 数字化管理 · 数字化增值服务</p>
+        <p class="hero-subtitle">服务政府 · 服务行业 · 服务企业</p>
         <p class="hero-desc">
-          面向行业单位的专业会员服务门户，提供在线入会、会费管理、证书下载与信息共享等一站式服务，
-          助力会员单位数字化发展。
+          中国环保机械行业协会（CAMIE）成立于 1994 年，是经民政部批准注册登记的全国性社会团体独立法人单位，
+          以环保机械和资源综合利用装备制造厂商为主干。协会围绕行业调研、团体标准制定、科技成果评议与国际
+          交流合作开展工作，本平台为会员单位提供在线入会、会费管理、证书下载与信息共享等一站式服务。
         </p>
         <div class="hero-actions">
           <el-button class="hero-btn-primary" size="large" @click="$router.push('/register')">
@@ -46,7 +47,7 @@
         <div class="section-head">
           <span class="section-eyebrow">SERVICES</span>
           <h2>会员服务</h2>
-          <p>为您提供一站式数字化会员服务体验</p>
+          <p>面向环保装备行业会员单位的一站式数字化服务</p>
         </div>
         <div class="service-grid">
           <div class="service-card" v-for="f in features" :key="f.title" @click="goService(f)">
@@ -123,7 +124,7 @@
         <div class="section-head">
           <span class="section-eyebrow">HOW TO JOIN</span>
           <h2>入会流程</h2>
-          <p>四步轻松完成入会，全程在线跟踪办理进度</p>
+          <p>四步完成入会申请，全程在线跟踪办理进度</p>
         </div>
         <div class="process-steps">
           <div class="step" v-for="(s, i) in processSteps" :key="s.title">
@@ -144,7 +145,7 @@
         <div class="section-head">
           <span class="section-eyebrow">BRANCHES</span>
           <h2>分支机构</h2>
-          <p>覆盖行业各细分领域的专业分支机构</p>
+          <p>按专业领域设置的协会分支机构与代表机构</p>
         </div>
         <div class="org-grid">
           <div class="org-card" v-for="o in divisions" :key="o.id">
@@ -183,7 +184,7 @@
             <span class="cta-blob cta-blob-2"></span>
           </div>
           <div class="cta-text">
-            <h3>加入我们，共享行业资源与发展机遇</h3>
+            <h3>加入协会，共享环保装备行业资源与发展机遇</h3>
             <p>如有入会意向或疑问，欢迎随时与我们联系</p>
           </div>
           <div class="cta-actions">
@@ -207,16 +208,16 @@ const router = useRouter()
 const siteStore = useSiteStore()
 
 // ── Hero ──
-const heroFeatures = ['在线入会', '会费管理', '证书下载', '信息共享']
+const heroFeatures = ['1994 年成立', '经民政部注册登记', '4A 级全国社会组织', '会员单位近 500 家']
 
 // ── Services ──
 const features = [
-  { icon: 'DocumentChecked', title: '在线入会', desc: '在线填写资料、提交申请、追踪审核进度', color: '#002fa7', bg: '#e6eaf6' },
-  { icon: 'Money', title: '会费管理', desc: '查看缴费记录、在线缴纳年度会费', color: '#16a34a', bg: '#e6f7ee' },
-  { icon: 'Medal', title: '证书下载', desc: '审核通过后在线下载会员证书', color: '#d97706', bg: '#fdf3e3' },
-  { icon: 'Reading', title: '服务中心', desc: '浏览协会公告动态与行业文章', color: '#7c3aed', bg: '#f1ebfe' },
+  { icon: 'DocumentChecked', title: '在线入会', desc: '在线填写资料、提交入会申请、追踪审核进度', color: '#002fa7', bg: '#e6eaf6' },
+  { icon: 'Money', title: '会费管理', desc: '查看会费标准与缴费记录、在线缴纳年度会费', color: '#16a34a', bg: '#e6f7ee' },
+  { icon: 'Medal', title: '证书下载', desc: '审核通过后在线查看与下载会员证书', color: '#d97706', bg: '#fdf3e3' },
+  { icon: 'Reading', title: '服务中心', desc: '浏览协会公告动态与行业技术文章', color: '#7c3aed', bg: '#f1ebfe' },
   { icon: 'ChatDotRound', title: '在线留言', desc: '向协会提交建议、诉求与反馈', color: '#dc2626', bg: '#fdeaea' },
-  { icon: 'EditPen', title: '文章发布', desc: '发布行业动态、技术交流文章', color: '#0891b2', bg: '#e4f7fa' }
+  { icon: 'EditPen', title: '文章发布', desc: '会员发布行业动态与技术交流文章', color: '#0891b2', bg: '#e4f7fa' }
 ]
 
 const serviceRouteMap: Record<string, string> = {
@@ -268,8 +269,8 @@ watch(divisions, () => { void measureIntro() }, { immediate: true })
 const processSteps = [
   { icon: 'EditPen', title: '提交申请', desc: '在线填写入会申请资料并提交' },
   { icon: 'View', title: '协会审核', desc: '协会对申请资料进行审核' },
-  { icon: 'Wallet', title: '缴纳会费', desc: '审核通过后缴纳年度会费' },
-  { icon: 'Medal', title: '成为会员', desc: '颁发会员证书，享会员权益' }
+  { icon: 'Wallet', title: '缴纳会费', desc: '审核通过后按会员等级缴纳年度会费' },
+  { icon: 'Medal', title: '成为会员', desc: '颁发会员证书，享会员权益与服务' }
 ]
 
 onMounted(async () => {
