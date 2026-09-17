@@ -59,7 +59,8 @@ func Register(r *gin.Engine) {
 		public.GET("/application-template", authCtrl.DownloadApplicationTemplate)
 
 		// Download charter document（优先返回后台上传的 PDF，回退到 uploads/charter/ 下的历史文件）
-		public.GET("/charter", charterCtrl.DownloadCharter)
+		// 公开接口且单文件可达 20MB：按真实客户端 IP 限流 30 次/分钟，避免被脚本刷带宽
+		public.GET("/charter", middleware.RateLimitMiddleware(30, time.Minute), charterCtrl.DownloadCharter)
 
 		// 协会章程正文 + PDF 附件信息（富文本，后台「协会章程」维护）
 		public.GET("/charter-content", charterCtrl.GetCharter)

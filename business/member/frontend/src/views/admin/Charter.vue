@@ -59,7 +59,8 @@
         <Editor v-model="content" :defaultConfig="editorConfig" @onCreated="handleCreated" />
       </div>
       <div class="editor-tip">
-        提示：章程内容支持标题、列表、表格、图片等富文本格式；会员端「协会章程」页面与服务中心按此效果展示。
+        提示：章程正文仅支持文字排版（标题、列表、表格、引用等），<strong>不支持插入图片/视频</strong>；
+        文件请使用上方「章程 PDF 附件」。会员端「协会章程」页面与服务中心按此效果展示。
       </div>
     </el-card>
 
@@ -92,9 +93,40 @@ const uploading = ref(false)
 const MAX_PDF_SIZE = 20 * 1024 * 1024
 
 /* ---- wangEditor ---- */
+// 章程正文只允许文字排版：【不允许插入图片/视频，也不提供上传入口】。
+//  1) 工具栏排除图片/视频菜单（含各自的插入 + 上传子菜单）；
+//  2) MENU_CONF 拒绝上传，兜住粘贴 / 拖拽 / 选择文件的场景；
+//  3) 保存前再清洗一次 HTML，确保粘贴进来的 <img>、外链、base64 一律进不了正文。
+// 这样既避免正文超出 member_system_configs.value 的 TEXT 上限，
+// 也统一让附件走页面上方的「章程 PDF 附件」。
 const editorRef = shallowRef()
-const toolbarConfig = {}
-const editorConfig = { placeholder: '请输入协会章程内容...' }
+
+const MEDIA_TAG_RE = /<(img|video|audio|iframe|source|embed|object)\b[^>]*>/gi
+const CSS_DATA_URL_RE = /url\(\s*(['"])?data:[^)]*\)/gi
+
+const toolbarConfig = {
+  excludeKeys: ['group-image', 'group-video', 'insertImage', 'uploadImage', 'insertVideo', 'uploadVideo']
+}
+
+function rejectMedia() {
+  ElMessage.warning('章程不支持插入图片或视频，文件请放到上方「章程 PDF 附件」')
+}
+
+const editorConfig = {
+  placeholder: '请输入协会章程内容（不支持图片/视频）...',
+  MENU_CONF: {
+    uploadImage: { customUpload: () => { rejectMedia() } },
+    uploadVideo: { customUpload: () => { rejectMedia() } }
+  }
+}
+
+/** 剔除 HTML 中的图片/视频等媒体元素（含粘贴的外链与 base64）；返回清洗结果与是否发生改动 */
+function stripMedia(html: string): { html: string; changed: boolean } {
+  const cleaned = html
+    .replace(MEDIA_TAG_RE, '')
+    .replace(CSS_DATA_URL_RE, 'none')
+  return { html: cleaned, changed: cleaned !== html }
+}
 
 function handleCreated(editor: any) {
   editorRef.value = editor
@@ -118,6 +150,13 @@ onMounted(async () => {
 })
 
 async function save() {
+  // 兜底清洗：即使绕过工具栏（粘贴 HTML 片段、拖拽文件）也不会把图片/视频写进正文
+  const { html, changed } = stripMedia(content.value)
+  if (changed) {
+    content.value = html
+    editorRef.value?.setHtml(html)
+    ElMessage.warning('已自动移除正文中的图片/视频：章程仅支持文字排版，附件请用上方「章程 PDF 附件」')
+  }
   saving.value = true
   try {
     await adminApi.saveCharter(content.value)
