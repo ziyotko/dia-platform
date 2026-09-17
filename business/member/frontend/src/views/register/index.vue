@@ -12,7 +12,7 @@
         <div class="header-icon">
           <el-icon :size="32"><UserFilled /></el-icon>
         </div>
-        <h2>申请入会</h2>
+        <h2>注册账户</h2>
         <p class="header-desc">加入我们，享受更多会员服务</p>
         <el-steps :active="step" simple align-center class="custom-steps">
           <el-step title="账户注册">
@@ -539,7 +539,7 @@ async function handleSubmit() {
       userStore.userInfo = res.data.member
     }
 
-    ElMessage.success(form1.memberType === 'unit' ? '入会申请提交成功！' : '注册成功！')
+    ElMessage.success('注册成功！')
     // 等待 store 状态更新完成再跳转
     await nextTick()
     router.push('/member/dashboard')
