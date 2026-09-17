@@ -24,9 +24,6 @@
           以环保机械和资源综合利用装备制造厂商为主干。协会围绕行业调研、团体标准制定、科技成果评议与国际
           交流合作开展工作，本平台为会员单位提供信息共享等一站式服务。
         </p>
-        <div class="hero-features">
-          <div class="hf-item" v-for="f in heroFeatures" :key="f"><el-icon><Check /></el-icon>{{ f }}</div>
-        </div>
       </div>
       <div class="hero-wave" aria-hidden="true">
         <svg viewBox="0 0 1440 90" preserveAspectRatio="none">
@@ -65,9 +62,6 @@ import { useSiteStore } from '@/stores/site'
 
 const router = useRouter()
 const siteStore = useSiteStore()
-
-// ── Hero ──
-const heroFeatures = ['1994 年成立', '经民政部注册登记', '4A 级全国社会组织', '会员单位近 500 家']
 
 // ── Process ──
 // 入会分两个阶段：先在注册页申请成为「注册会员」，
@@ -136,7 +130,7 @@ $text-secondary: #6b7280;
   background: linear-gradient(135deg, #001b5e 0%, #002fa7 55%, #2050cf 100%);
   color: #fff;
   text-align: center;
-  padding: 110px 24px 150px;
+  padding: 110px 24px 110px;
   overflow: hidden;
 
   .hero-decor {
