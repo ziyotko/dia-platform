@@ -94,14 +94,28 @@ func (s *OrganizationService) UpdateOrganization(id uint64, req UpdateOrgRequest
 			return errors.New("只允许一个顶级机构，无法将下级机构提升为顶级机构")
 		}
 	}
-	updates := map[string]interface{}{
-		"name":         req.Name,
-		"description":  req.Description,
-		"contact_info": req.ContactInfo,
-		"sort":         req.Sort,
+	// 局部更新：只写请求里显式传入的字段，避免「只改简介」把名称、联系方式、排序等一并清空。
+	updates := map[string]interface{}{}
+	if req.Name != nil {
+		if *req.Name == "" {
+			return errors.New("名称不能为空")
+		}
+		updates["name"] = *req.Name
+	}
+	if req.Description != nil {
+		updates["description"] = *req.Description
+	}
+	if req.ContactInfo != nil {
+		updates["contact_info"] = *req.ContactInfo
+	}
+	if req.Sort != nil {
+		updates["sort"] = *req.Sort
 	}
 	if req.ParentID != nil {
 		updates["parent_id"] = *req.ParentID
+	}
+	if len(updates) == 0 {
+		return nil
 	}
 	return db.DB.Model(&models.Organization{}).Where("id = ?", id).Updates(updates).Error
 }
@@ -152,13 +166,14 @@ type CreateOrgRequest struct {
 	Sort        int    `json:"sort"`
 }
 
+// UpdateOrgRequest 机构更新请求。字段均为指针，nil 表示「本次不修改该字段」。
+// 注意：机构类型（type）与层级由创建时决定，不支持修改（仅两级结构）。
 type UpdateOrgRequest struct {
-	Name        string  `json:"name"`
+	Name        *string `json:"name"`
 	ParentID    *uint64 `json:"parent_id"`
-	Type        string  `json:"type"`
-	Description string  `json:"description"`
-	ContactInfo string  `json:"contact_info"`
-	Sort        int     `json:"sort"`
+	Description *string `json:"description"` // 简介（会员端「加入的组织机构」/首页展示）
+	ContactInfo *string `json:"contact_info"`
+	Sort        *int    `json:"sort"`
 }
 
 func buildTree(orgs []models.Organization, parentID uint64) []*models.Organization {

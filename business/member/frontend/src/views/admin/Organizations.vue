@@ -16,6 +16,7 @@
               <el-icon :size="22" color="#002fa7"><OfficeBuilding /></el-icon>
               <span class="root-name">{{ root.name }}</span>
               <el-tag size="small" type="info" effect="plain">上级机构</el-tag>
+              <span v-if="root.description" class="root-intro" :title="root.description">{{ root.description }}</span>
             </div>
             <div class="root-levels" v-if="root.levels?.length">
               <el-tag v-for="lvl in root.levels" :key="lvl.id" size="small" effect="plain" round>{{ lvl.level?.name || lvl.name }}</el-tag>
@@ -48,6 +49,7 @@
                 <div class="child-levels" v-if="child.levels?.length">
                   <el-tag v-for="lvl in child.levels" :key="lvl.id" size="small" effect="plain" round>{{ lvl.level?.name || lvl.name }}</el-tag>
                 </div>
+                <span v-if="child.description" class="child-intro" :title="child.description">{{ child.description }}</span>
               </div>
               <div class="child-actions">
                 <el-button text size="small" type="warning" @click="editChild(child)">
@@ -73,6 +75,16 @@
         <el-form-item label="名称" required>
           <el-input v-model="rootForm.name" />
         </el-form-item>
+        <el-form-item label="简介">
+          <el-input
+            v-model="rootForm.description"
+            type="textarea"
+            :rows="3"
+            placeholder="机构简介，将展示在会员端「加入的组织机构」与官网首页"
+            maxlength="500"
+            show-word-limit
+          />
+        </el-form-item>
         <el-form-item label="关联等级">
           <el-select v-model="rootForm.levelIds" multiple placeholder="选择关联的会员等级" style="width:100%">
             <el-option v-for="l in allLevels" :key="l.id" :label="l.name" :value="l.id" />
@@ -96,8 +108,15 @@
         <el-form-item label="名称" required>
           <el-input v-model="childForm.name" :placeholder="childType === 'branch' ? '如：变压器分会' : '如：华北代表处'" />
         </el-form-item>
-        <el-form-item label="描述">
-          <el-input v-model="childForm.description" type="textarea" :rows="2" />
+        <el-form-item label="简介">
+          <el-input
+            v-model="childForm.description"
+            type="textarea"
+            :rows="3"
+            placeholder="机构简介，将展示在会员端「加入的组织机构」与官网首页"
+            maxlength="500"
+            show-word-limit
+          />
         </el-form-item>
         <el-form-item label="排序">
           <el-input-number v-model="childForm.sort" :min="0" />
@@ -133,7 +152,7 @@ const roots = computed(() => tree.value || [])
 // Root dialog（editingRoot 为空表示新增）
 const showRootDialog = ref(false)
 const editingRoot = ref<any>(null)
-const rootForm = reactive({ name: '', levelIds: [] as number[] })
+const rootForm = reactive({ name: '', description: '', levelIds: [] as number[] })
 
 // Child dialog
 const showChildDialog = ref(false)
@@ -161,6 +180,7 @@ async function fetchData() {
 function openAddRoot() {
   editingRoot.value = null
   rootForm.name = ''
+  rootForm.description = ''
   rootForm.levelIds = []
   showRootDialog.value = true
 }
@@ -168,6 +188,7 @@ function openAddRoot() {
 function editRoot(root: any) {
   editingRoot.value = root
   rootForm.name = root?.name || ''
+  rootForm.description = root?.description || ''
   rootForm.levelIds = root?.levels?.map((l: any) => l.level_id || l.id) || []
   showRootDialog.value = true
 }
@@ -178,10 +199,10 @@ async function saveRoot() {
   try {
     let orgId: number
     if (editingRoot.value) {
-      await adminApi.updateOrg(editingRoot.value.id, { name: rootForm.name })
+      await adminApi.updateOrg(editingRoot.value.id, { name: rootForm.name, description: rootForm.description })
       orgId = editingRoot.value.id
     } else {
-      const r = await adminApi.createOrg({ name: rootForm.name, parent_id: 0, type: 'root', sort: 0 })
+      const r = await adminApi.createOrg({ name: rootForm.name, description: rootForm.description, parent_id: 0, type: 'root', sort: 0 })
       orgId = r.data?.id
       if (!orgId) { ElMessage.error('创建失败'); return }
     }
@@ -210,7 +231,7 @@ async function editChild(data: any) {
   childType.value = data.type
   editingChild.value = data
   childForm.name = data.name
-  childForm.description = data.description
+  childForm.description = data.description || ''
   childForm.sort = data.sort || 0
   // Load existing level associations
   childForm.levelIds = data.levels?.map((l: any) => l.level_id || l.id) || []
@@ -310,10 +331,21 @@ async function delChild(data: any) {
     display: flex;
     align-items: center;
     gap: 10px;
+    min-width: 0;
     .root-name {
       font-size: 17px;
       font-weight: 700;
       color: #1f2937;
+      flex-shrink: 0;
+    }
+    .root-intro {
+      max-width: 420px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #6b7280;
+      font-size: 13px;
+      font-weight: 400;
     }
   }
   .root-levels {
@@ -343,9 +375,19 @@ async function delChild(data: any) {
     display: flex;
     align-items: center;
     gap: 10px;
+    min-width: 0;
     .child-name {
       font-size: 14px;
       color: #374151;
+      flex-shrink: 0;
+    }
+    .child-intro {
+      max-width: 360px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #9ca3af;
+      font-size: 13px;
     }
   }
   .child-actions {

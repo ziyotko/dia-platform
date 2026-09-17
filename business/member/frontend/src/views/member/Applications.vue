@@ -42,6 +42,11 @@
           <el-select v-model="appForm.orgId" placeholder="选择总会或分会" style="width:100%">
             <el-option v-for="org in orgs" :key="org.id" :label="org.name" :value="org.id" />
           </el-select>
+          <!-- 所选机构简介（后台「组织机构」维护） -->
+          <div v-if="selectedOrgIntro" class="org-intro-box">
+            <div class="intro-title">机构简介</div>
+            <p class="intro-text">{{ selectedOrgIntro }}</p>
+          </div>
           <div class="charter-hint">
             <el-link type="primary" :icon="Download" @click="downloadCharter" :underline="false">
               入会章程
@@ -190,6 +195,7 @@ const uploadHeaders = computed(() => ({ Authorization: `Bearer ${userStore.token
 const hasPending = computed(() => applications.value.some((a: any) => a.status !== 'rejected'))
 const selectedOrg = computed(() => orgs.value.find((o: any) => o.id === appForm.orgId) || null)
 const selectedOrgName = computed(() => selectedOrg.value?.name || '')
+const selectedOrgIntro = computed(() => selectedOrg.value?.description || '')
 // 总会为一级组织（parent_id 为 0），分会/代表机构为其下级组织
 const isBranchSelected = computed(() => !!selectedOrg.value && !!selectedOrg.value.parent_id)
 
@@ -314,6 +320,33 @@ function formatDate(d: string) { return d ? d.slice(0, 16).replace('T', ' ') : '
 .charter-hint {
   margin-top: 6px;
   padding-left: 2px;
+}
+
+/* 所选机构简介（占用整行，置于下拉框下方） */
+.org-intro-box {
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px 16px;
+  background: #f7f9fc;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+
+  .intro-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #303133;
+    margin-bottom: 6px;
+  }
+  .intro-text {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #606266;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 120px;
+    overflow-y: auto;
+  }
 }
 
 .join-root-hint {

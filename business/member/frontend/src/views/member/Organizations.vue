@@ -14,6 +14,7 @@
         <div class="card-body">
           <div class="card-left">
             <div class="org-name">{{ item.org?.name || '未知机构' }}</div>
+            <div v-if="item._intro" class="org-intro">{{ item._intro }}</div>
             <div class="card-meta">
               <el-tag type="warning" effect="plain" size="small">
                 {{ itemLevelName(item) }}
@@ -67,7 +68,7 @@
           @node-click="selectOrg"
         >
           <template #default="{ data }">
-            <span class="tree-node-label">
+            <span class="tree-node-label" :title="data.description || ''">
               <span>{{ data.name }}</span>
               <el-tag v-if="data.disabled" type="info" size="small" effect="plain">
                 {{ data._disabledReason === 'hierarchy' ? '不可加入' : '已加入' }}
@@ -79,6 +80,12 @@
         <div class="selected" v-if="selectedOrg && !selectedOrg.disabled">
           <el-icon><Check /></el-icon>
           <span>已选择：<strong>{{ selectedOrg.name }}</strong></span>
+        </div>
+
+        <!-- 所选机构简介 -->
+        <div v-if="selectedOrg && !selectedOrg.disabled && selectedOrg.description" class="org-intro-box">
+          <div class="intro-title">机构简介</div>
+          <p class="intro-text">{{ selectedOrg.description }}</p>
         </div>
 
         <!-- 会员级别选择 -->
@@ -130,6 +137,25 @@ const showJoin = ref(false)
 const selectedOrg = ref<any>(null)
 const searchQuery = ref('')
 const treeRef = ref<any>(null)
+
+// 机构简介映射：从机构树按 id 索引。
+// 缴费加入的费用记录只带 org_id/org_name，没有 org 对象，需回查机构树补简介。
+const orgIntroMap = computed(() => {
+  const map = new Map<number, string>()
+  const walk = (nodes: any[]) => {
+    for (const n of nodes) {
+      if (n.description) map.set(n.id, n.description)
+      if (n.children?.length) walk(n.children)
+    }
+  }
+  walk(orgTree.value)
+  return map
+})
+
+function orgIntroOf(item: any) {
+  const id = Number(item.org_id ?? item.org?.id)
+  return item.org?.description || orgIntroMap.value.get(id) || ''
+}
 
 const combinedList = computed(() => {
   // 分类与后台「加入机构」保持一致：
@@ -183,7 +209,7 @@ const combinedList = computed(() => {
     })
   })
 
-  return list
+  return list.map((it) => ({ ...it, _intro: orgIntroOf(it) }))
 })
 
 // 是否有通过缴费加入的组织（已批准入会申请，或已缴费/免缴的会费记录）
@@ -445,6 +471,17 @@ function itemLevelName(item: any) {
   color: #303133;
   margin-bottom: 10px;
 }
+.org-intro {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #606266;
+  margin-bottom: 10px;
+  /* 卡片内最多展示两行，保持列表紧凑 */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .card-meta {
   display: flex;
   align-items: center;
@@ -469,6 +506,32 @@ function itemLevelName(item: any) {
   align-items: center;
   gap: 6px;
   font-size: 14px;
+}
+
+/* 所选机构简介 */
+.org-intro-box {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: #f7f9fc;
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+
+  .intro-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #303133;
+    margin-bottom: 6px;
+  }
+  .intro-text {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #606266;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 120px;
+    overflow-y: auto;
+  }
 }
 
 /* ── 加入对话框 ── */
