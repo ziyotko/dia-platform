@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => {
       proxy: {
         // 代理键需与 request.ts 的 baseURL 一致，否则 dev 下请求不会被转发到后端
         [apiBase]: {
-          target: 'http://127.0.0.1:8080',
+          target: 'http://127.0.0.1:8091',
           changeOrigin: true
         }
       }

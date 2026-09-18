@@ -24,6 +24,8 @@ func main() {
 	for _, m := range models.AllModels() {
 		utils.DB.AutoMigrate(m)
 	}
+	// FULLTEXT 索引不在 AutoMigrate 能力范围内（文章搜索的 MATCH ... AGAINST 依赖它），启动时幂等补齐
+	models.EnsureFulltextIndexes()
 
 	// 初始化系统默认角色（超级管理员/普通管理员/内容审核/内容作者），缺失时自动创建
 	models.SeedDefaultRoles()

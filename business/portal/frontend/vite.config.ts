@@ -24,12 +24,12 @@ export default defineConfig(({ mode }) => {
       proxy: {
         // 代理键必须与 request.ts 的 baseURL / 后端实际路径一致，否则 dev 下请求不会被转发
         [apiBase]: {
-          target: 'http://127.0.0.1:8084',
+          target: 'http://127.0.0.1:8092',
           changeOrigin: true,
           secure: false
         },
         [uploadsBase]: {
-          target: 'http://127.0.0.1:8084',
+          target: 'http://127.0.0.1:8092',
           changeOrigin: true,
           secure: false
         }
