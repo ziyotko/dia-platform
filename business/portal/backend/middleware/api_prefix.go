@@ -16,8 +16,9 @@ import (
 // 这些接口属于个人账户/工具类接口、或跨模块复用的只读基础数据（分类/标签/栏目/页面选项），
 // 任意已认证用户均可用；若后续需要收紧，可在此处调整或移除对应条目。
 //
-// 注意：此处按「路径」匹配，不区分 HTTP 方法。因此 /pages、/columns 这类同时存在只读（member）与写（admin）
-// 路由的路径，其写操作同样豁免——这些写路由本身已被 AdminMiddleware 限制为管理员，风险可控。
+// 注意：此处按「路径」**精确**匹配（不做前缀展开），不区分 HTTP 方法。因此 /pages、/columns 这类同时存在只读（member）
+// 与写（admin）路由的路径，仅豁免集合路径本身（GET /pages、GET /columns）与挂在其上的写操作（POST /pages、POST /columns），
+// 子路径（如 PUT/DELETE /pages/1）**不在**豁免范围内，须由菜单 api_prefix 覆盖（「栏目管理」= /columns,/pages）。
 var apiPrefixExemptPaths = map[string]bool{
 	"/logout":                    true,
 	"/profile":                   true,

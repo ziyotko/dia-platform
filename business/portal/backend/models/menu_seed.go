@@ -14,6 +14,12 @@ import (
 // 需与「基础配置-静态化设置」区分：后者对应全局设置的 /settings。
 const staticManagementAPIPrefix = "/static,/static-logs,/static-monitor"
 
+// 「栏目管理」页面除栏目外还管理页面（页面管理 Tab，见 views/content/column.vue），
+// 而写操作走 PUT/DELETE /pages/:id —— 它不被任何菜单的 api_prefix 覆盖，
+// 也已超出豁免表（豁免表是精确匹配，只放行 GET /pages 这类列表读取），
+// 导致管理员改动「页面状态」或删除页面时返回「没有授权」。故在此追加 /pages。
+const columnManagementAPIPrefix = "/columns,/pages"
+
 // menuSeedItem 描述一条待初始化的菜单数据。
 type menuSeedItem struct {
 	Name      string
@@ -46,7 +52,7 @@ var defaultMenus = []menuSeedItem{
 			{Name: "广告管理", Path: "/content/ad", Component: "content/ad", Icon: "Picture", Type: "menu", Sort: 3, Status: 1, APIPrefix: "/ads"},
 			{Name: "链接管理", Path: "/content/link", Component: "content/link", Icon: "Link", Type: "menu", Sort: 4, Status: 1, APIPrefix: "/links"},
 			{Name: "模板管理", Path: "/content/template", Component: "content/template", Icon: "Tickets", Type: "menu", Sort: 5, Status: 1, APIPrefix: "/templates"},
-			{Name: "栏目管理", Path: "/content/column", Component: "content/column", Icon: "Grid", Type: "menu", Sort: 6, Status: 1, APIPrefix: "/columns"},
+			{Name: "栏目管理", Path: "/content/column", Component: "content/column", Icon: "Grid", Type: "menu", Sort: 6, Status: 1, APIPrefix: columnManagementAPIPrefix},
 			{Name: "分类管理", Path: "/content/category", Component: "content/category", Icon: "Folder", Type: "menu", Sort: 7, Status: 1, APIPrefix: "/categories"},
 			{Name: "标签管理", Path: "/content/tag", Component: "content/tag", Icon: "PriceTag", Type: "menu", Sort: 8, Status: 1, APIPrefix: "/tags"},
 		},
@@ -97,6 +103,8 @@ func SeedDefaultMenus() {
 	// 历史版本「静态化管理」只声明了 /static，导致 /static-logs、/static-monitor 不在授权范围内，
 	// 这里对未自定义过该值的环境做一次幂等升级。
 	upgradeMenuAPIPrefix("静态化管理", "/static", staticManagementAPIPrefix)
+	// 历史版本「栏目管理」只声明了 /columns，导致页面管理写接口（PUT/DELETE /pages/:id）返回「没有授权」。
+	upgradeMenuAPIPrefix("栏目管理", "/columns", columnManagementAPIPrefix)
 	// 历史版本「静态化管理」挂在「内容管理」下（非管理员即使被授权也调不通其接口），迁移到「基础配置」。
 	moveMenuToParent("静态化管理", "内容管理", "基础配置", "/config/static")
 }
