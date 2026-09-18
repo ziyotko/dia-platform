@@ -205,11 +205,15 @@
               <el-option
                 v-for="item in group.options"
                 :key="item.id"
-                :label="item.name"
+                :label="templateOptionLabel(item)"
                 :value="item.id"
+                :disabled="!!templateUsedByPages[item.id]"
               />
             </el-option-group>
           </el-select>
+          <div style="width: 100%; font-size: 12px; color: #909399; line-height: 1.5; margin-top: 4px">
+            一个模板只能应用一个页面，已被其他页面应用的模板不可选择
+          </div>
         </el-form-item>
         <el-form-item label="页面描述" prop="description">
           <el-input v-model="pageForm.description" type="textarea" :rows="3" placeholder="请输入页面描述" />
@@ -515,6 +519,23 @@ const templateGroups = computed(() => {
   if (!options.length) return []
   return [{ label, options }]
 })
+
+// 一个模板只能应用一个页面（后端 services/page_service.go 同样强制）：
+// 已被其他页面（不含当前编辑页面）绑定的模板在下拉中禁用并提示已应用的页面。
+const templateUsedByPages = computed(() => {
+  const map: Record<number, string> = {}
+  allPages.value.forEach(p => {
+    if (p.templateId && p.id !== pageForm.id) {
+      map[p.templateId] = p.name
+    }
+  })
+  return map
+})
+
+const templateOptionLabel = (item: any) => {
+  const usedBy = templateUsedByPages.value[item.id]
+  return usedBy ? `${item.name}（已应用：${usedBy}）` : item.name
+}
 
 const isRootColumn = (item: ColumnItem) => !item.parentId || item.parentId === 0
 

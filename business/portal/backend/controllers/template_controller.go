@@ -25,6 +25,7 @@ type TemplateListItem struct {
 	SourceCode  string `json:"sourceCode"`
 	Layout      string `json:"layout"`
 	PageCount   int    `json:"pageCount"`
+	PageName    string `json:"pageName"`
 	CreatedAt   string `json:"createdAt"`
 }
 
@@ -70,6 +71,7 @@ func (c *TemplateController) GetTemplates(ctx *gin.Context) {
 			SourceCode:  t.SourceCode,
 			Layout:      t.Layout,
 			PageCount:   result.PageCounts[t.ID],
+			PageName:    result.PageNames[t.ID],
 			CreatedAt:   t.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
