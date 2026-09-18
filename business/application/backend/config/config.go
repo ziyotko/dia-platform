@@ -1,6 +1,9 @@
 package config
 
 import (
+	"log"
+	"os"
+
 	"github.com/spf13/viper"
 )
 
@@ -63,5 +66,27 @@ func Load(path string) {
 	Cfg = &Config{}
 	if err := viper.Unmarshal(Cfg); err != nil {
 		panic("Failed to unmarshal config: " + err.Error())
+	}
+	applyEnvOverrides()
+}
+
+// applyEnvOverrides 用环境变量覆盖敏感配置，避免把数据库密码 / JWT 密钥提交到仓库。
+// 生产环境务必注入：APPLICATION_DB_PASSWORD、APPLICATION_JWT_SECRET。
+func applyEnvOverrides() {
+	if v := os.Getenv("APPLICATION_DB_PASSWORD"); v != "" {
+		Cfg.MySQL.Password = v
+	}
+	if v := os.Getenv("APPLICATION_JWT_SECRET"); v != "" {
+		Cfg.JWT.Secret = v
+	}
+
+	if Cfg.MySQL.Password == "" || Cfg.MySQL.Password == "APPLICATION_DB_PASSWORD" {
+		log.Printf("[WARN] 未设置数据库密码！必须设置环境变量 APPLICATION_DB_PASSWORD。")
+		log.Fatal("程序退出")
+	}
+
+	if Cfg.JWT.Secret == "" || Cfg.JWT.Secret == "APPLICATION_JWT_SECRET" {
+		log.Printf("[WARN] 未设置 JWT 密钥！必须设置环境变量 APPLICATION_JWT_SECRET。")
+		log.Fatal("程序退出")
 	}
 }

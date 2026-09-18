@@ -14,7 +14,8 @@ mysql:
   host: 10.3.1.95
   port: 63400
   user: root
-  password: '1qaz@WSX'
+  # 请使用环境变量 APPLICATION_DB_PASSWORD 注入，勿提交真实密码到仓库
+  password: APPLICATION_DB_PASSWORD
   db_name: caam_application
   charset: utf8mb4
   max_open: 50
@@ -27,7 +28,8 @@ redis:
   anti_replay_db: 3
 
 jwt:
-  secret: application-jwt-secret-key-2026
+  # 请使用环境变量 APPLICATION_JWT_SECRET 注入强随机密钥（>=32字符）
+  secret: APPLICATION_JWT_SECRET
   expire_hours: 24
   issuer: caam-application
 
