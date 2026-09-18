@@ -46,7 +46,7 @@
               <el-form-item label="组织机构证">
                 <div class="cert-file-row">
                   <template v-if="form.cert_file">
-                    <el-link :href="fileUrl(form.cert_file)" target="_blank" type="primary" :underline="false">
+                    <el-link :href="fileUrl(form.cert_file)" target="_blank" type="primary" underline="never">
                       <el-icon style="margin-right:4px"><Download /></el-icon>下载证照
                     </el-link>
                     <el-button size="small" style="margin-left:8px" @click="triggerUpload">

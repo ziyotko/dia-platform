@@ -2,8 +2,19 @@
   <div class="applications-page" v-loading="loading">
     <div class="page-header">
       <h3>我的申请</h3>
-      <el-button type="primary" @click="handleCreateApp" v-if="!hasPending">发起入会申请</el-button>
+      <el-button type="primary" @click="handleCreateApp" v-if="!ruleHint">发起入会申请</el-button>
     </div>
+
+    <!-- 业务规则：不允许二次申请入会（被拒后可重新提交、撤回后可重新提交） -->
+    <el-alert
+      v-if="ruleHint"
+      class="rule-hint"
+      :type="ruleHint.type"
+      show-icon
+      :closable="false"
+      :title="ruleHint.title"
+      :description="ruleHint.desc"
+    />
 
     <!-- Application List -->
     <el-card v-if="applications.length">
@@ -48,7 +59,7 @@
             <p class="intro-text">{{ selectedOrgIntro }}</p>
           </div>
           <div class="charter-hint">
-            <el-link type="primary" :icon="Download" @click="downloadCharter" :underline="false">
+            <el-link type="primary" :icon="Download" @click="downloadCharter" underline="never">
               入会章程
             </el-link>
           </div>
@@ -193,6 +204,34 @@ const uploadUrl = computed(() => `${import.meta.env.VITE_API_BASE_URL || '/membe
 const uploadHeaders = computed(() => ({ Authorization: `Bearer ${userStore.token}` }))
 
 const hasPending = computed(() => applications.value.some((a: any) => a.status !== 'rejected'))
+const hasApproved = computed(() => applications.value.some((a: any) => a.status === 'approved'))
+const isActiveMember = computed(() => userStore.userInfo?.status === 'active')
+
+// 不允许二次申请入会：已通过审核 / 有待审核申请 / 已是正式会员 三种情形均不再显示申请入口
+const ruleHint = computed<{ type: 'warning' | 'info'; title: string; desc: string } | null>(() => {
+  if (hasApproved.value) {
+    return {
+      type: 'warning',
+      title: '您已通过入会审核，不允许重复申请入会',
+      desc: '如需加入其他分支机构或代表机构，请到「加入信息」页面申请加入。'
+    }
+  }
+  if (hasPending.value) {
+    return {
+      type: 'info',
+      title: '您已有待审核的入会申请',
+      desc: '审核完成后（或先撤回该申请）才能重新提交。'
+    }
+  }
+  if (isActiveMember.value) {
+    return {
+      type: 'info',
+      title: '您已是正式会员，无需再次申请入会',
+      desc: '如需加入其他分支机构或代表机构，请到「加入信息」页面申请加入。'
+    }
+  }
+  return null
+})
 const selectedOrg = computed(() => orgs.value.find((o: any) => o.id === appForm.orgId) || null)
 const selectedOrgName = computed(() => selectedOrg.value?.name || '')
 const selectedOrgIntro = computed(() => selectedOrg.value?.description || '')
@@ -223,6 +262,11 @@ function flattenOrgs(nodes: any[]): any[] {
 }
 
 async function handleCreateApp() {
+  // 业务规则：同一会员只能有一次入会申请（被拒/撤回后可重新提交）
+  if (ruleHint.value) {
+    ElMessage.warning(ruleHint.value.title)
+    return
+  }
   try {
     const res = await authApi.getProfile()
     const profile = res.data
@@ -316,6 +360,7 @@ function formatDate(d: string) { return d ? d.slice(0, 16).replace('T', ' ') : '
 <style scoped lang="scss">
 .applications-page { width: 100%;}
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.rule-hint { margin-bottom: 16px; }
 
 .charter-hint {
   margin-top: 6px;

@@ -8,6 +8,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type FeeService struct{}
@@ -107,26 +110,36 @@ func (s *FeeService) applyPaidSideEffects(fee models.FeeRecord, operator string)
 }
 
 // CreateFeeRecord creates a fee record (admin)
+// 同一会员同一年度只允许一条记录：在事务内先加行锁再判断，
+// 避免两个管理员同时新增时两次查询都落空、写出重复记录。
 func (s *FeeService) CreateFeeRecord(req CreateFeeRequest) (*models.FeeRecord, error) {
-	// Check duplicate: same member + same year
-	var count int64
-	db.DB.Model(&models.FeeRecord{}).Where("member_id = ? AND year = ?", req.MemberID, req.Year).Count(&count)
-	if count > 0 {
-		return nil, errors.New("该会员本年度费用记录已存在")
-	}
+	var fee models.FeeRecord
+	err := db.DB.Transaction(func(tx *gorm.DB) error {
+		var exist models.FeeRecord
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("member_id = ? AND year = ?", req.MemberID, req.Year).
+			First(&exist).Error
+		if err == nil {
+			return errors.New("该会员本年度费用记录已存在")
+		}
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
 
-	fee := models.FeeRecord{
-		MemberID:  req.MemberID,
-		Year:      req.Year,
-		Amount:    req.Amount,
-		Status:    models.FeeStatusUnpaid,
-		Remark:    req.Remark,
-		OrgID:     req.OrgID,
-		OrgName:   req.OrgName,
-		LevelID:   req.LevelID,
-		LevelName: req.LevelName,
-	}
-	if err := db.DB.Create(&fee).Error; err != nil {
+		fee = models.FeeRecord{
+			MemberID:  req.MemberID,
+			Year:      req.Year,
+			Amount:    req.Amount,
+			Status:    models.FeeStatusUnpaid,
+			Remark:    req.Remark,
+			OrgID:     req.OrgID,
+			OrgName:   req.OrgName,
+			LevelID:   req.LevelID,
+			LevelName: req.LevelName,
+		}
+		return tx.Create(&fee).Error
+	})
+	if err != nil {
 		return nil, err
 	}
 	return &fee, nil

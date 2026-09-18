@@ -1,11 +1,14 @@
 <template>
   <div class="admin-articles" v-loading="loading">
-    <div class="page-header"><h3>文章管理</h3></div>
+    <div class="page-header">
+      <h3>文章管理</h3>
+      <el-button @click="openCategories">分类管理</el-button>
+    </div>
     <el-card>
       <el-table :data="list" stripe>
         <el-table-column label="标题" min-width="180">
           <template #default="{row}">
-            <el-link type="primary" :underline="false" @click="viewArticle(row)">{{ row.title }}</el-link>
+            <el-link type="primary" underline="never" @click="viewArticle(row)">{{ row.title }}</el-link>
           </template>
         </el-table-column>
         <el-table-column label="来源单位/个人" width="240" show-overflow-tooltip><template #default="{row}">{{ sourceLabel(row.member) }}</template></el-table-column>
@@ -40,12 +43,35 @@
         <div class="view-content" v-html="sanitizeHtml(viewed?.content) || '<p style=&quot;color:#9ca3af&quot;>暂无内容</p>'"></div>
       </div>
     </el-dialog>
+
+    <!-- 文章分类管理 -->
+    <el-dialog v-model="showCats" title="文章分类管理" width="560px">
+      <div class="cat-form">
+        <el-input v-model="catForm.name" placeholder="分类名称" maxlength="30" style="width:200px" />
+        <el-input-number v-model="catForm.sort" :min="0" :max="999" controls-position="right" style="width:120px" />
+        <el-button type="primary" :loading="catSaving" @click="saveCat">{{ catForm.id ? '保存' : '新增' }}</el-button>
+        <el-button v-if="catForm.id" @click="resetCatForm">取消编辑</el-button>
+      </div>
+      <el-table :data="categories" stripe size="small">
+        <el-table-column prop="name" label="分类名称" min-width="140" />
+        <el-table-column prop="sort" label="排序" width="70" />
+        <el-table-column label="操作" width="130">
+          <template #default="{ row }">
+            <el-button text size="small" type="primary" @click="editCat(row)">编辑</el-button>
+            <el-button text size="small" type="danger" @click="deleteCat(row)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-empty v-if="categories.length === 0" description="暂无分类" />
+      <div class="cat-tip">注：分类下已有文章时不可删除；分类是会员发布文章时的可选项。</div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { adminApi } from '@/api/admin'
+import { articleApi } from '@/api/index'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { sanitizeHtml } from '@/utils/sanitizeHtml'
 
@@ -61,6 +87,62 @@ function sourceLabel(member: any) {
   return member.name || member.username || '-'
 }
 function viewArticle(row: any) { viewed.value = row; showView.value = true }
+
+/* ---- 文章分类管理 ---- */
+const showCats = ref(false)
+const categories = ref<any[]>([])
+const catSaving = ref(false)
+const catForm = reactive({ id: 0, name: '', sort: 0 })
+
+async function openCategories() {
+  showCats.value = true
+  await fetchCategories()
+  resetCatForm()
+}
+async function fetchCategories() {
+  try {
+    const r = await articleApi.getCategories()
+    categories.value = r.data || []
+  } catch {}
+}
+function resetCatForm() {
+  const last = categories.value[categories.value.length - 1]
+  catForm.id = 0
+  catForm.name = ''
+  catForm.sort = (Number(last?.sort) || 0) + 1
+}
+function editCat(row: any) {
+  catForm.id = row.id
+  catForm.name = row.name
+  catForm.sort = Number(row.sort) || 0
+}
+async function saveCat() {
+  const name = catForm.name.trim()
+  if (!name) { ElMessage.warning('请输入分类名称'); return }
+  catSaving.value = true
+  try {
+    if (catForm.id) {
+      await adminApi.updateCategory(catForm.id, { name, sort: catForm.sort })
+      ElMessage.success('已保存')
+    } else {
+      await adminApi.createCategory({ name, sort: catForm.sort })
+      ElMessage.success('已新增')
+    }
+    await fetchCategories()
+    resetCatForm()
+  } catch {} finally { catSaving.value = false }
+}
+async function deleteCat(row: any) {
+  try {
+    await ElMessageBox.confirm(`确认删除分类「${row.name}」？`, '删除确认', { type: 'warning' })
+  } catch { return }
+  try {
+    await adminApi.deleteCategory(row.id)
+    ElMessage.success('已删除')
+    if (catForm.id === row.id) resetCatForm()
+    await fetchCategories()
+  } catch {}
+}
 
 onMounted(() => fetchData())
 async function fetchData() {
@@ -105,12 +187,26 @@ async function deleteRow(row: any) {
 }
 .page-header {
   margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   h3 {
     font-size: 22px;
     font-weight: 600;
     color: #1d2739;
     margin: 0;
   }
+}
+.cat-form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.cat-tip {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #9ca3af;
 }
 .el-card {
   border-radius: 10px;

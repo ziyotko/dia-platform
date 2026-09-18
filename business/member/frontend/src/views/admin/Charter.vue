@@ -32,7 +32,7 @@
             <el-icon :size="18"><Document /></el-icon>
             <span class="file-name">{{ fileMeta.name }}</span>
             <span class="file-meta">{{ formatSize(fileMeta.size) }} · 上传于 {{ formatTime(fileMeta.uploaded_at) }}</span>
-            <el-link type="primary" :underline="false" @click="downloadPdf">下载</el-link>
+            <el-link type="primary" underline="never" @click="downloadPdf">下载</el-link>
             <el-button text type="danger" size="small" @click="removePdf">移除</el-button>
           </template>
           <span v-else class="file-empty">暂未上传 PDF 附件</span>

@@ -74,6 +74,10 @@ func (s *MessageService) ListAllMessages(page, size int, status string) ([]model
 
 // ReplyMessage replies to a message (admin)
 func (s *MessageService) ReplyMessage(id uint64, reply string) error {
+	var msg models.MemberMessage
+	if err := db.DB.First(&msg, id).Error; err != nil {
+		return errors.New("留言不存在")
+	}
 	now := time.Now()
 	return db.DB.Model(&models.MemberMessage{}).Where("id = ?", id).Updates(map[string]interface{}{
 		"reply":      reply,

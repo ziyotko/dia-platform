@@ -215,7 +215,8 @@ func (s *MemberService) UpdateMemberLevel(id uint64, levelID uint64, operator st
 	if err := db.DB.First(&lvl, levelID).Error; err != nil {
 		return errors.New("会员等级不存在")
 	}
-	oldLevelID := parseUint(m.MemberLevel)
+	// 旧等级：兼容 member_level 存「等级 ID」与「历史等级名称」两种形式
+	oldLevelID, oldLevelName := resolveMemberLevel(m.MemberLevel)
 	if oldLevelID == lvl.ID {
 		return errors.New("新旧会员等级不能相同")
 	}
@@ -231,15 +232,6 @@ func (s *MemberService) UpdateMemberLevel(id uint64, levelID uint64, operator st
 	}
 	if cnt == 0 {
 		return errors.New("该等级不在该会员已缴费加入的机构所支持的等级中")
-	}
-
-	// 原始会籍名称
-	oldLevelName := ""
-	if oldLevelID > 0 {
-		var oldLvl models.MemberLevel
-		if err := db.DB.First(&oldLvl, oldLevelID).Error; err == nil {
-			oldLevelName = oldLvl.Name
-		}
 	}
 
 	if err := db.DB.Model(&models.Member{}).Where("id = ?", id).Update("member_level", lvl.ID).Error; err != nil {
@@ -263,19 +255,38 @@ func (s *MemberService) UpdateMemberLevel(id uint64, levelID uint64, operator st
 	return nil
 }
 
-// primaryOrg returns the member's primary joined organization (id + name).
+// primaryOrg 返回会员的主入会机构（id + 名称）。
+// 优先级与 fillOrgNames 保持一致：
+//  1. 进行中/已通过的入会申请所选机构；
+//  2. 兜底：最近一条已缴费（含免缴）费用记录的机构。
+//
+// 注意：不再按机构名称反查 org_id（同名机构会取错 ID，导致会籍记录串机构）。
 func (s *MemberService) primaryOrg(m *models.Member) (uint64, string) {
-	members := []models.Member{*m}
-	_ = s.fillOrgNames(members)
-	name := members[0].OrgName
-	if name == "" {
+	if m == nil || m.ID == 0 {
 		return 0, ""
 	}
-	var org models.Organization
-	if err := db.DB.Where("name = ?", name).First(&org).Error; err != nil {
-		return 0, name
+
+	var app models.Application
+	if err := db.DB.Preload("Org").
+		Where("member_id = ? AND status IN ?", m.ID,
+			[]string{models.AppStatusApproved, models.AppStatusPendingReview}).
+		Order("created_at DESC, id DESC").First(&app).Error; err == nil {
+		name := app.Org.Name
+		if name == "" {
+			var org models.Organization
+			if err := db.DB.First(&org, app.OrgID).Error; err == nil {
+				name = org.Name
+			}
+		}
+		return app.OrgID, name
 	}
-	return org.ID, name
+
+	var fee models.FeeRecord
+	if err := db.DB.Where("member_id = ? AND status = ? AND org_name <> ''", m.ID, models.FeeStatusPaid).
+		Order("year DESC, id DESC").First(&fee).Error; err == nil {
+		return fee.OrgID, fee.OrgName
+	}
+	return 0, ""
 }
 
 // ListLevelChanges returns paginated membership change records (admin).

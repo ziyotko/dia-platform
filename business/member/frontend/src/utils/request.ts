@@ -37,7 +37,23 @@ request.interceptors.response.use(
     return res
   },
   (error) => {
-    ElMessage.error(error.message || '网络错误')
+    // 业务错误统一走 HTTP 200 + code（上面的成功分支处理），
+    // 这里只处理网关/网络层异常，避免直接抛出英文 “Request failed with status code xxx”
+    const status = error?.response?.status
+    let msg = error?.message || '网络错误'
+    if (status === 401 || status === 403) {
+      msg = '登录状态已失效，请重新登录'
+      useUserStore().logout()
+    } else if (status === 413) {
+      msg = '上传内容过大，请压缩后重试'
+    } else if (status === 429) {
+      msg = '请求过于频繁，请稍后再试'
+    } else if (typeof status === 'number' && status >= 500) {
+      msg = '服务暂时不可用，请稍后重试'
+    } else if (!error?.response) {
+      msg = '网络异常，请检查网络连接后重试'
+    }
+    ElMessage.error(msg)
     return Promise.reject(error)
   }
 )

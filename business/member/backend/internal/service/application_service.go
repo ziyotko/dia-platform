@@ -16,11 +16,15 @@ func (s *ApplicationService) CreateApplication(memberID uint64, req CreateAppReq
 		return nil, errors.New("请选择入会机构")
 	}
 
-	// Check if member already has a pending/approved application
+	// 业务规则：不允许二次申请入会 —— 同一会员同时只能存在一条「进行中/已通过」的入会申请。
+	// 仅「已拒绝」的申请不占用名额（会员可修正资料后重新提交）。
 	var existing models.Application
-	if err := db.DB.Where("member_id = ? AND status <> ?",
-		memberID, models.AppStatusRejected).First(&existing).Error; err == nil {
-		return nil, errors.New("您已有进行中的入会申请")
+	if err := db.DB.Where("member_id = ? AND status <> ?", memberID, models.AppStatusRejected).
+		Order("created_at DESC, id DESC").First(&existing).Error; err == nil {
+		if existing.Status == models.AppStatusApproved {
+			return nil, errors.New("您已通过入会审核，不允许重复申请入会；如需加入其他分支机构，请在「加入信息」页面申请加入")
+		}
+		return nil, errors.New("您已有待审核的入会申请，请等待审核结果，或先撤回后再重新提交")
 	}
 
 	// 载入会员：正式会员（active）再次申请加入其它机构时不改变其会员状态，
@@ -28,6 +32,13 @@ func (s *ApplicationService) CreateApplication(memberID uint64, req CreateAppReq
 	var member models.Member
 	if err := db.DB.First(&member, memberID).Error; err != nil {
 		return nil, errors.New("会员不存在")
+	}
+
+	// 业务规则：不允许二次申请入会 —— 已是正式会员的账号不再受理入会申请。
+	// （历史/管理员直录会员可能没有申请记录，仅靠上面的申请记录判断会漏掉。）
+	// 加入其他分支机构请走「加入信息」页面的“新的加入”。
+	if member.Status == models.MemberStatusActive {
+		return nil, errors.New("您已是正式会员，无需再次申请入会；如需加入其他分支机构，请在「加入信息」页面申请加入")
 	}
 
 	app := models.Application{
@@ -121,6 +132,20 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 		return errors.New("该申请不在待审核状态")
 	}
 
+	// 业务规则：不允许二次入会 —— 同一会员只能有一条已通过的入会申请。
+	// 在审批入口再校验一次，即使有人绕过创建端的限制也无法重复入会。
+	if approved {
+		var otherApproved int64
+		if err := db.DB.Model(&models.Application{}).
+			Where("member_id = ? AND status = ? AND id <> ?", app.MemberID, models.AppStatusApproved, app.ID).
+			Count(&otherApproved).Error; err != nil {
+			return err
+		}
+		if otherApproved > 0 {
+			return errors.New("该会员已有已通过的入会申请，不允许重复通过（二次入会）")
+		}
+	}
+
 	newStatus := models.AppStatusRejected
 	newMemberStatus := models.MemberStatusRejected
 	if approved {
@@ -204,6 +229,13 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 			LevelID:        levelID,
 			LevelName:      levelName,
 			CertTemplateID: certTplID,
+		}
+		// 与 CreateCertificateForMember 保持一致：同一会员同时只保留一张生效证书
+		if err := tx.Model(&models.Certificate{}).
+			Where("member_id = ? AND status = ?", app.MemberID, models.CertStatusActive).
+			Update("status", models.CertStatusExpired).Error; err != nil {
+			tx.Rollback()
+			return err
 		}
 		if err := tx.Create(&cert).Error; err != nil {
 			tx.Rollback()

@@ -45,7 +45,7 @@
         <template v-if="currentMember.member_type === 'unit'">
         <el-descriptions-item label="统一社会信用代码">
           {{ currentMember.credit_code || '-' }}
-          <el-link v-if="currentMember.cert_file" :href="fileUrl(currentMember.cert_file)" target="_blank" type="primary" :underline="false" style="margin-left:12px">下载证照</el-link>
+          <el-link v-if="currentMember.cert_file" :href="fileUrl(currentMember.cert_file)" target="_blank" type="primary" underline="never" style="margin-left:12px">下载证照</el-link>
         </el-descriptions-item>
         <el-descriptions-item label="法定代表人">{{ currentMember.legal_person || '-' }}</el-descriptions-item>
         <el-descriptions-item label="联系人">{{ currentMember.contact_person || '-' }}</el-descriptions-item>
@@ -54,7 +54,7 @@
         </template>
         <el-descriptions-item label="会员类型">{{ currentMember.member_type === 'personal' ? '个人会员' : '单位会员' }}</el-descriptions-item>
         <el-descriptions-item label="入会申请书">
-          <el-link v-if="currentRow?.signed_file" :href="fileUrl(currentRow.signed_file)" target="_blank" type="primary" :underline="false">下载申请书</el-link>
+          <el-link v-if="currentRow?.signed_file" :href="fileUrl(currentRow.signed_file)" target="_blank" type="primary" underline="never">下载申请书</el-link>
           <span v-else>-</span>
         </el-descriptions-item>
       </el-descriptions>

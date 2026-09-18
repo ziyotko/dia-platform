@@ -67,6 +67,7 @@ export const adminApi = {
   replyMessage: (id: number, reply: string) => request.put(`/admin/messages/${id}/reply`, { reply }),
 	deleteMessage: (id: number) => request.delete(`/admin/messages/${id}`),
   updateCategory: (id: number, data: any) => request.put(`/admin/article-categories/${id}`, data),
+  createCategory: (data: { name: string; sort: number }) => request.post('/admin/article-categories', data),
   deleteCategory: (id: number) => request.delete(`/admin/article-categories/${id}`),
   getArticles: (params?: any) => request.get('/admin/articles', { params }),
   reviewArticle: (id: number, data: any) => request.put(`/admin/articles/${id}/review`, data),
