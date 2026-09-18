@@ -11,7 +11,10 @@
       <div v-loading="loading">
         <div class="announce-item" v-for="a in list" :key="a.id" @click="$router.push(`/announcements/${a.id}`)">
           <div class="item-left">
-            <el-tag size="small" :type="a.is_pinned ? 'danger' : ''">{{ a.is_pinned ? '置顶' : typeLabel(a.type) }}</el-tag>
+            <el-tag v-if="a.is_pinned" size="small" type="danger">置顶</el-tag>
+            <el-tag v-else-if="typeLabel(a.type)" size="small" :type="typeTag(a.type)">
+              {{ typeLabel(a.type) }}
+            </el-tag>
             <span class="title">{{ a.title }}</span>
           </div>
           <span class="time">{{ formatDate(a.published_at) }}</span>
@@ -51,7 +54,14 @@ function search() { page.value = 1; fetchData() }
 function formatDate(d: string) { return d ? d.slice(0, 10) : '' }
 
 const typeMap: Record<string, string> = { notice: '通知', article: '文章', policy: '政策' }
-function typeLabel(t: string) { return typeMap[t] || t }
+// el-tag 的 type 不接受空串（会触发 prop 校验警告），未知类型统一回退 info
+const typeTagMap: Record<string, 'primary' | 'success' | 'warning' | 'info'> = {
+  notice: 'primary',
+  article: 'success',
+  policy: 'warning'
+}
+function typeLabel(t?: string) { return t ? typeMap[t] || t : '' }
+function typeTag(t?: string) { return t ? typeTagMap[t] || 'info' : 'info' }
 </script>
 
 <style scoped lang="scss">

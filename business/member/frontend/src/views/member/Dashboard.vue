@@ -301,7 +301,7 @@ const announceTypeMap: Record<string, { label: string; tag: string }> = {
 }
 
 function announceTypeLabel(type: string) { return announceTypeMap[type]?.label || type || '公告' }
-function announceTypeTag(type: string) { return announceTypeMap[type]?.tag || '' }
+function announceTypeTag(type: string) { return announceTypeMap[type]?.tag || 'info' }
 
 // ── Lifecycle ──
 onMounted(async () => {

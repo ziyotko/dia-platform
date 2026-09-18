@@ -9,6 +9,7 @@ export const useSiteStore = defineStore('site', () => {
   const loaded = ref(false)
 
   const site_name = computed(() => siteInfo.value.site_name || '会员系统')
+  const site_description = computed(() => siteInfo.value.site_description || '')
   const copyright_name = computed(() => siteInfo.value.copyright_name || '')
   const icp_no = computed(() => siteInfo.value.icp_no || '')
   const beian_no = computed(() => siteInfo.value.beian_no || '')
@@ -24,5 +25,5 @@ export const useSiteStore = defineStore('site', () => {
     }
   }
 
-  return { siteInfo, loaded, site_name, copyright_name, icp_no, beian_no, load }
+  return { siteInfo, loaded, site_name, site_description, copyright_name, icp_no, beian_no, load }
 })

@@ -19,11 +19,7 @@
         </div>
         <h1>{{ siteStore.site_name }}</h1>
         <p class="hero-subtitle">服务政府 · 服务行业 · 服务企业</p>
-        <p class="hero-desc">
-          中国环保机械行业协会（CAMIE）成立于 1994 年，是经民政部批准注册登记的全国性社会团体独立法人单位，
-          以环保机械和资源综合利用装备制造厂商为主干。协会围绕行业调研、团体标准制定、科技成果评议与国际
-          交流合作开展工作，本平台为会员单位提供信息共享等一站式服务。
-        </p>
+        <p class="hero-desc">{{ siteStore.site_description }}</p>
       </div>
       <div class="hero-wave" aria-hidden="true">
         <svg viewBox="0 0 1440 90" preserveAspectRatio="none">
