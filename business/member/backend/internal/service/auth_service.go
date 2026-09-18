@@ -510,12 +510,31 @@ type ChangePasswordRequest struct {
 	NewPassword string `json:"new_password" binding:"required,min=8"`
 }
 
+// publicSiteConfigKeys 允许通过公开接口 GET /site-info 暴露的配置项白名单。
+// 采用白名单而非黑名单：后台后续新增的配置（如邮件密钥、内部参数）默认不会被公开；
+// charter_content / charter_file 属内容型配置，已有各自的公开接口，不在其中。
+var publicSiteConfigKeys = map[string]bool{
+	"site_name":         true,
+	"site_description":  true,
+	"copyright_name":    true,
+	"icp_no":            true,
+	"beian_no":          true,
+	"contact_phone":     true,
+	"contact_email":     true,
+	"bank_name":         true,
+	"bank_account":      true,
+	"bank_account_name": true,
+	"fee_amount":        true,
+}
+
 func (s *AuthService) GetSiteConfig() map[string]string {
 	var configs []models.SystemConfig
 	db.DB.Find(&configs)
 	result := make(map[string]string)
 	for _, c := range configs {
-		result[c.Key] = c.Value
+		if publicSiteConfigKeys[c.Key] {
+			result[c.Key] = c.Value
+		}
 	}
 	// Defaults
 	if result["site_name"] == "" {

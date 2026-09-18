@@ -76,7 +76,8 @@ func Register(r *gin.Engine) {
 		public.GET("/member-levels", levelCtrl.List)
 
 		// Public upload (for registration certificate upload)
-		public.POST("/upload", authCtrl.UploadFile)
+		// 无鉴权且会落盘，必须限流：20 次/分钟/IP，防脚本刷盘（正常用户一次流程最多上传 2-3 个文件）
+		public.POST("/upload", middleware.RateLimitMiddleware(20, time.Minute), authCtrl.UploadFile)
 	}
 
 	// === Member routes (auth required) ===
@@ -169,6 +170,8 @@ func Register(r *gin.Engine) {
 		admin.POST("/admin/certificates", certCtrl.CreateCertificate)
 		admin.GET("/admin/certificates", certCtrl.ListCertificates)
 		admin.POST("/admin/certificates/:id/generate", certCtrl.RegenerateCertificate)
+		// 批量补生成历史存量中 file_path 为空的证书 PDF（静态路径，避免与 :id 同级冲突）
+		admin.POST("/admin/certificates-regenerate-missing", certCtrl.RegenerateMissingCertificates)
 		admin.PUT("/admin/certificates/:id", certCtrl.UpdateCertificate)
 		// Certificate template management
 		admin.GET("/admin/certificate-templates", certTplCtrl.List)

@@ -91,7 +91,7 @@
       <div class="preview-body" v-if="viewed">
         <img v-if="viewed.cover_image" :src="viewed.cover_image" class="preview-cover" />
         <div class="preview-summary" v-if="viewed.summary">{{ viewed.summary }}</div>
-        <div class="preview-content" v-html="viewed.content || '<p style=&quot;color:#9ca3af&quot;>暂无内容</p>'"></div>
+        <div class="preview-content" v-html="sanitizeHtml(viewed.content) || '<p style=&quot;color:#9ca3af&quot;>暂无内容</p>'"></div>
       </div>
       <template #footer>
         <el-button @click="showPreview = false">关闭</el-button>
@@ -108,6 +108,7 @@ import { articleApi } from '@/api/index'
 import { authApi } from '@/api/auth'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
+import { sanitizeHtml } from '@/utils/sanitizeHtml'
 
 const articles = ref<any[]>([])
 const categories = ref<any[]>([])

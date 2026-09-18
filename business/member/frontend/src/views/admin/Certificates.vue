@@ -17,6 +17,7 @@
               <el-option label="已过期" value="expired" />
             </el-select>
             <el-button type="primary" @click="searchRecords">查询</el-button>
+            <el-button :loading="generatingMissing" @click="regenerateMissing">补生成缺失证书</el-button>
           </div>
 
           <el-table :data="records" stripe style="width:100%">
@@ -87,11 +88,14 @@
         <el-table-column label="所属等级" width="150">
           <template #default="{ row }">{{ row.level?.name || '—' }}</template>
         </el-table-column>
-        <el-table-column label="模板文件" width="180">
+        <el-table-column label="模板文件" width="200">
           <template #default="{ row }">
-            <a v-if="row.template_file" :href="row.template_file" target="_blank" class="file-link">
-              <el-icon><Document /></el-icon> 查看PDF
-            </a>
+            <template v-if="row.template_file">
+              <a :href="fileUrl(row.template_file)" target="_blank" class="file-link">
+                <el-icon><Document /></el-icon> 查看PDF
+              </a>
+              <el-tag v-if="row.file_exists === false" type="danger" size="small" effect="plain" style="margin-left:6px">文件缺失</el-tag>
+            </template>
             <span v-else class="no-file">未上传</span>
           </template>
         </el-table-column>
@@ -162,6 +166,7 @@ import { adminApi } from '@/api/admin'
 import { authApi } from '@/api/auth'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Document, Plus } from '@element-plus/icons-vue'
+import { fileUrl } from '@/utils/fileUrl'
 
 const list = ref<any[]>([])
 const levels = ref<any[]>([])
@@ -180,6 +185,7 @@ const recTotal = ref(0)
 const recKeyword = ref('')
 const recStatus = ref('')
 const generatingId = ref<number | null>(null)
+const generatingMissing = ref(false)
 
 const form = reactive({
   name: '',
@@ -195,14 +201,6 @@ const availableLevels = computed(() => {
 
 function formatDate(d: string) { return d ? d.replace('T', ' ').slice(0, 16) : '' }
 function fmtDay(d: string) { return d ? d.slice(0, 10) : '-' }
-function fileUrl(path?: string) {
-  if (!path) return ''
-  if (/^https?:\/\//i.test(path)) return path
-  // 兼容 `uploads/...`（相对）、`/uploads/...`（旧绝对）与带部署前缀的绝对路径，统一指向当前部署子路径
-  const base = import.meta.env.BASE_URL || '/'
-  const clean = path.replace(/^\.?\//, '')
-  return clean.startsWith('uploads/') ? `${base}${clean}` : `/${clean}`
-}
 function memberLabel(row: any) {
   const m = row.member
   if (!m) return '-'
@@ -233,6 +231,23 @@ async function regenerate(row: any) {
     ElMessage.success('证书文件已生成')
     fetchRecords()
   } catch {} finally { generatingId.value = null }
+}
+
+// 批量补生成历史存量中 file_path 为空的证书文件（后端单次最多 200 张）
+async function regenerateMissing() {
+  generatingMissing.value = true
+  try {
+    const res: any = await adminApi.regenerateMissingCertificates(200)
+    const d = res.data || {}
+    if (d.failed > 0) {
+      ElMessage.warning(`已生成 ${d.ok} 张，失败 ${d.failed} 张：${(d.failures || []).join('；')}`)
+    } else if (d.ok > 0) {
+      ElMessage.success(`已补生成 ${d.ok} 张证书文件`)
+    } else {
+      ElMessage.info('没有需要补生成的证书文件')
+    }
+    fetchRecords()
+  } catch {} finally { generatingMissing.value = false }
 }
 
 onMounted(async () => {
@@ -275,7 +290,7 @@ async function uploadPdf(file: File) {
 }
 
 function previewPdf() {
-  if (form.templateFile) window.open(form.templateFile, '_blank')
+  if (form.templateFile) window.open(fileUrl(form.templateFile), '_blank')
 }
 
 async function saveTemplate() {

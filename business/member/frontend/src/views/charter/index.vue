@@ -21,7 +21,7 @@
       <div class="charter-card">
           <!-- 富文本正文（样式见全局 .rich-text-content） -->
           <template v-if="content">
-            <article class="rich-text-content charter-article" v-html="content"></article>
+            <article class="rich-text-content charter-article" v-html="sanitizeHtml(content)"></article>
           </template>
 
           <el-empty v-else description="章程暂未维护，请联系管理员" />
@@ -54,6 +54,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { charterApi } from '@/api/index'
+import { sanitizeHtml } from '@/utils/sanitizeHtml'
 
 interface CharterFile {
   path?: string

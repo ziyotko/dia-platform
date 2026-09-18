@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"member/internal/models"
 	"member/pkg/db"
 	"strconv"
@@ -291,6 +292,13 @@ func (s *FeeService) ApplyInvoice(memberID, feeID uint64, req ApplyInvoiceReques
 	}
 	if fee.PaidAmount <= 0 {
 		return errors.New("实缴金额为0，无法申请开票")
+	}
+	// 开票金额必须为正数且不得超过实缴金额，避免虚开
+	if req.InvoiceAmount <= 0 {
+		return errors.New("开票金额必须大于0")
+	}
+	if req.InvoiceAmount > fee.PaidAmount {
+		return fmt.Errorf("开票金额不能超过实缴金额（¥%.2f）", fee.PaidAmount)
 	}
 	if fee.InvoiceStatus != "" {
 		return errors.New("该费用已申请开票，请勿重复申请")

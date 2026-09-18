@@ -36,7 +36,7 @@
       </el-tab-pane>
       <el-tab-pane label="协会章程" name="charter">
         <el-card v-loading="charterLoading">
-          <div v-if="charterContent" class="rich-text-content" v-html="charterContent"></div>
+          <div v-if="charterContent" class="rich-text-content" v-html="sanitizeHtml(charterContent)"></div>
           <el-empty v-else-if="!charterLoading" description="章程暂未维护" />
           <div class="charter-actions" v-if="charterFile || charterContent">
             <el-button v-if="charterFile" type="primary" plain size="small" @click="downloadCharterPdf">
@@ -55,7 +55,7 @@
         <span>作者：{{ viewedArticle.member?.company_name || viewedArticle.member?.name || viewedArticle.member?.username }}</span>
         <span>时间：{{ formatDate(viewedArticle.published_at) }}</span>
       </div>
-      <div class="article-content" v-html="viewedArticle?.content || '暂无内容'"></div>
+      <div class="article-content" v-html="sanitizeHtml(viewedArticle?.content) || '暂无内容'"></div>
     </el-dialog>
   </div>
 </template>
@@ -63,6 +63,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
 import { announcementApi, articleApi, charterApi } from '@/api/index'
+import { sanitizeHtml } from '@/utils/sanitizeHtml'
 
 const activeTab = ref('announcements')
 const announcements = ref<any[]>([])

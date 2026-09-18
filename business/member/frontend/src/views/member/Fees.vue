@@ -136,7 +136,8 @@
           <el-input v-model="invoiceForm.invoice_tax_id" placeholder="请输入统一社会信用代码" />
         </el-form-item>
         <el-form-item label="开票金额" required>
-          <el-input-number v-model="invoiceForm.invoice_amount" :min="0" :precision="2" :step="100" style="width:100%" />
+          <el-input-number v-model="invoiceForm.invoice_amount" :min="0" :max="invoiceMax" :precision="2" :step="100" style="width:100%" />
+          <div v-if="invoiceMax > 0" class="amount-hint">可开票上限：¥{{ invoiceMax.toFixed(2) }}（实缴金额）</div>
         </el-form-item>
         <el-form-item label="开票联系人及电话" required>
           <el-input v-model="invoiceForm.invoice_contact" placeholder="请输入联系人姓名和电话" />
@@ -163,6 +164,7 @@ import { authApi } from '@/api/auth'
 import { ElMessage } from 'element-plus'
 import { Upload } from '@element-plus/icons-vue'
 import type { UploadInstance, UploadFile, UploadProps } from 'element-plus'
+import { fileUrl } from '@/utils/fileUrl'
 
 const fees = ref<any[]>([])
 const loading = ref(true)
@@ -280,8 +282,12 @@ const canSubmitInvoice = computed(() => {
   return invoiceForm.invoice_company
     && invoiceForm.invoice_tax_id
     && invoiceForm.invoice_amount > 0
+    && invoiceForm.invoice_amount <= invoiceMax.value
     && invoiceForm.invoice_contact
 })
+
+// 可开票上限 = 实缴金额（后端 ApplyInvoice 同样限制，避免虚开）
+const invoiceMax = computed(() => Number(invoiceTarget.value?.paid_amount) || 0)
 
 async function openInvoiceDialog(row: any) {
   if (!row.paid_amount || row.paid_amount <= 0) {
@@ -289,7 +295,7 @@ async function openInvoiceDialog(row: any) {
     return
   }
   invoiceTarget.value = row
-  invoiceForm.invoice_amount = row.amount || 0
+  invoiceForm.invoice_amount = Number(row.paid_amount) > 0 ? Number(row.paid_amount) : (row.amount || 0)
   invoiceForm.invoice_remark = ''
 
   // 从申请人资料自动获取单位全称、社会信用代码、联系人及电话
@@ -328,7 +334,7 @@ async function submitInvoice() {
 
 function downloadInvoice(row: any) {
   if (row.invoice_file) {
-    window.open(row.invoice_file, '_blank')
+    window.open(fileUrl(row.invoice_file), '_blank')
   }
 }
 
@@ -370,5 +376,13 @@ function formatDate(d: string) { return d ? d.slice(0, 16) : '' }
   :deep(.el-form-item) {
     margin-bottom: 20px;
   }
+}
+
+.amount-hint {
+  width: 100%;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #909399;
+  margin-top: 4px;
 }
 </style>

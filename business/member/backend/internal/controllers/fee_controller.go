@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"member/config"
 	"member/internal/middleware"
 	"member/internal/service"
 	"member/pkg/response"
@@ -166,7 +167,9 @@ func (ctrl *FeeController) IssueInvoice(c *gin.Context) {
 			response.ServerError(c, "文件上传失败")
 			return
 		}
-		invoiceFile = "/" + path
+		// 与 /upload 保持一致：返回带部署前缀的绝对路径，
+		// 否则前端（及静态挂载 <upload_dir_prefix>/uploads）会 404
+		invoiceFile = config.Cfg.Server.UploadDirPrefix + "/" + path
 	}
 
 	if err := ctrl.feeService.IssueInvoice(id, invoiceNo, invoiceFile); err != nil {

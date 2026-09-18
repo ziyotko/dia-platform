@@ -7,6 +7,7 @@ import (
 
 	"member/internal/models"
 	"member/pkg/db"
+	"member/pkg/utils"
 
 	"gorm.io/gorm"
 )
@@ -43,8 +44,9 @@ func (s *CharterService) GetCharter() (string, error) {
 }
 
 // SaveCharter 保存协会章程正文：配置项不存在时自动创建（upsert）。
+// 正文为富文本 HTML，入库前消毒（公开页面会用 v-html 渲染）。
 func (s *CharterService) SaveCharter(content string) error {
-	return s.upsertConfig(CharterConfigKey, content, CharterConfigDesc)
+	return s.upsertConfig(CharterConfigKey, utils.SanitizeRichText(content), CharterConfigDesc)
 }
 
 // GetCharterFile 返回章程 PDF 附件元信息。

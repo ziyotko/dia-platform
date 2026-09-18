@@ -4,18 +4,20 @@ import (
 	"errors"
 	"member/internal/models"
 	"member/pkg/db"
+	"member/pkg/utils"
 	"time"
 )
 
 type ArticleService struct{}
 
 // CreateArticle creates a new article
+// 正文为会员提交的富文本 HTML，入库前必须消毒（防止存储型 XSS 影响后台预览页）。
 func (s *ArticleService) CreateArticle(memberID uint64, req CreateArticleRequest) (*models.Article, error) {
 	article := models.Article{
 		MemberID:   memberID,
 		CategoryID: req.CategoryID,
 		Title:      req.Title,
-		Content:    req.Content,
+		Content:    utils.SanitizeRichText(req.Content),
 		Summary:    req.Summary,
 		CoverImage: req.CoverImage,
 		Status:     models.ArticleStatusDraft,
@@ -38,7 +40,7 @@ func (s *ArticleService) UpdateArticle(memberID, articleID uint64, req UpdateArt
 
 	updates := map[string]interface{}{
 		"title":       req.Title,
-		"content":     req.Content,
+		"content":     utils.SanitizeRichText(req.Content),
 		"summary":     req.Summary,
 		"cover_image": req.CoverImage,
 		"category_id": req.CategoryID,

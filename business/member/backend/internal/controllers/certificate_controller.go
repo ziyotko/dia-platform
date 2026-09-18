@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"fmt"
+
 	"member/internal/middleware"
 	"member/internal/models"
 	"member/internal/service"
@@ -82,6 +84,18 @@ func (ctrl *CertificateController) RegenerateCertificate(c *gin.Context) {
 		return
 	}
 	response.SuccessWithMessage(c, "证书文件已生成", cert)
+}
+
+// RegenerateMissingCertificates 批量补生成历史存量中缺失的证书 PDF（admin）
+func (ctrl *CertificateController) RegenerateMissingCertificates(c *gin.Context) {
+	limit := parseIntDefault(c.Query("limit"), 200)
+	ok, failed, failures, err := ctrl.certService.RegenerateMissingCertificates(limit)
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
+	response.SuccessWithMessage(c, fmt.Sprintf("已生成 %d 张，失败 %d 张", ok, failed),
+		gin.H{"ok": ok, "failed": failed, "failures": failures})
 }
 
 func (ctrl *CertificateController) UpdateCertificate(c *gin.Context) {

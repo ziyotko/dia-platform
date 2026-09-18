@@ -6,7 +6,7 @@
         <span>{{ formatDate(announcement.published_at) }}</span>
         <span>浏览 {{ announcement.view_count }}</span>
       </div>
-      <div class="content" v-html="announcement.content.replace(/\n/g, '<br>')"></div>
+      <div class="content" v-html="sanitizeHtml(announcement.content).replace(/\n/g, '<br>')"></div>
     </div>
     <el-empty v-else-if="!loading" description="公告不存在" />
     <div class="back">
@@ -19,6 +19,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { announcementApi } from '@/api/index'
+import { sanitizeHtml } from '@/utils/sanitizeHtml'
 
 const route = useRoute()
 const announcement = ref<any>(null)

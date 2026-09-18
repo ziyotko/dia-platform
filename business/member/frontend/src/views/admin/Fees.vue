@@ -280,7 +280,7 @@
           备注：{{ invoiceTarget.invoice_remark || '-' }}
           <template v-if="invoiceTarget.invoice_status === 'issued'">
             <br>当前票据号码：{{ invoiceTarget.invoice_no || '-' }}
-            <br>当前发票文件：<a v-if="invoiceTarget.invoice_file" :href="invoiceTarget.invoice_file" target="_blank" style="color:#002fa7">查看</a><span v-else>-</span>
+            <br>当前发票文件：<a v-if="invoiceTarget.invoice_file" :href="fileUrl(invoiceTarget.invoice_file)" target="_blank" style="color:#002fa7">查看</a><span v-else>-</span>
           </template>
         </div>
       </div>
@@ -345,6 +345,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { adminApi } from '@/api/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete, CircleCheck, CircleCheckFilled, WarningFilled, Coin, List, Money, Check, Clock, Download, Upload, User } from '@element-plus/icons-vue'
+import { fileUrl } from '@/utils/fileUrl'
 
 const list = ref<any[]>([]); const loading = ref(true); const showCreate = ref(false)
 const page = ref(1); const size = ref(10); const total = ref(0)
@@ -539,7 +540,7 @@ async function markPaid(row: any) {
 }
 function viewReceipt(row: any) {
   if (row.receipt_file) {
-    window.open(row.receipt_file, '_blank')
+    window.open(fileUrl(row.receipt_file), '_blank')
   }
 }
 async function confirmPay(row: any) {

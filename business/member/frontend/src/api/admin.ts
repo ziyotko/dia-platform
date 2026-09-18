@@ -37,6 +37,8 @@ export const adminApi = {
   createCertificate: (data: any) => request.post('/admin/certificates', data),
   getCertificates: (params?: any) => request.get('/admin/certificates', { params }),
   regenerateCertificate: (id: number) => request.post(`/admin/certificates/${id}/generate`),
+  // 批量补生成 file_path 为空的存量证书 PDF
+  regenerateMissingCertificates: (limit = 200) => request.post(`/admin/certificates-regenerate-missing`, null, { params: { limit } }),
   updateCertificate: (id: number, data: any) => request.put(`/admin/certificates/${id}`, data),
   // Certificate Templates
   getCertTemplates: () => request.get('/admin/certificate-templates'),

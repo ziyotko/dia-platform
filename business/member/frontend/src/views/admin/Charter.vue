@@ -67,7 +67,7 @@
     <!-- 预览（与会员端展示效果一致） -->
     <el-dialog v-model="showPreview" title="预览（会员端展示效果）" width="900px" top="5vh">
       <div class="preview-title">协会章程</div>
-      <div class="rich-text-content" v-html="content"></div>
+      <div class="rich-text-content" v-html="sanitizeHtml(content)"></div>
     </el-dialog>
   </div>
 </template>
@@ -79,6 +79,7 @@ import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 import '@wangeditor/editor/dist/css/style.css'
 import { adminApi } from '@/api/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { sanitizeHtml } from '@/utils/sanitizeHtml'
 
 const router = useRouter()
 

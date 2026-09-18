@@ -320,6 +320,31 @@ func (s *CertificateService) RenewMyCertificate(memberID uint64) (*models.Certif
 	return cert, nil
 }
 
+// RegenerateMissingCertificates 批量补生成 file_path 为空的证书 PDF（历史存量数据）。
+// limit 为单次处理上限（<=0 或 >500 时取 200，避免一次请求处理过多）；
+// 返回：成功数、失败数、失败明细。单张失败不影响其它证书。
+func (s *CertificateService) RegenerateMissingCertificates(limit int) (int, int, []string, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 200
+	}
+	var list []models.Certificate
+	if err := db.DB.Where("file_path IS NULL OR file_path = ''").Order("id ASC").Limit(limit).Find(&list).Error; err != nil {
+		return 0, 0, nil, err
+	}
+
+	ok, failed := 0, 0
+	failures := make([]string, 0)
+	for i := range list {
+		if err := s.GenerateFileForCertificate(&list[i]); err != nil {
+			failed++
+			failures = append(failures, fmt.Sprintf("#%d %s：%v", list[i].ID, list[i].CertNo, err))
+			continue
+		}
+		ok++
+	}
+	return ok, failed, failures, nil
+}
+
 type CreateCertRequest struct {
 	MemberID uint64            `json:"member_id" binding:"required"`
 	CertNo   string            `json:"cert_no" binding:"required"`

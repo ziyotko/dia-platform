@@ -4,6 +4,7 @@ import (
 	"errors"
 	"member/internal/models"
 	"member/pkg/db"
+	"member/pkg/utils"
 	"time"
 )
 
@@ -46,7 +47,7 @@ func (s *AnnouncementService) GetAnnouncement(id uint64) (*models.Announcement, 
 func (s *AnnouncementService) CreateAnnouncement(req CreateAnnouncementRequest) (*models.Announcement, error) {
 	a := models.Announcement{
 		Title:     req.Title,
-		Content:   req.Content,
+		Content:   utils.SanitizeRichText(req.Content),
 		Type:      req.Type,
 		IsPinned:  req.IsPinned,
 		CreatedBy: req.CreatedBy,
@@ -65,7 +66,7 @@ func (s *AnnouncementService) CreateAnnouncement(req CreateAnnouncementRequest) 
 func (s *AnnouncementService) UpdateAnnouncement(id uint64, req UpdateAnnouncementRequest) error {
 	updates := map[string]interface{}{
 		"title":     req.Title,
-		"content":   req.Content,
+		"content":   utils.SanitizeRichText(req.Content),
 		"type":      req.Type,
 		"is_pinned": req.IsPinned,
 	}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"member/internal/models"
 	"member/pkg/db"
+	"member/pkg/utils"
 	"strings"
 )
 
@@ -15,6 +16,9 @@ func (s *CertificateTemplateService) List() ([]models.MemberCertificateTemplate,
 	if err := db.DB.Preload("Level").Order("created_at DESC").Find(&list).Error; err != nil {
 		return nil, err
 	}
+	for i := range list {
+		list[i].FileExists = templateFileExists(list[i].TemplateFile)
+	}
 	return list, nil
 }
 
@@ -24,7 +28,28 @@ func (s *CertificateTemplateService) Get(id uint64) (*models.MemberCertificateTe
 	if err := db.DB.Preload("Level").First(&tpl, id).Error; err != nil {
 		return nil, errors.New("证书样式不存在")
 	}
+	tpl.FileExists = templateFileExists(tpl.TemplateFile)
 	return &tpl, nil
+}
+
+// templateFileExists 判断模板文件路径能否解析到服务器上的真实文件（空值不算存在）。
+func templateFileExists(path string) bool {
+	if strings.TrimSpace(path) == "" {
+		return false
+	}
+	_, ok := utils.LocalUploadPath(path)
+	return ok
+}
+
+// validateTemplateFile 校验上传后的模板文件路径真实可用，避免存入无法解析的路径。
+func validateTemplateFile(path string) error {
+	if strings.TrimSpace(path) == "" {
+		return nil
+	}
+	if _, ok := utils.LocalUploadPath(path); !ok {
+		return errors.New("模板文件不存在或路径非法，请重新上传")
+	}
+	return nil
 }
 
 // Create creates a new certificate template
@@ -40,6 +65,10 @@ func (s *CertificateTemplateService) Create(req CertTemplateRequest) (*models.Me
 	db.DB.Model(&models.MemberCertificateTemplate{}).Where("level_id = ?", req.LevelID).Count(&count)
 	if count > 0 {
 		return nil, errors.New("该等级已有证书样式，请直接编辑")
+	}
+
+	if err := validateTemplateFile(req.TemplateFile); err != nil {
+		return nil, err
 	}
 
 	tpl := models.MemberCertificateTemplate{
@@ -78,6 +107,12 @@ func (s *CertificateTemplateService) Update(id uint64, req UpdateCertTemplateReq
 		updates["level_id"] = *req.LevelID
 	}
 	if req.TemplateFile != nil {
+		// 仅当模板文件发生变化时校验，避免历史脏路径堵住改名/改等级等无关编辑。
+		if *req.TemplateFile != tpl.TemplateFile {
+			if err := validateTemplateFile(*req.TemplateFile); err != nil {
+				return err
+			}
+		}
 		updates["template_file"] = *req.TemplateFile
 	}
 	if len(updates) == 0 {

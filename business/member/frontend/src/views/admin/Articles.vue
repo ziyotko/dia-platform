@@ -37,7 +37,7 @@
       <div class="view-body">
         <img v-if="viewed?.cover_image" :src="viewed.cover_image" class="view-cover" />
         <div class="view-summary" v-if="viewed?.summary">{{ viewed.summary }}</div>
-        <div class="view-content" v-html="viewed?.content || '<p style=&quot;color:#9ca3af&quot;>暂无内容</p>'"></div>
+        <div class="view-content" v-html="sanitizeHtml(viewed?.content) || '<p style=&quot;color:#9ca3af&quot;>暂无内容</p>'"></div>
       </div>
     </el-dialog>
   </div>
@@ -47,6 +47,7 @@
 import { ref, onMounted } from 'vue'
 import { adminApi } from '@/api/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { sanitizeHtml } from '@/utils/sanitizeHtml'
 
 const list = ref<any[]>([]); const loading = ref(true)
 const page = ref(1); const size = ref(10); const total = ref(0)
