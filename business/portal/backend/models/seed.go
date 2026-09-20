@@ -8,23 +8,17 @@ import (
 
 // 系统内置默认角色。
 // ID 与现有硬编码约定保持一致：
-//   - 1 = 超级管理员（拥有一切权限）
-//   - 2 = 普通管理员（授权机构/组织管理范围）
+//   - 1 = 管理员（拥有一切权限，code 仍为 super_admin）
 //   - 3 = 内容审核（仅审阅/通过/驳回）
 //   - 4 = 内容作者（仅自有内容，需审核后发布）
+//
+// 注：ID 2 原为「普通管理员（admin）」，该角色已整体下线移除，不再播种；ID 3/4 保持原值不重排。
 var defaultRoles = []Role{
 	{
 		ID:          1,
-		Name:        "超级管理员",
+		Name:        "管理员",
 		Code:        "super_admin",
 		Description: "系统最高权限角色，拥有平台全部功能模块的访问、配置与管理权限，不受任何权限范围限制。通常仅授予系统运维或平台负责人，请谨慎分配。",
-		Status:      1,
-	},
-	{
-		ID:          2,
-		Name:        "普通管理员",
-		Code:        "admin",
-		Description: "负责平台日常运营管理，默认拥有全部菜单权限，可管理用户、机构、栏目与内容等；不能修改超级管理员账号，也不能操作权限高于自己的用户。",
 		Status:      1,
 	},
 	{
@@ -67,11 +61,12 @@ func SeedDefaultRoles() {
 
 // 系统内置默认用户（与默认角色一一对应）。
 // 初始密码统一为 1qaz@WSX，写入时由 User.BeforeCreate 自动进行 SM3 加盐加密。
+// ID 显式固定，与内置角色 ID 一一对应（ID 2 随「普通管理员」一并下线，不再创建 operator 账号）。
 var defaultUsers = []User{
 	{
-		// 超级管理员固定为 ID=1，与前端 users.vue 的内置用户保护逻辑保持一致
+		// 内置管理员账号固定为 ID=1，与前端 users.vue 的内置用户保护逻辑保持一致
 		ID:       1,
-		Username: "超级管理员",
+		Username: "管理员",
 		Account:  "admin",
 		Email:    "admin@example.com",
 		Password: "1qaz@WSX",
@@ -80,15 +75,8 @@ var defaultUsers = []User{
 		Status:   1,
 	},
 	{
-		Username: "普通管理员",
-		Account:  "operator",
-		Email:    "operator@example.com",
-		Password: "1qaz@WSX",
-		Mobile:   "2",
-		RoleIds:  "2",
-		Status:   1,
-	},
-	{
+		// 固定 ID=3，与角色 3（内容审核）一一对应
+		ID:       3,
 		Username: "内容审核",
 		Account:  "reviewer",
 		Email:    "reviewer@example.com",
@@ -98,6 +86,8 @@ var defaultUsers = []User{
 		Status:   1,
 	},
 	{
+		// 固定 ID=4，与角色 4（内容作者）一一对应
+		ID:       4,
 		Username: "内容作者",
 		Account:  "author",
 		Email:    "author@example.com",
@@ -127,5 +117,36 @@ func SeedDefaultUsers() {
 			continue
 		}
 		utils.Logger.Infof("已自动创建默认用户: %s (%s)", user.Username, user.Account)
+	}
+}
+
+// 内置管理员角色/账号的历史名称：2026-09-21 由「超级管理员」统一更名为「管理员」。
+const legacyBuiltinAdminName = "超级管理员"
+
+// builtinAdminName 内置管理员角色与账号的当前名称。
+const builtinAdminName = "管理员"
+
+// UpgradeBuiltinAdminNaming 幂等升级内置角色与账号的名称：
+// 仅当名称仍等于旧默认值「超级管理员」时才改写为「管理员」，避免覆盖使用方自行修改过的名称。
+// 角色按 code=super_admin 定位（ID 恒为 1），账号按 ID=1（内置管理员）定位。
+func UpgradeBuiltinAdminNaming() {
+	var role Role
+	if err := utils.DB.Where("code = ? AND name = ?", "super_admin", legacyBuiltinAdminName).First(&role).Error; err == nil {
+		if updateErr := utils.DB.Model(&Role{}).Where("id = ?", role.ID).
+			Update("name", builtinAdminName).Error; updateErr != nil {
+			utils.Logger.Warnf("升级内置角色名称失败: %v", updateErr)
+		} else {
+			utils.Logger.Infof("已将内置角色[%s]更名为[%s]", legacyBuiltinAdminName, builtinAdminName)
+		}
+	}
+
+	var user User
+	if err := utils.DB.Where("id = ? AND username = ?", 1, legacyBuiltinAdminName).First(&user).Error; err == nil {
+		if updateErr := utils.DB.Model(&User{}).Where("id = ?", user.ID).
+			Update("username", builtinAdminName).Error; updateErr != nil {
+			utils.Logger.Warnf("升级内置账号名称失败: %v", updateErr)
+		} else {
+			utils.Logger.Infof("已将内置账号[%s]更名为[%s]", legacyBuiltinAdminName, builtinAdminName)
+		}
 	}
 }

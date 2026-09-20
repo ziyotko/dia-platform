@@ -146,8 +146,9 @@ import {
 } from '@/api/role'
 import { useUserStore } from '@/stores/user'
 
-// 系统内置默认角色 ID（超级管理员/普通管理员/内容审核/内容作者），禁止编辑、删除（权限分配按当前用户角色动态限制）
-const protectedRoleIds = [1, 2, 3, 4]
+// 系统内置默认角色 ID（管理员/内容审核/内容作者），禁止编辑、删除（权限分配按当前用户角色动态限制）
+// 注：原 ID 2「普通管理员（admin）」已下线移除；历史库中残留的该角色按普通角色处理（可编辑/删除）
+const protectedRoleIds = [1, 3, 4]
 
 const userStore = useUserStore()
 
@@ -278,7 +279,7 @@ const handleDelete = (row: any) => {
 
 const handlePermission = async (row: any) => {
   currentRoleId.value = row.id
-  // 角色1（超级管理员）权限永远不可改；只能修改角色序号 >= 当前用户最小角色序号的角色的权限，否则只读查看
+  // 角色1（管理员）权限永远不可改；只能修改角色序号 >= 当前用户最小角色序号的角色的权限，否则只读查看
   isPermissionReadonly.value = row.id === 1 || Number(row.id) < currentMinRoleId.value
   permissionVisible.value = true
   try {

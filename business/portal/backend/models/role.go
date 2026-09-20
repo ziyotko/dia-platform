@@ -8,22 +8,32 @@ import (
 	"gorm.io/gorm"
 )
 
-// 系统内置角色 ID（与 seed.go 默认角色、前端 src/utils/permission.ts 保持一致）
+// 系统内置角色 ID（与 seed.go 默认角色、前端 src/utils/permission.ts 保持一致）。
+// 注：ID 2 原为「普通管理员（admin）」，该角色已整体下线移除，不再播种；
+// 历史库中若仍存在 ID=2 的角色记录，一律按普通自定义角色对待（不再是内置角色，也不再是管理员）。
+// ID 3/4 保持原值，不做重排。
 const (
-	RoleIDSuperAdmin      = 1 // 超级管理员
-	RoleIDAdmin           = 2 // 普通管理员
+	RoleIDSuperAdmin      = 1 // 管理员（原「超级管理员」，2026-09-21 更名，code 保持 super_admin）
 	RoleIDContentReviewer = 3 // 内容审核
 	RoleIDContentAuthor   = 4 // 内容作者
 )
 
-// IsBuiltinRoleID 判断是否系统内置角色（ID 1-4）。内置角色由启动种子维护，不允许改名或删除。
-func IsBuiltinRoleID(id uint) bool {
-	return id >= RoleIDSuperAdmin && id <= RoleIDContentAuthor
+// builtinRoleIDs 系统内置角色集合，由启动种子维护，不允许改名或删除。
+var builtinRoleIDs = map[uint]struct{}{
+	RoleIDSuperAdmin:      {},
+	RoleIDContentReviewer: {},
+	RoleIDContentAuthor:   {},
 }
 
-// IsAdminRoleID 判断单个角色 ID 是否属于管理员角色。
+// IsBuiltinRoleID 判断是否系统内置角色。
+func IsBuiltinRoleID(id uint) bool {
+	_, ok := builtinRoleIDs[id]
+	return ok
+}
+
+// IsAdminRoleID 判断单个角色 ID 是否属于管理员角色（仅角色 1）。
 func IsAdminRoleID(id int) bool {
-	return id == RoleIDSuperAdmin || id == RoleIDAdmin
+	return id == RoleIDSuperAdmin
 }
 
 // HasAdminRoleIDs 判断角色 ID 列表是否包含管理员角色。

@@ -122,7 +122,7 @@
 | status | bigint | 是 | 1 | - | 状态：0 禁用 / 1 启用 |
 | permissions | varchar(500) | 是 | - | - | 权限标识集合 |
 
-> 内置角色 ID 约定：`1` 超级管理员、`2` 普通管理员、`3` 内容审核、`4` 内容作者（见 `models/seed.go`）。
+> 内置角色 ID 约定：`1` 管理员、`3` 内容审核、`4` 内容作者（见 `models/seed.go`）；`2` 为已下线的「普通管理员」，不再使用（历史库中若存在该角色，按普通自定义角色处理）。
 
 #### `operation_log` 操作日志表
 
@@ -633,7 +633,7 @@ erDiagram
 | workflow.status | 1 / 0 | 启用 / 禁用 |
 | article_column_audit.status | 0 / 1 / 2 | 进行中 / 已通过 / 已驳回 |
 | article_column_audit_history.action | 1 / 2 | 通过 / 驳回 |
-| role.id（内置） | 1 / 2 / 3 / 4 | 超级管理员 / 普通管理员 / 内容审核 / 内容作者 |
+| role.id（内置） | 1 / 3 / 4 | 管理员 / 内容审核 / 内容作者 |
 | column.display_type | 7（特殊） | 7 表示不进入栏目列表发布 |
 
 ---
@@ -646,19 +646,22 @@ erDiagram
 
 | ID | 名称 | 编码 |
 | --- | --- | --- |
-| 1 | 超级管理员 | `super_admin` |
-| 2 | 普通管理员 | `admin` |
+| 1 | 管理员 | `super_admin` |
 | 3 | 内容审核 | `content_reviewer` |
 | 4 | 内容作者 | `content_author` |
+
+> 原 `2` 普通管理员（`admin`）已下线移除，不再播种；ID `3`/`4` 保持原值不重排。
+> 角色 1 名称于 2026-09-21 由「超级管理员」更名为「管理员」（`code` 仍为 `super_admin`），启动时由 `models.UpgradeBuiltinAdminNaming()` 对其与内置账号做幂等更名（仅当名称仍是旧默认值时才改写）。
 
 ### 默认用户（`models/seed.go`，初始密码 `1qaz@WSX`，SM3 加密存储）
 
 | ID | 用户名 | 账号 | 角色 |
 | --- | --- | --- | --- |
-| 1 | 超级管理员 | `admin` | 1 |
-| 2 | 普通管理员 | `operator` | 2 |
+| 1 | 管理员 | `admin` | 1 |
 | 3 | 内容审核 | `reviewer` | 3 |
 | 4 | 内容作者 | `author` | 4 |
+
+> 用户 ID 与内置角色 ID 一一对应，`2` 随「普通管理员」一并下线保留空缺。
 
 ### 默认菜单（`models/menu_seed.go`）
 

@@ -1054,7 +1054,7 @@ import { uploadFile } from '@/api/upload'
 
 const userStore = useUserStore()
 const currentUserId = computed(() => userStore.userInfo?.id || 0)
-// 管理员判定（角色 1/2），与后端 models.HasAdminRoleIDs 保持一致
+// 管理员判定（角色 1），与后端 models.HasAdminRoleIDs 保持一致
 const isAdmin = computed(() => hasAdminRole(userStore.userInfo?.roleIds))
 
 const loading = ref(false)

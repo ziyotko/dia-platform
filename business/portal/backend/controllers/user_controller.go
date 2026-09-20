@@ -67,7 +67,7 @@ func (c *UserController) canAssignRoles(operatorID uint, targetRoleIds []int) bo
 }
 
 // canOperateUser 判断操作者能否修改/删除目标用户：只能操作角色序号不高于自己的用户。
-// 避免普通管理员（角色 2）修改或删除超级管理员（角色 1）等更高权限账号；目标用户无角色时视为最低权限。
+// 避免低权限角色修改或删除管理员（角色 1）等更高权限账号；目标用户无角色时视为最低权限。
 func (c *UserController) canOperateUser(operatorID uint, targetID uint) bool {
 	if operatorID == targetID {
 		return true

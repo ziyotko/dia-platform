@@ -26,7 +26,7 @@ func NewRoleController() *RoleController {
 }
 
 // canModifyRole 判断操作者能否修改/删除目标角色：
-// 角色序号越小角色越高，只能操作序号 >= 自身最低序号的角色；超级管理员（ID=1）一律不可改。
+// 角色序号越小角色越高，只能操作序号 >= 自身最低序号的角色；管理员（ID=1）一律不可改。
 func (c *RoleController) canModifyRole(operatorID, targetRoleID uint) bool {
 	if targetRoleID == models.RoleIDSuperAdmin {
 		return false

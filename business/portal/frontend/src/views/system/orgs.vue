@@ -517,7 +517,7 @@ const managerLabel = computed(() => ('管理员'))
 
 const managerPlaceholder = computed(() => ('请选择管理员'))
 
-// 负责人须为管理员（角色 1/2，与后端管理员判定一致）
+// 负责人须为管理员（角色 1，与后端管理员判定一致）
 const managerUserOptions = computed(() => {
   return dialogUserOptions.value.filter((user) => hasAdminRole(user.roleIds))
 })

@@ -97,7 +97,7 @@ powershell -ExecutionPolicy Bypass -File .\build-backends.ps1 -Only portal -Vet
 ```
 
 - 启动流程：读 `./config.yaml` → 注入环境变量（缺失直接退出） → 连 MySQL/Redis（3 个 db） → `AutoMigrate` 建表 → **幂等补齐文章搜索所需的 FULLTEXT 索引** → 播种默认角色/用户/菜单/菜单权限（幂等） → 加载静态化参数到缓存（db 8） → 监听端口
-- 默认账号：`admin`（超级管理员），初始密码 `1qaz@WSX`，**上线后立即修改**
+- 默认账号：`admin`（管理员，角色 ID=1），初始密码 `1qaz@WSX`，**上线后立即修改**
 - 首次对已有大表补 FULLTEXT 索引（`ALTER TABLE article ADD FULLTEXT INDEX`，共 3 个：title/author/source）会重建索引并短时占锁；表很大时建议部署窗口内手动先建好，启动逻辑检测到索引存在会自动跳过
 - 静态资源上传目录：`./uploads`（后端以 `/xxxx/uploads` 提供）；需保证运行账号对该目录有读写权限
 - 日志输出：`./logs`（按天分文件，单文件 100MB、保留 180 天、自动压缩）

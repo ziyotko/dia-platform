@@ -314,9 +314,9 @@ func (s *UserService) UpdateUser(id uint, username, account, email, password, ph
 	}
 
 	if id == builtinSuperAdminUserID {
-		// 内置超级管理员：账号/邮箱/手机号是登录凭据，密码同样是凭据，一律不允许通过用户管理接口修改
-		// （否则普通管理员改掉超管密码即可接管账号）；状态与角色同样保持原值。
-		// 凭据只能由超管本人通过「个人中心」的修改资料/修改密码接口变更。
+		// 内置管理员：账号/邮箱/手机号是登录凭据，密码同样是凭据，一律不允许通过用户管理接口修改
+		// （否则有用户管理权限的角色改掉管理员密码即可接管账号）；状态与角色同样保持原值。
+		// 凭据只能由管理员本人通过「个人中心」的修改资料/修改密码接口变更。
 		updates["status"] = 1
 	} else {
 		updates["account"] = account
@@ -374,7 +374,7 @@ func (s *UserService) UpdateUser(id uint, username, account, email, password, ph
 	return nil
 }
 
-// 内置超级管理员用户 ID（与前端 users.vue 及 models/seed.go 保持一致），不可删除、不可禁用
+// 内置管理员用户 ID（与前端 users.vue 及 models/seed.go 保持一致），不可删除、不可禁用
 const builtinSuperAdminUserID uint = 1
 
 // 导入用户默认角色 ID（内容作者）。系统仅内置角色 1-4，不可引用不存在的角色。
@@ -382,7 +382,7 @@ const defaultImportedUserRoleID = 4
 
 func (s *UserService) DeleteUser(id uint) error {
 	if id == builtinSuperAdminUserID {
-		return errors.New("内置超级管理员不可删除")
+		return errors.New("内置管理员不可删除")
 	}
 	orgService := OrganizationService{}
 	if err := orgService.RemoveUserFromAllOrganizations(id); err != nil {
@@ -398,7 +398,7 @@ func (s *UserService) DeleteUser(id uint) error {
 
 func (s *UserService) UpdateUserStatus(id uint, status int) error {
 	if id == builtinSuperAdminUserID && status != 1 {
-		return errors.New("内置超级管理员不可禁用")
+		return errors.New("内置管理员不可禁用")
 	}
 	return utils.DB.Model(&models.User{}).Where("id = ?", id).Update("status", status).Error
 }

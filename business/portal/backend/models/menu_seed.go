@@ -152,16 +152,16 @@ func upgradeMenuAPIPrefix(name, legacyPrefix, newPrefix string) {
 }
 
 // defaultRoleMenus 描述内置角色初始化时应获得的菜单（按菜单名；父级目录由 GetUserMenus 自动补全，无需重复列出）。
-// "*" 表示全部启用菜单。角色 1（超级管理员）本身即拥有全部菜单，无需在此声明。
+// "*" 表示全部启用菜单。角色 1（管理员）本身即拥有全部菜单，无需在此声明。
+// 注：原「普通管理员（admin）」角色已下线移除，其 "*"（全部菜单）配置一并删除。
 var defaultRoleMenus = map[string][]string{
-	"admin":            {"*"},
 	"content_reviewer": {"管理首页", "待审核", "图文管理"},
 	"content_author":   {"管理首页", "图文管理"},
 }
 
 // SeedDefaultRolePermissions 为内置角色初始化菜单权限：
 // 仅在角色当前 permissions 为空时写入，避免覆盖管理员后续在「角色管理-分配权限」中的自定义配置。
-// 否则全新部署时角色 2/3/4 没有任何菜单权限，登录后侧边栏为空且除少数豁免接口外全部返回「没有授权」。
+// 否则全新部署时角色 3/4 没有任何菜单权限，登录后侧边栏为空且除少数豁免接口外全部返回「没有授权」。
 func SeedDefaultRolePermissions() {
 	for code, menuNames := range defaultRoleMenus {
 		var role Role

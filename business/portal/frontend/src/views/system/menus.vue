@@ -186,7 +186,7 @@ const iconPickerVisible = ref(false)
 const iconSearch = ref('')
 
 const userStore = useUserStore()
-// 菜单增删改与后端的菜单管理接口（AdminMiddleware，角色 1/2）口径一致
+// 菜单增删改与后端的菜单管理接口（AdminMiddleware，角色 1）口径一致
 const canManageMenus = computed(() => hasAdminRole(userStore.userInfo?.roleIds))
 
 const iconNames = Object.keys(ElementPlusIconsVue)
