@@ -149,6 +149,12 @@ func ReplayProtectionMiddleware() gin.HandlerFunc {
 		}
 
 		// 5. nonce 一次性使用，绑定用户，避免跨用户/跨会话碰撞
+		// 匿名只读请求（GET/HEAD/OPTIONS）不消耗 nonce：匿名请求无法校验签名，重放一次公开读也没有收益，
+		// 而「每个匿名请求写一个 120s 的 Redis 键」会被低成本放大（例：无限刷 /site-info、/search/articles）。
+		if !hasAuth && isSafeMethod(c.Request.Method) {
+			c.Next()
+			return
+		}
 		nonceKey := fmt.Sprintf("replay:nonce:anon:%s", nonce)
 		if hasAuth {
 			nonceKey = fmt.Sprintf("replay:nonce:%d:%s", uid, nonce)
@@ -168,6 +174,16 @@ func ReplayProtectionMiddleware() gin.HandlerFunc {
 		}
 
 		c.Next()
+	}
+}
+
+// isSafeMethod 是否为只读（幂等）HTTP 方法
+func isSafeMethod(method string) bool {
+	switch method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+		return true
+	default:
+		return false
 	}
 }
 

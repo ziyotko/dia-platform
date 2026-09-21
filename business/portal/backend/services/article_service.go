@@ -146,6 +146,10 @@ func (s *ArticleService) CreateArticle(article *models.Article, tagIDs []uint, c
 		// 防止作者通过 POST /articles {"status":1} 直接发布、绕过审核。
 		article.Status = models.ArticleStatusDraft
 		article.AuditStatus = 0
+		// 类型白名单：未传/非法值统一按「图文」处理（类型决定编辑弹窗与可选栏目）
+		if !models.IsValidArticleType(article.Type) {
+			article.Type = models.ArticleTypeGraphic
+		}
 		// 先暂存附件，避免 GORM Create 自动关联插入导致重复
 		attachments := article.Attachments
 		article.Attachments = nil
@@ -231,6 +235,10 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 			"source":        article.Source,
 			"publish_time":  article.PublishTime,
 			"url":           article.URL,
+		}
+		// 类型：仅接受白名单内的值，非法/未传时保持原值（前端各类编辑弹窗均会显式携带自己的类型）
+		if models.IsValidArticleType(article.Type) {
+			updates["type"] = article.Type
 		}
 		if err := tx.Model(&old).Updates(updates).Error; err != nil {
 			return err
@@ -408,13 +416,17 @@ type ArticleAuthorStat struct {
 	Count      int64  `json:"count"`
 }
 
-func (s *ArticleService) GetArticleAuthorStats(period string) ([]ArticleAuthorStat, int64, error) {
+func (s *ArticleService) GetArticleAuthorStats(period string, authorCode string) ([]ArticleAuthorStat, int64, error) {
 	var results []ArticleAuthorStat
 	var total int64
 	now := time.Now()
 	loc := now.Location()
 
 	query := utils.DB.Model(&models.Article{}).Where("status = ?", 1)
+	// 归属过滤：与文章列表（GetArticles）同一口径，非管理员只能统计自己的文章
+	if authorCode != "" {
+		query = query.Where("author_code = ?", authorCode)
+	}
 
 	switch period {
 	case "week":

@@ -85,6 +85,10 @@ func (s *MenuService) GetUserMenus(userID uint) ([]models.Menu, error) {
 }
 
 func (s *MenuService) CreateMenu(menu *models.Menu) error {
+	// 上级菜单必须存在（否则该菜单成为孤児，只能靠 buildMenuTree 提升为根，与 Update 侧口径不一致）
+	if err := validateTreeParent("menu", 0, menu.ParentID); err != nil {
+		return err
+	}
 	return utils.DB.Create(menu).Error
 }
 

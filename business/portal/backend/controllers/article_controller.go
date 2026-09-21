@@ -795,7 +795,14 @@ func (c *ArticleController) GetArticleAuthorStats(ctx *gin.Context) {
 		period = "week"
 	}
 
-	stats, total, err := c.articleService.GetArticleAuthorStats(period)
+	// 归属过滤：与文章列表同一口径，非管理员只统计自己的文章（否则可读出全站作者发文量）
+	userID := ctx.GetUint("userID")
+	authorCode := ""
+	if !models.HasAdminRoleIDs(c.userService.MustGetUserRoleIds(userID)) {
+		authorCode = strconv.FormatUint(uint64(userID), 10)
+	}
+
+	stats, total, err := c.articleService.GetArticleAuthorStats(period, authorCode)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取文章作者统计失败"))
 		return

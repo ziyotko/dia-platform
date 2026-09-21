@@ -100,6 +100,19 @@ const (
 	ArticleStatusOffline   = 2 // 已下线
 )
 
+// Article 类型取值（决定编辑弹窗与可选栏目，前端 article.vue 的 articleTypeName 与此一致）
+const (
+	ArticleTypeGraphic = 1 // 图文
+	ArticleTypeVideo   = 2 // 视频
+	ArticleTypeData    = 3 // 数据
+	ArticleTypePaper   = 4 // 报刊
+)
+
+// IsValidArticleType 判断文章类型是否在白名单内
+func IsValidArticleType(t int) bool {
+	return t >= ArticleTypeGraphic && t <= ArticleTypePaper
+}
+
 func (a Article) MarshalJSON() ([]byte, error) {
 	type Alias Article
 	return json.Marshal(&struct {

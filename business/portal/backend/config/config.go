@@ -39,6 +39,10 @@ type ServerConfig struct {
 	CaptchaRateLimit      int `mapstructure:"captcha_rate_limit"`          // 每窗口允许的最大请求数
 	CaptchaRateWindowSecs int `mapstructure:"captcha_rate_window_seconds"` // 限流窗口（秒）
 
+	// 公开只读接口限流（/site-info、/search/articles 等无需认证的查询接口，按真实客户端 IP）
+	PublicRateLimit      int `mapstructure:"public_rate_limit"`          // 每窗口允许的最大请求数（<=0 时回退 60）
+	PublicRateWindowSecs int `mapstructure:"public_rate_window_seconds"` // 限流窗口（秒，<=0 时回退 60）
+
 	// 防重放/请求签名校验（主动检测与临时封禁）
 	ReplayWindowSecs int `mapstructure:"replay_window_seconds"` // 时间戳新鲜度窗口（秒），默认 120
 	ReplayMaxFail    int `mapstructure:"replay_max_fail"`       // 触发临时封禁的失败次数

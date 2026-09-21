@@ -53,10 +53,18 @@ func SetupRoutes(router *gin.Engine) {
 			config.AppConfig.Server.LoginRateLimit,
 			time.Duration(config.AppConfig.Server.LoginRateWindowSecs)*time.Second,
 		), middleware.OperationLog(), authController.Login)
-		public.GET("/site-info", settingsController.GetPublicSiteInfo)
+
+		// 公开只读接口（站点信息/文章搜索）无需认证，必须单独限流：
+		// 否则匿名请求可无限刷（压 DB 全文检索，并在限流缺席时把防重放的 Redis nonce 键写满）。
+		// 同一限流器实例可被多个路由复用（闭包无状态，计数落在 Redis / 进程内兜底）。
+		publicReadLimiter := middleware.RateLimitMiddleware(
+			config.AppConfig.Server.PublicRateLimit,
+			time.Duration(config.AppConfig.Server.PublicRateWindowSecs)*time.Second,
+		)
+		public.GET("/site-info", publicReadLimiter, settingsController.GetPublicSiteInfo)
 
 		//开放文章搜索（无需认证，仅返回已发布文章，不含正文）
-		public.GET("/search/articles", articleController.PublicSearchArticles)
+		public.GET("/search/articles", publicReadLimiter, articleController.PublicSearchArticles)
 
 		//站点分析接口（公开写接口：按真实客户端 IP 限流，防脚本刷量；业务层再做去重+文章校验）
 		analytics := public.Group("")

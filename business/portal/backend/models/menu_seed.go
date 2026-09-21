@@ -11,12 +11,32 @@ import (
 
 // 静态化管理页面会调用多个模块的接口（静态化任务/静态化日志/静态化服务监控），
 // 因此该菜单声明多个 api_prefix（逗号分隔，见 middleware/api_prefix.go）。
+// 另：该页面需读取全局设置（静态化输出路径 / 首页整体变灰，GET /settings 在 admin 组），故追加 /settings。
 // 需与「基础配置-静态化设置」区分：后者对应全局设置的 /settings。
-const staticManagementAPIPrefix = "/static,/static-logs,/static-monitor"
+const staticManagementAPIPrefix = "/static,/static-logs,/static-monitor,/settings"
 
 // 「栏目管理」页面除栏目本身外，还需读取模板列表（页面层已合并进模板，栏目挂 template_id），
 // 因此 api_prefix 追加 /templates（/columns 已足够覆盖栏目读写）。
 const columnManagementAPIPrefix = "/columns,/templates"
+
+// 以下为「页面实际调用的跨模块接口」补充（口径：菜单可见范围 = 接口可调用范围）：
+//   - 「用户管理」用机构列表作「所属机构」下拉；
+//   - 「部门管理」用机构树/机构成员（负责人候选按机构过滤）与全量用户列表；
+//   - 「机构管理」「流程角色」用全量用户列表（负责人/成员选择）；
+//   - 「流程管理」用全量用户与流程角色列表（节点审批人下拉）。
+//
+// 这些都是 admin 组的只读接口（除 GET /users 在 member 组），管理员默认拥有全部菜单不受影响；
+// 只有「自定义角色只授部分菜单」时才会因缺少前缀报「没有授权」。
+// 新增管理员页面时请同样检查：该页面调用的每个路径都要么被其菜单 api_prefix 覆盖，要么在豁免表里。
+const userManagementAPIPrefix = "/users,/organizations"
+
+const departmentManagementAPIPrefix = "/departments,/organizations,/users"
+
+const organizationManagementAPIPrefix = "/organizations,/users"
+
+const workflowManagementAPIPrefix = "/workflows,/users,/workflow-roles"
+
+const workflowRoleManagementAPIPrefix = "/workflow-roles,/users"
 
 // menuSeedItem 描述一条待初始化的菜单数据。
 type menuSeedItem struct {
@@ -69,13 +89,13 @@ var defaultMenus = []menuSeedItem{
 		Name: "系统配置", Path: "/system",
 		Icon: "Operation", Type: "directory", Sort: 3, Status: 1,
 		Children: []menuSeedItem{
-			{Name: "用户管理", Path: "/system/users", Component: "system/users", Icon: "User", Type: "menu", Sort: 1, Status: 1, APIPrefix: "/users"},
-			{Name: "部门管理", Path: "/system/departments", Component: "system/departments", Icon: "School", Type: "menu", Sort: 2, Status: 1, APIPrefix: "/departments"},
-			{Name: "机构管理", Path: "/system/orgs", Component: "system/orgs", Icon: "OfficeBuilding", Type: "menu", Sort: 3, Status: 1, APIPrefix: "/organizations"},
+			{Name: "用户管理", Path: "/system/users", Component: "system/users", Icon: "User", Type: "menu", Sort: 1, Status: 1, APIPrefix: userManagementAPIPrefix},
+			{Name: "部门管理", Path: "/system/departments", Component: "system/departments", Icon: "School", Type: "menu", Sort: 2, Status: 1, APIPrefix: departmentManagementAPIPrefix},
+			{Name: "机构管理", Path: "/system/orgs", Component: "system/orgs", Icon: "OfficeBuilding", Type: "menu", Sort: 3, Status: 1, APIPrefix: organizationManagementAPIPrefix},
 			{Name: "角色管理", Path: "/system/roles", Component: "system/roles", Icon: "Avatar", Type: "menu", Sort: 4, Status: 1, APIPrefix: "/roles"},
 			{Name: "菜单管理", Path: "/system/menus", Component: "system/menus", Icon: "Menu", Type: "menu", Sort: 5, Status: 1, APIPrefix: "/menus"},
-			{Name: "流程角色", Path: "/system/workflow-roles", Component: "system/workflow-roles", Icon: "Stamp", Type: "menu", Sort: 6, Status: 1, APIPrefix: "/workflow-roles"},
-			{Name: "流程管理", Path: "/system/workflows", Component: "system/workflows", Icon: "SetUp", Type: "menu", Sort: 7, Status: 1, APIPrefix: "/workflows"},
+			{Name: "流程角色", Path: "/system/workflow-roles", Component: "system/workflow-roles", Icon: "Stamp", Type: "menu", Sort: 6, Status: 1, APIPrefix: workflowRoleManagementAPIPrefix},
+			{Name: "流程管理", Path: "/system/workflows", Component: "system/workflows", Icon: "SetUp", Type: "menu", Sort: 7, Status: 1, APIPrefix: workflowManagementAPIPrefix},
 			{Name: "操作日志", Path: "/system/logs", Component: "system/logs", Icon: "Memo", Type: "menu", Sort: 8, Status: 1, APIPrefix: "/logs"},
 			{Name: "登录日志", Path: "/system/login-logs", Component: "system/login-logs", Icon: "Key", Type: "menu", Sort: 9, Status: 1, APIPrefix: "/login-logs"},
 		},
@@ -101,9 +121,16 @@ func SeedDefaultMenus() {
 	// 历史版本「静态化管理」只声明了 /static，导致 /static-logs、/static-monitor 不在授权范围内，
 	// 这里对未自定义过该值的环境做一次幂等升级。
 	upgradeMenuAPIPrefix("静态化管理", "/static", staticManagementAPIPrefix)
+	upgradeMenuAPIPrefix("静态化管理", "/static,/static-logs,/static-monitor", staticManagementAPIPrefix)
 	// 历史版本「栏目管理」声明的是 /columns,/pages（页面层已移除）或早期仅 /columns，这里做幂等升级。
 	upgradeMenuAPIPrefix("栏目管理", "/columns", columnManagementAPIPrefix)
 	upgradeMenuAPIPrefix("栏目管理", "/columns,/pages", columnManagementAPIPrefix)
+	// 历史版本各管理页只声明了自身前缀，缺少页面实际调用的跨模块只读接口（详见上方常量注释）。
+	upgradeMenuAPIPrefix("用户管理", "/users", userManagementAPIPrefix)
+	upgradeMenuAPIPrefix("部门管理", "/departments", departmentManagementAPIPrefix)
+	upgradeMenuAPIPrefix("机构管理", "/organizations", organizationManagementAPIPrefix)
+	upgradeMenuAPIPrefix("流程管理", "/workflows", workflowManagementAPIPrefix)
+	upgradeMenuAPIPrefix("流程角色", "/workflow-roles", workflowRoleManagementAPIPrefix)
 	// 历史版本「静态化管理」挂在「内容管理」下（非管理员即使被授权也调不通其接口），迁移到「基础配置」。
 	moveMenuToParent("静态化管理", "内容管理", "基础配置", "/config/static")
 }

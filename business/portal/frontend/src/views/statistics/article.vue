@@ -47,7 +47,7 @@
         <div class="card-header">
           <span>文章作者统计</span>
           <div class="header-extra">
-            <span class="total-info">仅统计已发布的文章</span>
+            <span class="total-info">仅统计已发布的文章{{ isAdmin ? '' : '（我的）' }}</span>
             <el-radio-group v-model="period" size="small">
               <el-radio-button value="week">本周</el-radio-button>
               <el-radio-button value="month">本月</el-radio-button>
@@ -69,6 +69,12 @@ import * as echarts from 'echarts'
 import type { ECharts } from 'echarts'
 import { User, DocumentChecked, Trophy } from '@element-plus/icons-vue'
 import { getArticleAuthorStats } from '@/api/article'
+import { useUserStore } from '@/stores/user'
+import { hasAdminRole } from '@/utils/permission'
+
+const userStore = useUserStore()
+// 后端与文章列表同一归属口径：非管理员只统计自己的文章，这里同步标注范围
+const isAdmin = computed(() => hasAdminRole(userStore.userInfo?.roleIds))
 
 const loading = ref(false)
 const chartRef = ref<HTMLDivElement | null>(null)
