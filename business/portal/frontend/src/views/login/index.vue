@@ -96,6 +96,8 @@
         <span v-if="siteInfo.copyright">{{ siteInfo.copyright }}</span>
         <i v-if="siteInfo.copyright && siteInfo.icp" class="footer-dot" />
         <span v-if="siteInfo.icp">{{ siteInfo.icp }}</span>
+        <i v-if="siteInfo.copyright || siteInfo.icp" class="footer-dot" />
+        <span class="footer-version">版本 {{ APP_VERSION }}</span>
       </div>
     </div>
   </div>
@@ -109,6 +111,9 @@ import { User, Lock, Grid, Platform, Check } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { getCaptcha, login } from '@/api/auth'
 import { getPublicSiteInfo } from '@/api/settings'
+
+// 前端版本号（每次发版同步更新，展示在登录页底部）
+const APP_VERSION = 'V202609211114'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -467,6 +472,11 @@ onMounted(() => {
     background: #b9c2d0;
     border-radius: 50%;
     display: inline-block;
+  }
+
+  .footer-version {
+    letter-spacing: 0.5px;
+    color: #b0b9c7;
   }
 }
 
