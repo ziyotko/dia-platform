@@ -17,6 +17,7 @@ type ColumnPublishItem struct {
 	Name      string `json:"name"`      // 栏目名称
 	Template  string `json:"template"`  // 模板名称
 	RoutePath string `json:"routePath"` // 访问路径 = 栏目 route_path + 模板页 route_path
+	URL       string `json:"url"`       // 可直接访问的地址（站点地址 + 访问路径），供前端「预览」使用
 	CreatedAt string `json:"createdAt"` // 模板页创建时间
 	UpdatedAt string `json:"updatedAt"` // 模板页修改时间
 }
@@ -61,6 +62,7 @@ func (s *ColumnService) GetColumnPublishes() ([]ColumnPublishItem, error) {
 	hasTemplate := result.RowsAffected > 0
 
 	// 3. 拼接结果：访问路径 = 栏目 route_path + 模板页 route_path
+	baseURL := SiteBaseURL()
 	items := make([]ColumnPublishItem, 0, len(columns))
 	for _, col := range columns {
 		item := ColumnPublishItem{
@@ -74,6 +76,7 @@ func (s *ColumnService) GetColumnPublishes() ([]ColumnPublishItem, error) {
 			item.CreatedAt = page.CreatedAt.Format("2006-01-02 15:04:05")
 			item.UpdatedAt = page.UpdatedAt.Format("2006-01-02 15:04:05")
 		}
+		item.URL = BuildPageAccessURL(baseURL, item.RoutePath)
 		items = append(items, item)
 	}
 	return items, nil

@@ -771,13 +771,18 @@ func (c *ArticleController) GetArticleColumnPublishes(ctx *gin.Context) {
 	}
 
 	routePath, name, _ := c.articleService.GetDetailPageRoutePath()
+	// 预览地址前缀（站点地址）：一次读取、循环内复用
+	siteBaseURL := services.SiteBaseURL()
 
 	var result []gin.H
 	for _, a := range articles {
+		// 详情页静态文件路径 = 详情页模板访问路径 + /{id}.html
+		pagePath := fmt.Sprintf("%s/%d.html", routePath, a.ID)
 		result = append(result, gin.H{
 			"id":        a.ID,
 			"title":     a.Title,
-			"routePath": fmt.Sprintf("%s/%d.html", routePath, a.ID),
+			"routePath": pagePath,
+			"url":       services.BuildPageAccessURL(siteBaseURL, pagePath),
 			"name":      name,
 			"author":    a.Author,
 			"source":    a.Source,

@@ -267,9 +267,9 @@
                     <el-button link type="primary" :loading="row.generating" :disabled="!monitorData.online" @click="handleGenerateSingle(row)">
                       <el-icon><Refresh /></el-icon>重新生成
                     </el-button>
-                    <el-tooltip content="预览功能暂未启用" placement="top">
+                    <el-tooltip :content="previewTooltip(row)" placement="top">
                       <span>
-                        <el-button link type="success" :disabled="!STATIC_PREVIEW_ENABLED" @click="handlePreview(row)">
+                        <el-button link type="success" :disabled="!row.url" @click="handlePreview(row)">
                           <el-icon><View /></el-icon>预览
                         </el-button>
                       </span>
@@ -303,9 +303,9 @@
                     <el-button link type="primary" :loading="row.generating" :disabled="!monitorData.online" @click="handleGenerateSingle(row)">
                       <el-icon><Refresh /></el-icon>重新生成
                     </el-button>
-                    <el-tooltip content="预览功能暂未启用" placement="top">
+                    <el-tooltip :content="previewTooltip(row)" placement="top">
                       <span>
-                        <el-button link type="success" :disabled="!STATIC_PREVIEW_ENABLED" @click="handlePreview(row)">
+                        <el-button link type="success" :disabled="!row.url" @click="handlePreview(row)">
                           <el-icon><View /></el-icon>预览
                         </el-button>
                       </span>
@@ -341,9 +341,9 @@
                     <el-button link type="primary" :loading="row.generating" :disabled="!monitorData.online" @click="handleGenerateSingle(row)">
                       <el-icon><Refresh /></el-icon>重新生成
                     </el-button>
-                    <el-tooltip content="预览功能暂未启用" placement="top">
+                    <el-tooltip :content="previewTooltip(row)" placement="top">
                       <span>
-                        <el-button link type="success" :disabled="!STATIC_PREVIEW_ENABLED" @click="handlePreview(row)">
+                        <el-button link type="success" :disabled="!row.url" @click="handlePreview(row)">
                           <el-icon><View /></el-icon>预览
                         </el-button>
                       </span>
@@ -380,9 +380,9 @@
                     <el-button link type="primary" :loading="row.generating" :disabled="!monitorData.online" @click="handleGenerateSingle(row)">
                       <el-icon><Refresh /></el-icon>重新生成
                     </el-button>
-                    <el-tooltip content="预览功能暂未启用" placement="top">
+                    <el-tooltip :content="previewTooltip(row)" placement="top">
                       <span>
-                        <el-button link type="success" :disabled="!STATIC_PREVIEW_ENABLED" @click="handlePreview(row)">
+                        <el-button link type="success" :disabled="!row.url" @click="handlePreview(row)">
                           <el-icon><View /></el-icon>预览
                         </el-button>
                       </span>
@@ -1113,18 +1113,20 @@ const handleDeleteTopic = (row: any) => {
   }).catch(() => {})
 }
 
-// 预览功能暂未启用：静态化列表（静态页面/栏目发布/详情发布）返回的是 routePath（站内路由路径），
-// 且需结合「静态化输出路径」才能拼出可访问的静态文件 URL；
-// 原实现直接打开 row.path（三处数据源均无该字段）会得到空白页，故暂时禁用按钮。
-// TODO: 实现 「静态化输出路径/访问地址 + routePath」→ 可访问 URL 的拼接后，将开关置为 true。
-const STATIC_PREVIEW_ENABLED = false
+// 静态化预览：在新窗口打开列表行返回的「访问地址」（url 字段），不做任何前端拼接。
+// url 由后端统一生成（services.BuildPageAccessURL）= 站点地址（系统设置-基础设置 siteUrl）+ 站内访问路径；
+// 站点地址未配置时后端下发以 / 开头的相对路径，由浏览器按当前站点根解析。
+// 四个 Tab（首页/栏目页/详情页/专题页）的列表接口均下发该字段。
+const previewTooltip = (row: any): string =>
+  row?.url ? `在新窗口打开：${row.url}` : '该记录暂无可访问地址'
 
 const handlePreview = (row: any) => {
-  if (!STATIC_PREVIEW_ENABLED) {
-    ElMessage.warning('预览功能暂未启用')
+  const url = String(row?.url || '').trim()
+  if (!url) {
+    ElMessage.warning('该记录暂无可访问地址，请先配置模板/栏目的「访问路径」并生成静态文件')
     return
   }
-  window.open(row.routePath || '', '_blank')
+  window.open(url, '_blank', 'noopener,noreferrer')
 }
 
 const clearLogs = () => {
