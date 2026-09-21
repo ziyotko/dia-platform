@@ -52,10 +52,13 @@ type menuSeedItem struct {
 }
 
 // defaultMenus 系统内置默认菜单树。
-// 与前端 src/views 目录一一对应，路径与前端路由约定保持一致：
+// 与前端 src/views 目录一一对应（目录名 = 一级菜单语义），路径与前端路由约定保持一致：
 //   - 目录使用分组路径（如 /content），菜单使用完整绝对路径（如 /content/article），
 //     便于侧边栏高亮（default-active=route.path）与 router.push 直接跳转。
-//   - 组件路径使用相对 views 的形式（如 content/article），由前端 loadComponent 自动补全。
+//   - 组件路径使用相对 views 的形式（如 content/article、config/static），由前端 loadComponent 自动补全。
+//   - src/views 下的目录按功能模块划分：content（内容管理）/ statistics（数据统计）/ system（系统配置）/
+//     config（基础配置：静态化管理 + 系统设置）/ dashboard / login / profile / layout / error。
+//     新增页面时请放到对应模块目录下，不要把不同模块的页面混放在同一目录。
 var defaultMenus = []menuSeedItem{
 	{
 		Name: "管理首页", Path: "/dashboard", Component: "dashboard/index",
@@ -65,7 +68,7 @@ var defaultMenus = []menuSeedItem{
 		Name: "内容管理", Path: "/content",
 		Icon: "FolderOpened", Type: "directory", Sort: 1, Status: 1,
 		Children: []menuSeedItem{
-			{Name: "待审核", Path: "/content/pending-audits", Component: "system/pending-audits", Icon: "Bell", Type: "menu", Sort: 1, Status: 1, APIPrefix: "/articles/my-audits"},
+			{Name: "待审核", Path: "/content/pending-audits", Component: "content/pending-audits", Icon: "Bell", Type: "menu", Sort: 1, Status: 1, APIPrefix: "/articles/my-audits"},
 			{Name: "图文管理", Path: "/content/article", Component: "content/article", Icon: "Document", Type: "menu", Sort: 2, Status: 1, APIPrefix: "/articles"},
 			{Name: "广告管理", Path: "/content/ad", Component: "content/ad", Icon: "Picture", Type: "menu", Sort: 3, Status: 1, APIPrefix: "/ads"},
 			{Name: "链接管理", Path: "/content/link", Component: "content/link", Icon: "Link", Type: "menu", Sort: 4, Status: 1, APIPrefix: "/links"},
@@ -82,7 +85,7 @@ var defaultMenus = []menuSeedItem{
 			{Name: "内容数据", Path: "/statistics/analytics", Component: "statistics/analytics", Icon: "TrendCharts", Type: "menu", Sort: 1, Status: 1, APIPrefix: "/analytics/article-trend"},
 			{Name: "文章统计", Path: "/statistics/article", Component: "statistics/article", Icon: "DocumentChecked", Type: "menu", Sort: 2, Status: 1, APIPrefix: "/articles/author-stats"},
 			{Name: "分类统计", Path: "/statistics/category", Component: "statistics/category", Icon: "PieChart", Type: "menu", Sort: 3, Status: 1, APIPrefix: "/categories/stats"},
-			{Name: "标签统计", Path: "/statistics/label", Component: "statistics/label", Icon: "Histogram", Type: "menu", Sort: 4, Status: 1, APIPrefix: "/tags/stats"},
+			{Name: "标签统计", Path: "/statistics/tag", Component: "statistics/tag", Icon: "Histogram", Type: "menu", Sort: 4, Status: 1, APIPrefix: "/tags/stats"},
 		},
 	},
 	{
@@ -106,8 +109,8 @@ var defaultMenus = []menuSeedItem{
 		Children: []menuSeedItem{
 			// 静态化管理属于站点级运维操作（对应接口仅在管理员路由组），故与「系统设置」同放「基础配置」，
 			// 避免误授予内容角色后出现「菜单可见、页面全报没有授权」
-			{Name: "静态化管理", Path: "/config/static", Component: "content/static", Icon: "Monitor", Type: "menu", Sort: 0, Status: 1, APIPrefix: staticManagementAPIPrefix},
-			{Name: "系统设置", Path: "/settings", Component: "settings/index", Icon: "Tools", Type: "menu", Sort: 1, Status: 1, APIPrefix: "/settings"},
+			{Name: "静态化管理", Path: "/config/static", Component: "config/static", Icon: "Monitor", Type: "menu", Sort: 0, Status: 1, APIPrefix: staticManagementAPIPrefix},
+			{Name: "系统设置", Path: "/settings", Component: "config/settings", Icon: "Tools", Type: "menu", Sort: 1, Status: 1, APIPrefix: "/settings"},
 		},
 	},
 }
@@ -134,6 +137,13 @@ func SeedDefaultMenus() {
 	moveMenuToParent("静态化管理", "内容管理", "基础配置", "/config/static")
 	// 「静态化设置」独立页面已并入「系统设置」的「静态化设置」页签，清理旧环境残留菜单。
 	removeLegacyStaticizationMenu()
+	// 前端 src/views 目录按功能模块重排（2026-09-21）：待审核移入 content/、静态化管理与系统设置移入 config/、
+	// 标签统计的 label 改名 tag，这里对未自行调整过组件的环境做一次幂等升级，避免菜单加载不到组件。
+	upgradeMenuComponent("待审核", "system/pending-audits", "content/pending-audits")
+	upgradeMenuComponent("静态化管理", "content/static", "config/static")
+	upgradeMenuComponent("系统设置", "settings/index", "config/settings")
+	upgradeMenuComponent("标签统计", "statistics/label", "statistics/tag")
+	upgradeMenuPath("标签统计", "/statistics/label", "/statistics/tag")
 }
 
 // removeLegacyStaticizationMenu 幂等删除历史版本遗留的「静态化设置」独立菜单
@@ -192,6 +202,35 @@ func upgradeMenuAPIPrefix(name, legacyPrefix, newPrefix string) {
 		return
 	}
 	utils.Logger.Infof("已升级菜单[%s]接口前缀: %s -> %s", name, legacyPrefix, newPrefix)
+}
+
+// upgradeMenuComponent 幂等升级内置菜单的前端组件路径（口径同 upgradeMenuAPIPrefix：
+// 仅当当前值仍等于旧默认值时才更新，避免覆盖使用方自行调整过的配置）。
+// 前端 src/views 目录调整后，老库里残留的旧 component 会因找不到组件而被前端跳过（菜单点进去为空），
+// 故每次目录重排都需在此登记一条升级。
+func upgradeMenuComponent(name, legacyComponent, newComponent string) {
+	var menu Menu
+	if err := utils.DB.Where("name = ? AND component = ?", name, legacyComponent).First(&menu).Error; err != nil {
+		return
+	}
+	if err := utils.DB.Model(&menu).Update("component", newComponent).Error; err != nil {
+		utils.Logger.Warnf("升级菜单[%s]组件路径失败: %v", name, err)
+		return
+	}
+	utils.Logger.Infof("已升级菜单[%s]组件路径: %s -> %s", name, legacyComponent, newComponent)
+}
+
+// upgradeMenuPath 幂等升级内置菜单的路由路径（口径同上）。
+func upgradeMenuPath(name, legacyPath, newPath string) {
+	var menu Menu
+	if err := utils.DB.Where("name = ? AND path = ?", name, legacyPath).First(&menu).Error; err != nil {
+		return
+	}
+	if err := utils.DB.Model(&menu).Update("path", newPath).Error; err != nil {
+		utils.Logger.Warnf("升级菜单[%s]路由路径失败: %v", name, err)
+		return
+	}
+	utils.Logger.Infof("已升级菜单[%s]路由路径: %s -> %s", name, legacyPath, newPath)
 }
 
 // defaultRoleMenus 描述内置角色初始化时应获得的菜单（按菜单名；父级目录由 GetUserMenus 自动补全，无需重复列出）。
