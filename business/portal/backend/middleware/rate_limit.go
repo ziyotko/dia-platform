@@ -53,12 +53,14 @@ func allowLocalRateLimit(key string, limit int, window time.Duration) bool {
 	return entry.count <= int64(limit)
 }
 
-// RateLimitMiddleware 基于 Redis 的固定窗口限流，按真实客户端 IP 计数。
+// RateLimitMiddlewareScoped 基于 Redis 的固定窗口限流，按真实客户端 IP 计数。
 // 用于公开写接口（如站点分析），防止被脚本刷量/灌脏数据。
 //
-// 窗口 key 以 IP + 当前时间窗口段生成，便于分布式场景下多实例共享计数。
-// 返回 limit 个请求/窗口 之外的请求被拒绝。
-func RateLimitMiddleware(limit int, window time.Duration) gin.HandlerFunc {
+// 计数器 key 形如 ratelimit:{scope}:{limit}:{ip}:{windowBucket}。
+// 必要性：key 里只有 limit+窗口时，只要两个限流器的 limit 与窗口相同（如验证码 30/60s 与
+// 上传 30/60s）就会共用同一个计数器，互相吃额度。新增限流器必须传唯一的 scope，
+// 因此本包只提供带 scope 的形态，不提供无 scope 的便捷版本。
+func RateLimitMiddlewareScoped(scope string, limit int, window time.Duration) gin.HandlerFunc {
 	if limit <= 0 {
 		limit = 60
 	}
@@ -69,14 +71,12 @@ func RateLimitMiddleware(limit int, window time.Duration) gin.HandlerFunc {
 		ip := utils.RealIP(ctx)
 		windowSec := int64(window.Seconds())
 		now := time.Now().Unix()
-		// key 里带上 limit：不同限流器（登录/验证码/站点分析/公开只读）若窗口时长相同，
-		// 不区分就会共用同一个计数器，导致「这个接口的请求把那个接口的额度吃掉」。
-		key := fmt.Sprintf("ratelimit:%d:%s:%d", limit, ip, now/windowSec)
+		key := fmt.Sprintf("ratelimit:%s:%d:%s:%d", scope, limit, ip, now/windowSec)
 
 		count, err := utils.Redis1.Incr(utils.Ctx, key).Result()
 		if err != nil {
 			// Redis 不可用：退化为进程内限流兜底（fail-closed），避免限流组件故障时被无限刷量
-			if !allowLocalRateLimit(fmt.Sprintf("ratelimit:%d:%s", limit, ip), limit, window) {
+			if !allowLocalRateLimit(fmt.Sprintf("ratelimit:%s:%d:%s", scope, limit, ip), limit, window) {
 				ctx.JSON(http.StatusOK, utils.Error(1, "请求过于频繁，请稍后再试"))
 				ctx.Abort()
 				return

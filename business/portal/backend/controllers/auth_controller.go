@@ -87,6 +87,7 @@ func (c *AuthController) Login(ctx *gin.Context) {
 	if loginLog.Username == "" {
 		loginLog.Username = user.Account
 	}
+	loginLog.UserID = user.ID
 	loginLog.Status = 1
 	utils.DB.Create(loginLog)
 

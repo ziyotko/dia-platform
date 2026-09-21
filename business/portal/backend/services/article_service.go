@@ -403,9 +403,12 @@ func (s *ArticleService) GetArticleCountByAuthor(authorCode string) int64 {
 	return count
 }
 
+// GetArticleCount 全站「已发布」文章数。
+// 口径与其它文章统计一致（只计 status=1）：原先无任何状态过滤，把草稿/已下线也算进去，
+// 与仪表盘卡片「已发布文章」的语义不符。
 func (s *ArticleService) GetArticleCount() int64 {
 	var count int64
-	utils.DB.Model(&models.Article{}).Count(&count)
+	utils.DB.Model(&models.Article{}).Where("status = ?", models.ArticleStatusPublished).Count(&count)
 	return count
 }
 

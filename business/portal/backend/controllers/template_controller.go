@@ -14,6 +14,7 @@ import (
 
 type TemplateController struct {
 	templateService *services.TemplateService
+	userService     *services.UserService
 }
 
 type TemplateListItem struct {
@@ -34,6 +35,7 @@ type TemplateListItem struct {
 func NewTemplateController() *TemplateController {
 	return &TemplateController{
 		templateService: &services.TemplateService{},
+		userService:     &services.UserService{},
 	}
 }
 
@@ -62,9 +64,14 @@ func (c *TemplateController) GetTemplates(ctx *gin.Context) {
 		return
 	}
 
+	// 模板源码/布局仅对管理员下发：GET /templates 在菜单豁免表内（任意已认证用户可读，
+	// 供广告/友链/栏目/文章投放弹窗取模板下拉），而 sourceCode/layout 是页面 HTML/JSON 源码，
+	// 下发给所有登录用户等于把整站模板源码公开。
+	isAdmin := models.HasAdminRoleIDs(c.userService.MustGetUserRoleIds(ctx.GetUint("userID")))
+
 	list := make([]TemplateListItem, 0, len(result.List))
 	for _, t := range result.List {
-		list = append(list, TemplateListItem{
+		item := TemplateListItem{
 			ID:          t.ID,
 			Name:        t.Name,
 			Code:        t.Code,
@@ -72,12 +79,15 @@ func (c *TemplateController) GetTemplates(ctx *gin.Context) {
 			RoutePath:   t.RoutePath,
 			Description: t.Description,
 			Status:      t.Status,
-			SourceCode:  t.SourceCode,
-			Layout:      t.Layout,
 			ColumnCount: result.ColumnCounts[t.ID],
 			ColumnName:  result.ColumnNames[t.ID],
 			CreatedAt:   t.CreatedAt.Format("2006-01-02 15:04:05"),
-		})
+		}
+		if isAdmin {
+			item.SourceCode = t.SourceCode
+			item.Layout = t.Layout
+		}
+		list = append(list, item)
 	}
 
 	ctx.JSON(http.StatusOK, utils.Success("获取模板列表成功", utils.PageData(list, result.Total, page, pageSize)))

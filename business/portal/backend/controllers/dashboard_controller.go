@@ -265,7 +265,7 @@ func (c *DashboardController) GetLoginLogs(ctx *gin.Context) {
 		}
 	}
 
-	logs, err := c.logService.GetRecentLoginLogs(10, usernames)
+	logs, err := c.logService.GetRecentLoginLogs(10, userID, usernames)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取登录日志失败"))
 		return

@@ -344,8 +344,8 @@ func upgradeMenuPath(name, legacyPath, newPath string) {
 }
 
 // defaultRoleMenus 描述内置角色初始化时应获得的菜单（按菜单名；父级目录由 GetUserMenus 自动补全，无需重复列出）。
-// "*" 表示全部启用菜单。角色 1（管理员）本身即拥有全部菜单，无需在此声明。
-// 注：原「普通管理员（admin）」角色已下线移除，其 "*"（全部菜单）配置一并删除。
+// 角色 1（管理员）本身即拥有全部菜单（GetUserMenus 对角色 1 无条件返回全部），无需在此声明。
+// 注：原「普通管理员（admin）」角色已下线移除，其「全部菜单」配置一并删除。
 var defaultRoleMenus = map[string][]string{
 	"content_reviewer": {"管理首页", "待审核", "图文管理"},
 	"content_author":   {"管理首页", "图文管理"},
@@ -365,11 +365,7 @@ func SeedDefaultRolePermissions() {
 		}
 
 		var menus []Menu
-		query := utils.DB.Where("status = ?", 1)
-		if !(len(menuNames) == 1 && menuNames[0] == "*") {
-			query = query.Where("name IN ?", menuNames)
-		}
-		if err := query.Find(&menus).Error; err != nil {
+		if err := utils.DB.Where("status = ? AND name IN ?", 1, menuNames).Find(&menus).Error; err != nil {
 			utils.Logger.Warnf("初始化默认角色[%s]菜单权限失败: %v", code, err)
 			continue
 		}

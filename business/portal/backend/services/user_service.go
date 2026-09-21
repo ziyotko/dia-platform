@@ -171,6 +171,9 @@ func (s *UserService) GetUserList(page, pageSize int, username, account string, 
 }
 
 func (s *UserService) CreateUser(username, account, email, password, phone string, status int, sex int, roleIds []int, orgIds []uint) (string, error) {
+	if err := validateRoleIDs(roleIds); err != nil {
+		return "", err
+	}
 	if password == "" {
 		// 未指定密码时生成随机强密码，由调用方展示一次，避免固定弱默认密码
 		password = utils.GenerateRandomPassword(12)
@@ -308,6 +311,11 @@ func (s *UserService) ImportUsers(file multipart.File, fileSize int64) (*ImportU
 }
 
 func (s *UserService) UpdateUser(id uint, username, account, email, password, phone string, status int, sex int, roleIds []int, orgIds []uint) error {
+	// 角色 ID 必须真实存在：写入不存在的 ID 会让该账号侧边栏静默为空（菜单按角色取），
+	// 且 getMinRoleID 会把它当作「最高权限角色」参与角色比较。
+	if err := validateRoleIDs(roleIds); err != nil {
+		return err
+	}
 	updates := map[string]any{
 		"username": username,
 		"sex":      sex,
@@ -336,6 +344,8 @@ func (s *UserService) UpdateUser(id uint, username, account, email, password, ph
 				return err
 			}
 			updates["password"] = utils.SM3HashPassword(password)
+			// 管理员重置密码同样使该用户旧 Token 立即失效
+			updates["password_changed_at"] = time.Now().Truncate(time.Second)
 		}
 	}
 
@@ -452,8 +462,16 @@ func (s *UserService) ChangePassword(id uint, oldPassword, newPassword string) e
 		return errors.New("原密码错误")
 	}
 	hashedPassword := utils.SM3HashPassword(newPassword)
-	return utils.DB.Model(&models.User{}).Where("id = ?", id).Update("password", hashedPassword).Error
+	// 记录改密时间，使改密前签发的 Token 立即失效（AuthMiddleware 按 iat 比对）。
+	// 必须截断到秒：JWT 的 iat 只有秒级精度，否则同一秒内重新登录拿到的 Token 会被误判为旧 Token。
+	return utils.DB.Model(&models.User{}).Where("id = ?", id).Updates(map[string]any{
+		"password":            hashedPassword,
+		"password_changed_at": time.Now().Truncate(time.Second),
+	}).Error
 }
+
+// defaultMinPasswordLength 系统默认密码最小长度（设置不可用时使用）。
+const defaultMinPasswordLength = 8
 
 // validatePasswordLength 按系统设置（minPasswordLength，默认 8）校验密码长度；空密码表示不修改，直接放行。
 // 在管理员重置密码与手动创建用户时调用，与「个人中心-修改密码」保持同一口径。
@@ -463,14 +481,56 @@ func (s *UserService) validatePasswordLength(password string) error {
 	}
 	settingsService := SettingsService{}
 	settings, err := settingsService.GetMinPasswordLengthSettings()
-	if err != nil || settings == nil || settings.MinPasswordLength <= 0 {
-		// 设置不可用时不做额外限制，避免阻断正常操作
-		return nil
+	// 设置不可用（DB 异常）或值非法时回退到系统默认下限，而不是完全放行（原先 fail-open，
+	// 只要读到空设置就能用 1 位密码建号）。
+	minLen := defaultMinPasswordLength
+	if err == nil && settings != nil && settings.MinPasswordLength > 0 {
+		minLen = settings.MinPasswordLength
 	}
-	if len([]rune(password)) < settings.MinPasswordLength {
-		return fmt.Errorf("密码长度不能少于%d位", settings.MinPasswordLength)
+	if len([]rune(password)) < minLen {
+		return fmt.Errorf("密码长度不能少于%d位", minLen)
 	}
 	return nil
+}
+
+// validateRoleIDs 校验角色 ID 列表均存在（0 与重复项忽略；空列表合法，表示不分配角色）。
+func validateRoleIDs(roleIds []int) error {
+	cleaned := make([]int, 0, len(roleIds))
+	seen := make(map[int]bool, len(roleIds))
+	for _, id := range roleIds {
+		if id <= 0 || seen[id] {
+			continue
+		}
+		seen[id] = true
+		cleaned = append(cleaned, id)
+	}
+	if len(cleaned) == 0 {
+		return nil
+	}
+	var count int64
+	if err := utils.DB.Model(&models.Role{}).Where("id IN ?", cleaned).Count(&count).Error; err != nil {
+		return err
+	}
+	if int(count) != len(cleaned) {
+		return errors.New("存在无效的角色，请重新选择")
+	}
+	return nil
+}
+
+// ParseRoleIDString 解析 user.role_ids（逗号分隔字符串）为角色 ID 列表。
+// 供 GetUserRoleIds 与列表接口复用（列表接口直接拿已加载行的 RoleIds，避免每个用户一次查询）。
+func ParseRoleIDString(raw string) []int {
+	if strings.TrimSpace(raw) == "" {
+		return []int{}
+	}
+	parts := strings.Split(raw, ",")
+	roleIds := make([]int, 0, len(parts))
+	for _, idStr := range parts {
+		if id, err := strconv.Atoi(strings.TrimSpace(idStr)); err == nil {
+			roleIds = append(roleIds, id)
+		}
+	}
+	return roleIds
 }
 
 func (s *UserService) GetUserRoleIds(userId uint) ([]int, error) {
@@ -478,19 +538,7 @@ func (s *UserService) GetUserRoleIds(userId uint) ([]int, error) {
 	if err := utils.DB.First(&user, userId).Error; err != nil {
 		return nil, err
 	}
-	if user.RoleIds == "" {
-		return []int{}, nil
-	}
-
-	roleIdStrs := strings.Split(user.RoleIds, ",")
-	roleIds := make([]int, 0, len(roleIdStrs))
-	for _, idStr := range roleIdStrs {
-		if id, err := strconv.Atoi(strings.TrimSpace(idStr)); err == nil {
-			roleIds = append(roleIds, id)
-		}
-	}
-
-	return roleIds, nil
+	return ParseRoleIDString(user.RoleIds), nil
 }
 
 // MustGetUserRoleIds 用于调用方不关心错误的场景（查询失败视为无角色），避免各处重复忽略 err。

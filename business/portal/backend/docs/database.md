@@ -88,6 +88,7 @@
 | avatar | varchar(500) | 是 | - | - | 头像 URL |
 | login_fail_count | bigint | 是 | 0 | - | 连续登录失败次数 |
 | locked_until | datetime(3) | 是 | - | - | 账号锁定截止时间 |
+| password_changed_at | datetime(3) | 是 | - | - | 最后一次修改密码时间（改密/重置后使旧 Token 失效） |
 
 > 密码通过 `BeforeCreate` / `BeforeUpdate` 钩子自动使用国密 **SM3** 加盐哈希，不存明文。
 
@@ -145,7 +146,8 @@
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at | datetime(3) | 是 | - | IDX | 登录时间 |
-| username | varchar(100) | 是 | - | - | 登录账号 |
+| username | varchar(100) | 是 | - | - | 登录账号（成功时为显示名，失败时为输入值） |
+| user_id | bigint unsigned | 是 | 0 | IDX | 登录成功对应的用户 ID（失败/历史行为 0） |
 | ip | varchar(50) | 是 | - | - | 登录 IP |
 | browser | varchar(100) | 是 | - | - | 浏览器 |
 | os | varchar(100) | 是 | - | - | 操作系统 |

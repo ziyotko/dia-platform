@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"reflect"
@@ -106,6 +107,13 @@ func (c *SettingsController) UpdateSettings(ctx *gin.Context) {
 		delete(raw, "emailPassword")
 	}
 
+	// 数值型设置的服务端边界校验：前端的 el-input-number min/max 可被直接调 API 绕过，
+	// 而 minPasswordLength=0 会让密码长度校验失效、tokenExpire 过大会产生长期有效的 Token。
+	if err := validateSettingRanges(raw); err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, err.Error()))
+		return
+	}
+
 	fields := settingFieldsFromKeys(raw)
 	if len(fields) == 0 {
 		ctx.JSON(http.StatusOK, utils.Error(1, "没有可更新的设置项"))
@@ -127,6 +135,41 @@ func (c *SettingsController) UpdateSettings(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, utils.Success("保存设置成功", nil))
+}
+
+// settingRange 描述数值型设置项的允许区间。
+// 区间取值以「不被绕过导致安全语义失效」为准（略宽于前端 el-input-number 的 min/max，
+// 避免把历史配置直接卡死）：minPasswordLength 不得为 0（否则长度校验形同关闭）、
+// tokenExpire 上限 720h（30 天），避免出现近乎永久的 Token。
+type settingRange struct {
+	key      string
+	min, max int
+	label    string
+}
+
+var settingRanges = []settingRange{
+	{"maxFailCount", 1, 100, "最大登录失败次数"},
+	{"lockDuration", 1, 1440, "账号锁定时长（分钟）"},
+	{"minPasswordLength", 1, 64, "密码最小长度"},
+	{"tokenExpire", 1, 720, "Token 有效期（小时）"},
+}
+
+// validateSettingRanges 校验请求体中出现的数值型设置项是否在允许区间内。
+func validateSettingRanges(raw map[string]json.RawMessage) error {
+	for _, r := range settingRanges {
+		payload, ok := raw[r.key]
+		if !ok {
+			continue
+		}
+		var value int
+		if err := json.Unmarshal(payload, &value); err != nil {
+			return fmt.Errorf("%s格式错误", r.label)
+		}
+		if value < r.min || value > r.max {
+			return fmt.Errorf("%s必须在 %d-%d 之间", r.label, r.min, r.max)
+		}
+	}
+	return nil
 }
 
 // settingFieldsFromKeys 根据请求体中出现的 JSON key，返回对应 Setting 结构体的字段名列表

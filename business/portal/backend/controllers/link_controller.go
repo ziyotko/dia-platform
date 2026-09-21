@@ -116,34 +116,6 @@ func (c *LinkController) GetLinks(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("获取友链列表成功", utils.PageData(list, total, page, pageSize)))
 }
 
-func (c *LinkController) GetLinkByID(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "友链ID无效"))
-		return
-	}
-	link, err := c.linkService.GetLinkByID(uint(id))
-	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "获取友链失败"))
-		return
-	}
-
-	ctx.JSON(http.StatusOK, utils.Success("获取友链成功", gin.H{
-		"id":          link.ID,
-		"name":        link.Name,
-		"url":         link.Url,
-		"logo":        link.Logo,
-		"description": link.Description,
-		"templateId":  link.TemplateID,
-		"columnId":    link.ColumnID,
-		"sort":        link.Sort,
-		"status":      link.Status,
-		"author":      link.Author,
-		"authorCode":  link.AuthorCode,
-	}))
-}
-
 func (c *LinkController) CreateLink(ctx *gin.Context) {
 	var req models.Link
 	if err := ctx.ShouldBindJSON(&req); err != nil {

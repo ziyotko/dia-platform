@@ -97,9 +97,16 @@ powershell -ExecutionPolicy Bypass -File .\build-backends.ps1 -Only portal -Vet
 ./xxxx
 ```
 
-- 启动流程：读 `./config.yaml` → 注入环境变量（缺失直接退出） → 连 MySQL/Redis（3 个 db） → `AutoMigrate` 建表 → **幂等补齐文章搜索所需的 FULLTEXT 索引** → 播种默认角色/用户/菜单/菜单权限（幂等） → 加载静态化参数到缓存（db 8） → 监听端口
+- 启动流程：读 `./config.yaml` → 注入环境变量（缺失直接退出） → 连 MySQL/Redis（3 个 db） → `AutoMigrate` 建表 → **幂等补齐文章搜索所需的 FULLTEXT 索引** → 播种默认角色/用户/菜单/菜单权限（幂等，含重复内置菜单去重） → 加载静态化参数到缓存（db 8） → 监听端口
 - 默认账号：`admin`（管理员，角色 ID=1），初始密码 `1qaz@WSX`，**上线后立即修改**
 - 首次对已有大表补 FULLTEXT 索引（`ALTER TABLE article ADD FULLTEXT INDEX`，共 3 个：title/author/source）会重建索引并短时占锁；表很大时建议部署窗口内手动先建好，启动逻辑检测到索引存在会自动跳过
+
+#### 升级说明（2026-09-21，无需手工 SQL）
+
+- `AutoMigrate` 会自动给旧库补两列：`user.password_changed_at`（改密后使旧 Token 失效）、`login_log.user_id`（登录日志归属，避免同名账号串号）。**不需要**手工执行 ALTER。
+- 限流计数器 key 增加了「用途段」（`ratelimit:{用途}:{limit}:{ip}:{窗口}`）：升级后各接口计数从 0 重新开始（旧 key 会在 1 个窗口内自然过期），无需处理。
+- 启动时会幂等清理历史版本残留的**重复内置菜单**（同名同父级只保留最早一条），并把角色权限里指向被删菜单的 ID 改指到保留的那条。日志出现 `已清理重复菜单: …` 即为已生效。
+- 已下线无前端调用的只读接口：`GET /ads/:id`、`GET /links/:id`、`GET /roles/:id`、`GET /workflow-roles/:id`（如外部系统有调用需先改造）。
 
 #### ⚠️ 页面层合并迁移（2026-09-21，手工执行，不可逆）
 

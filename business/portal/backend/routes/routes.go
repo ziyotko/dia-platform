@@ -44,12 +44,12 @@ func SetupRoutes(router *gin.Engine) {
 	public.Use(middleware.ReplayProtectionMiddleware())
 	{
 		// 登录/验证码接口：按真实客户端 IP 做更严格的独立限流（防暴力破解/防刷验证码）
-		public.GET("/captcha", middleware.RateLimitMiddleware(
+		public.GET("/captcha", middleware.RateLimitMiddlewareScoped("captcha",
 			config.AppConfig.Server.CaptchaRateLimit,
 			time.Duration(config.AppConfig.Server.CaptchaRateWindowSecs)*time.Second,
 		), authController.GetCaptcha)
 		// 登录接口挂操作日志，使「操作日志-登录」筛选可筛出真实登录记录（请求体密码由日志中间件脱敏）
-		public.POST("/login", middleware.RateLimitMiddleware(
+		public.POST("/login", middleware.RateLimitMiddlewareScoped("login",
 			config.AppConfig.Server.LoginRateLimit,
 			time.Duration(config.AppConfig.Server.LoginRateWindowSecs)*time.Second,
 		), middleware.OperationLog(), authController.Login)
@@ -57,7 +57,7 @@ func SetupRoutes(router *gin.Engine) {
 		// 公开只读接口（站点信息/文章搜索）无需认证，必须单独限流：
 		// 否则匿名请求可无限刷（压 DB 全文检索，并在限流缺席时把防重放的 Redis nonce 键写满）。
 		// 同一限流器实例可被多个路由复用（闭包无状态，计数落在 Redis / 进程内兜底）。
-		publicReadLimiter := middleware.RateLimitMiddleware(
+		publicReadLimiter := middleware.RateLimitMiddlewareScoped("public",
 			config.AppConfig.Server.PublicRateLimit,
 			time.Duration(config.AppConfig.Server.PublicRateWindowSecs)*time.Second,
 		)
@@ -68,7 +68,7 @@ func SetupRoutes(router *gin.Engine) {
 
 		//站点分析接口（公开写接口：按真实客户端 IP 限流，防脚本刷量；业务层再做去重+文章校验）
 		analytics := public.Group("")
-		analytics.Use(middleware.RateLimitMiddleware(
+		analytics.Use(middleware.RateLimitMiddlewareScoped("analytics",
 			config.AppConfig.Server.AnalyticsRateLimit,
 			time.Duration(config.AppConfig.Server.AnalyticsRateWindowSecs)*time.Second,
 		))
@@ -104,7 +104,12 @@ func SetupRoutes(router *gin.Engine) {
 
 		member.GET("/profile", authController.GetProfile)
 		member.PUT("/profile", authController.UpdateProfile)
-		member.PUT("/profile/password", authController.ChangePassword)
+		// 个人改密：与登录同属「凭据校验」接口，复用登录限流配置（默认 10 次/300s），
+		// 否则持有效 Token 者可无限次用「原密码错误」作为 oracle 试探旧密码（不校验验证码、不计入登录锁定）。
+		member.PUT("/profile/password", middleware.RateLimitMiddlewareScoped("password",
+			config.AppConfig.Server.LoginRateLimit,
+			time.Duration(config.AppConfig.Server.LoginRateWindowSecs)*time.Second,
+		), authController.ChangePassword)
 
 		// 文章管理（作者管理自己的文章，接口内另有归属/管理员校验）
 		member.GET("/articles", articleController.GetArticles)
@@ -141,14 +146,12 @@ func SetupRoutes(router *gin.Engine) {
 		member.GET("/workflows/:id/nodes", workflowController.GetWorkflowNodes)
 		member.GET("/workflow-roles", workflowRoleController.GetWorkflowRoles)
 		member.GET("/ads", adController.GetAds)
-		member.GET("/ads/:id", adController.GetAdByID)
 		member.GET("/links", linkController.GetLinks)
-		member.GET("/links/:id", linkController.GetLinkByID)
 
 		// 文件上传（作者上传封面/附件/视频）
 		// 按真实客户端 IP 限流：/upload 在菜单豁免表内（任意已认证账号可用），
 		// 而单文件上限高达 800MB，不加节流可被循环上传写满磁盘。
-		uploadLimiter := middleware.RateLimitMiddleware(
+		uploadLimiter := middleware.RateLimitMiddlewareScoped("upload",
 			config.AppConfig.Server.UploadRateLimit,
 			time.Duration(config.AppConfig.Server.UploadRateWindowSecs)*time.Second,
 		)
@@ -181,13 +184,11 @@ func SetupRoutes(router *gin.Engine) {
 		admin.GET("/roles/all", roleController.GetAllRoles)
 		admin.GET("/roles/:id/permissions", roleController.GetRolePermissions)
 		admin.PUT("/roles/:id/permissions", roleController.UpdateRolePermissions)
-		admin.GET("/roles/:id", roleController.GetRoleByID)
 		admin.POST("/roles", roleController.CreateRole)
 		admin.PUT("/roles/:id", roleController.UpdateRole)
 		admin.DELETE("/roles/:id", roleController.DeleteRole)
 
 		// 工作流角色管理
-		admin.GET("/workflow-roles/:id", workflowRoleController.GetWorkflowRoleByID)
 		admin.POST("/workflow-roles", workflowRoleController.CreateWorkflowRole)
 		admin.PUT("/workflow-roles/:id", workflowRoleController.UpdateWorkflowRole)
 		admin.DELETE("/workflow-roles/:id", workflowRoleController.DeleteWorkflowRole)

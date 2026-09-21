@@ -1,7 +1,6 @@
 package services
 
 import (
-	"errors"
 	"fmt"
 	"server/models"
 	"server/utils"
@@ -47,14 +46,6 @@ func (s *WorkflowRoleService) GetWorkflowRoleList(page, pageSize int, name strin
 		Total: total,
 		List:  roles,
 	}, nil
-}
-
-func (s *WorkflowRoleService) GetWorkflowRoleByID(id uint) (*models.WorkflowRole, error) {
-	var role models.WorkflowRole
-	if err := utils.DB.First(&role, id).Error; err != nil {
-		return nil, errors.New("流程角色不存在")
-	}
-	return &role, nil
 }
 
 func (s *WorkflowRoleService) CreateWorkflowRole(role *models.WorkflowRole) error {

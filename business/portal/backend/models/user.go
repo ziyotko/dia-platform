@@ -25,6 +25,10 @@ type User struct {
 	Avatar         string     `gorm:"size:500" json:"avatar"`
 	LoginFailCount int        `gorm:"default:0" json:"loginFailCount"`
 	LockedUntil    *time.Time `json:"lockedUntil"`
+	// PasswordChangedAt 最后一次修改密码的时间（本人改密或管理员重置时写入）。
+	// 用途：JWT 没有版本号，改密本身不会使已签发的 Token 失效；
+	// AuthMiddleware 会比较 Token 的 iat 与该项，使改密前签发的 Token 立即作废。
+	PasswordChangedAt *time.Time `json:"-"`
 }
 
 func (u *User) BeforeCreate(tx *gorm.DB) (err error) {
@@ -40,6 +44,10 @@ func (u *User) BeforeUpdate(tx *gorm.DB) (err error) {
 	// 会把已哈希值再次哈希，导致该账号永久无法登录。
 	if u.Password != "" && !strings.Contains(u.Password, ":") {
 		u.Password = utils.SM3HashPassword(u.Password)
+		// 通过模型保存改密时同样记录改密时间，保证「改密后旧 Token 立即失效」的语义
+		// 不依赖调用方是否显式写入 password_changed_at。
+		now := time.Now().Truncate(time.Second)
+		u.PasswordChangedAt = &now
 	}
 	return nil
 }

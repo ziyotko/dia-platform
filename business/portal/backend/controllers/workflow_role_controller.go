@@ -75,22 +75,6 @@ func (c *WorkflowRoleController) GetWorkflowRoleOptions(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("获取成功", options))
 }
 
-func (c *WorkflowRoleController) GetWorkflowRoleByID(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "流程角色ID无效"))
-		return
-	}
-
-	role, err := c.workflowRoleService.GetWorkflowRoleByID(uint(id))
-	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, utils.SafeErrText(err)))
-		return
-	}
-	ctx.JSON(http.StatusOK, utils.Success("获取流程角色成功", role))
-}
-
 func (c *WorkflowRoleController) CreateWorkflowRole(ctx *gin.Context) {
 	var req models.WorkflowRole
 	if err := ctx.ShouldBindJSON(&req); err != nil {

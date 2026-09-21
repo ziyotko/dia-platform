@@ -115,6 +115,14 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 		return
 	}
 
+	// 角色/机构一次性组装：用户行本身已带 role_ids，机构成员关系一次读全量后在内存匹配。
+	// 原实现对每个用户调用 GetUserRoleIds + GetOrganizationsByUserId（后者还会再按机构回查），
+	// 在 all=1（全量下拉，可能上千个用户）时会放大成上千次 SQL。
+	orgIndex, orgErr := c.orgService.GetOrganizationMembersByUser()
+	if orgErr != nil {
+		orgIndex = map[uint][]models.Organization{}
+	}
+
 	list := make([]UserListItem, 0, len(result.List))
 	for _, user := range result.List {
 		item := UserListItem{
@@ -126,23 +134,13 @@ func (c *UserController) GetUsers(ctx *gin.Context) {
 			Status:    user.Status,
 			Sex:       user.Sex,
 			CreatedAt: user.CreatedAt.Format("2006-01-02 15:04:05"),
+			RoleIds:   services.ParseRoleIDString(user.RoleIds),
+			OrgIds:    []uint{},
+			OrgNames:  []string{},
 		}
-
-		roleIds, err := c.userService.GetUserRoleIds(user.ID)
-		if err == nil {
-			item.RoleIds = roleIds
-		} else {
-			item.RoleIds = []int{}
-		}
-
-		orgs, err := c.orgService.GetOrganizationsByUserId(user.ID)
-		if err == nil {
-			item.OrgIds = make([]uint, 0, len(orgs))
-			item.OrgNames = make([]string, 0, len(orgs))
-			for _, org := range orgs {
-				item.OrgIds = append(item.OrgIds, org.ID)
-				item.OrgNames = append(item.OrgNames, org.Name)
-			}
+		for _, org := range orgIndex[user.ID] {
+			item.OrgIds = append(item.OrgIds, org.ID)
+			item.OrgNames = append(item.OrgNames, org.Name)
 		}
 
 		list = append(list, item)
@@ -286,6 +284,12 @@ func (c *UserController) DeleteUser(ctx *gin.Context) {
 		return
 	}
 
+	// 禁止自删：除内置管理员外，其他管理员误删自己后只能靠内置 admin 或进库恢复
+	if uint(id) == ctx.GetUint("userID") {
+		ctx.JSON(http.StatusOK, utils.Error(1, "不能删除当前登录账号"))
+		return
+	}
+
 	err = c.userService.DeleteUser(uint(id))
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("删除用户失败", err)))
@@ -309,6 +313,18 @@ func (c *UserController) UpdateUserStatus(ctx *gin.Context) {
 
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误"))
+		return
+	}
+
+	// 状态只允许启用(1)/禁用(0)：原先不校验，可写入任意值。
+	// 非 1 的值会被登录/鉴权当作「已禁用」，而界面开关只会显示 0/1，出现「显示启用却登不进」的假故障。
+	if req.Status != 0 && req.Status != 1 {
+		ctx.JSON(http.StatusOK, utils.Error(1, "状态值无效，仅支持 0=禁用、1=启用"))
+		return
+	}
+
+	if uint(id) == ctx.GetUint("userID") {
+		ctx.JSON(http.StatusOK, utils.Error(1, "不能禁用当前登录账号"))
 		return
 	}
 

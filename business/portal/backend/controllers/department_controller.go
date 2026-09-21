@@ -13,14 +13,12 @@ import (
 
 type DepartmentController struct {
 	deptService *services.DepartmentService
-	userService *services.UserService
 	orgService  *services.OrganizationService
 }
 
 func NewDepartmentController() *DepartmentController {
 	return &DepartmentController{
 		deptService: &services.DepartmentService{},
-		userService: &services.UserService{},
 		orgService:  &services.OrganizationService{},
 	}
 }

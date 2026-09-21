@@ -189,22 +189,46 @@ func (s *OrganizationService) AssignOrganizationUsers(id uint, userIds []int) er
 func (s *OrganizationService) GetOrganizationsByUserId(userId uint) ([]models.Organization, error) {
 	var orgs []models.Organization
 	uidStr := strconv.Itoa(int(userId))
+	// user_ids 是逗号分隔串（无索引），先用 LIKE 粗筛，再按解析后的 ID 精确匹配。
+	// 原实现在此基础上又对每个命中机构调 GetOrganizationUsers（1~2 次查询/机构），
+	// 列表接口按用户逐个调用时会放大成 1+2N 次 SQL。
 	err := utils.DB.Where("user_ids LIKE ? OR user_ids LIKE ? OR user_ids LIKE ?", "%"+uidStr+"%", "%"+uidStr+",%", "%,"+uidStr+"%").Find(&orgs).Error
 	if err != nil {
 		return nil, err
 	}
-	uid := int(userId)
-	result := make([]models.Organization, 0)
+	result := make([]models.Organization, 0, len(orgs))
 	for _, org := range orgs {
-		userIds, err := s.GetOrganizationUsers(org.ID)
-		if err != nil {
-			continue
-		}
-		if slices.Contains(userIds, uid) {
+		if memberIDListContains(org.UserIds, userId) {
 			result = append(result, org)
 		}
 	}
 	return result, nil
+}
+
+// GetOrganizationMembersByUser 返回「用户 ID → 所属机构（仅 id/name 字段）」索引（一次查询）。
+// 供用户列表等需要批量组装机构信息的场景使用，避免逐用户查询。
+func (s *OrganizationService) GetOrganizationMembersByUser() (map[uint][]models.Organization, error) {
+	var orgs []models.Organization
+	if err := utils.DB.Select("id", "name", "user_ids").Order("sort ASC, id ASC").Find(&orgs).Error; err != nil {
+		return nil, err
+	}
+	index := make(map[uint][]models.Organization)
+	for _, org := range orgs {
+		for _, uid := range parseMemberIDList(org.UserIds) {
+			index[uid] = append(index[uid], org)
+		}
+	}
+	return index, nil
+}
+
+// memberIDListContains 判断逗号分隔的成员串是否包含指定用户 ID（精确匹配，避免 "1" 命中 "12"）。
+func memberIDListContains(raw string, userId uint) bool {
+	for _, id := range parseMemberIDList(raw) {
+		if id == userId {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *OrganizationService) AddUserToOrganization(orgId uint, userId uint) error {

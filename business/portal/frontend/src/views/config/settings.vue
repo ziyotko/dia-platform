@@ -231,6 +231,12 @@ const staticForm = reactive({
   homeGray: false
 })
 
+// positiveOr 数值项回退：非正数或非法值统一回落到界面默认值
+const positiveOr = (value: unknown, fallback: number) => {
+  const num = Number(value)
+  return Number.isFinite(num) && num > 0 ? num : fallback
+}
+
 const loadSettings = async () => {
   try {
     const res: any = await getSettings()
@@ -244,10 +250,12 @@ const loadSettings = async () => {
     basicForm.orgCode = data.orgCode || ''
     securityForm.captchaEnabled = data.captchaEnabled ?? true
     securityForm.lockEnabled = data.lockEnabled ?? true
-    securityForm.maxFailCount = data.maxFailCount ?? 5
-    securityForm.lockDuration = data.lockDuration ?? 30
-    securityForm.minPasswordLength = data.minPasswordLength ?? 8
-    securityForm.tokenExpire = data.tokenExpire ?? 24
+    // 数值项在非法（<=0）时回退到界面默认值：后端已对保存做区间校验，
+    // 若库里是旧脏值（如 0），直接回显会导致本次保存被拦下且用户不知如何修正。
+    securityForm.maxFailCount = positiveOr(data.maxFailCount, 5)
+    securityForm.lockDuration = positiveOr(data.lockDuration, 30)
+    securityForm.minPasswordLength = positiveOr(data.minPasswordLength, 8)
+    securityForm.tokenExpire = positiveOr(data.tokenExpire, 24)
 
     appStore.setSecuritySettings({
       minPasswordLength: securityForm.minPasswordLength

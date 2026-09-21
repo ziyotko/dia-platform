@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"os"
@@ -20,6 +22,15 @@ type UploadController struct{}
 
 // orgCodePattern 机构编码允许的字符集（作为上传目录段使用，必须无法表达路径）。
 var orgCodePattern = regexp.MustCompile(`^[a-z0-9_-]{1,32}$`)
+
+// randomHexToken 生成 n 字节随机数的十六进制串（用于文件名去重）；随机源不可用时返回空串。
+func randomHexToken(nBytes int) string {
+	buf := make([]byte, nBytes)
+	if _, err := rand.Read(buf); err != nil {
+		return ""
+	}
+	return hex.EncodeToString(buf)
+}
 
 func NewUploadController() *UploadController {
 	return &UploadController{}
@@ -123,7 +134,9 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 		return
 	}
 
-	filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
+	// 文件名 = 纳秒时间戳 + 随机串：同一纳秒内并发上传（或系统时钟回拨）时仅靠时间戳会重名，
+	// 而 SaveUploadedFile 会直接创建/截断同名文件，导致已引用到文章的 URL 指向他人内容。
+	filename := fmt.Sprintf("%d_%s%s", time.Now().UnixNano(), randomHexToken(8), ext)
 	dst := filepath.Join(uploadDir, filename)
 
 	if err := ctx.SaveUploadedFile(file, dst, 0755); err != nil {

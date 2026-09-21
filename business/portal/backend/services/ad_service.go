@@ -32,15 +32,6 @@ func (s *AdService) GetAds(name string, templateID int, columnID int, status int
 	return ads, total, err
 }
 
-func (s *AdService) GetAdByID(id uint) (*models.Ad, error) {
-	var ad models.Ad
-	err := utils.DB.First(&ad, id).Error
-	if err != nil {
-		return nil, err
-	}
-	return &ad, nil
-}
-
 func (s *AdService) CreateAd(ad *models.Ad) error {
 	return utils.DB.Create(ad).Error
 }

@@ -18,7 +18,7 @@
         <el-card class="stat-card" shadow="never">
           <div class="stat-body">
             <div class="stat-info">
-              <div class="stat-label">文章总数</div>
+              <div class="stat-label">已发布文章</div>
               <div class="stat-value">{{ stats.articleCount.toLocaleString() }}</div>
             </div>
             <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">

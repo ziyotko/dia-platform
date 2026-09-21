@@ -118,35 +118,6 @@ func (c *AdController) GetAds(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("获取广告列表成功", utils.PageData(list, total, page, pageSize)))
 }
 
-func (c *AdController) GetAdByID(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "广告ID无效"))
-		return
-	}
-	ad, err := c.adService.GetAdByID(uint(id))
-	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "获取广告失败"))
-		return
-	}
-
-	ctx.JSON(http.StatusOK, utils.Success("获取广告成功", gin.H{
-		"id":         ad.ID,
-		"name":       ad.Name,
-		"templateId": ad.TemplateID,
-		"columnId":   ad.ColumnID,
-		"image":      ad.Image,
-		"link":       ad.Link,
-		"sort":       ad.Sort,
-		"status":     ad.Status,
-		"startTime":  formatTime(ad.StartTime),
-		"endTime":    formatTime(ad.EndTime),
-		"author":     ad.Author,
-		"authorCode": ad.AuthorCode,
-	}))
-}
-
 func (c *AdController) CreateAd(ctx *gin.Context) {
 	var req struct {
 		Name       string `json:"name"`

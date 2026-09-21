@@ -68,22 +68,6 @@ func (c *RoleController) GetAllRoles(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("获取角色列表成功", roles))
 }
 
-func (c *RoleController) GetRoleByID(ctx *gin.Context) {
-	idStr := ctx.Param("id")
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "角色ID无效"))
-		return
-	}
-
-	role, err := c.roleService.GetRoleByID(uint(id))
-	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, utils.SafeErrText(err)))
-		return
-	}
-	ctx.JSON(http.StatusOK, utils.Success("获取角色成功", role))
-}
-
 func (c *RoleController) CreateRole(ctx *gin.Context) {
 	var req models.Role
 	if err := ctx.ShouldBindJSON(&req); err != nil {

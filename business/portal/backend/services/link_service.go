@@ -32,15 +32,6 @@ func (s *LinkService) GetLinks(name string, templateID int, columnID int, status
 	return links, total, err
 }
 
-func (s *LinkService) GetLinkByID(id uint) (*models.Link, error) {
-	var link models.Link
-	err := utils.DB.First(&link, id).Error
-	if err != nil {
-		return nil, err
-	}
-	return &link, nil
-}
-
 func (s *LinkService) CreateLink(link *models.Link) error {
 	return utils.DB.Create(link).Error
 }
