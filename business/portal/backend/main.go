@@ -25,16 +25,16 @@ func main() {
 		utils.DB.AutoMigrate(m)
 	}
 	// FULLTEXT 索引不在 AutoMigrate 能力范围内（文章搜索的 MATCH ... AGAINST 依赖它），启动时幂等补齐
-	models.EnsureFulltextIndexes()
+	//models.EnsureFulltextIndexes()
 
 	// 初始化系统默认角色（管理员/内容审核/内容作者），缺失时自动创建
-	models.SeedDefaultRoles()
+	//models.SeedDefaultRoles()
 	// 初始化系统默认用户（与默认角色一一对应，初始密码 1qaz@WSX），缺失时自动创建
-	models.SeedDefaultUsers()
+	//models.SeedDefaultUsers()
 	// 初始化系统默认菜单（管理首页/内容管理/数据统计/基础配置/系统配置），缺失时自动创建
-	models.SeedDefaultMenus()
+	//models.SeedDefaultMenus()
 	// 初始化内置角色（内容审核/内容作者）的默认菜单权限，仅在角色尚无权限配置时写入
-	models.SeedDefaultRolePermissions()
+	//models.SeedDefaultRolePermissions()
 
 	// 启动时加载静态化参数（静态化输出路径/访问地址/访问令牌名/首页整体变灰）并写入缓存
 	settingsService := &services.SettingsService{}

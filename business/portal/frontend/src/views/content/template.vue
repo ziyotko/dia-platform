@@ -124,6 +124,9 @@
                 <el-radio :value="1">启用</el-radio>
                 <el-radio :value="0">禁用</el-radio>
               </el-radio-group>
+              <div style="width: 100%; font-size: 12px; color: #909399; line-height: 1.5; margin-top: 4px">
+                栏目页 / 详情页模板同时只能启用一个，启用后同类型的其他模板会自动禁用
+              </div>
             </el-form-item>
           </el-col>
         </el-row>
@@ -417,7 +420,7 @@ const handleDelete = (row: TemplateItem) => {
   // 模板仍被页面应用时后端会拒绝删除，这里提前提示，避免无意义的确认弹窗
   if (row.pageCount > 0) {
     ElMessage.warning(
-      `模板 "${row.name}" 已被页面「${row.pageName || '未知页面'}」应用，请先在栏目管理的页面管理中解除绑定后再删除`
+      `模板 "${row.name}" 已被页面「${row.pageName || '未知页面'}」应用，请先解除页面绑定后再删除`
     )
     return
   }
@@ -440,6 +443,16 @@ const handleDelete = (row: TemplateItem) => {
 const handleStatusChange = async (row: TemplateItem, val: number) => {
   try {
     await updateTemplateStatus(row.id, val)
+    // 栏目页/详情页模板同时只能启用一个：后端会自动禁用同类型的其他启用模板，这里同步当前列表显示
+    if (val === 1 && (row.type === 'column' || row.type === 'detail')) {
+      tableData.value.forEach((item) => {
+        if (item.type === row.type && item.id !== row.id) {
+          item.status = 0
+        }
+      })
+      ElMessage.success(`模板状态已启用，同类型（${typeLabel(row.type)}）的其他模板已自动禁用`)
+      return
+    }
     ElMessage.success(`模板状态已${val === 1 ? '启用' : '禁用'}`)
   } catch (error) {
     row.status = val === 1 ? 0 : 1

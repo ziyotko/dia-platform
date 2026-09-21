@@ -157,8 +157,12 @@ func (c *TemplateController) UpdateTemplateStatus(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误"))
 		return
 	}
+	if req.Status != 0 && req.Status != 1 {
+		ctx.JSON(http.StatusOK, utils.Error(1, "状态值无效"))
+		return
+	}
 
-	err = c.templateService.UpdateTemplate(uint(id), map[string]any{"status": req.Status})
+	err = c.templateService.UpdateTemplateStatus(uint(id), req.Status)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("更新状态失败", err)))
 		return

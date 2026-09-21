@@ -29,58 +29,38 @@
     <el-card shadow="hover" class="page-card">
       <template #header>
         <div class="card-header">
-          <span>{{ currentTypeLabel }}页面列表</span>
-          <el-button type="primary" @click="handleAddPage">
-            <el-icon><Plus /></el-icon>新增页面
-          </el-button>
+          <span>{{ currentTypeLabel }}模板列表</span>
         </div>
       </template>
 
       <el-table
-        :data="pageTableData"
-        v-loading="pageLoading"
+        :data="templateTableData"
+        v-loading="templateLoading"
         highlight-current-row
         border
         stripe
-        @current-change="handlePageSelect"
+        @current-change="handleTemplateSelect"
       >
         <el-table-column type="index" width="60" align="center" />
-        <el-table-column prop="name" label="页面名称" min-width="160" show-overflow-tooltip />
-        <el-table-column prop="code" label="页面编码" min-width="140" />
-        <el-table-column prop="routePath" label="访问路径" min-width="160" show-overflow-tooltip>
+        <el-table-column prop="name" label="模板名称" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="description" label="模板描述" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="pageName" label="绑定页面" min-width="160" show-overflow-tooltip>
           <template #default="{ row }">
-            <el-tag v-if="row.routePath" size="small" type="info">{{ row.routePath }}</el-tag>
-            <span v-else>-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="template" label="绑定模板" min-width="140" show-overflow-tooltip>
-          <template #default="{ row }">
-            <span v-if="row.template">{{ row.template }}</span>
+            <span v-if="row.pageName">{{ row.pageName }}</span>
             <span v-else style="color: #c0c4cc">未绑定</span>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-switch
-              v-model="row.status"
-              :active-value="1"
-              :inactive-value="0"
-              @change="(val: number) => handlePageStatusChange(row, val)"
-            />
+            <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
+              {{ row.status === 1 ? '启用' : '禁用' }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="createdAt" label="创建时间" width="170" />
-        <el-table-column label="操作" width="180" align="center" fixed="right">
-          <template #default="{ row }">
-            <el-button link type="primary" @click.stop="handleEditPage(row)">
-              <el-icon><Edit /></el-icon>编辑
-            </el-button>
-            <el-button link type="danger" @click.stop="handleDeletePage(row)">
-              <el-icon><Delete /></el-icon>删除
-            </el-button>
-          </template>
-        </el-table-column>
       </el-table>
+
+      <el-empty v-if="!templateTableData.length && !templateLoading" description="该页面类型下暂无模板" />
     </el-card>
 
     <el-card v-if="selectedPage" shadow="hover" class="column-card">
@@ -157,79 +137,11 @@
       <el-empty v-if="!columnTableData.length && !columnLoading" description="该页面下暂无栏目，请添加" />
     </el-card>
 
-    <el-empty v-else description="请先选择左侧页面" class="select-tip" />
-
-    <el-dialog
-      v-model="pageDialogVisible"
-      :title="pageDialogTitle"
-      width="600px"
-      destroy-on-close
-    >
-      <el-form ref="pageFormRef" :model="pageForm" :rules="pageFormRules" label-width="90px">
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="页面名称" prop="name">
-              <el-input v-model="pageForm.name" placeholder="请输入页面名称" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="页面编码" prop="code">
-              <el-input v-model="pageForm.code" placeholder="请输入页面编码" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row :gutter="16">
-          <el-col :span="12">
-            <el-form-item label="页面类型" prop="pageType">
-              <el-select v-model="pageForm.pageType" placeholder="请选择页面类型" disabled style="width: 100%">
-                <el-option label="首页" value="home" />
-                <el-option label="栏目页" value="column" />
-                <el-option label="详情页" value="detail" />
-                <el-option label="专题页" value="special" />
-              </el-select>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="访问路径" prop="routePath">
-              <el-input v-model="pageForm.routePath" placeholder="如 /news" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-form-item label="绑定模板" prop="templateId">
-          <el-select v-model="pageForm.templateId" placeholder="请选择模板" clearable style="width: 100%">
-            <el-option-group
-              v-for="group in templateGroups"
-              :key="group.label"
-              :label="group.label"
-            >
-              <el-option
-                v-for="item in group.options"
-                :key="item.id"
-                :label="templateOptionLabel(item)"
-                :value="item.id"
-                :disabled="!!templateUsedByPages[item.id]"
-              />
-            </el-option-group>
-          </el-select>
-          <div style="width: 100%; font-size: 12px; color: #909399; line-height: 1.5; margin-top: 4px">
-            一个模板只能应用一个页面，已被其他页面应用的模板不可选择
-          </div>
-        </el-form-item>
-        <el-form-item label="页面描述" prop="description">
-          <el-input v-model="pageForm.description" type="textarea" :rows="3" placeholder="请输入页面描述" />
-        </el-form-item>
-        <el-form-item label="状态" prop="status">
-          <el-radio-group v-model="pageForm.status">
-            <el-radio :value="1">启用</el-radio>
-            <el-radio :value="0">禁用</el-radio>
-          </el-radio-group>
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="pageDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="pageSubmitLoading" @click="handlePageSubmit">确定</el-button>
-      </template>
-    </el-dialog>
+    <el-empty
+      v-else
+      :description="selectedTemplate ? '该模板未绑定页面，暂无栏目' : '请先在上方模板列表中选择模板'"
+      class="select-tip"
+    />
 
     <el-dialog
       v-model="columnDialogVisible"
@@ -335,12 +247,7 @@ import {
   Document,
   Grid
 } from '@element-plus/icons-vue'
-import {
-  getPages,
-  createPage,
-  updatePage,
-  deletePage
-} from '@/api/page'
+import { getPages } from '@/api/page'
 import {
   getColumns,
   createColumn,
@@ -382,6 +289,7 @@ interface ColumnItem {
 }
 
 const activePageType = ref<string>('home')
+const selectedTemplate = ref<any | null>(null)
 const selectedPage = ref<PageItem | null>(null)
 
 const toPinyinCode = (str: string): string => {
@@ -393,11 +301,7 @@ const toPinyinCode = (str: string): string => {
 const allPages = ref<PageItem[]>([])
 const allColumns = ref<ColumnItem[]>([])
 
-const pageLoading = ref(false)
-const pageDialogVisible = ref(false)
-const pageDialogTitle = ref('')
-const pageSubmitLoading = ref(false)
-const pageFormRef = ref()
+const templateLoading = ref(false)
 
 const columnLoading = ref(false)
 const columnDialogVisible = ref(false)
@@ -405,25 +309,7 @@ const columnDialogTitle = ref('')
 const columnSubmitLoading = ref(false)
 const columnFormRef = ref()
 
-const pageForm = reactive<Partial<PageItem>>({
-  id: undefined,
-  name: '',
-  code: '',
-  pageType: 'home',
-  routePath: '',
-  templateId: undefined,
-  template: '',
-  description: '',
-  status: 1
-})
-
 const templateList = ref<any[]>([])
-
-const pageFormRules = {
-  name: [{ required: true, message: '请输入页面名称', trigger: 'blur' }],
-  code: [{ required: true, message: '请输入页面编码', trigger: 'blur' }],
-  routePath: [{ required: true, message: '请输入访问路径', trigger: 'blur' }]
-}
 
 const displayTypeMap: Record<number, string> = {
   1: '轮播展示',
@@ -507,35 +393,19 @@ const currentTypeLabel = computed(() => {
   return map[activePageType.value] || ''
 })
 
-const pageTableData = computed(() => {
-  return allPages.value.filter(p => p.pageType === activePageType.value)
+// 模板列表：仅展示当前页面类型的模板（模板 type 与页面类型同值：home/column/detail/special）
+const templateTableData = computed(() => {
+  return templateList.value.filter((t: any) => t.type === activePageType.value)
 })
 
-const templateGroups = computed(() => {
-  const typeMap: Record<string, string> = { home: '首页模板', column: '栏目页模板', detail: '详情页模板', special: '专题页模板' }
-  const type = pageForm.pageType || activePageType.value
-  const label = typeMap[type] || '模板'
-  const options = templateList.value.filter((t: any) => t.type === type)
-  if (!options.length) return []
-  return [{ label, options }]
-})
-
-// 一个模板只能应用一个页面（后端 services/page_service.go 同样强制）：
-// 已被其他页面（不含当前编辑页面）绑定的模板在下拉中禁用并提示已应用的页面。
-const templateUsedByPages = computed(() => {
-  const map: Record<number, string> = {}
-  allPages.value.forEach(p => {
-    if (p.templateId && p.id !== pageForm.id) {
-      map[p.templateId] = p.name
-    }
+// 模板与页面一一绑定（后端 services/page_service.go 强制），按 templateId 反查模板对应的页面
+const pageByTemplateId = computed(() => {
+  const map = new Map<number, PageItem>()
+  allPages.value.forEach((p) => {
+    if (p.templateId) map.set(Number(p.templateId), p)
   })
   return map
 })
-
-const templateOptionLabel = (item: any) => {
-  const usedBy = templateUsedByPages.value[item.id]
-  return usedBy ? `${item.name}（已应用：${usedBy}）` : item.name
-}
 
 const isRootColumn = (item: ColumnItem) => !item.parentId || item.parentId === 0
 
@@ -578,25 +448,27 @@ const columnTreeOptions = computed(() => {
   return buildOptions(allColumns.value, undefined)
 })
 
+// 页面数据不再直接展示，仅用于反查模板绑定的页面（模板与页面一一绑定）
 const fetchData = async () => {
-  pageLoading.value = true
   try {
     const res: any = await getPages({ pageType: activePageType.value })
     allPages.value = res.data || []
     selectedPage.value = null
   } catch (error) {
     ElMessage.error('获取页面列表失败')
-  } finally {
-    pageLoading.value = false
   }
 }
 
+// 读取当前页面类型的模板列表
 const fetchTemplates = async () => {
+  templateLoading.value = true
   try {
-    const res: any = await getAllTemplates()
+    const res: any = await getAllTemplates(activePageType.value)
     templateList.value = res.data.list || []
   } catch (error) {
     ElMessage.error('获取模板列表失败')
+  } finally {
+    templateLoading.value = false
   }
 }
 
@@ -625,134 +497,18 @@ watch(() => columnForm.name, (val) => {
 })
 
 const handleTypeChange = (type: string) => {
+  if (activePageType.value === type) return
   activePageType.value = type
+  selectedTemplate.value = null
   selectedPage.value = null
   fetchData()
+  fetchTemplates()
 }
 
-const handlePageSelect = (row: PageItem) => {
-  selectedPage.value = row
-}
-
-const handleAddPage = () => {
-  pageDialogTitle.value = '新增页面'
-  resetPageForm()
-  pageDialogVisible.value = true
-}
-
-const handleEditPage = (row: PageItem) => {
-  pageDialogTitle.value = '编辑页面'
-  Object.assign(pageForm, {
-    id: row.id,
-    name: row.name,
-    code: row.code,
-    pageType: row.pageType,
-    routePath: row.routePath,
-    templateId: row.templateId,
-    template: row.template,
-    description: row.description,
-    status: row.status
-  })
-  pageDialogVisible.value = true
-}
-
-const handleDeletePage = (row: PageItem) => {
-  const hasColumns = allColumns.value.some(c => c.pageId === row.id)
-  const msg = hasColumns
-    ? `页面 "${row.name}" 下存在栏目，删除页面将一并删除其下所有栏目，确定吗？`
-    : `确定要删除页面 "${row.name}" 吗？`
-  ElMessageBox.confirm(msg, '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    await deletePage(row.id)
-    ElMessage.success('删除成功')
-    fetchData()
-    if (selectedPage.value?.id === row.id) {
-      selectedPage.value = null
-    }
-  })
-}
-
-const handlePageStatusChange = async (row: PageItem, val: number) => {
-  try {
-    // 栏目页和详情页类型只能有一个启用，启用当前页时自动禁用其他同类型页面
-    if ((activePageType.value === 'column' || activePageType.value === 'detail') && val === 1) {
-      const otherOpenPages = allPages.value.filter(
-        p => p.pageType === activePageType.value && p.status === 1 && p.id !== row.id
-      )
-      for (const p of otherOpenPages) {
-        await updatePage(p.id, {
-          name: p.name,
-          code: p.code,
-          pageType: p.pageType,
-          routePath: p.routePath,
-          templateId: p.templateId,
-          template: p.template,
-          description: p.description,
-          status: 0
-        })
-        p.status = 0
-      }
-      ElMessage.success(`页面状态已${val === 1 ? '启用' : '禁用'}`)
-    }
-
-    await updatePage(row.id, {
-      name: row.name,
-      code: row.code,
-      pageType: row.pageType,
-      routePath: row.routePath,
-      templateId: row.templateId,
-      template: row.template,
-      description: row.description,
-      status: val
-    })
-    ElMessage.success(`栏目页和详情页页面状态同时只能有一个启用`)
-  } catch (error) {
-    row.status = val === 1 ? 0 : 1
-  }
-}
-
-const handlePageSubmit = async () => {
-  const valid = await pageFormRef.value?.validate().catch(() => false)
-  if (!valid) return
-  pageSubmitLoading.value = true
-  try {
-    const selectedTemplate = templateList.value.find((t: any) => t.id === pageForm.templateId)
-    const payload = {
-      name: pageForm.name || '',
-      code: pageForm.code || '',
-      pageType: pageForm.pageType || activePageType.value,
-      routePath: pageForm.routePath || '',
-      templateId: pageForm.templateId,
-      template: selectedTemplate?.name || '',
-      description: pageForm.description,
-      status: pageForm.status ?? 1
-    }
-    if (pageForm.id) {
-      await updatePage(pageForm.id, payload)
-    } else {
-      await createPage(payload)
-    }
-    ElMessage.success(pageForm.id ? '修改成功' : '新增成功')
-    pageDialogVisible.value = false
-    fetchData()
-  } finally {
-    pageSubmitLoading.value = false
-  }
-}
-
-const resetPageForm = () => {
-  pageForm.id = undefined
-  pageForm.name = ''
-  pageForm.code = ''
-  pageForm.pageType = activePageType.value as any
-  pageForm.routePath = ''
-  pageForm.templateId = undefined
-  pageForm.template = ''
-  pageForm.description = ''
-  pageForm.status = 1
+// 点击模板行：下方面目列表切换到该模板绑定的页面（未绑定时提示）
+const handleTemplateSelect = (row: any) => {
+  selectedTemplate.value = row || null
+  selectedPage.value = row ? pageByTemplateId.value.get(Number(row.id)) || null : null
 }
 
 const handleAddColumn = () => {
