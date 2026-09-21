@@ -131,7 +131,7 @@
         <el-form-item label="负责人" prop="leader">
           <el-select
             v-model="form.leaderCode"
-            :placeholder="form.orgId ? '请选择本机构负责人' : '请先选择所属机构'"
+            :placeholder="form.orgId ? '请选择本部门负责人' : '请先选择所属机构'"
             clearable
             filterable
             :disabled="!form.orgId"

@@ -651,7 +651,7 @@ erDiagram
 | 4 | 内容作者 | `content_author` |
 
 > 原 `2` 普通管理员（`admin`）已下线移除，不再播种；ID `3`/`4` 保持原值不重排。
-> 角色 1 名称于 2026-09-21 由「超级管理员」更名为「管理员」（`code` 仍为 `super_admin`），启动时由 `models.UpgradeBuiltinAdminNaming()` 对其与内置账号做幂等更名（仅当名称仍是旧默认值时才改写）。
+> 角色 1 名称于 2026-09-21 由「超级管理员」更名为「管理员」（`code` 仍为 `super_admin`）。仅影响**新库播种**（`models/seed.go`）：启动流程不会改写存量库，如需同步可手工执行 `UPDATE role SET name = '管理员' WHERE code = 'super_admin' AND name = '超级管理员';`（内置账号 `id = 1` 的 `username` 同理）。
 
 ### 默认用户（`models/seed.go`，初始密码 `1qaz@WSX`，SM3 加密存储）
 

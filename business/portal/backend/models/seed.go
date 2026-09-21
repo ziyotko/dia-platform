@@ -119,34 +119,3 @@ func SeedDefaultUsers() {
 		utils.Logger.Infof("已自动创建默认用户: %s (%s)", user.Username, user.Account)
 	}
 }
-
-// 内置管理员角色/账号的历史名称：2026-09-21 由「超级管理员」统一更名为「管理员」。
-const legacyBuiltinAdminName = "超级管理员"
-
-// builtinAdminName 内置管理员角色与账号的当前名称。
-const builtinAdminName = "管理员"
-
-// UpgradeBuiltinAdminNaming 幂等升级内置角色与账号的名称：
-// 仅当名称仍等于旧默认值「超级管理员」时才改写为「管理员」，避免覆盖使用方自行修改过的名称。
-// 角色按 code=super_admin 定位（ID 恒为 1），账号按 ID=1（内置管理员）定位。
-func UpgradeBuiltinAdminNaming() {
-	var role Role
-	if err := utils.DB.Where("code = ? AND name = ?", "super_admin", legacyBuiltinAdminName).First(&role).Error; err == nil {
-		if updateErr := utils.DB.Model(&Role{}).Where("id = ?", role.ID).
-			Update("name", builtinAdminName).Error; updateErr != nil {
-			utils.Logger.Warnf("升级内置角色名称失败: %v", updateErr)
-		} else {
-			utils.Logger.Infof("已将内置角色[%s]更名为[%s]", legacyBuiltinAdminName, builtinAdminName)
-		}
-	}
-
-	var user User
-	if err := utils.DB.Where("id = ? AND username = ?", 1, legacyBuiltinAdminName).First(&user).Error; err == nil {
-		if updateErr := utils.DB.Model(&User{}).Where("id = ?", user.ID).
-			Update("username", builtinAdminName).Error; updateErr != nil {
-			utils.Logger.Warnf("升级内置账号名称失败: %v", updateErr)
-		} else {
-			utils.Logger.Infof("已将内置账号[%s]更名为[%s]", legacyBuiltinAdminName, builtinAdminName)
-		}
-	}
-}

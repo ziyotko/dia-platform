@@ -31,8 +31,6 @@ func main() {
 	models.SeedDefaultRoles()
 	// 初始化系统默认用户（与默认角色一一对应，初始密码 1qaz@WSX），缺失时自动创建
 	models.SeedDefaultUsers()
-	// 内置管理员角色/账号更名升级（幂等：仍为旧名「超级管理员」时才改写为「管理员」）
-	models.UpgradeBuiltinAdminNaming()
 	// 初始化系统默认菜单（管理首页/内容管理/数据统计/基础配置/系统配置），缺失时自动创建
 	models.SeedDefaultMenus()
 	// 初始化内置角色（内容审核/内容作者）的默认菜单权限，仅在角色尚无权限配置时写入
