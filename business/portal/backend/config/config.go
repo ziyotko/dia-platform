@@ -16,13 +16,16 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Port             string   `mapstructure:"port"`
-	Host             string   `mapstructure:"host"`
-	Mode             string   `mapstructure:"mode"`
-	ApiPrefix        string   `mapstructure:"api_prefix"`
-	UploadDirPrefix  string   `mapstructure:"upload_dir_prefix"`
-	MaxConcurrentIPs int      `mapstructure:"max_concurrent_ips"`
-	AllowedOrigins   []string `mapstructure:"allowed_origins"`
+	Port             string `mapstructure:"port"`
+	Host             string `mapstructure:"host"`
+	Mode             string `mapstructure:"mode"`
+	ApiPrefix        string `mapstructure:"api_prefix"`
+	UploadDirPrefix  string `mapstructure:"upload_dir_prefix"`
+	MaxConcurrentIPs int    `mapstructure:"max_concurrent_ips"`
+	// 非 multipart（JSON）请求体上限（MB）：富文本正文会内联 base64 图片，需留足余量；
+	// <=0 时回退 64MB。文件上传（multipart）不受此限制。
+	MaxJSONBodyMB  int      `mapstructure:"max_json_body_mb"`
+	AllowedOrigins []string `mapstructure:"allowed_origins"`
 
 	// 可信反向代理地址，决定 gin 是否信任 X-Forwarded-For / X-Real-IP
 	TrustedProxies []string `mapstructure:"trusted_proxies"`

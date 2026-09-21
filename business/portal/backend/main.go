@@ -64,6 +64,9 @@ func main() {
 
 	router.Use(middleware.CorsMiddleware())
 	router.Use(middleware.SecurityHeaders())
+	// 限制非 multipart 请求体大小：JSON 请求体会被防重放/操作日志中间件整体读入内存，
+	// 不设上限时单个超大 body 即可把进程内存打满（文件上传不受影响，另有 50MB/800MB 限制）
+	router.Use(middleware.BodyLimitMiddleware(config.AppConfig.Server.MaxJSONBodyMB))
 
 	router.Static(config.AppConfig.Server.UploadDirPrefix+"/uploads", "./uploads")
 

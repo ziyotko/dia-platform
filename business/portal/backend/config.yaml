@@ -6,6 +6,9 @@ server:
   api_prefix: /business_portal/api
   upload_dir_prefix: "/business_portal"
   max_concurrent_ips: 50
+  # 非 multipart（JSON）请求体上限（MB）：富文本正文会内联 base64 图片，需留足余量；未配置/<=0 回退 64。
+  # 文件上传（multipart）不受此限制，另有单文件限制（视频 800MB、其它 50MB）与 Nginx client_max_body_size 兜底。
+  max_json_body_mb: 64
   # 可信反向代理地址，决定 gin 是否信任 X-Forwarded-For / X-Real-IP。
   # 生产环境若经 Nginx 等反向代理，请填入代理实际地址；本机回环保留 127.0.0.1。
   # 若为空白列表，main.go 会回退为 ["127.0.0.1"]。
