@@ -242,7 +242,6 @@
                 <el-table-column prop="id" label="ID" width="80" align="center" />
                 <el-table-column prop="name" label="模板名称" min-width="160" />
                 <el-table-column prop="routePath" label="访问路径" min-width="140" show-overflow-tooltip />
-                <el-table-column prop="createdAt" label="创建时间" width="170" />
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
                 <el-table-column label="操作" width="280" align="center" fixed="right">
                   <template #default="{ row }">
@@ -279,7 +278,6 @@
                 <el-table-column prop="id" label="ID" width="80" align="center" />
                 <el-table-column prop="name" label="栏目名称" min-width="160" />
                 <el-table-column prop="template" label="模板名称" min-width="120" show-overflow-tooltip />
-                <el-table-column prop="createdAt" label="创建时间" width="170" />
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
                 <el-table-column label="操作" width="280" align="center" fixed="right">
                   <template #default="{ row }">
@@ -318,7 +316,6 @@
                 <el-table-column prop="name" label="模板名称" min-width="60" show-overflow-tooltip />
                 <el-table-column prop="author" label="作者" min-width="60" />
                 <el-table-column prop="source" label="来源" min-width="100" />
-                <el-table-column prop="createdAt" label="创建时间" width="170" />
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
                 <el-table-column label="操作" width="340" align="center" fixed="right">
                   <template #default="{ row }">
@@ -358,7 +355,6 @@
                 <el-table-column prop="id" label="ID" width="80" align="center" />
                 <el-table-column prop="name" label="模板名称" min-width="160" />
                 <el-table-column prop="routePath" label="访问路径" min-width="140" show-overflow-tooltip />
-                <el-table-column prop="createdAt" label="创建时间" width="170" />
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
                 <el-table-column label="操作" width="280" align="center" fixed="right">
                   <template #default="{ row }">
