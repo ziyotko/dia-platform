@@ -10,7 +10,7 @@
             v-model="queryForm.columnPath"
             :options="columnCascaderOptions"
             :props="{ expandTrigger: 'hover' }"
-            placeholder="请选择页面/栏目/子栏目"
+            placeholder="请选择模板/栏目/子栏目"
             clearable
             filterable
             style="width: 280px"
@@ -784,7 +784,7 @@
           <template v-else-if="currentArticleType === 3">仅展示「数据展示」类栏目。</template>
           <template v-else-if="currentArticleType === 4">仅展示「报刊展示」类栏目。</template>
           <template v-else>不展示「视频展示」「数据展示」和「报刊展示」类栏目。</template>
-          请先选择页面，再勾选该页面下的栏目；支持跨页面多选。
+          请先选择模板，再勾选该模板下的栏目；支持跨模板多选。
         </span>
       </div>
       <el-row :gutter="16" class="column-setting-body">
@@ -792,22 +792,22 @@
           <div class="column-setting-panel">
             <div class="column-setting-panel-title">
               <el-icon><Monitor /></el-icon>
-              <span>选择页面</span>
-              <span class="column-setting-count">({{ pageList.length }})</span>
+              <span>选择模板</span>
+              <span class="column-setting-count">({{ templateList.length }})</span>
             </div>
             <el-scrollbar height="420px" class="column-setting-scroll">
-              <div v-if="pageList.length === 0" class="column-setting-empty">
-                <el-empty description="暂无页面" :image-size="80" />
+              <div v-if="templateList.length === 0" class="column-setting-empty">
+                <el-empty description="暂无模板" :image-size="80" />
               </div>
               <div
-                v-for="page in pageList"
-                :key="page.id"
-                :class="['page-item', { active: selectedColumnPageId === page.id }]"
-                @click="selectColumnPage(page.id)"
+                v-for="tpl in templateList"
+                :key="tpl.id"
+                :class="['page-item', { active: selectedColumnTemplateId === tpl.id }]"
+                @click="selectColumnTemplate(tpl.id)"
               >
-                <div class="page-item-name">{{ page.name }}</div>
-                <div class="page-item-meta">{{ getColumnCountByPage(page.id) }} 个栏目</div>
-                <el-icon v-if="selectedColumnPageId === page.id" class="page-item-check"><Check /></el-icon>
+                <div class="page-item-name">{{ tpl.name }}</div>
+                <div class="page-item-meta">{{ getColumnCountByTemplate(tpl.id) }} 个栏目</div>
+                <el-icon v-if="selectedColumnTemplateId === tpl.id" class="page-item-check"><Check /></el-icon>
               </div>
             </el-scrollbar>
           </div>
@@ -817,24 +817,24 @@
             <div class="column-setting-panel-title">
               <el-icon><Collection /></el-icon>
               <span>选择栏目</span>
-              <span class="column-setting-count">({{ selectedColumnPageColumns.length }})</span>
+              <span class="column-setting-count">({{ selectedColumnTemplateColumns.length }})</span>
               <el-checkbox
-                v-if="selectedColumnPageColumns.length > 0"
-                v-model="selectedPageAllSelected"
+                v-if="selectedColumnTemplateColumns.length > 0"
+                v-model="selectedTemplateAllSelected"
                 class="column-select-all"
-                @change="toggleSelectAllPageColumns"
+                @change="toggleSelectAllTemplateColumns"
               >全选</el-checkbox>
             </div>
             <el-scrollbar height="420px" class="column-setting-scroll">
-              <div v-if="!selectedColumnPageId" class="column-setting-empty">
-                <el-empty description="请先选择左侧页面" :image-size="100" />
+              <div v-if="!selectedColumnTemplateId" class="column-setting-empty">
+                <el-empty description="请先选择左侧模板" :image-size="100" />
               </div>
-              <div v-else-if="selectedColumnPageColumns.length === 0" class="column-setting-empty">
-                <el-empty description="该页面下暂无符合当前文章类型的栏目" :image-size="100" />
+              <div v-else-if="selectedColumnTemplateColumns.length === 0" class="column-setting-empty">
+                <el-empty description="该模板下暂无符合当前文章类型的栏目" :image-size="100" />
               </div>
               <el-checkbox-group v-else v-model="selectedColumnIds" class="column-checkbox-group">
                 <div
-                  v-for="col in selectedColumnPageColumns"
+                  v-for="col in selectedColumnTemplateColumns"
                   :key="col.id"
                   :class="['column-card', { checked: selectedColumnIds.includes(col.id), 'is-child': col.parentId && col.parentId > 0 }]"
                   @click="toggleColumnSelection(col.id)"
@@ -877,7 +877,7 @@
             class="column-selected-tag"
             @close="removeSelectedColumn(item.id)"
           >
-            {{ item.pageName }} / {{ item.name }}
+            {{ item.templateName }} / {{ item.name }}
           </el-tag>
         </div>
       </div>
@@ -1048,7 +1048,7 @@ import { getUserOptions } from '@/api/user'
 import { getWorkflowRoleOptions } from '@/api/workflow-role'
 import { getAllCategories } from '@/api/category'
 import { getAllTags } from '@/api/tag'
-import { getPages } from '@/api/page'
+import { getAllTemplates } from '@/api/template'
 import { getColumns } from '@/api/column'
 import { uploadFile } from '@/api/upload'
 
@@ -1123,11 +1123,11 @@ const paperDialogTitle = ref('新增报刊')
 const columnDialogVisible = ref(false)
 const columnDialogTitle = ref('')
 const selectedColumnIds = ref<number[]>([])
-const selectedColumnPageId = ref<number | undefined>(undefined)
+const selectedColumnTemplateId = ref<number | undefined>(undefined)
 const columnSubmitLoading = ref(false)
 const currentArticleId = ref<number | undefined>(undefined)
 const currentArticleType = ref<number | undefined>(undefined)
-const pageList = ref<any[]>([])
+const templateList = ref<any[]>([])
 const columnList = ref<any[]>([])
 
 const articleTypeName = computed(() => {
@@ -1135,9 +1135,9 @@ const articleTypeName = computed(() => {
   return map[currentArticleType.value || 1] || '图文'
 })
 
-const selectedColumnPageColumns = computed(() => {
-  if (!selectedColumnPageId.value) return []
-  let cols = columnList.value.filter((col: any) => col.pageId === selectedColumnPageId.value)
+const selectedColumnTemplateColumns = computed(() => {
+  if (!selectedColumnTemplateId.value) return []
+  let cols = columnList.value.filter((col: any) => col.templateId === selectedColumnTemplateId.value)
   const type = currentArticleType.value
   if (type === 2) {
     cols = cols.filter((col: any) => col.displayType === 8)
@@ -1163,13 +1163,13 @@ const getColumnParentName = (column: any) => {
   return parent?.name || ''
 }
 
-const selectedPageAllSelected = computed({
+const selectedTemplateAllSelected = computed({
   get() {
-    const cols = selectedColumnPageColumns.value
+    const cols = selectedColumnTemplateColumns.value
     return cols.length > 0 && cols.every((col: any) => selectedColumnIds.value.includes(col.id))
   },
   set(val: boolean) {
-    const ids = selectedColumnPageColumns.value.map((col: any) => col.id)
+    const ids = selectedColumnTemplateColumns.value.map((col: any) => col.id)
     if (val) {
       selectedColumnIds.value = Array.from(new Set([...selectedColumnIds.value, ...ids]))
     } else {
@@ -1183,10 +1183,10 @@ const selectedColumnSummary = computed(() => {
     .map((id: number) => {
       const col = columnList.value.find((c: any) => c.id === id)
       if (!col) return null
-      const page = pageList.value.find((p: any) => p.id === col.pageId)
-      return { id, name: col.name, pageName: page?.name || '未知页面' }
+      const tpl = templateList.value.find((t: any) => t.id === col.templateId)
+      return { id, name: col.name, templateName: tpl?.name || '未知模板' }
     })
-    .filter(Boolean) as { id: number; name: string; pageName: string }[]
+    .filter(Boolean) as { id: number; name: string; templateName: string }[]
 })
 
 const auditFlowDialogVisible = ref(false)
@@ -1306,12 +1306,12 @@ const tableData = ref<any[]>([])
 const categoryList = ref<any[]>([])
 const tagList = ref<any[]>([])
 
-const getColumnsByPage = (pageId: number) => {
-  return columnList.value.filter((col: any) => col.pageId === pageId)
+const getColumnsByTemplate = (templateId: number) => {
+  return columnList.value.filter((col: any) => col.templateId === templateId)
 }
 
-const getColumnCountByPage = (pageId: number) => {
-  const cols = getColumnsByPage(pageId)
+const getColumnCountByTemplate = (templateId: number) => {
+  const cols = getColumnsByTemplate(templateId)
   const type = currentArticleType.value
   if (type === 2) {
     return cols.filter((col: any) => col.displayType === 8).length
@@ -1324,8 +1324,8 @@ const getColumnCountByPage = (pageId: number) => {
   }
 }
 
-const selectColumnPage = (pageId: number) => {
-  selectedColumnPageId.value = pageId
+const selectColumnTemplate = (templateId: number) => {
+  selectedColumnTemplateId.value = templateId
 }
 
 const toggleColumnSelection = (columnId: number) => {
@@ -1337,8 +1337,8 @@ const toggleColumnSelection = (columnId: number) => {
   }
 }
 
-const toggleSelectAllPageColumns = (val: any) => {
-  const ids = selectedColumnPageColumns.value.map((col: any) => col.id)
+const toggleSelectAllTemplateColumns = (val: any) => {
+  const ids = selectedColumnTemplateColumns.value.map((col: any) => col.id)
   if (val) {
     selectedColumnIds.value = Array.from(new Set([...selectedColumnIds.value, ...ids]))
   } else {
@@ -1350,10 +1350,10 @@ const removeSelectedColumn = (columnId: number) => {
   selectedColumnIds.value = selectedColumnIds.value.filter((id: number) => id !== columnId)
 }
 
-const fetchPages = async () => {
+const fetchTemplates = async () => {
   try {
-    const res: any = await getPages()
-    pageList.value = res.data || []
+    const res: any = await getAllTemplates()
+    templateList.value = res.data.list || []
   } catch (error) {
     // ignore
   }
@@ -1368,14 +1368,14 @@ const fetchColumns = async () => {
   }
 }
 
-// 栏目级联选项：页面 → 栏目 → 子栏目
+// 栏目级联选项：模板 → 栏目 → 子栏目
 const columnCascaderOptions = computed(() => {
-  return pageList.value.map((page: any) => {
-    const cols = columnList.value.filter((col: any) => col.pageId === page.id)
+  return templateList.value.map((tpl: any) => {
+    const cols = columnList.value.filter((col: any) => col.templateId === tpl.id)
     const rootCols = cols.filter((col: any) => !col.parentId || col.parentId === 0)
     return {
-      value: page.id,
-      label: page.name,
+      value: tpl.id,
+      label: tpl.name,
       children: rootCols.map((rootCol: any) => {
         const children = cols.filter((col: any) => col.parentId === rootCol.id)
         return {
@@ -2192,18 +2192,18 @@ const handleSetColumns = async (row: any) => {
   currentArticleType.value = row.type
   columnDialogTitle.value = row.title
   selectedColumnIds.value = row.columnIds || []
-  selectedColumnPageId.value = undefined
-  if (pageList.value.length === 0) {
-    await fetchPages()
+  selectedColumnTemplateId.value = undefined
+  if (templateList.value.length === 0) {
+    await fetchTemplates()
   }
   if (columnList.value.length === 0) {
     await fetchColumns()
   }
-  // 若文章已有栏目，默认选中第一个有效栏目所在页面
+  // 若文章已有栏目，默认选中第一个有效栏目所在模板
   if (selectedColumnIds.value.length > 0) {
     const firstCol = columnList.value.find((col: any) => col.id === selectedColumnIds.value[0])
     if (firstCol) {
-      selectedColumnPageId.value = firstCol.pageId
+      selectedColumnTemplateId.value = firstCol.templateId
     }
   }
   columnDialogVisible.value = true
@@ -2705,7 +2705,7 @@ onMounted(() => {
   fetchData().then(() => checkAutoAudit())
   fetchCategories()
   fetchTags()
-  fetchPages()
+  fetchTemplates()
   fetchColumns()
 })
 </script>

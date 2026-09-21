@@ -16,7 +16,7 @@ type Link struct {
 	Url         string         `gorm:"size:500;not null" json:"url"`
 	Logo        string         `gorm:"size:500" json:"logo"`
 	Description string         `gorm:"size:500" json:"description"`
-	PageID      uint           `gorm:"not null;index" json:"pageId"`
+	TemplateID  uint           `gorm:"not null;index" json:"templateId"`
 	ColumnID    uint           `gorm:"default:0;index" json:"columnId"`
 	Sort        int            `gorm:"default:0" json:"sort"`
 	Status      int            `gorm:"default:1;index" json:"status"`

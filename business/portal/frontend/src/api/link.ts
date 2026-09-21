@@ -6,13 +6,13 @@ export interface LinkForm {
   url: string
   logo?: string
   description?: string
-  pageId: number
+  templateId: number
   columnId?: number
   sort: number
   status: number
 }
 
-export function getLinks(params: { name?: string; pageId?: number; columnId?: number; status?: number; page?: number; pageSize?: number }) {
+export function getLinks(params: { name?: string; templateId?: number; columnId?: number; status?: number; page?: number; pageSize?: number }) {
   return request.get('/links', { params })
 }
 

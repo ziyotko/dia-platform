@@ -7,15 +7,15 @@ import (
 
 type AdService struct{}
 
-func (s *AdService) GetAds(name string, pageID int, columnID int, status int, page int, pageSize int) ([]models.Ad, int64, error) {
+func (s *AdService) GetAds(name string, templateID int, columnID int, status int, page int, pageSize int) ([]models.Ad, int64, error) {
 	var ads []models.Ad
 	var total int64
 	query := utils.DB.Model(&models.Ad{})
 	if name != "" {
 		query = query.Where("name LIKE ?", "%"+name+"%")
 	}
-	if pageID > 0 {
-		query = query.Where("page_id = ?", pageID)
+	if templateID > 0 {
+		query = query.Where("template_id = ?", templateID)
 	}
 	if columnID > 0 {
 		query = query.Where("column_id = ?", columnID)
@@ -51,15 +51,15 @@ func (s *AdService) UpdateAd(id uint, ad *models.Ad) error {
 		return err
 	}
 	updates := map[string]any{
-		"name":       ad.Name,
-		"page_id":    ad.PageID,
-		"column_id":  ad.ColumnID,
-		"image":      ad.Image,
-		"link":       ad.Link,
-		"sort":       ad.Sort,
-		"status":     ad.Status,
-		"start_time": ad.StartTime,
-		"end_time":   ad.EndTime,
+		"name":        ad.Name,
+		"template_id": ad.TemplateID,
+		"column_id":   ad.ColumnID,
+		"image":       ad.Image,
+		"link":        ad.Link,
+		"sort":        ad.Sort,
+		"status":      ad.Status,
+		"start_time":  ad.StartTime,
+		"end_time":    ad.EndTime,
 	}
 	return utils.DB.Model(&old).Updates(updates).Error
 }

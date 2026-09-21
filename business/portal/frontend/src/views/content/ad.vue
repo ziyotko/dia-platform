@@ -7,14 +7,14 @@
         </el-form-item>
         <el-form-item label="广告位置">
           <el-select
-            v-model="queryForm.pageId"
-            placeholder="选择页面"
+            v-model="queryForm.templateId"
+            placeholder="选择模板"
             clearable
             style="width: 140px"
-            @change="onQueryPageChange"
+            @change="onQueryTemplateChange"
           >
             <el-option
-              v-for="item in pageList"
+              v-for="item in templateList"
               :key="item.id"
               :label="item.name"
               :value="item.id"
@@ -25,7 +25,7 @@
             placeholder="选择栏目"
             clearable
             style="width: 140px; margin-left: 8px"
-            :disabled="!queryForm.pageId"
+            :disabled="!queryForm.templateId"
           >
             <el-option
               v-for="item in queryColumnList"
@@ -67,8 +67,8 @@
         <el-table-column prop="name" label="广告名称" min-width="160" />
         <el-table-column label="广告位置" min-width="180">
           <template #default="{ row }">
-            <div v-if="row.pageName">
-              <el-tag size="small" type="info">{{ row.pageName }}</el-tag>
+            <div v-if="row.templateName">
+              <el-tag size="small" type="info">{{ row.templateName }}</el-tag>
               <el-icon class="position-arrow"><ArrowRight /></el-icon>
               <el-tag size="small">{{ row.columnName || '默认' }}</el-tag>
             </div>
@@ -148,15 +148,15 @@
         <el-form-item label="广告名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入广告名称" />
         </el-form-item>
-        <el-form-item label="广告位置" prop="pageId">
+        <el-form-item label="广告位置" prop="templateId">
           <el-select
-            v-model="form.pageId"
-            placeholder="选择页面"
+            v-model="form.templateId"
+            placeholder="选择模板"
             style="width: 100%"
-            @change="onFormPageChange"
+            @change="onFormTemplateChange"
           >
             <el-option
-              v-for="item in pageList"
+              v-for="item in templateList"
               :key="item.id"
               :label="item.name"
               :value="item.id"
@@ -168,7 +168,7 @@
             v-model="form.columnId"
             placeholder="请选择栏目"
             style="width: 100%"
-            :disabled="!form.pageId"
+            :disabled="!form.templateId"
           >
             <el-option
               v-for="item in formColumnList"
@@ -275,7 +275,7 @@ import {
   deleteAd,
   updateAdStatus
 } from '@/api/ad'
-import { getPages } from '@/api/page'
+import { getAllTemplates } from '@/api/template'
 import { getColumns } from '@/api/column'
 import { uploadFile } from '@/api/upload'
 
@@ -290,7 +290,7 @@ const queryForm = reactive({
   page: 1,
   pageSize: 10,
   name: '',
-  pageId: undefined as number | undefined,
+  templateId: undefined as number | undefined,
   columnId: undefined as number | undefined,
   status: undefined as number | undefined
 })
@@ -298,7 +298,7 @@ const queryForm = reactive({
 const form = reactive({
   id: undefined as number | undefined,
   name: '',
-  pageId: undefined as number | undefined,
+  templateId: undefined as number | undefined,
   columnId: undefined as number | undefined,
   image: '',
   link: '',
@@ -310,46 +310,47 @@ const form = reactive({
 
 const formRules = {
   name: [{ required: true, message: '请输入广告名称', trigger: 'blur' }],
-  pageId: [{ required: true, message: '请选择广告位置', trigger: 'change' }],
+  templateId: [{ required: true, message: '请选择广告位置', trigger: 'change' }],
   columnId: [{ required: true, message: '请选择栏目', trigger: 'change' }],
   link: [{ required: true, message: '请输入跳转链接', trigger: 'blur' }]
 }
 
 const tableData = ref<any[]>([])
-const pageList = ref<any[]>([])
+const templateList = ref<any[]>([])
 const queryColumnList = ref<any[]>([])
 const formColumnList = ref<any[]>([])
 
-const fetchPages = async () => {
+const fetchTemplates = async () => {
   try {
-    const res: any = await getPages({ status: 1 })
-    pageList.value = res.data || []
+    const res: any = await getAllTemplates()
+    // 只展示启用中的模板（与旧「页面」只放启用页面的口径一致）
+    templateList.value = (res.data.list || []).filter((t: any) => t.status === 1)
   } catch {
     // ignore
   }
 }
 
-const loadColumnsByPage = async (pageId: number | undefined, target: 'query' | 'form') => {
+const loadColumnsByTemplate = async (templateId: number | undefined, target: 'query' | 'form') => {
   const list = target === 'query' ? queryColumnList : formColumnList
   list.value = []
-  if (!pageId) return
+  if (!templateId) return
   try {
     // 广告位置只展示栏目类型为「广告展示」的栏目
-    const res: any = await getColumns({ pageId, displayType: 4 })
+    const res: any = await getColumns({ templateId, displayType: 4 })
     list.value = res.data || []
   } catch {
     // ignore
   }
 }
 
-const onQueryPageChange = (val: number | undefined) => {
+const onQueryTemplateChange = (val: number | undefined) => {
   queryForm.columnId = undefined
-  loadColumnsByPage(val, 'query')
+  loadColumnsByTemplate(val, 'query')
 }
 
-const onFormPageChange = (val: number | undefined) => {
+const onFormTemplateChange = (val: number | undefined) => {
   form.columnId = undefined
-  loadColumnsByPage(val, 'form')
+  loadColumnsByTemplate(val, 'form')
 }
 
 const fetchData = async () => {
@@ -359,7 +360,7 @@ const fetchData = async () => {
       page: queryForm.page,
       pageSize: queryForm.pageSize,
       name: queryForm.name || undefined,
-      pageId: queryForm.pageId || undefined,
+      templateId: queryForm.templateId || undefined,
       columnId: queryForm.columnId || undefined,
       status: queryForm.status !== undefined ? queryForm.status : undefined
     }
@@ -381,7 +382,7 @@ const handleSearch = () => {
 
 const resetQuery = () => {
   queryForm.name = ''
-  queryForm.pageId = undefined
+  queryForm.templateId = undefined
   queryForm.columnId = undefined
   queryForm.status = undefined
   queryForm.page = 1
@@ -398,13 +399,13 @@ const handleAdd = () => {
 const handleEdit = async (row: any) => {
   dialogTitle.value = '编辑广告'
   resetForm()
-  if (row.pageId) {
-    await loadColumnsByPage(row.pageId, 'form')
+  if (row.templateId) {
+    await loadColumnsByTemplate(row.templateId, 'form')
   }
   Object.assign(form, {
     id: row.id,
     name: row.name,
-    pageId: row.pageId,
+    templateId: row.templateId,
     columnId: row.columnId || undefined,
     image: row.image,
     link: row.link,
@@ -449,7 +450,7 @@ const handleSubmit = async () => {
   try {
     const payload = {
       name: form.name,
-      pageId: form.pageId as number,
+      templateId: form.templateId as number,
       columnId: form.columnId,
       image: form.image,
       link: form.link,
@@ -477,7 +478,7 @@ const handleSubmit = async () => {
 const resetForm = () => {
   form.id = undefined
   form.name = ''
-  form.pageId = undefined
+  form.templateId = undefined
   form.columnId = undefined
   form.image = ''
   form.link = ''
@@ -518,7 +519,7 @@ const handleCurrentChange = (val: number) => {
 }
 
 onMounted(() => {
-  fetchPages()
+  fetchTemplates()
   fetchData()
 })
 </script>

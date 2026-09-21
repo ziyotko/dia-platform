@@ -54,11 +54,11 @@
       <el-empty v-if="!templateTableData.length && !templateLoading" description="该页面类型下暂无启用的模板" />
     </el-card>
 
-    <el-card v-if="selectedPage" shadow="hover" class="column-card">
+    <el-card v-if="selectedTemplate" shadow="hover" class="column-card">
       <template #header>
         <div class="card-header">
           <div class="breadcrumb-title">
-            <span class="page-name">{{ selectedPage.name }}</span>
+            <span class="page-name">{{ selectedTemplate.name }}</span>
             <el-icon class="breadcrumb-sep"><ArrowRight /></el-icon>
             <span class="list-name">栏目列表</span>
           </div>
@@ -125,14 +125,10 @@
         </el-table-column>
       </el-table>
 
-      <el-empty v-if="!columnTableData.length && !columnLoading" description="该页面下暂无栏目，请添加" />
+      <el-empty v-if="!columnTableData.length && !columnLoading" description="该模板下暂无栏目，请添加" />
     </el-card>
 
-    <el-empty
-      v-else
-      :description="selectedTemplate ? '该模板未绑定页面，暂无栏目' : '请先在上方模板列表中选择模板'"
-      class="select-tip"
-    />
+    <el-empty v-else description="请先在上方模板列表中选择模板" class="select-tip" />
 
     <el-dialog
       v-model="columnDialogVisible"
@@ -143,15 +139,8 @@
       <el-form ref="columnFormRef" :model="columnForm" :rules="columnFormRules" label-width="90px">
         <el-row :gutter="16">
           <el-col :span="12">
-            <el-form-item label="所属页面" prop="pageId">
-              <el-select v-model="columnForm.pageId" placeholder="请选择所属页面" disabled style="width: 100%">
-                <el-option
-                  v-for="page in allPages"
-                  :key="page.id"
-                  :label="page.name"
-                  :value="page.id"
-                />
-              </el-select>
+            <el-form-item label="所属模板">
+              <el-input :model-value="selectedTemplate?.name || ''" disabled placeholder="请先选择模板" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -228,7 +217,6 @@
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete, CirclePlus, ArrowRight, Tickets } from '@element-plus/icons-vue'
-import { getPages } from '@/api/page'
 import {
   getColumns,
   createColumn,
@@ -239,24 +227,11 @@ import { getAllTemplates } from '@/api/template'
 import { getAllWorkflows } from '@/api/workflow'
 import pinyin from 'js-pinyin'
 
-interface PageItem {
-  id: number
-  name: string
-  code: string
-  pageType: 'home' | 'column' | 'detail' | 'special'
-  routePath: string
-  templateId?: number
-  template?: string
-  description?: string
-  status: number
-  createdAt: string
-}
-
 interface ColumnItem {
   id: number
   name: string
   code: string
-  pageId: number
+  templateId: number
   parentId?: number
   routePath?: string
   description?: string
@@ -271,7 +246,6 @@ interface ColumnItem {
 
 const activePageType = ref<string>('home')
 const selectedTemplate = ref<any | null>(null)
-const selectedPage = ref<PageItem | null>(null)
 
 const toPinyinCode = (str: string): string => {
   if (!str) return ''
@@ -279,7 +253,6 @@ const toPinyinCode = (str: string): string => {
   return py.toLowerCase().replace(/[^a-z0-9]/g, '')
 }
 
-const allPages = ref<PageItem[]>([])
 const allColumns = ref<ColumnItem[]>([])
 
 const templateLoading = ref(false)
@@ -318,7 +291,7 @@ const displayTypeOptions = [
 
 const columnForm = reactive<Partial<ColumnItem>>({
   id: undefined,
-  pageId: undefined,
+  templateId: undefined,
   parentId: undefined,
   name: '',
   code: '',
@@ -374,24 +347,18 @@ const templateTableData = computed(() => {
   return templateList.value.filter((t: any) => t.type === activePageType.value && t.status === 1)
 })
 
-// 模板与页面一一绑定（后端 services/page_service.go 强制），按 templateId 反查模板对应的页面
-const pageByTemplateId = computed(() => {
-  const map = new Map<number, PageItem>()
-  allPages.value.forEach((p) => {
-    if (p.templateId) map.set(Number(p.templateId), p)
-  })
-  return map
-})
+// 栏目直接挂在模板下（column.template_id，页面层已合并进模板）
+const currentTemplateId = computed(() => Number(selectedTemplate.value?.id || 0))
 
 const isRootColumn = (item: ColumnItem) => !item.parentId || item.parentId === 0
 
 const columnTableData = computed(() => {
-  if (!selectedPage.value) return []
-  const pageId = selectedPage.value.id
+  const templateId = currentTemplateId.value
+  if (!templateId) return []
   const buildTree = (items: ColumnItem[], parentId?: number): ColumnItem[] => {
     return items
       .filter(item => {
-        if (item.pageId !== pageId) return false
+        if (item.templateId !== templateId) return false
         if (parentId === undefined) return isRootColumn(item)
         return item.parentId === parentId
       })
@@ -405,12 +372,12 @@ const columnTableData = computed(() => {
 })
 
 const columnTreeOptions = computed(() => {
-  if (!selectedPage.value) return []
-  const pageId = selectedPage.value.id
+  const templateId = currentTemplateId.value
+  if (!templateId) return []
   const buildOptions = (items: ColumnItem[], parentId?: number): any[] => {
     return items
       .filter(item => {
-        if (item.pageId !== pageId) return false
+        if (item.templateId !== templateId) return false
         if (parentId === undefined) return isRootColumn(item)
         return item.parentId === parentId
       })
@@ -423,17 +390,6 @@ const columnTreeOptions = computed(() => {
   }
   return buildOptions(allColumns.value, undefined)
 })
-
-// 页面数据不再直接展示，仅用于反查模板绑定的页面（模板与页面一一绑定）
-const fetchData = async () => {
-  try {
-    const res: any = await getPages({ pageType: activePageType.value })
-    allPages.value = res.data || []
-    selectedPage.value = null
-  } catch (error) {
-    ElMessage.error('获取页面列表失败')
-  }
-}
 
 // 读取当前页面类型的模板列表
 const fetchTemplates = async () => {
@@ -449,10 +405,14 @@ const fetchTemplates = async () => {
 }
 
 const fetchColumns = async () => {
-  if (!selectedPage.value) return
+  const templateId = currentTemplateId.value
+  if (!templateId) {
+    allColumns.value = []
+    return
+  }
   columnLoading.value = true
   try {
-    const res: any = await getColumns({ pageId: selectedPage.value.id })
+    const res: any = await getColumns({ templateId })
     allColumns.value = res.data || []
   } catch (error) {
     ElMessage.error('获取栏目列表失败')
@@ -460,10 +420,6 @@ const fetchColumns = async () => {
     columnLoading.value = false
   }
 }
-
-watch(() => selectedPage.value, () => {
-  fetchColumns()
-})
 
 watch(() => columnForm.name, (val) => {
   if (val) {
@@ -475,29 +431,28 @@ watch(() => columnForm.name, (val) => {
 const handleTypeChange = () => {
   // 注意：选项值已由 el-radio-group 的 v-model 写入 activePageType，这里只负责重载数据
   selectedTemplate.value = null
-  selectedPage.value = null
-  fetchData()
+  allColumns.value = []
   fetchTemplates()
 }
 
-// 点击模板行：下方面目列表切换到该模板绑定的页面（未绑定时提示）
+// 点击模板行：下方面目列表直接切换到该模板下的栏目
 const handleTemplateSelect = (row: any) => {
   selectedTemplate.value = row || null
-  selectedPage.value = row ? pageByTemplateId.value.get(Number(row.id)) || null : null
+  allColumns.value = []
+  fetchColumns()
 }
 
 const handleAddColumn = () => {
-  if (!selectedPage.value) return
+  if (!currentTemplateId.value) return
   columnDialogTitle.value = '新增栏目'
   resetColumnForm()
-  columnForm.pageId = selectedPage.value.id
   columnDialogVisible.value = true
 }
 
 const handleAddChildColumn = (row: ColumnItem) => {
   columnDialogTitle.value = `新增子栏目 - ${row.name}`
   resetColumnForm()
-  columnForm.pageId = row.pageId
+  columnForm.templateId = row.templateId
   columnForm.parentId = row.id
   columnDialogVisible.value = true
 }
@@ -506,7 +461,7 @@ const handleEditColumn = (row: ColumnItem) => {
   columnDialogTitle.value = '编辑栏目'
   Object.assign(columnForm, {
     id: row.id,
-    pageId: row.pageId,
+    templateId: row.templateId,
     parentId: row.parentId || undefined,
     name: row.name,
     code: row.code,
@@ -544,7 +499,7 @@ const handleColumnStatusChange = async (row: ColumnItem, val: number) => {
     await updateColumn(row.id, {
       name: row.name,
       code: row.code,
-      pageId: row.pageId,
+      templateId: row.templateId,
       parentId: row.parentId,
       routePath: row.routePath,
       description: row.description,
@@ -567,7 +522,7 @@ const handleColumnSubmit = async () => {
     const payload = {
       name: columnForm.name || '',
       code: columnForm.code || '',
-      pageId: columnForm.pageId ?? 0,
+      templateId: columnForm.templateId ?? 0,
       parentId: columnForm.parentId,
       routePath: columnForm.routePath || '',
       description: columnForm.description,
@@ -591,7 +546,7 @@ const handleColumnSubmit = async () => {
 
 const resetColumnForm = () => {
   columnForm.id = undefined
-  columnForm.pageId = selectedPage.value?.id
+  columnForm.templateId = currentTemplateId.value
   columnForm.parentId = undefined
   columnForm.name = ''
   columnForm.code = ''
@@ -604,7 +559,6 @@ const resetColumnForm = () => {
 }
 
 onMounted(() => {
-  fetchData()
   fetchTemplates()
   fetchWorkflows()
 })

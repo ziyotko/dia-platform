@@ -19,13 +19,15 @@ type TemplateController struct {
 type TemplateListItem struct {
 	ID          uint   `json:"id"`
 	Name        string `json:"name"`
+	Code        string `json:"code"`
 	Type        string `json:"type"`
+	RoutePath   string `json:"routePath"`
 	Description string `json:"description"`
 	Status      int    `json:"status"`
 	SourceCode  string `json:"sourceCode"`
 	Layout      string `json:"layout"`
-	PageCount   int    `json:"pageCount"`
-	PageName    string `json:"pageName"`
+	ColumnCount int    `json:"columnCount"`
+	ColumnName  string `json:"columnName"`
 	CreatedAt   string `json:"createdAt"`
 }
 
@@ -65,13 +67,15 @@ func (c *TemplateController) GetTemplates(ctx *gin.Context) {
 		list = append(list, TemplateListItem{
 			ID:          t.ID,
 			Name:        t.Name,
+			Code:        t.Code,
 			Type:        t.Type,
+			RoutePath:   t.RoutePath,
 			Description: t.Description,
 			Status:      t.Status,
 			SourceCode:  t.SourceCode,
 			Layout:      t.Layout,
-			PageCount:   result.PageCounts[t.ID],
-			PageName:    result.PageNames[t.ID],
+			ColumnCount: result.ColumnCounts[t.ID],
+			ColumnName:  result.ColumnNames[t.ID],
 			CreatedAt:   t.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}

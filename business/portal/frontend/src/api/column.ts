@@ -4,7 +4,7 @@ export interface ColumnForm {
   id?: number
   name: string
   code: string
-  pageId: number
+  templateId: number
   parentId?: number
   routePath?: string
   template?: string
@@ -15,7 +15,7 @@ export interface ColumnForm {
   workflowId?: number
 }
 
-export function getColumns(params?: { pageId?: number; parentId?: number; displayType?: number }) {
+export function getColumns(params?: { templateId?: number; parentId?: number; displayType?: number }) {
   return request.get('/columns', { params })
 }
 

@@ -16,9 +16,10 @@ import (
 // 这些接口属于个人账户/工具类接口、或跨模块复用的只读基础数据（分类/标签/栏目/页面选项），
 // 任意已认证用户均可用；若后续需要收紧，可在此处调整或移除对应条目。
 //
-// 注意：此处按「路径」**精确**匹配（不做前缀展开），不区分 HTTP 方法。因此 /pages、/columns 这类同时存在只读（member）
-// 与写（admin）路由的路径，仅豁免集合路径本身（GET /pages、GET /columns）与挂在其上的写操作（POST /pages、POST /columns），
-// 子路径（如 PUT/DELETE /pages/1）**不在**豁免范围内，须由菜单 api_prefix 覆盖（「栏目管理」= /columns,/pages）。
+// 注意：此处按「路径」**精确**匹配（不做前缀展开），不区分 HTTP 方法。因此 /templates、/columns 这类同时存在只读（member）
+// 与写（admin）路由的路径，仅豁免集合路径本身（GET /templates、GET /columns）与挂在其上的写操作（POST /templates、POST /columns），
+// 子路径（如 PUT/DELETE /templates/1）**不在**豁免范围内，须由菜单 api_prefix 覆盖（「栏目管理」= /columns,/templates）。
+// 「模板管理」菜单自带 /templates 前缀，因此广告/友链等跨模块读取模板下拉时也需要该豁免。
 var apiPrefixExemptPaths = map[string]bool{
 	"/logout":                    true,
 	"/profile":                   true,
@@ -27,7 +28,7 @@ var apiPrefixExemptPaths = map[string]bool{
 	"/upload":                    true,
 	"/user-options":              true,
 	"/workflow-role-options":     true,
-	"/pages":                     true,
+	"/templates":                 true,
 	"/static-pages":              true,
 	"/categories/all":            true,
 	"/tags/all":                  true,

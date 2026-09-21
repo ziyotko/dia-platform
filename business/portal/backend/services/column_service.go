@@ -20,7 +20,7 @@ type ColumnPublishItem struct {
 }
 
 // GetColumnPublishes 获取栏目发布（静态化）列表：
-// 查询有已发布文章的栏目，并关联栏目模板页（page_type='column' and status=1）
+// 查询有已发布文章的栏目，并关联栏目页模板（type='column' and status=1）
 func (s *ColumnService) GetColumnPublishes() ([]ColumnPublishItem, error) {
 	// 1. 查询已发布文章所属的栏目（栏目名称 + 栏目 route_path）
 	type ColumnItem struct {
@@ -37,7 +37,7 @@ func (s *ColumnService) GetColumnPublishes() ([]ColumnPublishItem, error) {
 		return nil, err
 	}
 
-	// 2. 查询栏目模板页（模板名称 + route_path + 创建/修改时间）
+	// 2. 查询栏目页模板（模板名称 + route_path + 创建/修改时间）
 	type ColumnPage struct {
 		Name      string    `gorm:"column:name"`
 		RoutePath string    `gorm:"column:route_path"`
@@ -45,9 +45,9 @@ func (s *ColumnService) GetColumnPublishes() ([]ColumnPublishItem, error) {
 		UpdatedAt time.Time `gorm:"column:updated_at"`
 	}
 	var page ColumnPage
-	err = utils.DB.Model(&models.Page{}).
+	err = utils.DB.Model(&models.Template{}).
 		Select("name, route_path, created_at, updated_at").
-		Where("page_type = ? AND status = ?", "column", 1).
+		Where("type = ? AND status = ?", "column", 1).
 		Order("id ASC").
 		Limit(1).
 		Scan(&page).Error
@@ -70,11 +70,11 @@ func (s *ColumnService) GetColumnPublishes() ([]ColumnPublishItem, error) {
 	return result, nil
 }
 
-func (s *ColumnService) GetColumns(pageID uint, parentID uint, displayType int) ([]models.Column, error) {
+func (s *ColumnService) GetColumns(templateID uint, parentID uint, displayType int) ([]models.Column, error) {
 	var columns []models.Column
 	query := utils.DB.Model(&models.Column{})
-	if pageID > 0 {
-		query = query.Where("page_id = ?", pageID)
+	if templateID > 0 {
+		query = query.Where("template_id = ?", templateID)
 	}
 	if parentID > 0 {
 		query = query.Where("parent_id = ?", parentID)
@@ -98,7 +98,7 @@ func (s *ColumnService) UpdateColumn(id uint, column *models.Column) error {
 	updates := map[string]any{
 		"name":         column.Name,
 		"code":         column.Code,
-		"page_id":      column.PageID,
+		"template_id":  column.TemplateID,
 		"parent_id":    column.ParentID,
 		"route_path":   column.RoutePath,
 		"description":  column.Description,

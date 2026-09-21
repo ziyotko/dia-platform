@@ -14,11 +14,9 @@ import (
 // 需与「基础配置-静态化设置」区分：后者对应全局设置的 /settings。
 const staticManagementAPIPrefix = "/static,/static-logs,/static-monitor"
 
-// 「栏目管理」页面除栏目外还管理页面（页面管理 Tab，见 views/content/column.vue），
-// 而写操作走 PUT/DELETE /pages/:id —— 它不被任何菜单的 api_prefix 覆盖，
-// 也已超出豁免表（豁免表是精确匹配，只放行 GET /pages 这类列表读取），
-// 导致管理员改动「页面状态」或删除页面时返回「没有授权」。故在此追加 /pages。
-const columnManagementAPIPrefix = "/columns,/pages"
+// 「栏目管理」页面除栏目本身外，还需读取模板列表（页面层已合并进模板，栏目挂 template_id），
+// 因此 api_prefix 追加 /templates（/columns 已足够覆盖栏目读写）。
+const columnManagementAPIPrefix = "/columns,/templates"
 
 // menuSeedItem 描述一条待初始化的菜单数据。
 type menuSeedItem struct {
@@ -103,8 +101,9 @@ func SeedDefaultMenus() {
 	// 历史版本「静态化管理」只声明了 /static，导致 /static-logs、/static-monitor 不在授权范围内，
 	// 这里对未自定义过该值的环境做一次幂等升级。
 	upgradeMenuAPIPrefix("静态化管理", "/static", staticManagementAPIPrefix)
-	// 历史版本「栏目管理」只声明了 /columns，导致页面管理写接口（PUT/DELETE /pages/:id）返回「没有授权」。
+	// 历史版本「栏目管理」声明的是 /columns,/pages（页面层已移除）或早期仅 /columns，这里做幂等升级。
 	upgradeMenuAPIPrefix("栏目管理", "/columns", columnManagementAPIPrefix)
+	upgradeMenuAPIPrefix("栏目管理", "/columns,/pages", columnManagementAPIPrefix)
 	// 历史版本「静态化管理」挂在「内容管理」下（非管理员即使被授权也调不通其接口），迁移到「基础配置」。
 	moveMenuToParent("静态化管理", "内容管理", "基础配置", "/config/static")
 }

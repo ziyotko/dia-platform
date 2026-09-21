@@ -25,16 +25,16 @@ func NewLinkController() *LinkController {
 
 func (c *LinkController) GetLinks(ctx *gin.Context) {
 	name := ctx.Query("name")
-	pageIDStr := ctx.Query("pageId")
+	templateIDStr := ctx.Query("templateId")
 	columnIDStr := ctx.Query("columnId")
 	statusStr := ctx.Query("status")
 	pageStr := ctx.DefaultQuery("page", "1")
 	pageSizeStr := ctx.DefaultQuery("pageSize", "10")
 
-	pageID := 0
-	if pageIDStr != "" {
-		if id, err := strconv.Atoi(pageIDStr); err == nil {
-			pageID = id
+	templateID := 0
+	if templateIDStr != "" {
+		if id, err := strconv.Atoi(templateIDStr); err == nil {
+			templateID = id
 		}
 	}
 	columnID := 0
@@ -58,31 +58,31 @@ func (c *LinkController) GetLinks(ctx *gin.Context) {
 		pageSize = 10
 	}
 
-	links, total, err := c.linkService.GetLinks(name, pageID, columnID, status, page, pageSize)
+	links, total, err := c.linkService.GetLinks(name, templateID, columnID, status, page, pageSize)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取友链列表失败"))
 		return
 	}
 
-	// 补充页面和栏目名称
-	var pageIDs []uint
+	// 补充模板和栏目名称
+	var templateIDs []uint
 	var columnIDs []uint
 	for _, l := range links {
-		if l.PageID > 0 {
-			pageIDs = append(pageIDs, l.PageID)
+		if l.TemplateID > 0 {
+			templateIDs = append(templateIDs, l.TemplateID)
 		}
 		if l.ColumnID > 0 {
 			columnIDs = append(columnIDs, l.ColumnID)
 		}
 	}
 
-	pageMap := make(map[uint]string)
+	templateMap := make(map[uint]string)
 	columnMap := make(map[uint]string)
-	if len(pageIDs) > 0 {
-		var pages []models.Page
-		utils.DB.Where("id IN ?", pageIDs).Find(&pages)
-		for _, p := range pages {
-			pageMap[p.ID] = p.Name
+	if len(templateIDs) > 0 {
+		var templates []models.Template
+		utils.DB.Where("id IN ?", templateIDs).Find(&templates)
+		for _, t := range templates {
+			templateMap[t.ID] = t.Name
 		}
 	}
 	if len(columnIDs) > 0 {
@@ -96,20 +96,20 @@ func (c *LinkController) GetLinks(ctx *gin.Context) {
 	var list []gin.H
 	for _, l := range links {
 		list = append(list, gin.H{
-			"id":          l.ID,
-			"name":        l.Name,
-			"url":         l.Url,
-			"logo":        l.Logo,
-			"description": l.Description,
-			"pageId":      l.PageID,
-			"pageName":    pageMap[l.PageID],
-			"columnId":    l.ColumnID,
-			"columnName":  columnMap[l.ColumnID],
-			"sort":        l.Sort,
-			"status":      l.Status,
-			"author":      l.Author,
-			"authorCode":  l.AuthorCode,
-			"createdAt":   l.CreatedAt.Format("2006-01-02 15:04:05"),
+			"id":           l.ID,
+			"name":         l.Name,
+			"url":          l.Url,
+			"logo":         l.Logo,
+			"description":  l.Description,
+			"templateId":   l.TemplateID,
+			"templateName": templateMap[l.TemplateID],
+			"columnId":     l.ColumnID,
+			"columnName":   columnMap[l.ColumnID],
+			"sort":         l.Sort,
+			"status":       l.Status,
+			"author":       l.Author,
+			"authorCode":   l.AuthorCode,
+			"createdAt":    l.CreatedAt.Format("2006-01-02 15:04:05"),
 		})
 	}
 
@@ -135,7 +135,7 @@ func (c *LinkController) GetLinkByID(ctx *gin.Context) {
 		"url":         link.Url,
 		"logo":        link.Logo,
 		"description": link.Description,
-		"pageId":      link.PageID,
+		"templateId":  link.TemplateID,
 		"columnId":    link.ColumnID,
 		"sort":        link.Sort,
 		"status":      link.Status,
@@ -150,7 +150,7 @@ func (c *LinkController) CreateLink(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
-	if err := services.ValidatePageColumn(req.PageID, req.ColumnID); err != nil {
+	if err := services.ValidateTemplateColumn(req.TemplateID, req.ColumnID); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SafeErrText(err)))
 		return
 	}
@@ -180,7 +180,7 @@ func (c *LinkController) UpdateLink(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
-	if err := services.ValidatePageColumn(req.PageID, req.ColumnID); err != nil {
+	if err := services.ValidateTemplateColumn(req.TemplateID, req.ColumnID); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SafeErrText(err)))
 		return
 	}

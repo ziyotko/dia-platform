@@ -3,7 +3,7 @@ import request from '@/utils/request'
 export interface AdForm {
   id?: number
   name: string
-  pageId: number
+  templateId: number
   columnId?: number
   image?: string
   link?: string
@@ -13,7 +13,7 @@ export interface AdForm {
   endTime?: string
 }
 
-export function getAds(params: { name?: string; pageId?: number; columnId?: number; status?: number; page?: number; pageSize?: number }) {
+export function getAds(params: { name?: string; templateId?: number; columnId?: number; status?: number; page?: number; pageSize?: number }) {
   return request.get('/ads', { params })
 }
 

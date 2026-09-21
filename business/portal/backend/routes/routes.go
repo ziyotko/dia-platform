@@ -21,7 +21,6 @@ func SetupRoutes(router *gin.Engine) {
 	settingsController := controllers.NewSettingsController()
 	uploadController := controllers.NewUploadController()
 	templateController := controllers.NewTemplateController()
-	pageController := controllers.NewPageController()
 	columnController := controllers.NewColumnController()
 	categoryController := controllers.NewCategoryController()
 	tagController := controllers.NewTagController()
@@ -129,7 +128,6 @@ func SetupRoutes(router *gin.Engine) {
 		member.GET("/tags/stats", tagController.GetTagArticleStats)
 		member.GET("/columns", columnController.GetColumns)
 		member.GET("/columns/publishes", columnController.GetColumnPublishes)
-		member.GET("/pages", pageController.GetPages)
 		member.GET("/static-pages", staticPageController.GetStaticPages)
 		member.GET("/workflows", workflowController.GetWorkflows)
 		member.GET("/workflows/:id", workflowController.GetWorkflowByID)
@@ -221,11 +219,6 @@ func SetupRoutes(router *gin.Engine) {
 		admin.DELETE("/templates/:id", templateController.DeleteTemplate)
 		admin.PATCH("/templates/:id/status", templateController.UpdateTemplateStatus)
 		admin.PUT("/templates/:id/design", templateController.SaveTemplateDesign)
-
-		// 页面管理（写操作）
-		admin.POST("/pages", pageController.CreatePage)
-		admin.PUT("/pages/:id", pageController.UpdatePage)
-		admin.DELETE("/pages/:id", pageController.DeletePage)
 
 		// 栏目管理（写操作）
 		admin.POST("/columns", columnController.CreateColumn)

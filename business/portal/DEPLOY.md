@@ -96,9 +96,23 @@ powershell -ExecutionPolicy Bypass -File .\build-backends.ps1 -Only portal -Vet
 ./xxxx
 ```
 
-- 启动流程：读 `./config.yaml` → 注入环境变量（缺失直接退出） → 连 MySQL/Redis（3 个 db） → `AutoMigrate` 建表 → **幂等补齐文章搜索所需的 FULLTEXT 索引** → 播种默认角色/用户/菜单/菜单权限（幂等） → 加载静态化参数到缓存（db 8） → 监听端口
+- 启动流程：读 `./config.yaml` → 注入环境变量（缺失直接退出） → 连 MySQL/Redis（3 个 db） → `AutoMigrate` 建表 → **幂等补齐文章搜索所需的 FULLTEXT 索引** → **页面层合并迁移**（`models.MigratePageLayerToTemplates()`，见下） → 播种默认角色/用户/菜单/菜单权限（幂等） → 加载静态化参数到缓存（db 8） → 监听端口
 - 默认账号：`admin`（管理员，角色 ID=1），初始密码 `1qaz@WSX`，**上线后立即修改**
 - 首次对已有大表补 FULLTEXT 索引（`ALTER TABLE article ADD FULLTEXT INDEX`，共 3 个：title/author/source）会重建索引并短时占锁；表很大时建议部署窗口内手动先建好，启动逻辑检测到索引存在会自动跳过
+
+#### ⚠️ 页面层合并迁移（2026-09-21，不可逆）
+
+模板即「页面」：原 `page` 表已合并进 `template`，`column`/`ad`/`link`/`article_column_publish` 改用 `template_id`。首次启动新版本时 `models.MigratePageLayerToTemplates()` 会自动执行：
+
+1. 页面未绑定模板（或模板已被删）→ 按页面信息补建模板（保留全部数据）；
+2. `page.code` / `page.route_path` 回填到模板（仅当模板该字段为空）；
+3. 各表 `page_id` 按 `page.template_id` 回填为 `template_id`；
+4. `DROP COLUMN page_id`（4 张表）→ `DROP TABLE page`。
+
+**升级前必须先备份数据库**（第 4 步为不可逆 DDL；且迁移中途失败可能只完成一部分，日志会明确提示，需人工检查后重启继续）。迁移完成后 `page` 表不再存在，重复启动为空操作。
+
+- 迁移后需确认：栏目管理（按模板看栏目）、广告/友链（位置=模板+栏目）、文章投放、静态化首页/专题页列表均正常
+- 若外部静态化程序的「首页重新生成」按**页面名**寻址（`POST /static/page?name=`），迁移后传入的是**模板名**，需同步调整模板名称或该程序口径
 - 静态资源上传目录：`./uploads`（后端以 `/xxxx/uploads` 提供）；需保证运行账号对该目录有读写权限
 - 日志输出：`./logs`（按天分文件，单文件 100MB、保留 180 天、自动压缩）
 - 健康检查（公开接口，无需 Token、无需防重放头）：`GET /xxxxx/api/site-info`

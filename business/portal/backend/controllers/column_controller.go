@@ -23,15 +23,15 @@ func NewColumnController() *ColumnController {
 }
 
 func (c *ColumnController) GetColumns(ctx *gin.Context) {
-	pageIDStr := ctx.Query("pageId")
+	templateIDStr := ctx.Query("templateId")
 	parentIDStr := ctx.Query("parentId")
 	displayTypeStr := ctx.Query("displayType")
-	var pageID uint
+	var templateID uint
 	var parentID uint
 	var displayType int
-	if pageIDStr != "" {
-		if id, err := strconv.ParseUint(pageIDStr, 10, 32); err == nil {
-			pageID = uint(id)
+	if templateIDStr != "" {
+		if id, err := strconv.ParseUint(templateIDStr, 10, 32); err == nil {
+			templateID = uint(id)
 		}
 	}
 	if parentIDStr != "" {
@@ -44,7 +44,7 @@ func (c *ColumnController) GetColumns(ctx *gin.Context) {
 			displayType = dt
 		}
 	}
-	columns, err := c.columnService.GetColumns(pageID, parentID, displayType)
+	columns, err := c.columnService.GetColumns(templateID, parentID, displayType)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取栏目列表失败"))
 		return

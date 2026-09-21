@@ -13,7 +13,7 @@ type Ad struct {
 	UpdatedAt  time.Time      `json:"updatedAt"`
 	DeletedAt  gorm.DeletedAt `gorm:"index" json:"deletedAt"`
 	Name       string         `gorm:"size:200;not null" json:"name"`
-	PageID     uint           `gorm:"not null;index" json:"pageId"`
+	TemplateID uint           `gorm:"not null;index" json:"templateId"`
 	ColumnID   uint           `gorm:"default:0;index" json:"columnId"`
 	Image      string         `gorm:"size:500" json:"image"`
 	Link       string         `gorm:"size:500" json:"link"`

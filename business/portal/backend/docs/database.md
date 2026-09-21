@@ -42,9 +42,8 @@
 | 8 | `workflow` | 审核流程 | 审核流程 |
 | 9 | `workflow_node` | 审核流程 | 流程节点 |
 | 10 | `setting` | 基础配置 | 系统设置（单行配置） |
-| 11 | `template` | 内容管理 | 页面模板 |
-| 12 | `page` | 内容管理 | 页面 |
-| 13 | `column` | 内容管理 | 栏目（保留字，SQL 需加反引号） |
+| 11 | `template` | 内容管理 | 页面模板（即"页面"，原 `page` 表已合并至此） |
+| 12 | `column` | 内容管理 | 栏目（保留字，SQL 需加反引号） |
 | 14 | `category` | 内容管理 | 分类 |
 | 15 | `tag` | 内容管理 | 标签 |
 | 16 | `article` | 内容管理 | 文章 |
@@ -328,35 +327,26 @@
 
 #### `template` 页面模板表
 
+> **2026-09-21：原 `page` 表中继层已合并到本表**（模板与页面本为 1:1）。
+> `code` / `route_path` 由原页面迁移而来，用于路由拼接（详情页/栏目页）与静态化；
+> `column`/`ad`/`link`/`article_column_publish` 一律引用 `template_id`。
+> 迁移由 `models.MigratePageLayerToTemplates()` 在启动时幂等执行（补建缺失模板 → 回填引用 → 删除 `page_id` 列与 `page` 表）。
+
 | 字段 | 类型 | 允许空 | 默认 | 键 | 说明 |
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
 | deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
 | name | varchar(100) | 否 | - | - | 模板名称 |
-| type | varchar(20) | 否 | - | - | 模板类型 |
+| code | varchar(100) | 是 | - | IDX | 模板编码（由原页面 code 迁移） |
+| type | varchar(20) | 否 | - | IDX | 模板类型（=页面类型：home/column/detail/special） |
+| route_path | varchar(200) | 是 | - | - | 访问路径（由原页面 route_path 迁移） |
 | description | varchar(500) | 是 | - | - | 描述 |
-| status | bigint | 是 | 1 | - | 状态 |
+| status | bigint | 是 | 1 | IDX | 状态 |
 | source_code | text | 是 | - | - | 模板源码 |
 | layout | text | 是 | - | - | 模板布局 |
 
-#### `page` 页面表
-
-| 字段 | 类型 | 允许空 | 默认 | 键 | 说明 |
-| --- | --- | --- | --- | --- | --- |
-| id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
-| created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
-| deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
-| name | varchar(100) | 否 | - | - | 页面名称 |
-| code | varchar(100) | 否 | - | - | 页面编码 |
-| page_type | varchar(20) | 否 | - | IDX | 页面类型 |
-| route_path | varchar(200) | 是 | - | - | 路由路径 |
-| template_id | bigint unsigned | 是 | 0 | IDX | 模板 ID |
-| template | varchar(100) | 是 | - | - | 模板标识 |
-| description | varchar(500) | 是 | - | - | 描述 |
-| status | bigint | 是 | 1 | IDX | 状态 |
-
-#### `column` 栏目表 ⚠️（表名为保留字）
+#### `column` 栏目表
 
 | 字段 | 类型 | 允许空 | 默认 | 键 | 说明 |
 | --- | --- | --- | --- | --- | --- |
@@ -365,7 +355,7 @@
 | deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
 | name | varchar(100) | 否 | - | - | 栏目名称 |
 | code | varchar(100) | 否 | - | - | 栏目编码 |
-| page_id | bigint unsigned | 否 | - | IDX | 所属页面 ID |
+| template_id | bigint unsigned | 否 | - | IDX | 所属模板 ID |
 | parent_id | bigint unsigned | 是 | 0 | IDX | 父栏目 ID（0 为顶级） |
 | route_path | varchar(200) | 是 | - | - | 路由路径 |
 | template | varchar(100) | 是 | - | - | 模板标识 |
@@ -472,7 +462,7 @@
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
 | deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
-| page_id | bigint unsigned | 否 | - | IDX | 页面 ID（FK→page） |
+| template_id | bigint unsigned | 否 | - | IDX | 模板 ID（FK→template） |
 | column_id | bigint unsigned | 否 | - | IDX | 栏目 ID（FK→column） |
 | article_id | bigint unsigned | 否 | - | IDX | 文章 ID |
 | article_title | varchar(200) | 是 | - | - | 发布时文章标题（快照） |
@@ -492,7 +482,7 @@
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
 | deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
 | name | varchar(200) | 否 | - | - | 广告名称 |
-| page_id | bigint unsigned | 否 | - | IDX | 所属页面 ID |
+| template_id | bigint unsigned | 否 | - | IDX | 所属模板 ID |
 | column_id | bigint unsigned | 是 | 0 | IDX | 所属栏目 ID（0 为不限） |
 | image | varchar(500) | 是 | - | - | 广告图片 |
 | link | varchar(500) | 是 | - | - | 跳转链接 |
@@ -514,7 +504,7 @@
 | url | varchar(500) | 否 | - | - | 链接地址 |
 | logo | varchar(500) | 是 | - | - | Logo |
 | description | varchar(500) | 是 | - | - | 描述 |
-| page_id | bigint unsigned | 否 | - | IDX | 所属页面 ID |
+| template_id | bigint unsigned | 否 | - | IDX | 所属模板 ID |
 | column_id | bigint unsigned | 是 | 0 | IDX | 所属栏目 ID（0 为不限） |
 | sort | bigint | 是 | 0 | - | 排序号 |
 | status | bigint | 是 | 1 | IDX | 状态 |
@@ -592,14 +582,13 @@ erDiagram
     TAG ||--o{ ARTICLE_TAG : ""
     ARTICLE ||--o{ ARTICLE_ATTACHMENT : "级联删除"
 
-    PAGE ||--o{ COLUMN : "包含栏目"
-    PAGE ||--o{ AD : ""
-    PAGE ||--o{ LINK : ""
-
     COLUMN ||--o{ ARTICLE_COLUMN_AUDIT : "送审"
     ARTICLE ||--o{ ARTICLE_COLUMN_AUDIT : "送审"
     COLUMN ||--o{ ARTICLE_COLUMN_PUBLISH : "发布"
-    PAGE ||--o{ ARTICLE_COLUMN_PUBLISH : "发布"
+    TEMPLATE ||--o{ COLUMN : "包含栏目"
+    TEMPLATE ||--o{ AD : ""
+    TEMPLATE ||--o{ LINK : ""
+    TEMPLATE ||--o{ ARTICLE_COLUMN_PUBLISH : "发布"
     ARTICLE ||--o{ ARTICLE_COLUMN_PUBLISH : "发布"
 
     ORGANIZATION ||--o{ DEPARTMENT : "包含部门"
@@ -612,7 +601,7 @@ erDiagram
 
 - 用户 ↔ 角色：通过 `user.role_ids` 逗号分隔字符串存储（非中间表）。
 - 文章 ↔ 分类/标签/栏目：多对多，通过 `article_category`、`article_tag`、`article_column` 关联表。
-- 页面 → 栏目：`page` 1:N `column`（`column.page_id`）；栏目可父子嵌套（`column.parent_id`）。
+- 模板 → 栏目：`template` 1:N `column`（`column.template_id`）；栏目可父子嵌套（`column.parent_id`）。模板即页面（原 `page` 表已合并），`column`/`ad`/`link`/`article_column_publish` 均引用 `template_id`。
 - 流程：`workflow` 1:N `workflow_node`（级联删除）；`column.workflow_id` 可指向流程；送审走 `article_column_audit` + `article_column_audit_history`。
 - 发布：文章通过栏目审核后写入 `article_column_publish`，供栏目列表与静态化使用。
 - 部门：`department.org_id` 指向 `organization.id`。

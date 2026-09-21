@@ -44,6 +44,13 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="code" label="模板编码" min-width="120" show-overflow-tooltip />
+        <el-table-column prop="routePath" label="访问路径" min-width="140" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span v-if="row.routePath">{{ row.routePath }}</span>
+            <span v-else style="color: #c0c4cc">-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="description" label="描述" min-width="100" show-overflow-tooltip />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
@@ -106,6 +113,11 @@
               <el-input v-model="form.name" placeholder="请输入模板名称" />
             </el-form-item>
           </el-col>
+          <el-col :span="12">
+            <el-form-item label="模板编码" prop="code">
+              <el-input v-model="form.code" placeholder="请输入模板编码" />
+            </el-form-item>
+          </el-col>
         </el-row>
         <el-row :gutter="16">
           <el-col :span="12">
@@ -118,6 +130,13 @@
               </el-select>
             </el-form-item>
           </el-col>
+          <el-col :span="12">
+            <el-form-item label="访问路径" prop="routePath">
+              <el-input v-model="form.routePath" placeholder="如 /news（详情页/栏目页路由拼接用）" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="状态" prop="status">
               <el-radio-group v-model="form.status">
@@ -211,11 +230,13 @@ import {
 interface TemplateItem {
   id: number
   name: string
+  code?: string
   type: 'home' | 'column' | 'detail' | 'special'
+  routePath?: string
   description?: string
   status: number
-  pageCount: number
-  pageName?: string
+  columnCount: number
+  columnName?: string
   createdAt: string
   sourceCode?: string
   layout?: string
@@ -243,7 +264,9 @@ const queryForm = reactive({
 const form = reactive<Partial<TemplateItem>>({
   id: undefined,
   name: '',
+  code: '',
   type: 'home',
+  routePath: '',
   description: '',
   status: 1
 })
@@ -409,7 +432,9 @@ const handleEdit = (row: TemplateItem) => {
   Object.assign(form, {
     id: row.id,
     name: row.name,
+    code: row.code,
     type: row.type,
+    routePath: row.routePath,
     description: row.description,
     status: row.status
   })
@@ -418,9 +443,9 @@ const handleEdit = (row: TemplateItem) => {
 
 const handleDelete = (row: TemplateItem) => {
   // 模板仍被页面应用时后端会拒绝删除，这里提前提示，避免无意义的确认弹窗
-  if (row.pageCount > 0) {
+  if (row.columnCount > 0) {
     ElMessage.warning(
-      `模板 "${row.name}" 已被页面「${row.pageName || '未知页面'}」应用，请先解除页面绑定后再删除`
+      `模板 "${row.name}" 下仍有栏目「${row.columnName || '未知栏目'}」，请先删除或调整这些栏目后再删除模板`
     )
     return
   }
@@ -468,7 +493,9 @@ const handleSubmit = async () => {
     if (form.id) {
       await updateTemplate(form.id, {
         name: form.name || '',
+        code: form.code || '',
         type: form.type || 'home',
+        routePath: form.routePath || '',
         description: form.description,
         status: form.status ?? 1
       })
@@ -476,7 +503,9 @@ const handleSubmit = async () => {
     } else {
       await createTemplate({
         name: form.name || '',
+        code: form.code || '',
         type: form.type || 'home',
+        routePath: form.routePath || '',
         description: form.description,
         status: form.status ?? 1
       })
@@ -494,7 +523,9 @@ const handleSubmit = async () => {
 const resetForm = () => {
   form.id = undefined
   form.name = ''
+  form.code = ''
   form.type = 'home'
+  form.routePath = ''
   form.description = ''
   form.status = 1
 }

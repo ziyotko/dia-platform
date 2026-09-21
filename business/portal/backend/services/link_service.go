@@ -7,15 +7,15 @@ import (
 
 type LinkService struct{}
 
-func (s *LinkService) GetLinks(name string, pageID int, columnID int, status int, page int, pageSize int) ([]models.Link, int64, error) {
+func (s *LinkService) GetLinks(name string, templateID int, columnID int, status int, page int, pageSize int) ([]models.Link, int64, error) {
 	var links []models.Link
 	var total int64
 	query := utils.DB.Model(&models.Link{})
 	if name != "" {
 		query = query.Where("name LIKE ?", "%"+name+"%")
 	}
-	if pageID > 0 {
-		query = query.Where("page_id = ?", pageID)
+	if templateID > 0 {
+		query = query.Where("template_id = ?", templateID)
 	}
 	if columnID > 0 {
 		query = query.Where("column_id = ?", columnID)
@@ -55,7 +55,7 @@ func (s *LinkService) UpdateLink(id uint, link *models.Link) error {
 		"url":         link.Url,
 		"logo":        link.Logo,
 		"description": link.Description,
-		"page_id":     link.PageID,
+		"template_id": link.TemplateID,
 		"column_id":   link.ColumnID,
 		"sort":        link.Sort,
 		"status":      link.Status,

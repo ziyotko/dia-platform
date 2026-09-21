@@ -978,20 +978,20 @@ type ArticleColumnPublishItem struct {
 	RoutePath string    `json:"routePath"`
 }
 
-// GetDetailPageRoutePath 获取详情页统一访问路径
+// GetDetailPageRoutePath 获取详情页统一访问路径（取启用的详情页模板）
 func (s *ArticleService) GetDetailPageRoutePath() (string, string, error) {
-	type Page struct {
+	type DetailTemplate struct {
 		RoutePath string `gorm:"column:route_path"`
 		Name      string `gorm:"column:name"`
 	}
-	var page Page
-	err := utils.DB.Model(&models.Page{}).
+	var tpl DetailTemplate
+	err := utils.DB.Model(&models.Template{}).
 		Select("route_path,name").
-		Where("page_type = ? AND status = ?", "detail", 1).
+		Where("type = ? AND status = ?", "detail", 1).
 		Order("id ASC").
 		Limit(1).
-		Scan(&page).Error
-	return page.RoutePath, page.Name, err
+		Scan(&tpl).Error
+	return tpl.RoutePath, tpl.Name, err
 }
 
 // GetArticleColumnPublishes 获取文章栏目发布（静态化）列表
@@ -1117,7 +1117,7 @@ func (s *ArticleService) CompleteArticleAudit(articleID uint) error {
 				continue // 栏目不存在则跳过
 			}
 			publish := models.ArticleColumnPublish{
-				PageID:       col.PageID,
+				TemplateID:   col.TemplateID,
 				ColumnID:     audit.ColumnID,
 				ArticleID:    article.ID,
 				ArticleTitle: article.Title,

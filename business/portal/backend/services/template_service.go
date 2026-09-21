@@ -19,10 +19,10 @@ const (
 type TemplateService struct{}
 
 type TemplateListResult struct {
-	Total      int64             `json:"total"`
-	List       []models.Template `json:"list"`
-	PageCounts map[uint]int      `json:"-"`
-	PageNames  map[uint]string   `json:"-"`
+	Total        int64             `json:"total"`
+	List         []models.Template `json:"list"`
+	ColumnCounts map[uint]int      `json:"-"`
+	ColumnNames  map[uint]string   `json:"-"`
 }
 
 func (s *TemplateService) GetTemplateList(page, pageSize int, name, ttype string) (*TemplateListResult, error) {
@@ -53,36 +53,35 @@ func (s *TemplateService) GetTemplateList(page, pageSize int, name, ttype string
 		return nil, err
 	}
 
-	// 实时统计每个模板关联的页面：一个模板只能应用一个页面（services.PageService 已有约束），
-	// 这里统计出数量与应用页面名，供删除确认等提示使用（兼容历史数据中可能存在的多条绑定）。
-	pageCounts := make(map[uint]int)
-	pageNames := make(map[uint]string)
+	// 实时统计每个模板下的栏目：供删除前的占用提示使用（页面层已合并进模板，模板直接承载栏目）
+	columnCounts := make(map[uint]int)
+	columnNames := make(map[uint]string)
 	if len(list) > 0 {
 		ids := make([]uint, len(list))
 		for i, t := range list {
 			ids[i] = t.ID
 		}
 
-		var pages []models.Page
-		if err := utils.DB.Model(&models.Page{}).
+		var columns []models.Column
+		if err := utils.DB.Model(&models.Column{}).
 			Select("template_id, name").
 			Where("template_id IN ?", ids).
 			Order("id").
-			Find(&pages).Error; err == nil {
-			for _, p := range pages {
-				pageCounts[p.TemplateID]++
-				if pageNames[p.TemplateID] == "" {
-					pageNames[p.TemplateID] = p.Name
+			Find(&columns).Error; err == nil {
+			for _, c := range columns {
+				columnCounts[c.TemplateID]++
+				if columnNames[c.TemplateID] == "" {
+					columnNames[c.TemplateID] = c.Name
 				}
 			}
 		}
 	}
 
 	return &TemplateListResult{
-		Total:      total,
-		List:       list,
-		PageCounts: pageCounts,
-		PageNames:  pageNames,
+		Total:        total,
+		List:         list,
+		ColumnCounts: columnCounts,
+		ColumnNames:  columnNames,
 	}, nil
 }
 
@@ -157,19 +156,19 @@ func (s *TemplateService) UpdateTemplateStatus(id uint, status int) error {
 }
 
 // DeleteTemplate 删除模板（物理删除）。
-// 与「一个模板只能应用一个页面」配套：仍被页面绑定时拒绝删除，
-// 避免页面留下失效的 template_id（页面会显示为空模板且无从修复）。
+// 模板直接承载栏目（column.template_id），仍有栏目时拒绝删除，
+// 否则栏目会因失去归属而在「栏目管理」中不可见。
 func (s *TemplateService) DeleteTemplate(id uint) error {
-	var pages []models.Page
-	if err := utils.DB.Where("template_id = ?", id).Order("id").Find(&pages).Error; err != nil {
+	var columns []models.Column
+	if err := utils.DB.Where("template_id = ?", id).Order("id").Find(&columns).Error; err != nil {
 		return err
 	}
-	switch len(pages) {
+	switch len(columns) {
 	case 0:
 	case 1:
-		return fmt.Errorf("该模板已被页面「%s」应用，请先解除页面绑定后再删除", pages[0].Name)
+		return fmt.Errorf("该模板下仍有栏目「%s」，请先删除或调整该栏目后再删除模板", columns[0].Name)
 	default:
-		return fmt.Errorf("该模板已被 %d 个页面应用，请先解除绑定后再删除", len(pages))
+		return fmt.Errorf("该模板下仍有 %d 个栏目，请先删除或调整这些栏目后再删除模板", len(columns))
 	}
 	return utils.DB.Unscoped().Delete(&models.Template{}, id).Error
 }
