@@ -164,7 +164,13 @@
                 <el-icon><Document /></el-icon>
                 生成详情页
               </el-button>
-                            <el-button type="info" size="large" :disabled="!monitorData.online" @click="handleGenerateTopic">
+              <el-button
+                type="info"
+                size="large"
+                :disabled="!monitorData.online"
+                :loading="submitting === 'topics'"
+                @click="handleGenerateTopic"
+              >
                 <el-icon><Collection /></el-icon>
                 生成专题页
               </el-button>
@@ -520,7 +526,8 @@ const kindMap: Record<string, { text: string; type: string }> = {
   site: { text: '生成全站', type: 'primary' },
   pages: { text: '生成首页', type: 'success' },
   lists: { text: '生成栏目页', type: 'warning' },
-  articles: { text: '生成详情页', type: 'danger' }
+  articles: { text: '生成详情页', type: 'danger' },
+  topics: { text: '生成专题页', type: 'info' }
 }
 
 const jobStatusMap: Record<StaticJobStatus, { text: string; type: string }> = {
@@ -586,7 +593,7 @@ const loadStaticSettings = async () => {
 }
 
 // 发起批量操作任务（后端透传静态化程序 202 + 任务信息）
-const runStaticJob = async (kind: 'site' | 'pages' | 'lists' | 'articles', title: string) => {
+const runStaticJob = async (kind: 'site' | 'pages' | 'lists' | 'articles' | 'topics', title: string) => {
   submitting.value = kind
   try {
     const res = await startStaticJob(kind, grayEnabled.value ? 1 : 2)
@@ -617,7 +624,7 @@ const runStaticJob = async (kind: 'site' | 'pages' | 'lists' | 'articles', title
 }
 
 // 通用确认：每个静态化操作先弹出确认框，确认后再发起任务
-const confirmRun = (kind: 'site' | 'pages' | 'lists' | 'articles', title: string, message?: string) => {
+const confirmRun = (kind: 'site' | 'pages' | 'lists' | 'articles' | 'topics', title: string, message?: string) => {
   ElMessageBox.confirm(
     message || `确定要执行${title}吗？`,
     '确认操作',
@@ -635,10 +642,8 @@ const handleGenerateAll = () => confirmRun('site', '生成全站', '确定要执
 const handleGenerateHome = () => confirmRun('pages', '生成首页')
 const handleGenerateColumn = () => confirmRun('lists', '生成栏目页')
 const handleGenerateDetail = () => confirmRun('articles', '生成详情页')
-// 批量生成专题页暂无对应接口（静态化程序仅提供单个专题的重生成/删除），点击仅提示
-const handleGenerateTopic = () => {
-  ElMessage.info('批量生成专题页功能暂未实现，请在「单页操作-专题页」中逐个重新生成')
-}
+// 批量生成专题页：静态化程序按输出目录批量重新生成全部专题页
+const handleGenerateTopic = () => confirmRun('topics', '生成专题页')
 
 // 任务轮询：有活动任务时定时查询状态
 const startPolling = () => {

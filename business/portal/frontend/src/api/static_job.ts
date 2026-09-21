@@ -1,6 +1,6 @@
 import request from '@/utils/request'
 
-export type StaticJobKind = 'site' | 'pages' | 'lists' | 'articles'
+export type StaticJobKind = 'site' | 'pages' | 'lists' | 'articles' | 'topics'
 
 export interface StaticJobProgress {
   stage: string
@@ -30,6 +30,7 @@ export interface StaticJobResponse {
 
 // 发起静态化批量操作任务
 // 后端代理转发至静态化程序，透传其 202 状态码与响应体（代表请求已发送，请等待处理结果）
+// kind：site 全站 / pages 首页 / lists 栏目页 / articles 详情页 / topics 专题页
 // gray 仅对全站静态化 / 生成首页生效：1 开启首页整体变灰，2 关闭
 export async function startStaticJob(
   kind: StaticJobKind,
