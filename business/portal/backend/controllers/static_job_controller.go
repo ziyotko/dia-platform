@@ -201,10 +201,13 @@ func (c *StaticJobController) resolveStaticParams(ctx *gin.Context) (*services.S
 	return params, true
 }
 
-// resolveOutputPath 输出目录：优先使用请求显式传入的 path，否则读取后端全局变量「静态化输出路径」
+// resolveOutputPath 输出目录：只取后端全局变量「静态化输出路径」。
+// 历史实现优先采用请求参数 path，而该参数完全由调用方控制，等于把「在服务器任意目录
+// 写/删静态文件」的能力开放给任何拿到该接口的角色（且与系统设置实际配置不一致也难以发现）。
+// 前端删除/单页重生成原本传入的就是设置里的同一个值，故忽略请求参数对正常使用无影响。
 func (c *StaticJobController) resolveOutputPath(ctx *gin.Context, params *services.StaticParams) (string, bool) {
-	if p := strings.TrimSpace(ctx.Query("path")); p != "" {
-		return p, true
+	if p := strings.TrimSpace(ctx.Query("path")); p != "" && strings.TrimSpace(params.StaticPath) != "" && p != strings.TrimSpace(params.StaticPath) {
+		utils.Logger.Warnf("静态化请求携带的输出路径与系统设置不一致，已按系统设置执行: req=%s conf=%s", p, params.StaticPath)
 	}
 	if p := strings.TrimSpace(params.StaticPath); p != "" {
 		return p, true
@@ -489,7 +492,7 @@ func (c *StaticJobController) DeleteArticleStaticByID(ctx *gin.Context, id strin
 }
 
 // DeleteTopicStatic 删除专题页静态文件：DELETE /static/topic?id={专题ID}&path={输出目录}
-// 输出目录优先取请求显式传入的 path，否则读取后端全局变量（静态化输出路径），
+// 输出目录一律取后端全局变量（静态化输出路径），请求携带的 path 仅用于比对告警，
 // 代理转发至静态化程序（自动附带 Authorization 验证令牌头），同步返回 HTTP 200 及删除结果。
 func (c *StaticJobController) DeleteTopicStatic(ctx *gin.Context) {
 	params, ok := c.resolveStaticParams(ctx)

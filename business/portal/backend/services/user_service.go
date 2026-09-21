@@ -384,6 +384,21 @@ func (s *UserService) DeleteUser(id uint) error {
 	if id == builtinSuperAdminUserID {
 		return errors.New("内置管理员不可删除")
 	}
+	var user models.User
+	if err := utils.DB.First(&user, id).Error; err != nil {
+		return err
+	}
+	// 该用户是审核节点的审批人时不允许删除：删除后这些节点永远匹配不到任何人，
+	// 相关文章的审核会永久卡在「审核中」（口径与 DeleteWorkflowRole 的引用检查一致）。
+	var nodeCount int64
+	if err := utils.DB.Model(&models.WorkflowNode{}).
+		Where("approver_type = ? AND approver_id = ?", "user", id).
+		Count(&nodeCount).Error; err != nil {
+		return err
+	}
+	if nodeCount > 0 {
+		return fmt.Errorf("该用户是 %d 个审核节点的审批人，请先调整流程节点后再删除", nodeCount)
+	}
 	orgService := OrganizationService{}
 	if err := orgService.RemoveUserFromAllOrganizations(id); err != nil {
 		return err
@@ -397,6 +412,17 @@ func (s *UserService) DeleteUser(id uint) error {
 	// 审批人解析时该流程角色看似有成员实则无人。
 	if err := utils.DB.Where("user_id = ?", id).Delete(&models.WorkflowRoleUser{}).Error; err != nil {
 		return err
+	}
+	// 部门负责人指向该用户（或历史脏值存的账号）时一并清空：
+	// 否则部门看似有负责人、dept_head 审批节点却永远无人可审（新提交才能拿到明确报错）。
+	leaderCodes := []string{strconv.FormatUint(uint64(id), 10)}
+	if strings.TrimSpace(user.Account) != "" {
+		leaderCodes = append(leaderCodes, user.Account)
+	}
+	if err := utils.DB.Model(&models.Department{}).
+		Where("leader_code IN ?", leaderCodes).
+		Updates(map[string]any{"leader_code": "", "leader": ""}).Error; err != nil {
+		utils.Logger.Warnf("清理部门负责人失败（用户 %d 已删除）: %v", id, err)
 	}
 	return utils.DB.Delete(&models.User{}, id).Error
 }

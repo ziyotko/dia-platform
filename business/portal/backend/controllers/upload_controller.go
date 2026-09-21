@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -16,6 +17,9 @@ import (
 )
 
 type UploadController struct{}
+
+// orgCodePattern 机构编码允许的字符集（作为上传目录段使用，必须无法表达路径）。
+var orgCodePattern = regexp.MustCompile(`^[a-z0-9_-]{1,32}$`)
 
 func NewUploadController() *UploadController {
 	return &UploadController{}
@@ -46,18 +50,12 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 		return
 	}
 
-	// 文件大小限制：视频 800MB（与前端一致），其余 50MB，防止磁盘耗尽
-	maxSize := int64(50 << 20)
-	if dir == "video" {
-		maxSize = 800 << 20
-	}
-	if file.Size > maxSize {
-		ctx.JSON(http.StatusOK, utils.Error(1, "文件大小超出限制"))
-		return
-	}
-
 	allowedImageExts := map[string]bool{
 		".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".webp": true,
+	}
+	// 视频专用扩展名（唯一允许 800MB 的类型）
+	allowedVideoExts := map[string]bool{
+		".mp4": true,
 	}
 	allowedAttachmentExts := map[string]bool{
 		".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".webp": true,
@@ -77,6 +75,19 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 		}
 	}
 
+	// 文件大小限制：视频文件 800MB（与前端一致），其余 50MB，防止磁盘耗尽。
+	// 必须按「目录 + 扩展名」双重判定：原实现只看 dir==video 就放行 800MB，
+	// 而该分支的扩展名白名单同时包含 zip/rar/pdf/doc 等非视频类型，
+	// 等于给任意已认证账号开放了 800MB 的任意文件上传。
+	maxSize := int64(50 << 20)
+	if dir == "video" && allowedVideoExts[ext] {
+		maxSize = 800 << 20
+	}
+	if file.Size > maxSize {
+		ctx.JSON(http.StatusOK, utils.Error(1, "文件大小超出限制"))
+		return
+	}
+
 	settingsService := services.SettingsService{}
 	settings, err := settingsService.GetSettings()
 	if err != nil {
@@ -85,7 +96,14 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 	}
 	orgCode := ""
 	if settings != nil {
-		orgCode = strings.ToLower(settings.OrgCode)
+		// 机构编码会作为上传目录的一段拼进文件系统路径，必须先限定字符集：
+		// 若被填成 ".."、"a/b" 等，filepath.Join 会跳出 ./uploads（甚至落到进程当前目录）。
+		// 纯展示语义的字段不应具备路径能力，非法值一律忽略并记警告。
+		orgCode = strings.ToLower(strings.TrimSpace(settings.OrgCode))
+		if orgCode != "" && !orgCodePattern.MatchString(orgCode) {
+			utils.Logger.Warnf("机构编码含非法字符，上传时已忽略该目录段: %q", settings.OrgCode)
+			orgCode = ""
+		}
 	}
 
 	uploadDir := "./uploads"

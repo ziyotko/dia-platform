@@ -123,6 +123,36 @@ func (s *ColumnService) validateColumnBinding(nodeID, templateID, parentID uint)
 	if parent.TemplateID != templateID {
 		return errors.New("上级栏目与所属模板不一致")
 	}
+	// 上级栏目不能是自身的下级（否则父子成环，整枝栏目都从「栏目管理」/投放树中消失，只能进库修正）。
+	// 前端父级下拉展示的是整个模板树（含自身与后代），故必须在后端拦下。
+	// 注：此处不能直接复用 tree_guard.validateTreeParent——栏目表名为 MySQL 保留字 `column`，
+	// 且它是按物理表名拼 SQL 的，因此改为按模型向父级追溯。
+	if nodeID > 0 {
+		if err := ensureColumnNotDescendant(nodeID, parentID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ensureColumnNotDescendant 确认 nodeID 不是 parentID 的祖先（即 parentID 不是 nodeID 的下级）。
+func ensureColumnNotDescendant(nodeID, parentID uint) error {
+	cur := parentID
+	seen := map[uint]bool{parentID: true}
+	for cur != 0 {
+		if cur == nodeID {
+			return errors.New("上级栏目不能是自己或其下级栏目")
+		}
+		var node models.Column
+		if err := utils.DB.Select("id, parent_id").First(&node, cur).Error; err != nil {
+			return nil // 数据异常（已在上面校验过存在性），不阻断
+		}
+		if node.ParentID == 0 || seen[node.ParentID] {
+			return nil
+		}
+		seen[node.ParentID] = true
+		cur = node.ParentID
+	}
 	return nil
 }
 
@@ -170,6 +200,19 @@ func (s *ColumnService) DeleteColumn(id uint) error {
 	}
 	if childCount > 0 {
 		return fmt.Errorf("该栏目下仍有 %d 个子栏目，请先删除或调整子栏目后再删除", childCount)
+	}
+	// 广告/友链通过 template_id + column_id 关联栏目（无外键约束）：直接删除会留下悬挂 column_id，
+	// 「位置」列显示为空，且这些记录下次编辑保存时会被 ValidateTemplateColumn 判为「所选栏目不属于该模板」
+	// 而无法保存（与 DeleteTemplate 的处置口径一致）。
+	var adCount, linkCount int64
+	if err := utils.DB.Model(&models.Ad{}).Where("column_id = ?", id).Count(&adCount).Error; err != nil {
+		return err
+	}
+	if err := utils.DB.Model(&models.Link{}).Where("column_id = ?", id).Count(&linkCount).Error; err != nil {
+		return err
+	}
+	if adCount > 0 || linkCount > 0 {
+		return fmt.Errorf("该栏目仍被 %d 条广告、%d 条友链使用，请先调整这些记录后再删除栏目", adCount, linkCount)
 	}
 	return utils.DB.Delete(&column).Error
 }

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"slices"
 	"sort"
+	"strconv"
+	"strings"
 
 	"server/models"
 	"server/utils"
@@ -115,7 +117,44 @@ func (s *MenuService) DeleteMenu(id uint) error {
 	if count > 0 {
 		return errors.New("该菜单下存在子菜单，无法删除")
 	}
-	return utils.DB.Delete(&models.Menu{}, id).Error
+	if err := utils.DB.Delete(&models.Menu{}, id).Error; err != nil {
+		return err
+	}
+	// 菜单被删除后，role.permissions 中会残留该 ID：\n	// 它在权限树里已无对应节点，既无法再次勾选也无法取消，只能靠重新保存角色清理。
+	// 这里在删除后同步剔除各角色对该菜单的引用（保留顺序、去重）。
+	var roles []models.Role
+	if err := utils.DB.Find(&roles).Error; err != nil {
+		return nil // 菜单已删除，权限清理失败不影响主流程
+	}
+	removed := strconv.FormatUint(uint64(id), 10)
+	for i := range roles {
+		role := roles[i]
+		if strings.TrimSpace(role.Permissions) == "" {
+			continue
+		}
+		parts := strings.Split(role.Permissions, ",")
+		kept := make([]string, 0, len(parts))
+		changed := false
+		for _, part := range parts {
+			trimmed := strings.TrimSpace(part)
+			if trimmed == "" {
+				continue
+			}
+			if trimmed == removed {
+				changed = true
+				continue
+			}
+			kept = append(kept, trimmed)
+		}
+		if !changed {
+			continue
+		}
+		if err := utils.DB.Model(&models.Role{}).Where("id = ?", role.ID).
+			Update("permissions", strings.Join(kept, ",")).Error; err != nil {
+			utils.Logger.Warnf("清理角色[%s]菜单权限失败: %v", role.Code, err)
+		}
+	}
+	return nil
 }
 
 // buildMenuTree 将扁平菜单列表组装为层级树。

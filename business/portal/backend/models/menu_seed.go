@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -117,6 +118,11 @@ var defaultMenus = []menuSeedItem{
 
 // SeedDefaultMenus 启动时初始化系统默认菜单树，缺失时自动创建（幂等，按 parent_id + name 判定）。
 func SeedDefaultMenus() {
+	// 历史结构搬迁必须在播种之前执行：搬迁是「按名字找到旧行并改父级」，而播种是「按 parent_id + name 新建」。
+	// 若先播种，老库中仍挂在旧目录下的内置菜单会在新目录下被新建一条，随后搬迁又把旧行搬过来，
+	// 最终同 (parent_id, name) 出现两条（2026-09-14 日志实证：同一秒内 INSERT 静态化管理 + 已迁移菜单）。
+	// 搬迁只依赖已存在的目录，因此全新安装是 no-op。
+	relocateLegacyMenus()
 	for i := range defaultMenus {
 		seedMenu(0, &defaultMenus[i])
 	}
@@ -133,8 +139,6 @@ func SeedDefaultMenus() {
 	upgradeMenuAPIPrefix("机构管理", "/organizations", organizationManagementAPIPrefix)
 	upgradeMenuAPIPrefix("流程管理", "/workflows", workflowManagementAPIPrefix)
 	upgradeMenuAPIPrefix("流程角色", "/workflow-roles", workflowRoleManagementAPIPrefix)
-	// 历史版本「静态化管理」挂在「内容管理」下（非管理员即使被授权也调不通其接口），迁移到「基础配置」。
-	moveMenuToParent("静态化管理", "内容管理", "基础配置", "/config/static")
 	// 「静态化设置」独立页面已并入「系统设置」的「静态化设置」页签，清理旧环境残留菜单。
 	removeLegacyStaticizationMenu()
 	// 前端 src/views 目录按功能模块重排（2026-09-21）：待审核移入 content/、静态化管理与系统设置移入 config/、
@@ -144,6 +148,112 @@ func SeedDefaultMenus() {
 	upgradeMenuComponent("系统设置", "settings/index", "config/settings")
 	upgradeMenuComponent("标签统计", "statistics/label", "statistics/tag")
 	upgradeMenuPath("标签统计", "/statistics/label", "/statistics/tag")
+	// 播种后再搬迁一次：覆盖「新父目录本次才被创建」的老库（搬迁要求目标目录已存在）。幂等。
+	relocateLegacyMenus()
+	// 兜底去重（幂等）：收敛历史版本「先播种后搬迁」在库中残留的重复内置菜单，并修正 role.permissions 引用。
+	dedupeSeededMenus()
+}
+
+// relocateLegacyMenus 历史内置菜单的结构搬迁（幂等，只依赖已存在的目录）。
+// 搬迁必须在 SeedDefaultMenus 的播种步骤之前执行，详见 SeedDefaultMenus 注释。
+func relocateLegacyMenus() {
+	// 历史版本「静态化管理」挂在「内容管理」下（非管理员即使被授权也调不通其接口），迁移到「基础配置」。
+	moveMenuToParent("静态化管理", "内容管理", "基础配置", "/config/static")
+}
+
+// dedupeSeededMenus 幂等收敛内置菜单的重复行。
+// 背景：早期版本的 SeedDefaultMenus 先播种后搬迁，老库中「静态化管理」会先在新父目录下被新建一条、
+// 再把旧行搬过来，最终同一父目录下出现两条同名菜单 → 侧边栏/菜单管理/权限树重复。
+// 处理：同一「父级 + 名称 + 类型」（与 seedMenu 自己的幂等键一致）只保留 id 最小的一条，
+// 其余在没有子菜单时删除，并把引用了被删 ID 的 role.permissions 改指向保留的那条
+// （否则该角色的菜单权限会静默丢失）。
+// 保留 id 最小的原因：upgradeMenuComponent/upgradeMenuAPIPrefix 都是 First()（从小到大），
+// 故只有最小 id 那条能确定拿到全部升级后的路径/组件。
+func dedupeSeededMenus() {
+	var menus []Menu
+	if err := utils.DB.Order("id ASC").Find(&menus).Error; err != nil {
+		utils.Logger.Warnf("菜单去重检查失败: %v", err)
+		return
+	}
+	keptIDs := make(map[string]uint, len(menus))
+	remapped := make(map[uint]uint)
+	for i := range menus {
+		menu := menus[i]
+		key := fmt.Sprintf("%d|%s|%s", menu.ParentID, menu.Name, menu.Type)
+		keepID, exists := keptIDs[key]
+		if !exists {
+			keptIDs[key] = menu.ID
+			continue
+		}
+		// 仍有子菜单时不处理，避免子菜单变成孤儿
+		var childCount int64
+		if err := utils.DB.Model(&Menu{}).Where("parent_id = ?", menu.ID).Count(&childCount).Error; err != nil {
+			continue
+		}
+		if childCount > 0 {
+			continue
+		}
+		if err := utils.DB.Delete(&Menu{}, menu.ID).Error; err != nil {
+			utils.Logger.Warnf("清理重复菜单[%s]失败: %v", menu.Name, err)
+			continue
+		}
+		remapped[menu.ID] = keepID
+		utils.Logger.Infof("已清理重复菜单: %s (删除 id=%d path=%s component=%s，保留 id=%d)",
+			menu.Name, menu.ID, menu.Path, menu.Component, keepID)
+	}
+	if len(remapped) > 0 {
+		remapRolePermissions(remapped)
+	}
+}
+
+// remapRolePermissions 把 role.permissions 中对已删除菜单 ID 的引用改指向保留 ID（同时去重）。
+func remapRolePermissions(remapped map[uint]uint) {
+	var roles []Role
+	if err := utils.DB.Find(&roles).Error; err != nil {
+		utils.Logger.Warnf("修正角色菜单权限失败: %v", err)
+		return
+	}
+	for i := range roles {
+		role := roles[i]
+		if strings.TrimSpace(role.Permissions) == "" {
+			continue
+		}
+		parts := strings.Split(role.Permissions, ",")
+		seen := make(map[uint]bool, len(parts))
+		kept := make([]string, 0, len(parts))
+		changed := false
+		for _, part := range parts {
+			trimmed := strings.TrimSpace(part)
+			if trimmed == "" {
+				continue
+			}
+			id64, err := strconv.ParseUint(trimmed, 10, 32)
+			if err != nil {
+				kept = append(kept, trimmed) // 非数字项（如历史遗留的 "*"）原样保留
+				continue
+			}
+			id := uint(id64)
+			if newID, ok := remapped[id]; ok {
+				id = newID
+				changed = true
+			}
+			if seen[id] {
+				changed = true
+				continue
+			}
+			seen[id] = true
+			kept = append(kept, strconv.FormatUint(uint64(id), 10))
+		}
+		if !changed {
+			continue
+		}
+		if err := utils.DB.Model(&Role{}).Where("id = ?", role.ID).
+			Update("permissions", strings.Join(kept, ",")).Error; err != nil {
+			utils.Logger.Warnf("修正角色[%s]菜单权限失败: %v", role.Code, err)
+			continue
+		}
+		utils.Logger.Infof("已修正角色[%s]菜单权限中的重复菜单 ID", role.Code)
+	}
 }
 
 // removeLegacyStaticizationMenu 幂等删除历史版本遗留的「静态化设置」独立菜单

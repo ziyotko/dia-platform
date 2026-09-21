@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"server/models"
 	"server/utils"
@@ -800,13 +799,32 @@ func (s *ArticleService) AdvanceArticleAudit(articleID uint, columnID uint, user
 		OperatorName: userName,
 		Remark:       remark,
 	}
-	// 查找下一个节点
-	var nextNode models.WorkflowNode
-	nextErr := utils.DB.Where("workflow_id = ? AND sort_order > ?", audit.WorkflowID, currentNode.SortOrder).Order("sort_order ASC").First(&nextNode).Error
-	if nextErr != nil && !errors.Is(nextErr, gorm.ErrRecordNotFound) {
-		return nextErr
+	// 查找下一个节点：按 (sort_order, id) 全序取当前节点的紧接着的一条。
+	// 原实现用 `sort_order > 当前节点的 sort_order`，一旦存在排序值重复的节点（历史数据），
+	// 会「找不到下一个节点」→ 直接标记为审核通过并触发自动发布，跳过后面的审批人。
+	var nodes []models.WorkflowNode
+	if err := utils.DB.Where("workflow_id = ?", audit.WorkflowID).
+		Order("sort_order ASC, id ASC").Find(&nodes).Error; err != nil {
+		return err
 	}
-	hasNext := nextErr == nil
+	var nextNode models.WorkflowNode
+	hasNext := false
+	found := false
+	for i := range nodes {
+		if nodes[i].ID != currentNode.ID {
+			continue
+		}
+		found = true
+		if i+1 < len(nodes) {
+			nextNode = nodes[i+1]
+			hasNext = true
+		}
+		break
+	}
+	if !found {
+		// 当前节点已不属于该流程（例如节点被重建/删除）：宁可报错也不能静默判定审核通过
+		return fmt.Errorf("当前审核节点已失效，请联系管理员重新配置该流程的审批节点")
+	}
 
 	// 状态变更与历史记录放在同一事务，并用「条件更新」保证并发/重复点击时只有一个请求生效：
 	// WHERE status = 0（推进时再限定 current_node_id），受影响行数为 0 说明该节点已被处理。

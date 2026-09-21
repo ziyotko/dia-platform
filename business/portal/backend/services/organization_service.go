@@ -77,6 +77,22 @@ func (s *OrganizationService) GetOrganizationByName(name string) (*models.Organi
 }
 
 func (s *OrganizationService) CreateOrganization(org *models.Organization) error {
+	// 父机构校验与 UpdateOrganization 保持同一口径（原先创建不校验，可造出孤儿机构：
+	// buildFlatTree 会把它提升为根节点，parent_id 永久失效）
+	if err := validateTreeParent("organization", 0, org.ParentID); err != nil {
+		return err
+	}
+	// 创建接口是整体绑定 JSON 的，历史实现会把请求体里的 user_ids/user_count 原样入库，
+	// 绕过 mutateOrganizationMembers 的去重/存在性/长度校验。这里统一规范化，并忽略请求体的 user_count。
+	kept, joined, dropped, err := normalizeMemberIDs(parseMemberIDList(org.UserIds), organizationMemberIDsMaxChars)
+	if err != nil {
+		return err
+	}
+	if dropped > 0 {
+		return fmt.Errorf("有 %d 个成员不存在（可能已被删除），请刷新后重试", dropped)
+	}
+	org.UserIds = joined
+	org.UserCount = len(kept)
 	return utils.DB.Create(org).Error
 }
 

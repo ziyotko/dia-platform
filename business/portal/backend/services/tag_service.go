@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"server/models"
 	"server/utils"
 )
@@ -57,6 +58,15 @@ func (s *TagService) DeleteTag(id uint) error {
 	var tag models.Tag
 	if err := utils.DB.First(&tag, id).Error; err != nil {
 		return err
+	}
+	// 仍被文章引用时拒绝删除：article_tag 是 many2many 关联表（无模型），
+	// 直接删除会命中外键 1451，只能得到笼统的「删除标签失败」。
+	var articleCount int64
+	if err := utils.DB.Table("article_tag").Where("tag_id = ?", id).Count(&articleCount).Error; err != nil {
+		return err
+	}
+	if articleCount > 0 {
+		return fmt.Errorf("该标签仍被 %d 篇文章使用，请先调整这些文章的标签后再删除", articleCount)
 	}
 	return utils.DB.Delete(&tag).Error
 }

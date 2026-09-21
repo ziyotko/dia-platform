@@ -46,6 +46,10 @@ type ServerConfig struct {
 	PublicRateLimit      int `mapstructure:"public_rate_limit"`          // 每窗口允许的最大请求数（<=0 时回退 60）
 	PublicRateWindowSecs int `mapstructure:"public_rate_window_seconds"` // 限流窗口（秒，<=0 时回退 60）
 
+	// 文件上传限流（POST /upload，按真实客户端 IP）：防止已认证账号循环上传大文件写满磁盘
+	UploadRateLimit      int `mapstructure:"upload_rate_limit"`          // 每窗口允许的最大上传次数（<=0 时回退 60）
+	UploadRateWindowSecs int `mapstructure:"upload_rate_window_seconds"` // 限流窗口（秒，<=0 时回退 60）
+
 	// 防重放/请求签名校验（主动检测与临时封禁）
 	ReplayWindowSecs int `mapstructure:"replay_window_seconds"` // 时间戳新鲜度窗口（秒），默认 120
 	ReplayMaxFail    int `mapstructure:"replay_max_fail"`       // 触发临时封禁的失败次数

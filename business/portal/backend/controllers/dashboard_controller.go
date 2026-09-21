@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -175,7 +176,7 @@ func (c *DashboardController) GetArticleTrend(ctx *gin.Context) {
 		monday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).AddDate(0, 0, -(weekday - 1))
 		nextMonday := monday.AddDate(0, 0, 7)
 
-		countMap := getPublishedArticleCountMap(monday, nextMonday, "2006-01-02")
+		countMap := getPublishedArticleCountMap(monday, nextMonday, "%Y-%m-%d")
 
 		days := []string{"周一", "周二", "周三", "周四", "周五", "周六", "周日"}
 		for i := range 7 {
@@ -189,7 +190,7 @@ func (c *DashboardController) GetArticleTrend(ctx *gin.Context) {
 		endOfMonth := startOfMonth.AddDate(0, 1, 0)
 		daysInMonth := endOfMonth.AddDate(0, 0, -1).Day()
 
-		countMap := getPublishedArticleCountMap(startOfMonth, endOfMonth, "2006-01-02")
+		countMap := getPublishedArticleCountMap(startOfMonth, endOfMonth, "%Y-%m-%d")
 
 		for i := 1; i <= daysInMonth; i++ {
 			day := time.Date(now.Year(), now.Month(), i, 0, 0, 0, 0, now.Location())
@@ -201,7 +202,7 @@ func (c *DashboardController) GetArticleTrend(ctx *gin.Context) {
 		startOfYear := time.Date(year, 1, 1, 0, 0, 0, 0, now.Location())
 		endOfYear := startOfYear.AddDate(1, 0, 0)
 
-		countMap := getPublishedArticleCountMap(startOfYear, endOfYear, "2006-01")
+		countMap := getPublishedArticleCountMap(startOfYear, endOfYear, "%Y-%m")
 
 		months := []string{"1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"}
 		for i := 1; i <= 12; i++ {
@@ -217,14 +218,30 @@ func (c *DashboardController) GetArticleTrend(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("获取成功", result))
 }
 
-func getPublishedArticleCountMap(start, end time.Time, layout string) map[string]int64 {
-	var articles []models.Article
-	utils.DB.Where("status = ? AND created_at >= ? AND created_at < ?", 1, start, end).Find(&articles)
-
-	countMap := make(map[string]int64)
-	for _, a := range articles {
-		key := a.CreatedAt.Format(layout)
-		countMap[key]++
+// getPublishedArticleCountMap 统计窗口内「发布」的文章数（按首次发布时间分桶）。
+// 原先按 article.created_at 分桶，导致 3 月建稿、9 月发布的文章被计入 3 月（图表名为「发布趋势」）。
+// 发布时间取 article_column_publish.created_at 的最小值（一篇文章首批多个栏目时可能存在多条发布记录）。
+// mysqlLayout 为 MySQL 的 DATE_FORMAT 表达式（如 '%Y-%m'）。
+func getPublishedArticleCountMap(start, end time.Time, mysqlLayout string) map[string]int64 {
+	type bucketRow struct {
+		Bucket string `gorm:"column:bucket"`
+		Count  int64  `gorm:"column:cnt"`
+	}
+	var rows []bucketRow
+	sub := utils.DB.Table("article_column_publish").
+		Select("article_id, MIN(created_at) AS first_publish").
+		Where("created_at >= ? AND created_at < ?", start, end).
+		Group("article_id")
+	if err := utils.DB.Table("(?) AS t", sub).
+		Select(fmt.Sprintf("DATE_FORMAT(first_publish, '%s') AS bucket, COUNT(*) AS cnt", mysqlLayout)).
+		Group("bucket").
+		Scan(&rows).Error; err != nil {
+		utils.Logger.Warnf("统计文章发布趋势失败: %v", err)
+		return map[string]int64{}
+	}
+	countMap := make(map[string]int64, len(rows))
+	for _, row := range rows {
+		countMap[row.Bucket] = row.Count
 	}
 	return countMap
 }

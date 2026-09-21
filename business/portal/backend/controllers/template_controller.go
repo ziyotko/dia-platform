@@ -113,9 +113,14 @@ func (c *TemplateController) UpdateTemplate(ctx *gin.Context) {
 		return
 	}
 
+	// 前端编辑弹窗会提交「模板编码 / 访问路径」（模板即页面，code/route_path 参与静态化路径与预览地址拼接），
+	// 原先漏写这两列：改「访问路径」返回成功但库不变，详情页静态文件路径与 /articles/column-publishes
+	// 的 routePath/url 会一直沿用旧值，且界面上无法修正。
 	updates := map[string]any{
 		"name":        req.Name,
+		"code":        req.Code,
 		"type":        req.Type,
+		"route_path":  req.RoutePath,
 		"description": req.Description,
 		"status":      req.Status,
 	}

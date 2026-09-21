@@ -421,10 +421,9 @@ func (c *ArticleController) UpdateArticleStatus(ctx *gin.Context) {
 		return
 	}
 
-	// 文章下线（status == 2）时，调用静态化功能删除该文章的静态文件
-	// 静态化程序接口：DELETE /api/static/article?id={文章ID}&path={静态化输出路径}
-	// 代理处理见 static_job_controller.go DeleteArticleStatic
-	if req.Status == 2 {
+	// 下线口径：只要该文章原本是「已发布」，转草稿(0) / 下线(2) 都需要删除已生成的静态文件，
+	// 否则文章在后台变成草稿、公开站点仍在继续提供该详情页（原先只判断 req.Status == 2）。
+	if article.Status == models.ArticleStatusPublished {
 		c.staticJobController.DeleteArticleStaticByID(ctx, idStr)
 	}
 
@@ -745,14 +744,24 @@ func (c *ArticleController) GetArticleColumnPublishes(ctx *gin.Context) {
 		return
 	}
 
-	routePath, name, _ := c.articleService.GetDetailPageRoutePath()
+	// 详情页统一访问路径（取启用的详情页模板）；未配置/查询出错时 routePath 为空，
+	// 此时不再拼接 "/{id}.html"，而是下发空地址（前端预览按钮会因 !row.url 置灰），
+	// 避免生成 "/27.html" 这类点进去必然 404 的假地址。
+	routePath, name, routeErr := c.articleService.GetDetailPageRoutePath()
+	if routeErr != nil {
+		utils.Logger.Warnf("获取详情页模板失败: %v", routeErr)
+	}
+	routePath = strings.TrimRight(strings.TrimSpace(routePath), "/")
 	// 预览地址前缀（站点地址）：一次读取、循环内复用
 	siteBaseURL := services.SiteBaseURL()
 
 	var result []gin.H
 	for _, a := range articles {
 		// 详情页静态文件路径 = 详情页模板访问路径 + /{id}.html
-		pagePath := fmt.Sprintf("%s/%d.html", routePath, a.ID)
+		pagePath := ""
+		if routePath != "" {
+			pagePath = fmt.Sprintf("%s/%d.html", routePath, a.ID)
+		}
 		result = append(result, gin.H{
 			"id":        a.ID,
 			"title":     a.Title,

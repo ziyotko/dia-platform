@@ -146,7 +146,13 @@ func SetupRoutes(router *gin.Engine) {
 		member.GET("/links/:id", linkController.GetLinkByID)
 
 		// 文件上传（作者上传封面/附件/视频）
-		member.POST("/upload", uploadController.UploadFile)
+		// 按真实客户端 IP 限流：/upload 在菜单豁免表内（任意已认证账号可用），
+		// 而单文件上限高达 800MB，不加节流可被循环上传写满磁盘。
+		uploadLimiter := middleware.RateLimitMiddleware(
+			config.AppConfig.Server.UploadRateLimit,
+			time.Duration(config.AppConfig.Server.UploadRateWindowSecs)*time.Second,
+		)
+		member.POST("/upload", uploadLimiter, uploadController.UploadFile)
 	}
 
 	// === 管理员路由（需认证 + 管理员角色）===

@@ -84,6 +84,18 @@ func (s *DepartmentService) CreateDepartment(dept *models.Department) error {
 	if err := ensureOrganizationExists(dept.OrgID); err != nil {
 		return err
 	}
+	// 创建接口是整体绑定 JSON 的，历史实现会把请求体里的 user_ids/user_count 原样入库，
+	// 绕过 mutateDepartmentMembers 的去重/存在性/长度校验（可写入脏 ID 与不一致的计数）。
+	// 这里统一走 normalizeMemberIDs 规范化，并忽略请求体里的 user_count。
+	kept, joined, dropped, err := normalizeMemberIDs(parseMemberIDList(dept.UserIds), departmentMemberIDsMaxChars)
+	if err != nil {
+		return err
+	}
+	if dropped > 0 {
+		return fmt.Errorf("有 %d 个成员不存在（可能已被删除），请刷新后重试", dropped)
+	}
+	dept.UserIds = joined
+	dept.UserCount = len(kept)
 	return utils.DB.Create(dept).Error
 }
 

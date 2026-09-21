@@ -371,13 +371,35 @@ const columnTableData = computed(() => {
   return buildTree(allColumns.value, undefined)
 })
 
+// 编辑中的栏目自身 + 其全部后代 ID（作为上级候选时需排除）
+const excludedParentIds = computed(() => {
+  const blocked = new Set<number>()
+  const rootId = Number(columnForm.id || 0)
+  if (!rootId) return blocked
+  blocked.add(rootId)
+  const collect = (parentId: number) => {
+    allColumns.value.forEach((item: ColumnItem) => {
+      if (item.parentId === parentId && !blocked.has(item.id)) {
+        blocked.add(item.id)
+        collect(item.id)
+      }
+    })
+  }
+  collect(rootId)
+  return blocked
+})
+
 const columnTreeOptions = computed(() => {
   const templateId = currentTemplateId.value
   if (!templateId) return []
+  const blocked = excludedParentIds.value
   const buildOptions = (items: ColumnItem[], parentId?: number): any[] => {
     return items
       .filter(item => {
         if (item.templateId !== templateId) return false
+        // 编辑时剔除自身及其全部下级：否则可以把栏目挂到自己的后代下形成环，
+        // 该枝栏目会从栏目树/投放树中永久消失（后端已拦截，这里提前避免误选）
+        if (blocked.has(item.id)) return false
         if (parentId === undefined) return isRootColumn(item)
         return item.parentId === parentId
       })

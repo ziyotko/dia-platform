@@ -46,7 +46,7 @@ business/portal/
 - `server.trusted_proxies`: **可信反向代理地址，生产必须填 Nginx 的 IP**，决定 `X-Forwarded-For`/`X-Real-IP` 是否被信任（留空回退为仅信任 `127.0.0.1`）。限流、防重放封禁都按真实客户端 IP 统计
 - `server.max_concurrent_ips`: 单个 IP 的并发请求上限（默认 50）
 - `server.max_json_body_mb`: 非 multipart（JSON）请求体上限，默认 64（MB，`<=0` 回退 64）。**富文本正文会内联 base64 图片**，故默认值留足余量；文件上传（multipart）不受此限制，另有单文件限制（视频 800MB、其它 50MB）与 Nginx `client_max_body_size` 兜底。超限时返回业务码 1 + 「请求体过大，已超过 NMB 上限」并记 Warn 日志
-- 限流（Redis db 7 固定窗口，按真实客户端 IP 计数；Redis 不可用时退化为进程内限流）：`analytics_rate_limit`/`analytics_rate_window_seconds`（站点分析，默认 60 次/60s）、`login_rate_limit`/`login_rate_window_seconds`（登录，默认 10 次/300s）、`captcha_rate_limit`/`captcha_rate_window_seconds`（验证码，默认 30 次/60s）、`public_rate_limit`/`public_rate_window_seconds`（公开只读接口 `/site-info`、`/search/articles`，默认 120 次/60s，未配置回退 60 次/60s）
+- 限流（Redis db 7 固定窗口，按真实客户端 IP 计数；Redis 不可用时退化为进程内限流）：`analytics_rate_limit`/`analytics_rate_window_seconds`（站点分析，默认 60 次/60s）、`login_rate_limit`/`login_rate_window_seconds`（登录，默认 10 次/300s）、`captcha_rate_limit`/`captcha_rate_window_seconds`（验证码，默认 30 次/60s）、`public_rate_limit`/`public_rate_window_seconds`（公开只读接口 `/site-info`、`/search/articles`，默认 120 次/60s，未配置回退 60 次/60s）、`upload_rate_limit`/`upload_rate_window_seconds`（文件上传 `POST /upload`，默认 30 次/60s，未配置回退 60 次/60s）
 - 防重放：`replay_window_seconds`（时间戳新鲜度窗口，默认 120s）、`replay_max_fail`（同一 IP 窗口内失败次数阈值，默认 10）、`replay_ban_minutes`（达阈值后临时封禁分钟数，默认 15）。**匿名只读请求（GET/HEAD/OPTIONS）不消耗 nonce**（不会写 Redis 键），匿名写接口（登录/站点分析写入）仍逐次占用 nonce
 - `database`: host / port / username / `password`（**只填占位值 `PORTAL_DB_PASSWORD`**）/ dbname / charset(`utf8mb4`) / `loc: Asia/Shanghai` / 读写超时与连接池
 - `redis`: host / port / password / **`db`=6 验证码、`db1`=7 防重放+限流、`db2`=8 缓存**

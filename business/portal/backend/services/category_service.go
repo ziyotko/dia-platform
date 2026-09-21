@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"server/models"
 	"server/utils"
 )
@@ -59,6 +60,15 @@ func (s *CategoryService) DeleteCategory(id uint) error {
 	var category models.Category
 	if err := utils.DB.First(&category, id).Error; err != nil {
 		return err
+	}
+	// 仍被文章引用时拒绝删除：article_category 有外键，直接删除会返回 1451，
+	// 错误被 SanitizeError 归类后只显示「删除分类失败」，管理员无从判断原因。
+	var articleCount int64
+	if err := utils.DB.Model(&models.ArticleCategory{}).Where("category_id = ?", id).Count(&articleCount).Error; err != nil {
+		return err
+	}
+	if articleCount > 0 {
+		return fmt.Errorf("该分类仍被 %d 篇文章使用，请先调整这些文章的分类后再删除", articleCount)
 	}
 	return utils.DB.Delete(&category).Error
 }

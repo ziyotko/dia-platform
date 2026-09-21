@@ -139,6 +139,11 @@ func (s *WorkflowService) SaveWorkflowNodes(workflowID uint, nodes []models.Work
 	if err := s.ValidateNodesResolvable(nodes); err != nil {
 		return err
 	}
+	// 节点排序值必须唯一：审核推进是按 (sort_order, id) 顺序取下一节点，
+	// 重复值会让审批顺序变得不确定（历史上更会因「找不到下一个节点」而直接判定审核通过→自动发布）。
+	if err := validateNodeSortOrders(nodes); err != nil {
+		return err
+	}
 	// 节点是「全删重建」（ID 会变化），若存在进行中的审核，其 current_node_id 将指向已删节点而永久卡住
 	var pendingCount int64
 	if err := utils.DB.Model(&models.ArticleColumnAudit{}).
@@ -164,6 +169,18 @@ func (s *WorkflowService) SaveWorkflowNodes(workflowID uint, nodes []models.Work
 		}
 		return nil
 	})
+}
+
+// validateNodeSortOrders 校验节点排序值唯一（同一流程内不允许重复）。
+func validateNodeSortOrders(nodes []models.WorkflowNode) error {
+	seen := make(map[int]bool, len(nodes))
+	for _, node := range nodes {
+		if seen[node.SortOrder] {
+			return fmt.Errorf("存在重复的节点排序值（%d），请为每个节点设置唯一的排序", node.SortOrder)
+		}
+		seen[node.SortOrder] = true
+	}
+	return nil
 }
 
 func (s *WorkflowService) GetWorkflowNodes(workflowID uint) ([]models.WorkflowNode, error) {
