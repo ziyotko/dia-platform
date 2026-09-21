@@ -46,11 +46,11 @@ business/portal/
 - `server.trusted_proxies`: **可信反向代理地址，生产必须填 Nginx 的 IP**，决定 `X-Forwarded-For`/`X-Real-IP` 是否被信任（留空回退为仅信任 `127.0.0.1`）。限流、防重放封禁都按真实客户端 IP 统计
 - `server.max_concurrent_ips`: 单个 IP 的并发请求上限（默认 50）
 - `server.max_json_body_mb`: 非 multipart（JSON）请求体上限，默认 64（MB，`<=0` 回退 64）。**富文本正文会内联 base64 图片**，故默认值留足余量；文件上传（multipart）不受此限制，另有单文件限制（视频 800MB、其它 50MB）与 Nginx `client_max_body_size` 兜底。超限时返回业务码 1 + 「请求体过大，已超过 NMB 上限」并记 Warn 日志
-- 限流（Redis db 7 固定窗口，按真实客户端 IP 计数；Redis 不可用时退化为进程内限流）：`analytics_rate_limit`/`analytics_rate_window_seconds`（站点分析，默认 60 次/60s）、`login_rate_limit`/`login_rate_window_seconds`（登录，默认 10 次/300s）、`captcha_rate_limit`/`captcha_rate_window_seconds`（验证码，默认 30 次/60s）、`public_rate_limit`/`public_rate_window_seconds`（公开只读接口 `/site-info`、`/search/articles`，默认 120 次/60s，未配置回退 60 次/60s）、`upload_rate_limit`/`upload_rate_window_seconds`（文件上传 `POST /upload`，默认 30 次/60s，未配置回退 60 次/60s）
+- 限流（Redis db 7 固定窗口，按真实客户端 IP 计数；Redis 不可用时退化为进程内限流）：`analytics_rate_limit`/`analytics_rate_window_seconds`（站点分析，默认 60 次/60s）、`login_rate_limit`/`login_rate_window_seconds`（登录，默认 10 次/300s）、`captcha_rate_limit`/`captcha_rate_window_seconds`（验证码，默认 30 次/60s）、`public_rate_limit`/`public_rate_window_seconds`（公开只读接口 `/site-info`、`/search/articles`，默认 120 次/60s，未配置回退 60 次/60s）、`upload_rate_limit`/`upload_rate_window_seconds`（文件上传 `POST /upload`，默认 30 次/60s，未配置回退 60 次/60s）。计数器 key 形如 `ratelimit:{用途}:{limit}:{ip}:{窗口}`；**个人改密（`PUT /profile/password`）复用登录的限流配置**（同一额度池内的独立计数器，用途名 `password`）
 - 防重放：`replay_window_seconds`（时间戳新鲜度窗口，默认 120s）、`replay_max_fail`（同一 IP 窗口内失败次数阈值，默认 10）、`replay_ban_minutes`（达阈值后临时封禁分钟数，默认 15）。**匿名只读请求（GET/HEAD/OPTIONS）不消耗 nonce**（不会写 Redis 键），匿名写接口（登录/站点分析写入）仍逐次占用 nonce
 - `database`: host / port / username / `password`（**只填占位值 `PORTAL_DB_PASSWORD`**）/ dbname / charset(`utf8mb4`) / `loc: Asia/Shanghai` / 读写超时与连接池
 - `redis`: host / port / password / **`db`=6 验证码、`db1`=7 防重放+限流、`db2`=8 缓存**
-- `jwt.secret`（占位值 `PORTAL_JWT_SECRET`）、`jwt.expires_hour`（默认 24）
+- `jwt.secret`（占位值 `PORTAL_JWT_SECRET`）、`jwt.expires_hour`（默认 24）。**注意**：登录态有效期优先取数据库设置 `setting.token_expire`（后台「系统设置 → 安全设置」，1–720 小时）；仅当该值为 0 时才用 `jwt.expires_hour`
 - `log.level` / `log.path`（默认 `./logs`；单文件 100MB、保留 180 天、自动压缩）
 
 ### 2. 敏感信息用环境变量注入（必填）
@@ -105,7 +105,8 @@ powershell -ExecutionPolicy Bypass -File .\build-backends.ps1 -Only portal -Vet
 
 - `AutoMigrate` 会自动给旧库补两列：`user.password_changed_at`（改密后使旧 Token 失效）、`login_log.user_id`（登录日志归属，避免同名账号串号）。**不需要**手工执行 ALTER。
 - 限流计数器 key 增加了「用途段」（`ratelimit:{用途}:{limit}:{ip}:{窗口}`）：升级后各接口计数从 0 重新开始（旧 key 会在 1 个窗口内自然过期），无需处理。
-- 启动时会幂等清理历史版本残留的**重复内置菜单**（同名同父级只保留最早一条），并把角色权限里指向被删菜单的 ID 改指到保留的那条。日志出现 `已清理重复菜单: …` 即为已生效。
+- 启动时会幂等清理历史版本残留的**重复内置菜单**（同一「父级 + 名称 + 类型 + 路径 + 组件」只保留 id 最小的一条），并把 `role.permissions` 里指向被删菜单的 ID 改指到保留的那条。日志出现 `已清理重复菜单: …` 即为已生效。
+  - 注：若首次启动日志里**没有**这行（说明两个副本的路径/组件尚未升级一致），**再重启一次**即可——组件/前缀升级与去重在同一次启动内先后执行，第二次启动两者才会对齐。
 - 已下线无前端调用的只读接口：`GET /ads/:id`、`GET /links/:id`、`GET /roles/:id`、`GET /workflow-roles/:id`（如外部系统有调用需先改造）。
 
 #### ⚠️ 页面层合并迁移（2026-09-21，手工执行，不可逆）
@@ -259,7 +260,8 @@ ALTER TABLE `static_log`             DROP INDEX `idx_static_log_deleted_at`,    
 ### 5. 静态化（外部程序联动）
 
 - 后端通过 `POST /xxxxx/api/static/*` 转发到「外部静态化程序」，非本仓库代码
-- 静态化程序的地址 / 令牌环境变量名 / 输出路径在后台「系统设置」中配置（存于数据库，缓存于 Redis db 8）；令牌值从「所填环境变量名」对应的环境变量读取，以 `Authorization: Bearer <token>` 发送
+- 静态化程序的地址 / 令牌环境变量名 / 输出路径在后台「系统设置」中配置（存于数据库，缓存于 Redis db 8）；令牌值从「所填环境变量名」对应的环境变量读取，以 `Authorization: Bearer <token>` 发送。**环境变量缺失时会直接返回「访问令牌未配置」并提示该变量名**（不再静默用令牌名当令牌发出）
+- **输出路径只认后台配置**：所有生成/删除请求的 `path` 一律取 `setting.static_path`，接口不接受调用方传入的目录（前端传同值也仅用于比对告警），避免误写/误删服务器其它目录
 - 后端调用超时 120s（`services/static_program_client.go`），**Nginx 的 `proxy_read_timeout` 必须 ≥ 180s**，否则大页面生成会被网关截断成 504
 - 部署前确认该程序可达，否则静态化请求返回 502
 
@@ -365,8 +367,10 @@ server {
 | 文章查询报 `Can't find FULLTEXT index matching the column list` | `article` 表缺少 `MATCH ... AGAINST` 所需的 FULLTEXT 索引。当前版本启动时会自动补齐 `idx_article_title_fulltext` / `idx_article_author_fulltext` / `idx_article_source_fulltext`；若日志出现 `[migrate] 创建 FULLTEXT 索引 ... 失败`，检查数据库账号是否具备 `ALTER` 权限 |
 | 接口返回「缺少防重放攻击请求头」/「请求已过期，请重新发送」 | 请求未带 `X-Request-Timestamp`（毫秒时间戳）与 `X-Request-Nonce`（8–128 位）头。浏览器端由前端 `utils/request.ts` 统一添加；脚本或第三方对接需自行实现（已认证请求还需 `X-Request-Signature`） |
 | 登录/验证码返回「请求过于频繁，请稍后再试」 | 命中固定窗口限流或防重放临时封禁（Redis db 7）。优先确认 `server.trusted_proxies` 是否填了 Nginx IP，否则全站共用一个 IP 会误伤合法用户 |
-| 多用户同时被登出、接口返回 `code=401` | Token 过期（`jwt.expires_hour`）或 `PORTAL_JWT_SECRET` 被更换；前端收到 401 会自动跳登录页 |
+| 多用户同时被登出、接口返回 `code=401` | Token 过期（`jwt.expires_hour`/`setting.token_expire`）或 `PORTAL_JWT_SECRET` 被更换；前端收到 401 会自动跳登录页 |
 | 静态化请求 502 / 504 | 502 = 外部静态化程序不可达（检查「系统设置」中的地址与网络连通）；504 = 生成耗时超过网关超时（后端客户端 120s，Nginx `proxy_read_timeout` 建议 ≥180s） |
-| 上传大文件失败 | 后端限制：视频目录 800MB、其它目录 50MB；同时确认 Nginx `client_max_body_size` ≥ 该值 |
+| 上传大文件失败 | 后端按扩展名限制：**`.mp4` 视频 800MB**，其余格式（图片/附件/其它视频）50MB；同时确认 Nginx `client_max_body_size` ≥ 该值；`POST /upload` 另有 `upload_rate_limit` 限流（默认 30 次/60s） |
+| 用户反映"改完密码后其他设备被登出" | 属正常安全机制：`user.password_changed_at` 会作废旧 Token（含管理员重置密码），前端提示"密码已修改，请重新登录" |
+| 静态化操作提示"静态化程序访问令牌未配置" | 后台填的是**环境变量名**，但服务端未设置同名环境变量；注入该变量后重试即可（不再退化为把令牌名当令牌发送） |
 | 启动即退出并打印 `程序退出` | 未注入 `PORTAL_DB_PASSWORD` 或 `PORTAL_JWT_SECRET`（仍为占位值），或 `./config.yaml` 不在进程工作目录下 |
 | 端口被占用启动失败 | `server.port` 默认 8092；被占用时改配置或释放端口，并同步 Nginx 与 `frontend/vite.config.ts`（dev 代理） |

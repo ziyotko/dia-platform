@@ -497,14 +497,14 @@
             :before-upload="handleVideoBeforeUpload"
             :on-remove="handleVideoRemove"
             :limit="1"
-            accept="video/*"
+            accept=".mp4,video/mp4"
             class="video-uploader"
           >
             <el-button type="primary" plain :disabled="!!videoForm.videoUrl">
               <el-icon><Plus /></el-icon>上传视频
             </el-button>
             <template #tip>
-              <div class="video-tip">支持 MP4、MOV 等常见视频格式，单个文件不超过 800MB</div>
+              <div class="video-tip">仅支持 MP4 格式，单个文件不超过 800MB</div>
               <el-progress
                 v-if="videoUploadProgress > 0 && !videoForm.videoUrl"
                 :percentage="videoUploadProgress"
@@ -2396,6 +2396,11 @@ const resetDataForm = () => {
 }
 
 const handleVideoBeforeUpload = (file: File) => {
+  // 与服务端口径一致：只有 .mp4 允许 800MB（其余格式走附件白名单的 50MB）
+  if (!/\.mp4$/i.test(file.name)) {
+    ElMessage.warning('仅支持 MP4 格式的视频文件')
+    return false
+  }
   const maxSize = 800 * 1024 * 1024
   if (file.size > maxSize) {
     ElMessage.warning('视频文件大小不能超过 800MB')

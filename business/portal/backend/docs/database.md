@@ -13,8 +13,8 @@
 | --- | --- | --- |
 | 库名 | `caam_portal` | 见 `backend/config.yaml` |
 | 字符集 | `utf8mb4` | 支持完整中文与 Emoji |
-| 时区 | `Asia/Shanghai` | `parse_time: true` |
-| 默认端口 | `3305` | 可按环境修改 |
+| 时区 | `Asia/Shanghai` | `parse_time: true`，`loc: Asia/Shanghai` |
+| 默认端口 | `63400` | 以 `backend/config.yaml` 的 `database.port` 为准 |
 | 密码 | 环境变量 `PORTAL_DB_PASSWORD` | 勿提交真实密码 |
 
 ### 命名与类型约定
@@ -44,24 +44,26 @@
 | 10 | `setting` | 基础配置 | 系统设置（单行配置） |
 | 11 | `template` | 内容管理 | 页面模板（即"页面"，原 `page` 表已合并至此） |
 | 12 | `column` | 内容管理 | 栏目（保留字，SQL 需加反引号） |
-| 14 | `category` | 内容管理 | 分类 |
-| 15 | `tag` | 内容管理 | 标签 |
-| 16 | `article` | 内容管理 | 文章 |
-| 17 | `article_attachment` | 内容管理 | 文章附件 |
-| 18 | `article_category` | 内容管理 | 文章-分类关联（多对多） |
-| 19 | `article_tag` | 内容管理 | 文章-标签关联（多对多） |
-| 20 | `article_column` | 内容管理 | 文章-栏目关联（多对多） |
-| 21 | `article_column_publish` | 内容管理 | 栏目发布记录 |
-| 22 | `article_column_audit` | 审核流程 | 文章-栏目送审记录 |
-| 23 | `article_column_audit_history` | 审核流程 | 审核历史（操作留痕） |
-| 24 | `ad` | 内容管理 | 广告 |
-| 25 | `link` | 内容管理 | 友情链接 |
-| 26 | `static_log` | 静态化 | 静态化日志 |
-| 27 | `visit_analytics` | 数据统计 | 访问统计 |
-| 28 | `like_analytics` | 数据统计 | 点赞统计 |
-| 29 | `share_analytics` | 数据统计 | 分享统计 |
-| 30 | `operation_log` | 系统管理 | 操作日志 |
-| 31 | `login_log` | 系统管理 | 登录日志 |
+| 13 | `category` | 内容管理 | 分类 |
+| 14 | `tag` | 内容管理 | 标签 |
+| 15 | `article` | 内容管理 | 文章 |
+| 16 | `article_attachment` | 内容管理 | 文章附件 |
+| 17 | `article_category` | 内容管理 | 文章-分类关联（多对多） |
+| 18 | `article_tag` | 内容管理 | 文章-标签关联（多对多） |
+| 19 | `article_column` | 内容管理 | 文章-栏目关联（多对多） |
+| 20 | `article_column_publish` | 内容管理 | 栏目发布记录 |
+| 21 | `article_column_audit` | 审核流程 | 文章-栏目送审记录 |
+| 22 | `article_column_audit_history` | 审核流程 | 审核历史（操作留痕） |
+| 23 | `ad` | 内容管理 | 广告 |
+| 24 | `link` | 内容管理 | 友情链接 |
+| 25 | `static_log` | 静态化 | 静态化日志 |
+| 26 | `visit_analytics` | 数据统计 | 访问统计 |
+| 27 | `like_analytics` | 数据统计 | 点赞统计 |
+| 28 | `share_analytics` | 数据统计 | 分享统计 |
+| 29 | `operation_log` | 系统管理 | 操作日志 |
+| 30 | `login_log` | 系统管理 | 登录日志 |
+
+> 以上 30 张表全部由 `models/migrate.go` 的 `AutoMigrate` 创建；其中 `article_tag`、`article_column` 是 GORM 自动生成的连接表（无对应模型文件）。
 
 ---
 
@@ -102,6 +104,7 @@
 | name | varchar(50) | 否 | - | - | 菜单名称 |
 | path | varchar(100) | 是 | - | - | 路由路径（绝对路径，如 `/content/article`） |
 | component | varchar(200) | 是 | - | - | 组件路径（相对 views，如 `content/article`） |
+| api_prefix | varchar(100) | 是 | - | - | 该菜单可调用的接口前缀（**逗号分隔多前缀**，如 `/static,/static-logs,/static-monitor,/settings`）；空表示不限制（见 §七.5） |
 | icon | varchar(50) | 是 | - | - | 图标名（Element Plus 图标） |
 | type | varchar(20) | 是 | `directory` | - | 类型：`directory` 目录 / `menu` 菜单 |
 | sort | bigint | 是 | 0 | - | 排序号 |
@@ -167,7 +170,7 @@
 | name | varchar(50) | 否 | - | - | 部门名称 |
 | code | varchar(50) | 否 | - | UNIQUE | 部门编码 |
 | leader | varchar(50) | 是 | - | - | 负责人姓名 |
-| leader_code | varchar(50) | 是 | - | - | 负责人编码 |
+| leader_code | varchar(50) | 是 | - | - | 负责人标识：**存用户 ID**（dept_head 审批节点按此解析；历史脏值可能为账号，后端已兼容两种取值） |
 | sort | bigint | 是 | 0 | - | 排序号 |
 | status | bigint | 是 | 1 | IDX(org_id,status) | 状态 |
 | description | varchar(255) | 是 | - | - | 描述 |
@@ -285,6 +288,7 @@
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
 | site_name | varchar(100) | 是 | - | - | 站点名称 |
+| site_url | varchar(255) | 是 | - | - | 站点地址（静态化预览地址前缀，需 `http(s)` 开头） |
 | logo | varchar(500) | 是 | - | - | 站点 Logo |
 | icp | varchar(200) | 是 | - | - | ICP 备案号 |
 | copyright | varchar(500) | 是 | - | - | 版权信息 |
@@ -292,10 +296,10 @@
 | org_code | varchar(100) | 是 | - | - | 机构代码 |
 | captcha_enabled | boolean | 是 | true | - | 启用登录验证码 |
 | lock_enabled | boolean | 是 | true | - | 启用登录失败锁定 |
-| max_fail_count | bigint | 是 | 5 | - | 最大失败次数 |
-| lock_duration | bigint | 是 | 30 | - | 锁定时长（分钟） |
-| min_password_length | bigint | 是 | 8 | - | 密码最小长度 |
-| token_expire | bigint | 是 | 24 | - | Token 有效期（小时） |
+| max_fail_count | bigint | 是 | 5 | - | 最大失败次数（服务端限 1–100） |
+| lock_duration | bigint | 是 | 30 | - | 锁定时长（分钟，服务端限 1–1440） |
+| min_password_length | bigint | 是 | 8 | - | 密码最小长度（服务端限 1–64，**不得为 0**） |
+| token_expire | bigint | 是 | 24 | - | Token 有效期（小时，服务端限 1–720）；>0 时优先于 `config.yaml` 的 `jwt.expires_hour` |
 | smtp_host | varchar(200) | 是 | - | - | SMTP 服务器 |
 | smtp_port | varchar(10) | 是 | - | - | SMTP 端口 |
 | from_email | varchar(200) | 是 | - | - | 发件邮箱 |
@@ -378,21 +382,22 @@
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
 | title | varchar(200) | 否 | - | - | 标题 |
-| type | bigint | 是 | 1 | IDX | 类型：1 图文 / 2 视频 / 3 数据 |
+| type | bigint | 是 | 1 | IDX | 类型：1 图文 / 2 视频 / 3 数据 / 4 报刊（非法值创建时回退图文） |
 | summary | varchar(500) | 是 | - | - | 摘要 |
 | content | longtext | 是 | - | - | 正文内容（富文本/HTML） |
-| status | bigint | 是 | 0 | IDX(created_at,status,audit_status) / (created_at,status,author_code) | 状态：0 草稿 / 1 已发布 / 2 已下线 |
-| audit_status | bigint | 是 | 0 | IDX(created_at,status,audit_status) | 审核状态：0 待审核 / 1 审核中 / 2 已审核 |
+| status | bigint | 是 | 0 | IDX(idx_article_status_audit_created) / IDX(idx_article_author_status_created) | 状态：0 草稿 / 1 已发布 / 2 已下线 |
+| audit_status | bigint | 是 | 0 | IDX(idx_article_status_audit_created) | 审核状态：0 未提交 / 1 审核中 / 2 已审核 |
 | is_top | bigint | 是 | 0 | IDX | 是否置顶 |
 | is_bold | bigint | 是 | 0 | - | 标题是否加粗 |
 | default_color | varchar(20) | 是 | - | - | 标题默认颜色 |
 | cover | varchar(500) | 是 | - | - | 封面图 |
 | author | varchar(100) | 是 | - | - | 作者姓名 |
-| author_code | varchar(100) | 是 | - | IDX(created_at,status,author_code) | 作者编码 |
+| author_code | varchar(100) | 是 | - | IDX(idx_article_author_status_created) | 作者编码（存用户 ID 字符串） |
 | source | varchar(200) | 是 | - | - | 来源 |
-| publish_time | datetime(3) | 是 | - | - | 发布时间（自定义 LocalTime） |
+| publish_time | datetime(3) | 是 | - | - | 发布时间（自定义 LocalTime，与静态化无关） |
 | url | varchar(500) | 是 | - | - | 外部跳转链接 |
-| column_count | bigint | 是 | 0 | - | 关联栏目数（冗余计数，字段名 `column_count`） |
+
+> `column_count`（栏目数冗余计数）**已从模型移除**：代码不再读写该列，新库不会创建；旧库残留的列可保留（不影响功能），也可按需手工 DROP。
 
 > 文章与分类/标签/栏目为多对多关系，通过下述关联表实现。
 
@@ -546,6 +551,8 @@ erDiagram
     USER ||--o{ LOGIN_LOG : "产生"
     USER ||--o{ WORKFLOW_ROLE_USER : "关联"
     WORKFLOW_ROLE ||--o{ WORKFLOW_ROLE_USER : "包含"
+    USER ||--o{ ARTICLE : "作者(author_code)"
+    USER ||--o{ WORKFLOW_NODE : "审批人(approver_type=user)"
 
     WORKFLOW ||--o{ WORKFLOW_NODE : "包含节点"
     WORKFLOW ||--o{ COLUMN : "栏目关联"
@@ -588,17 +595,21 @@ erDiagram
 | 表.字段 | 值 | 含义 |
 | --- | --- | --- |
 | user.status | 0 / 1 | 禁用 / 启用 |
+| user.sex | 0 / 1 / 2 | 未知 / 男 / 女 |
 | menu.type | `directory` / `menu` | 目录 / 菜单 |
-| article.type | 1 / 2 / 3 | 图文 / 视频 / 数据 |
+| article.type | 1 / 2 / 3 / 4 | 图文 / 视频 / 数据 / 报刊 |
 | article.status | 0 / 1 / 2 | 草稿 / 已发布 / 已下线 |
-| article.audit_status | 0 / 1 / 2 | 待审核 / 审核中 / 已审核 |
+| article.audit_status | 0 / 1 / 2 | 未提交（含驳回后回退） / 审核中 / 已审核（已发布） |
 | login_log.status | 0 / 1 | 失败 / 成功 |
 | organization.org_type | 1 / 2 / 3 | 机构 / 分支机构 / 其他 |
 | workflow.status | 1 / 0 | 启用 / 禁用 |
+| workflow_node.approver_type | `user` / `role` / `dept_head` | 指定用户 / 流程角色 / 作者所属部门负责人（空值按 `user` 处理；`approver_id=0` 视为无人可审，不允许） |
+| column.display_type | 1–9 | 1 轮播 / 2 列表 / 3 图片 / 4 广告 / 5 友链 / 6 报刊 / **7 数据（不进入栏目页静态化列表）** / 8 视频 / 9 其他 |
 | article_column_audit.status | 0 / 1 / 2 | 进行中 / 已通过 / 已驳回 |
 | article_column_audit_history.action | 1 / 2 | 通过 / 驳回 |
 | role.id（内置） | 1 / 3 / 4 | 管理员 / 内容审核 / 内容作者 |
-| column.display_type | 7（特殊） | 7 表示不进入栏目列表发布 |
+| static_log.status | `success` / `warning` / `danger` / `primary` | 成功 / 警告 / 失败 / 信息（前端据此着色） |
+| template.type | `home` / `column` / `detail` / `special` | 首页 / 栏目页 / 详情页 / 专题页（非法值拒绝写入） |
 
 ---
 
@@ -629,13 +640,19 @@ erDiagram
 
 ### 默认菜单（`models/menu_seed.go`）
 
-| 顶级目录 | 子菜单 |
+菜单表同时维护 **api_prefix**（“菜单可见范围 = 可调用接口范围”，见 §七.5），下方一并列出：
+
+| 顶级目录 | 子菜单（接口前缀） |
 | --- | --- |
-| 管理首页 | - |
-| 内容管理 | 待审核、文章管理、广告管理、链接管理、模板管理、栏目管理、分类管理、标签管理 |
-| 数据统计 | 内容数据、文章统计、分类统计、标签统计 |
-| 系统配置 | 用户管理、部门管理、机构管理、角色管理、菜单管理、流程角色、流程管理、操作日志、登录日志 |
-| 基础配置 | 静态化管理、系统设置（含“静态化设置”页签） |
+| 管理首页 | 管理首页（`/dashboard`） |
+| 内容管理 | 待审核（`/articles/my-audits`）、图文管理（`/articles`）、广告管理（`/ads`）、链接管理（`/links`）、模板管理（`/templates`）、栏目管理（`/columns,/templates`）、分类管理（`/categories`）、标签管理（`/tags`） |
+| 数据统计 | 内容数据（`/analytics/article-trend`）、文章统计（`/articles/author-stats`）、分类统计（`/categories/stats`）、标签统计（`/tags/stats`） |
+| 系统配置 | 用户管理（`/users,/organizations`）、部门管理（`/departments,/organizations,/users`）、机构管理（`/organizations,/users`）、角色管理（`/roles`）、菜单管理（`/menus`）、流程角色（`/workflow-roles,/users`）、流程管理（`/workflows,/users,/workflow-roles`）、操作日志（`/logs`）、登录日志（`/login-logs`） |
+| 基础配置 | 静态化管理（`/static,/static-logs,/static-monitor,/settings`）、系统设置（`/settings`，含“静态化设置”页签） |
+
+> 菜单结构或前缀调整后，`SeedDefaultMenus()` 会幂等补齐/升级（仅当当前值仍为旧默认值时才改写），并清理历史重复菜单：
+> 同一「父级 + 名称 + 类型 + 路径 + 组件」只保留 id 最小的一条（仍有子菜单的不动），同时把 `role.permissions` 中指向被删菜单的 ID 改指到保留的那条。
+> 默认角色权限由 `SeedDefaultRolePermissions()` 播种（仅当该角色 `permissions` 为空时写入）：内容审核 = 管理首页/待审核/图文管理，内容作者 = 管理首页/图文管理；角色 1 无需声明（`GetUserMenus` 对其无条件返回全部启用菜单）。
 
 ---
 
@@ -646,7 +663,9 @@ erDiagram
 3. **物理删除（硬删）**：各表均无 `deleted_at`，删除即物理删除，删除后不可恢复；旧库残留的 `deleted_at` 列/索引按 `DEPLOY.md` 的「移除软删除列」手工清理。
 4. **密码安全**：`user.password` 为 SM3 加盐哈希，禁止明文。
 5. **多对多连接表**：`article_tag`、`article_column` 为 GORM 自动生成（无显式模型）；`article_category` 同时存在显式模型与 many2many 标签，二者指向同一张表。
-6. **`column_count`**：`article.column_count` 为冗余计数（列名显式指定为 `column_count`），需在业务逻辑中维护其一致性。
-7. **静态化联动**：`setting` 中保存的静态化地址/令牌用于调用外部静态化程序；`static_log` 记录其执行日志。
-8. **账号锁定**：`user.locked_until` 与 `login_fail_count`、`setting.lock_*` 配置共同实现登录失败锁定。
-9. **数据库连接**：连接参数见 `backend/config.yaml`；生产环境密码通过环境变量 `PORTAL_DB_PASSWORD` 注入。
+6. **菜单 `api_prefix` 决定接口可调用范围**：`middleware/api_prefix.go` 把请求路径去掉 `server.api_prefix` 后与用户已授权菜单的前缀逐一比对（支持逗号分隔多前缀），未命中且不在豁免表内则返回「没有授权」。新增页面/接口时必须确保：该页调用的每个接口要么被其菜单 `api_prefix` 覆盖，要么在 `apiPrefixExemptPaths`（精确匹配）/`apiPrefixExemptPrefixes`（前缀匹配）豁免表内。
+7. **`article.column_count` 已废弃**：模型已移除该字段，代码不再读写（栏目数一律用 `len(article.Columns)` 计算）；旧库残留的列无副作用，新库不会创建。
+8. **静态化联动**：`setting` 中保存的静态化地址/令牌用于调用外部静态化程序；`static_log` 记录其执行日志。静态化输出路径以 `setting.static_path` **为准**（接口不接受调用方传入的路径）。
+9. **账号锁定**：`user.locked_until` 与 `login_fail_count`、`setting.lock_*` 配置共同实现登录失败锁定。
+10. **改密即失效旧 Token**：`user.password_changed_at` 记录最后一次改密时间，鉴权时会与 Token 的 `iat` 比对，早于该时间的 Token 返回 `code=401`。
+11. **数据库连接**：连接参数见 `backend/config.yaml`；生产环境密码通过环境变量 `PORTAL_DB_PASSWORD` 注入。

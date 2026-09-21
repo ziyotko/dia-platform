@@ -163,12 +163,9 @@ func relocateLegacyMenus() {
 
 // dedupeSeededMenus 幂等收敛内置菜单的重复行。
 // 背景：早期版本的 SeedDefaultMenus 先播种后搬迁，老库中「静态化管理」会先在新父目录下被新建一条、
-// 再把旧行搬过来，最终同一父目录下出现两条同名菜单 → 侧边栏/菜单管理/权限树重复。
-// 处理：同一「父级 + 名称 + 类型」（与 seedMenu 自己的幂等键一致）只保留 id 最小的一条，
-// 其余在没有子菜单时删除，并把引用了被删 ID 的 role.permissions 改指向保留的那条
-// （否则该角色的菜单权限会静默丢失）。
-// 保留 id 最小的原因：upgradeMenuComponent/upgradeMenuAPIPrefix 都是 First()（从小到大），
-// 故只有最小 id 那条能确定拿到全部升级后的路径/组件。
+// 再把旧行搬过来，最终同 (parent_id, name, path, component) 出现两条 → 侧边栏/菜单管理/权限树重复。
+// 处理：同「父级 + 名称 + 类型 + 路径 + 组件」只保留 id 最小的一条，其余在没有子菜单时删除，
+// 并把引用了被删 ID 的 role.permissions 改指向保留的那条（否则该角色的菜单权限会静默丢失）。
 func dedupeSeededMenus() {
 	var menus []Menu
 	if err := utils.DB.Order("id ASC").Find(&menus).Error; err != nil {
@@ -179,7 +176,7 @@ func dedupeSeededMenus() {
 	remapped := make(map[uint]uint)
 	for i := range menus {
 		menu := menus[i]
-		key := fmt.Sprintf("%d|%s|%s", menu.ParentID, menu.Name, menu.Type)
+		key := fmt.Sprintf("%d|%s|%s|%s|%s", menu.ParentID, menu.Name, menu.Type, menu.Path, menu.Component)
 		keepID, exists := keptIDs[key]
 		if !exists {
 			keptIDs[key] = menu.ID
@@ -198,8 +195,7 @@ func dedupeSeededMenus() {
 			continue
 		}
 		remapped[menu.ID] = keepID
-		utils.Logger.Infof("已清理重复菜单: %s (删除 id=%d path=%s component=%s，保留 id=%d)",
-			menu.Name, menu.ID, menu.Path, menu.Component, keepID)
+		utils.Logger.Infof("已清理重复菜单: %s (删除 id=%d，保留 id=%d)", menu.Name, menu.ID, keepID)
 	}
 	if len(remapped) > 0 {
 		remapRolePermissions(remapped)
@@ -344,8 +340,8 @@ func upgradeMenuPath(name, legacyPath, newPath string) {
 }
 
 // defaultRoleMenus 描述内置角色初始化时应获得的菜单（按菜单名；父级目录由 GetUserMenus 自动补全，无需重复列出）。
-// 角色 1（管理员）本身即拥有全部菜单（GetUserMenus 对角色 1 无条件返回全部），无需在此声明。
-// 注：原「普通管理员（admin）」角色已下线移除，其「全部菜单」配置一并删除。
+// "*" 表示全部启用菜单。角色 1（管理员）本身即拥有全部菜单，无需在此声明。
+// 注：原「普通管理员（admin）」角色已下线移除，其 "*"（全部菜单）配置一并删除。
 var defaultRoleMenus = map[string][]string{
 	"content_reviewer": {"管理首页", "待审核", "图文管理"},
 	"content_author":   {"管理首页", "图文管理"},
@@ -365,7 +361,11 @@ func SeedDefaultRolePermissions() {
 		}
 
 		var menus []Menu
-		if err := utils.DB.Where("status = ? AND name IN ?", 1, menuNames).Find(&menus).Error; err != nil {
+		query := utils.DB.Where("status = ?", 1)
+		if !(len(menuNames) == 1 && menuNames[0] == "*") {
+			query = query.Where("name IN ?", menuNames)
+		}
+		if err := query.Find(&menus).Error; err != nil {
 			utils.Logger.Warnf("初始化默认角色[%s]菜单权限失败: %v", code, err)
 			continue
 		}
