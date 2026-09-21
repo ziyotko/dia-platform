@@ -104,3 +104,22 @@ export async function deleteStaticArticle(
   const res: any = await request.delete('/static/article', { params: { id, path }, raw: true } as any)
   return { status: res.status, data: res.data }
 }
+
+// 单页操作-专题页重新生成：POST /static/topic?id={专题ID}
+// 后端代理转发至静态化程序（自动附带 Authorization 验证令牌头），同步返回 HTTP 200 及生成结果；
+// 输出目录由后端全局变量决定，前端仅需传专题ID。
+export async function startStaticTopic(id: number | string): Promise<{ status: number; data: StaticPageResponse }> {
+  const res: any = await request.post('/static/topic', undefined, { params: { id }, raw: true } as any)
+  return { status: res.status, data: res.data }
+}
+
+// 单页操作-专题页删除静态文件：DELETE /static/topic?id={专题ID}&path={输出目录}
+// 后端代理转发至静态化程序（自动附带 Authorization 验证令牌头），同步返回 HTTP 200 及删除结果；
+// path 为静态化输出目录，取自后端全局变量「静态化输出路径」。
+export async function deleteStaticTopic(
+  id: number | string,
+  path: string
+): Promise<{ status: number; data: StaticPageResponse }> {
+  const res: any = await request.delete('/static/topic', { params: { id, path }, raw: true } as any)
+  return { status: res.status, data: res.data }
+}

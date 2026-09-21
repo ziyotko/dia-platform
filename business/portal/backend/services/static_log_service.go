@@ -23,12 +23,13 @@ type StaticLogListResult struct {
 }
 
 // StaticLatestTimes 各类型页面最后一次静态化成功时间（读取静态化日志最新成功记录）。
-// 注意：专题页静态化整链未实现（外部静态化程序无对应接口），故不再提供 topic 字段，
-// 避免前端固定显示空的「专题页最后静态化时间」。
+// 专题页仅有「单页操作」（重新生成/删除静态文件），无批量任务，
+// 其时间取自「生成专题页任务完成」日志，与首页/栏目页/详情页口径一致。
 type StaticLatestTimes struct {
 	Site       string `json:"site"`       // 全站最后静态化时间
 	Home       string `json:"home"`       // 首页最后静态化时间
 	Column     string `json:"column"`     // 栏目页最后静态化时间
+	Topic      string `json:"topic"`      // 专题页最后静态化时间
 	Detail     string `json:"detail"`     // 详情页最后静态化时间
 	TodayFiles int    `json:"todayFiles"` // 今日静态化成功生成文件数
 }
@@ -135,9 +136,9 @@ func (s *StaticLogService) RecordPageStaticDone(operator, operation, pageName st
 	}
 }
 
-// RecordArticleDeleteLog 记录「删除详情页静态文件」日志。
-// 去重键按 文章ID + 日期 生成，避免同一文章同一天内重复触发（如删除文章时多次调用）产生重复记录。
-func (s *StaticLogService) RecordArticleDeleteLog(operator, articleID string, statusCode int, body []byte) {
+// recordDeleteLog 记录「删除静态文件」日志（详情页/专题页共用）。
+// 去重键按 目标ID + 日期 生成，避免同一目标同一天内重复触发（如删除文章时多次调用）产生重复记录。
+func (s *StaticLogService) recordDeleteLog(operator, operation, label, jobPrefix, targetID string, statusCode int, body []byte) {
 	status, statusText := "danger", "删除失败"
 	if statusCode == http.StatusOK {
 		var resp struct {
@@ -148,19 +149,29 @@ func (s *StaticLogService) RecordArticleDeleteLog(operator, articleID string, st
 		}
 	}
 	log := &models.StaticLog{
-		Operation: "删除详情页静态文件",
-		PageName:  articleID,
+		Operation: operation,
+		PageName:  targetID,
 		Path:      "-",
 		Duration:  "-",
 		FileSize:  "-",
 		Operator:  operator,
 		Status:    status,
-		Message:   fmt.Sprintf("文章ID：%s｜%s", articleID, statusText),
-		JobID:     fmt.Sprintf("delete:%s:%s", articleID, time.Now().Format("2006-01-02")),
+		Message:   fmt.Sprintf("%s：%s｜%s", label, targetID, statusText),
+		JobID:     fmt.Sprintf("%s:%s:%s", jobPrefix, targetID, time.Now().Format("2006-01-02")),
 	}
 	if err := s.CreateIfNotExists(log); err != nil {
 		utils.Logger.Warnf("记录静态化日志失败: %s", err)
 	}
+}
+
+// RecordArticleDeleteLog 记录「删除详情页静态文件」日志。
+func (s *StaticLogService) RecordArticleDeleteLog(operator, articleID string, statusCode int, body []byte) {
+	s.recordDeleteLog(operator, "删除详情页静态文件", "文章ID", "delete", articleID, statusCode, body)
+}
+
+// RecordTopicDeleteLog 记录「删除专题页静态文件」日志。
+func (s *StaticLogService) RecordTopicDeleteLog(operator, topicID string, statusCode int, body []byte) {
+	s.recordDeleteLog(operator, "删除专题页静态文件", "专题ID", "delete-topic", topicID, statusCode, body)
 }
 
 // latestSuccessTime 查询指定操作的最近一次成功静态化时间；operation 为空时表示不限操作（全站）
@@ -190,6 +201,9 @@ func (s *StaticLogService) GetLatestSuccessTimes() (*StaticLatestTimes, error) {
 		return nil, err
 	}
 	if result.Column, err = s.latestSuccessTime("生成栏目页任务完成"); err != nil {
+		return nil, err
+	}
+	if result.Topic, err = s.latestSuccessTime("生成专题页任务完成"); err != nil {
 		return nil, err
 	}
 	if result.Detail, err = s.latestSuccessTime("生成详情页任务完成"); err != nil {

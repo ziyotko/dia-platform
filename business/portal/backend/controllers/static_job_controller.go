@@ -61,6 +61,7 @@ var staticKindName = map[string]string{
 	"pages":    "生成首页",
 	"lists":    "生成栏目页",
 	"articles": "生成详情页",
+	"topics":   "生成专题页",
 }
 
 func staticKindText(kind string) string {
@@ -320,6 +321,22 @@ func (c *StaticJobController) ArticlesStatic(ctx *gin.Context) {
 	c.writeTaskSubmitLog(ctx, statusCode, body, "articles")
 }
 
+// TopicsStatic 生成专题页：POST /static/topics?path={输出目录}
+func (c *StaticJobController) TopicsStatic(ctx *gin.Context) {
+	params, ok := c.resolveStaticParams(ctx)
+	if !ok {
+		return
+	}
+	path, ok := c.resolveOutputPath(ctx, params)
+	if !ok {
+		return
+	}
+	statusCode, body := c.proxyToStaticProgram(ctx, params, http.MethodPost, "/api/static/topics", map[string]string{
+		"path": path,
+	})
+	c.writeTaskSubmitLog(ctx, statusCode, body, "topics")
+}
+
 // PageStatic 首页重新生成：POST /static/page?name={页面名}
 // 输出目录与首页整体变灰均读取后端全局变量（静态化输出路径 / 首页整体变灰），
 // 代理转发至静态化程序（自动附带 Authorization 验证令牌头），同步返回 HTTP 200 及生成结果。
@@ -393,6 +410,30 @@ func (c *StaticJobController) ArticleStatic(ctx *gin.Context) {
 	c.staticLogService.RecordPageStaticDone(c.currentOperator(ctx), "生成详情页任务完成", id, statusCode, body)
 }
 
+// TopicStatic 专题页重新生成：POST /static/topic?id={专题ID}
+// 输出目录优先取请求显式传入的 path，否则读取后端全局变量（静态化输出路径），
+// 代理转发至静态化程序（自动附带 Authorization 验证令牌头），同步返回 HTTP 200 及生成结果。
+func (c *StaticJobController) TopicStatic(ctx *gin.Context) {
+	params, ok := c.resolveStaticParams(ctx)
+	if !ok {
+		return
+	}
+	id := strings.TrimSpace(ctx.Query("id"))
+	if id == "" {
+		ctx.JSON(http.StatusOK, utils.Error(1, "专题ID不能为空"))
+		return
+	}
+	path, ok := c.resolveOutputPath(ctx, params)
+	if !ok {
+		return
+	}
+	statusCode, body := c.proxyToStaticProgram(ctx, params, http.MethodPost, "/api/static/topic", map[string]string{
+		"id":   id,
+		"path": path,
+	})
+	c.staticLogService.RecordPageStaticDone(c.currentOperator(ctx), "生成专题页任务完成", id, statusCode, body)
+}
+
 // DeleteArticleStatic 删除详情页静态文件：DELETE /static/article?id={文章ID}&path={输出目录}
 // 输出目录优先取请求显式传入的 path，否则读取后端全局变量（静态化输出路径），
 // 代理转发至静态化程序（自动附带 Authorization 验证令牌头），同步返回 HTTP 200 及删除结果。
@@ -445,6 +486,30 @@ func (c *StaticJobController) DeleteArticleStaticByID(ctx *gin.Context, id strin
 	}
 
 	c.staticLogService.RecordArticleDeleteLog(c.currentOperator(ctx), id, res.StatusCode, res.Body)
+}
+
+// DeleteTopicStatic 删除专题页静态文件：DELETE /static/topic?id={专题ID}&path={输出目录}
+// 输出目录优先取请求显式传入的 path，否则读取后端全局变量（静态化输出路径），
+// 代理转发至静态化程序（自动附带 Authorization 验证令牌头），同步返回 HTTP 200 及删除结果。
+func (c *StaticJobController) DeleteTopicStatic(ctx *gin.Context) {
+	params, ok := c.resolveStaticParams(ctx)
+	if !ok {
+		return
+	}
+	id := strings.TrimSpace(ctx.Query("id"))
+	if id == "" {
+		ctx.JSON(http.StatusOK, utils.Error(1, "专题ID不能为空"))
+		return
+	}
+	path, ok := c.resolveOutputPath(ctx, params)
+	if !ok {
+		return
+	}
+	statusCode, body := c.proxyToStaticProgram(ctx, params, http.MethodDelete, "/api/static/topic", map[string]string{
+		"id":   id,
+		"path": path,
+	})
+	c.staticLogService.RecordTopicDeleteLog(c.currentOperator(ctx), id, statusCode, body)
 }
 
 // GetJob 查询任务状态：GET /static/jobs/{任务ID}

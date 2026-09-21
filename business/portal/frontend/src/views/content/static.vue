@@ -91,6 +91,19 @@
           </div>
         </el-card>
       </el-col>
+      <el-col :xs="24" :sm="12" :md="8" :lg="4">
+        <el-card shadow="hover" class="stat-card">
+          <div class="stat-content">
+            <div class="stat-icon" style="background: rgba(230, 162, 60, 0.12); color: #e6a23c;">
+              <el-icon size="28"><Collection /></el-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ statData.topicLastTime }}</div>
+              <div class="stat-label">专题页最后静态化时间</div>
+            </div>
+          </div>
+        </el-card>
+      </el-col>
     </el-row>
 
     <!-- 批量操作 / 单页操作 -->
@@ -356,7 +369,7 @@
                 <el-table-column prop="name" label="模板名称" min-width="160" />
                 <el-table-column prop="routePath" label="访问路径" min-width="140" show-overflow-tooltip />
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
-                <el-table-column label="操作" width="280" align="center" fixed="right">
+                <el-table-column label="操作" width="340" align="center" fixed="right">
                   <template #default="{ row }">
                     <el-button link type="primary" :loading="row.generating" :disabled="!monitorData.online" @click="handleGenerateSingle(row)">
                       <el-icon><Refresh /></el-icon>重新生成
@@ -368,6 +381,9 @@
                         </el-button>
                       </span>
                     </el-tooltip>
+                    <el-button link type="danger" :loading="row.deleting" :disabled="!monitorData.online" @click="handleDeleteTopic(row)">
+                      <el-icon><Delete /></el-icon>删除
+                    </el-button>
                   </template>
                 </el-table-column>
               </el-table>
@@ -478,7 +494,7 @@ import { getColumnPublishes } from '@/api/column'
 import { getStaticPages } from '@/api/static_page'
 import { getStaticLogList, clearStaticLogs, getStaticLatestTimes } from '@/api/static_log'
 import { getStaticMonitor } from '@/api/static_monitor'
-import { startStaticJob, getStaticJob, startStaticPage, startStaticList, startStaticArticle, deleteStaticArticle } from '@/api/static_job'
+import { startStaticJob, getStaticJob, startStaticPage, startStaticList, startStaticArticle, deleteStaticArticle, startStaticTopic, deleteStaticTopic } from '@/api/static_job'
 import type { StaticJob, StaticJobStatus } from '@/api/static_job'
 import { getSettings } from '@/api/settings'
 import { getErrorMessage } from '@/utils/request'
@@ -619,9 +635,9 @@ const handleGenerateAll = () => confirmRun('site', '生成全站', '确定要执
 const handleGenerateHome = () => confirmRun('pages', '生成首页')
 const handleGenerateColumn = () => confirmRun('lists', '生成栏目页')
 const handleGenerateDetail = () => confirmRun('articles', '生成详情页')
-// 专题页生成功能暂未实现，点击仅提示
+// 批量生成专题页暂无对应接口（静态化程序仅提供单个专题的重生成/删除），点击仅提示
 const handleGenerateTopic = () => {
-  ElMessage.info('专题页生成功能暂未实现，敬请期待')
+  ElMessage.info('批量生成专题页功能暂未实现，请在「单页操作-专题页」中逐个重新生成')
 }
 
 // 任务轮询：有活动任务时定时查询状态
@@ -735,7 +751,8 @@ const statData = reactive({
   lastTime: '-',
   homeLastTime: '-',
   columnLastTime: '-',
-  detailLastTime: '-'
+  detailLastTime: '-',
+  topicLastTime: '-'
 })
 
 // 读取静态化日志最新成功时间及今日成功文件数，填充统计卡片
@@ -749,6 +766,7 @@ const fetchStaticStat = async () => {
       statData.homeLastTime = formatShortTime(d.home)
       statData.columnLastTime = formatShortTime(d.column)
       statData.detailLastTime = formatShortTime(d.detail)
+      statData.topicLastTime = formatShortTime(d.topic)
     }
   } catch (error) {
     // 忽略，保持默认 '-'
@@ -934,9 +952,9 @@ const handleGenerateSingle = async (row: any) => {
       // 输出目录由后端全局变量决定，前端仅传文章ID
       res = await startStaticArticle(row.id)
     } else if (activeTab.value === 'topic') {
-      // 专题页生成功能暂未实现，点击仅提示
-      ElMessage.info('专题页生成功能暂未实现，敬请期待')
-      return
+      // 专题页重新生成：调用后端代理 /static/topic（自动附带验证头）
+      // 输出目录由后端全局变量决定，前端仅传专题ID
+      res = await startStaticTopic(row.id)
     } else {
       ElMessage.info('该类型暂未接入单页生成接口')
       return
@@ -987,6 +1005,45 @@ const handleDeleteArticle = (row: any) => {
     row.deleting = true
     try {
       const res = await deleteStaticArticle(row.id, staticPath.value)
+      const data: any = res.data || {}
+      if (res.status === 200 && data.ok) {
+        ElMessage.success(`「${name}」静态文件已删除`)
+        fetchPageList()
+        fetchStaticStat()
+      } else {
+        const msg = data.message || data.msg || '删除失败'
+        ElMessage.error(`「${name}」删除失败：${msg}`)
+      }
+    } catch (error: any) {
+      const msg = getErrorMessage(error)
+      ElMessage.error(`「${name}」删除失败：${msg}`)
+    } finally {
+      row.deleting = false
+    }
+  }).catch(() => {})
+}
+
+// 删除专题页静态文件：调用后端代理 DELETE /static/topic?id={专题ID}&path={输出目录}
+// 输出目录取自后端全局变量「静态化输出路径」，确认后执行删除并刷新列表。
+const handleDeleteTopic = (row: any) => {
+  // 静态化服务停止时禁止删除静态文件
+  if (!monitorData.online) {
+    ElMessage.warning('静态化服务已停止，无法删除静态文件')
+    return
+  }
+  const name = row.title || row.name || row.id
+  ElMessageBox.confirm(
+    `确定要删除专题「${name}」(ID: ${row.id}) 的静态文件吗？删除后需重新生成才能恢复。`,
+    '确认删除',
+    {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(async () => {
+    row.deleting = true
+    try {
+      const res = await deleteStaticTopic(row.id, staticPath.value)
       const data: any = res.data || {}
       if (res.status === 200 && data.ok) {
         ElMessage.success(`「${name}」静态文件已删除`)

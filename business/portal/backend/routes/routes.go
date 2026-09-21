@@ -200,10 +200,13 @@ func SetupRoutes(router *gin.Engine) {
 		admin.POST("/static/pages", staticJobController.PagesStatic)
 		admin.POST("/static/lists", staticJobController.ListsStatic)
 		admin.POST("/static/articles", staticJobController.ArticlesStatic)
+		admin.POST("/static/topics", staticJobController.TopicsStatic)
 		admin.POST("/static/page", staticJobController.PageStatic)
 		admin.POST("/static/list", staticJobController.ListStatic)
 		admin.POST("/static/article", staticJobController.ArticleStatic)
 		admin.DELETE("/static/article", staticJobController.DeleteArticleStatic)
+		admin.POST("/static/topic", staticJobController.TopicStatic)
+		admin.DELETE("/static/topic", staticJobController.DeleteTopicStatic)
 		admin.GET("/static/jobs/:id", staticJobController.GetJob)
 
 		// 系统设置（写操作）
