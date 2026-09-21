@@ -12,7 +12,6 @@ type ArticleColumnPublish struct {
 	UpdatedAt    time.Time      `json:"updatedAt"`
 	DeletedAt    gorm.DeletedAt `gorm:"index" json:"deletedAt"`
 	TemplateID   uint           `gorm:"not null;index" json:"templateId"`
-	Template     Template       `gorm:"foreignKey:TemplateID" json:"template"`
 	ColumnID     uint           `gorm:"not null;index" json:"columnId"`
 	Column       Column         `gorm:"foreignKey:ColumnID" json:"column"`
 	ArticleID    uint           `gorm:"not null;index" json:"articleId"`

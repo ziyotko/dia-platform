@@ -330,7 +330,7 @@
 > **2026-09-21：原 `page` 表中继层已合并到本表**（模板与页面本为 1:1）。
 > `code` / `route_path` 由原页面迁移而来，用于路由拼接（详情页/栏目页）与静态化；
 > `column`/`ad`/`link`/`article_column_publish` 一律引用 `template_id`。
-> 迁移由 `models.MigratePageLayerToTemplates()` 在启动时幂等执行（补建缺失模板 → 回填引用 → 删除 `page_id` 列与 `page` 表）。
+> 迁移由**手工执行**（启动期自动迁移已移除）：从旧结构升级请按 `DEPLOY.md` 的「页面层合并迁移」执行 SQL（先备份；需先 DROP 指向 page 的外键约束）。
 
 | 字段 | 类型 | 允许空 | 默认 | 键 | 说明 |
 | --- | --- | --- | --- | --- | --- |

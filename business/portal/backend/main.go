@@ -26,8 +26,6 @@ func main() {
 	}
 	// FULLTEXT 索引不在 AutoMigrate 能力范围内（文章搜索的 MATCH ... AGAINST 依赖它），启动时幂等补齐
 	//models.EnsureFulltextIndexes()
-	// 页面(page) 中间层合并进模板(template)：幂等迁移（page 表与 page_id 列均不存在时为空操作）
-	models.MigratePageLayerToTemplates()
 	// 初始化系统默认角色（管理员/内容审核/内容作者），缺失时自动创建
 	//models.SeedDefaultRoles()
 	// 初始化系统默认用户（与默认角色一一对应，初始密码 1qaz@WSX），缺失时自动创建
