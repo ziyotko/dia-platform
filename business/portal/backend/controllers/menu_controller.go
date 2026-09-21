@@ -31,7 +31,9 @@ func (c *MenuController) GetMenus(ctx *gin.Context) {
 }
 
 func (c *MenuController) GetMenuTree(ctx *gin.Context) {
-	menus, err := c.menuService.GetMenuList()
+	// 返回全部菜单（含已禁用）：本接口的调用方是「角色管理-分配权限」的权限树，
+	// 原先只返回启用菜单，导致禁用菜单从树中消失、保存时被提交集合排除 → 该角色的这份权限被静默清除。
+	menus, err := c.menuService.GetAllMenus()
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取菜单树失败"))
 		return

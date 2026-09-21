@@ -52,8 +52,11 @@ func InitDB() {
 	newLogger := logger.New(
 		log.New(&gormLogWriter{}, "\r\n", log.LstdFlags),
 		logger.Config{
-			SlowThreshold:             time.Second,
-			LogLevel:                  logger.Info,
+			SlowThreshold: time.Second,
+			LogLevel:      logger.Info,
+			// 参数化输出 SQL（占位符 + 参数分列）：默认模式会把参数插值进 SQL 文本，
+			// 导致 SMTP 授权码、密码哈希、邮箱/手机号被明文写入 logs/*.log（保留 180 天）。
+			ParameterizedQueries:      true,
 			IgnoreRecordNotFoundError: true,
 			Colorful:                  false,
 		},

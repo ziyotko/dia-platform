@@ -15,12 +15,14 @@ import (
 type DashboardController struct {
 	articleService *services.ArticleService
 	logService     *services.LogService
+	userService    *services.UserService
 }
 
 func NewDashboardController() *DashboardController {
 	return &DashboardController{
 		articleService: &services.ArticleService{},
 		logService:     &services.LogService{},
+		userService:    &services.UserService{},
 	}
 }
 
@@ -228,7 +230,25 @@ func getPublishedArticleCountMap(start, end time.Time, layout string) map[string
 }
 
 func (c *DashboardController) GetLoginLogs(ctx *gin.Context) {
-	logs, err := c.logService.GetRecentLoginLogs(10)
+	// 登录日志包含全站用户名的登录 IP/浏览器/操作系统，而「管理首页」菜单对内容审核/内容作者默认开放，
+	// 因此非管理员只能看到自己的记录（原先无过滤地整站下发）。
+	userID := ctx.GetUint("userID")
+	var usernames []string
+	if !models.HasAdminRoleIDs(c.userService.MustGetUserRoleIds(userID)) {
+		if u, err := c.userService.GetUserByID(userID); err == nil && u != nil {
+			for _, name := range []string{u.Username, u.Account, u.Email, u.Mobile} {
+				if name != "" {
+					usernames = append(usernames, name)
+				}
+			}
+		}
+		if len(usernames) == 0 {
+			ctx.JSON(http.StatusOK, utils.Success("获取成功", []LoginLogItem{}))
+			return
+		}
+	}
+
+	logs, err := c.logService.GetRecentLoginLogs(10, usernames)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取登录日志失败"))
 		return

@@ -24,3 +24,25 @@ export function canAccessPath(path: string): boolean {
   if (!path) return false
   return router.resolve(path).matched.length > 0
 }
+
+/** 采集菜单树中的全部路径（与仪表盘快捷入口过滤同口径）。 */
+export function collectMenuPaths(menus?: any[] | null): string[] {
+  const paths: string[] = []
+  const walk = (items: any[]) => {
+    items.forEach((menu) => {
+      if (menu.path) paths.push(menu.path)
+      if (menu.children && menu.children.length > 0) walk(menu.children)
+    })
+  }
+  walk(menus || [])
+  return paths
+}
+
+/**
+ * 首页路径：优先「管理首页」(/dashboard)；未授权该菜单时退回第一个已授权菜单路径。
+ * 动态路由由已授权菜单生成，硬编码 /dashboard 会让无该菜单的用户（例如只授「待审核」的审核角色）跳到 404。
+ */
+export function resolveHomePath(menus?: any[] | null): string {
+  const paths = collectMenuPaths(menus)
+  return paths.find((path) => path === '/dashboard') || paths[0] || '/dashboard'
+}

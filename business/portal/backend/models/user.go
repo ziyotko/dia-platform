@@ -1,6 +1,7 @@
 package models
 
 import (
+	"strings"
 	"time"
 
 	"server/utils"
@@ -35,7 +36,10 @@ func (u *User) BeforeCreate(tx *gorm.DB) (err error) {
 }
 
 func (u *User) BeforeUpdate(tx *gorm.DB) (err error) {
-	if u.Password != "" && len(u.Password) != 64 {
+	// 「是否已哈希」的判据是「含冒号」：SM3HashPassword 的产物形如 "salt:hash"（97 字符）。
+	// 原判据 `len(u.Password) != 64` 恒为真，一旦出现带 password 的 Save(&user)/Updates(struct) 调用，
+	// 会把已哈希值再次哈希，导致该账号永久无法登录。
+	if u.Password != "" && !strings.Contains(u.Password, ":") {
 		u.Password = utils.SM3HashPassword(u.Password)
 	}
 	return nil

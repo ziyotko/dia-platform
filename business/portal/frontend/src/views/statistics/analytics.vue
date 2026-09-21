@@ -210,11 +210,14 @@ const updateChart = () => {
   }, true)
 }
 
+// 具名 resize 回调：匿名函数无法被 removeEventListener 移除，反复进出页面会不断堆积监听器
+const resizeChart = () => chartInstance?.resize()
+
 const initChart = () => {
   if (!chartRef.value) return
   chartInstance = echarts.init(chartRef.value)
   updateChart()
-  window.addEventListener('resize', () => chartInstance?.resize())
+  window.addEventListener('resize', resizeChart)
 }
 
 watch(period, () => {
@@ -233,7 +236,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', () => chartInstance?.resize())
+  window.removeEventListener('resize', resizeChart)
   chartInstance?.dispose()
   chartInstance = null
 })

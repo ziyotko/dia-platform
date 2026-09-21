@@ -18,6 +18,18 @@ const request = axios.create({
   }
 })
 
+/**
+ * 鉴权失效（业务码 401）统一处理：清本地登录态并跳转登录页。
+ * 跳转必须带部署子路径（VITE_BASE_PATH，如 /business_portal/），否则子路径部署下会跳到不存在的一级路径 /login。
+ * 统一入口可保证 raw 模式（静态化任务等）与普通请求行为一致。
+ */
+function handleUnauthorized() {
+  const userStore = useUserStore()
+  userStore.logout()
+  const base = import.meta.env.BASE_URL || '/'
+  window.location.href = `${base.endsWith('/') ? base : `${base}/`}login`
+}
+
 function createRequestNonce() {
   if (crypto.randomUUID) {
     return crypto.randomUUID()
@@ -226,8 +238,12 @@ export function getErrorMessage(error: any): string {
 
 request.interceptors.response.use(
   (response) => {
-    // raw 模式：跳过统一响应校验，原样返回整个 axios 响应（含 status），由调用方自行判断
+    // raw 模式：跳过统一响应校验，原样返回整个 axios 响应（含 status），由调用方自行判断；
+    // 但鉴权失效必须统一处理：静态化任务等 raw 接口若漏判，Token 过期后会一直报「任务提交失败」而不登出。
     if ((response.config as any).raw) {
+      if (response.data?.code === 401) {
+        handleUnauthorized()
+      }
       return response
     }
     const res = response.data
@@ -235,12 +251,7 @@ request.interceptors.response.use(
     if (res.code !== 0) {
       ElMessage.error(res.message || '请求失败')
       if (res.code === 401) {
-        const userStore = useUserStore()
-        userStore.logout()
-        // 跳转到登录页：必须带上部署子路径（VITE_BASE_PATH，如 /caamm/），
-        // 否则在子路径部署下会跳到不存在的一级路径 /login。
-        const base = import.meta.env.BASE_URL || '/'
-        window.location.href = `${base.endsWith('/') ? base : `${base}/`}login`
+        handleUnauthorized()
       }
       return Promise.reject(new Error(res.message || '请求失败'))
     }

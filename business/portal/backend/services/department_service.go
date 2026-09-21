@@ -78,7 +78,29 @@ func (s *DepartmentService) GetDepartmentByID(id uint) (*models.Department, erro
 }
 
 func (s *DepartmentService) CreateDepartment(dept *models.Department) error {
+	if err := validateTreeParent("department", 0, dept.ParentID); err != nil {
+		return err
+	}
+	if err := ensureOrganizationExists(dept.OrgID); err != nil {
+		return err
+	}
 	return utils.DB.Create(dept).Error
+}
+
+// ensureOrganizationExists 校验部门所属机构存在：
+// 写入不存在的 org_id 会让部门在机构树/部门列表中都取不到机构名（脏数据，只能进库修正）。
+func ensureOrganizationExists(orgID uint) error {
+	if orgID == 0 {
+		return nil
+	}
+	var count int64
+	if err := utils.DB.Model(&models.Organization{}).Where("id = ?", orgID).Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		return errors.New("所属机构不存在")
+	}
+	return nil
 }
 
 type ImportDepartmentResult struct {
@@ -178,6 +200,9 @@ func (s *DepartmentService) ImportDepartments(file multipart.File, fileSize int6
 
 func (s *DepartmentService) UpdateDepartment(id uint, dept *models.Department) error {
 	if err := validateTreeParent("department", id, dept.ParentID); err != nil {
+		return err
+	}
+	if err := ensureOrganizationExists(dept.OrgID); err != nil {
 		return err
 	}
 	return utils.DB.Model(&models.Department{}).Where("id = ?", id).UpdateColumns(map[string]any{

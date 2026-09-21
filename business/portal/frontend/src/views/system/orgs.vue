@@ -287,11 +287,11 @@
               v-for="user in dialogUserOptions"
               :key="user.id"
               :label="user.username"
-              :value="user.account"
+              :value="String(user.id)"
             >
               <span style="display: flex; align-items: center; justify-content: space-between;">
                 <span>{{ user.username }} ({{ user.account }})</span>
-                <el-icon v-if="deptForm.leaderCode === user.account" color="#002fa7"><Check /></el-icon>
+                <el-icon v-if="deptForm.leaderCode === String(user.id)" color="#002fa7"><Check /></el-icon>
               </span>
             </el-option>
           </el-select>
@@ -855,7 +855,8 @@ const syncDeptLeaderFromCode = () => {
     deptForm.leader = ''
     return
   }
-  const user = dialogUserOptions.value.find((u) => u.account === deptForm.leaderCode)
+  // leader_code 一律存用户 ID（与 departments.vue、后端 dept_head 审批判定保持一致）
+  const user = dialogUserOptions.value.find((u) => String(u.id) === deptForm.leaderCode)
   if (user) {
     deptForm.leader = user.username
   } else {

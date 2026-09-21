@@ -226,6 +226,20 @@ func (c *ArticleController) PublicSearchArticles(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("搜索成功", utils.PageData(list, total, page, pageSize)))
 }
 
+// canViewArticle 文章可见性判定（统一口径）：管理员、作者本人，或该文章存在「待我审批」的栏目。
+// 正文（GetArticleByID）与审核进度/审核历史（含审批人姓名、审批/驳回意见）必须使用同一判定，
+// 否则任何拿到 /articles 菜单的用户只需遍历 ID 即可读到他人文章的审批信息。
+func (c *ArticleController) canViewArticle(article *models.Article, userID uint) bool {
+	if models.HasAdminRoleIDs(c.userService.MustGetUserRoleIds(userID)) {
+		return true
+	}
+	if strconv.FormatUint(uint64(userID), 10) == article.AuthorCode {
+		return true
+	}
+	allowed, err := c.articleService.CanApproveAnyColumn(article.ID, userID)
+	return err == nil && allowed
+}
+
 func (c *ArticleController) GetArticleByID(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.ParseUint(idStr, 10, 32)
@@ -241,17 +255,9 @@ func (c *ArticleController) GetArticleByID(ctx *gin.Context) {
 
 	// 可见性：管理员/作者本人/该文章存在待我审批的栏目时可以查看正文
 	userID := ctx.GetUint("userID")
-	if !models.HasAdminRoleIDs(c.userService.MustGetUserRoleIds(userID)) &&
-		strconv.FormatUint(uint64(userID), 10) != article.AuthorCode {
-		allowed, checkErr := c.articleService.CanApproveAnyColumn(uint(id), userID)
-		if checkErr != nil {
-			ctx.JSON(http.StatusOK, utils.Error(1, "获取文章失败"))
-			return
-		}
-		if !allowed {
-			ctx.JSON(http.StatusOK, utils.Error(1, "无权查看该文章"))
-			return
-		}
+	if !c.canViewArticle(article, userID) {
+		ctx.JSON(http.StatusOK, utils.Error(1, "无权查看该文章"))
+		return
 	}
 
 	categoryIds := make([]uint, 0, len(article.Categories))
@@ -543,6 +549,10 @@ func (c *ArticleController) GetArticleAuditProgress(ctx *gin.Context) {
 		return
 	}
 	userID := ctx.GetUint("userID")
+	if !c.canViewArticle(article, userID) {
+		ctx.JSON(http.StatusOK, utils.Error(1, "无权查看该文章"))
+		return
+	}
 	type auditProgressItem struct {
 		models.ArticleColumnAudit
 		CanApprove          bool   `json:"canApprove"`
@@ -622,6 +632,16 @@ func (c *ArticleController) GetArticleAuditHistory(ctx *gin.Context) {
 	columnID, err := strconv.ParseUint(columnIDStr, 10, 32)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "栏目ID无效"))
+		return
+	}
+	// 审核历史包含审批人姓名与审批/驳回意见，须先通过文章可见性校验（与正文接口同口径）
+	article, err := c.articleService.GetArticleByID(uint(id))
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "文章不存在"))
+		return
+	}
+	if !c.canViewArticle(article, ctx.GetUint("userID")) {
+		ctx.JSON(http.StatusOK, utils.Error(1, "无权查看该文章"))
 		return
 	}
 	histories, err := c.articleService.GetArticleAuditHistory(uint(id), uint(columnID))
@@ -741,8 +761,10 @@ func (c *ArticleController) GetArticleColumnPublishes(ctx *gin.Context) {
 	if pageSize < 1 {
 		pageSize = 10
 	}
+	// 栏目筛选：原先恒传 0，导致服务层与前端 API 声明的 columnId 筛选静默失效
+	columnID, _ := strconv.ParseUint(ctx.Query("columnId"), 10, 32)
 
-	articles, total, err := c.articleService.GetArticleColumnPublishes(articleTitle, 0, page, pageSize)
+	articles, total, err := c.articleService.GetArticleColumnPublishes(articleTitle, uint(columnID), page, pageSize)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取静态化状态列表失败"))
 		return

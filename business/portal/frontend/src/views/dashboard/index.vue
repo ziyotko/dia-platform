@@ -269,13 +269,13 @@ const lastVisitPeriod = ref('week')
 const isVisitCurrentYear = computed(() => visitYear.value === currentYear)
 
 const visitData = ref<{ label: string; value: number }[]>([
-  { label: '周一', value: 45 },
-  { label: '周二', value: 62 },
-  { label: '周三', value: 55 },
-  { label: '周四', value: 78 },
-  { label: '周五', value: 68 },
-  { label: '周六', value: 85 },
-  { label: '周日', value: 72 }
+  { label: '周一', value: 0 },
+  { label: '周二', value: 0 },
+  { label: '周三', value: 0 },
+  { label: '周四', value: 0 },
+  { label: '周五', value: 0 },
+  { label: '周六', value: 0 },
+  { label: '周日', value: 0 }
 ])
 
 const chartRef = ref<HTMLDivElement | null>(null)
@@ -308,11 +308,14 @@ const updateChart = () => {
   }, true)
 }
 
+// 具名 resize 回调：匿名函数无法被 removeEventListener 移除，反复进出页面会不断堆积监听器
+const resizeVisitChart = () => chartInstance?.resize()
+
 const initChart = () => {
   if (!chartRef.value) return
   chartInstance = echarts.init(chartRef.value)
   updateChart()
-  window.addEventListener('resize', () => chartInstance?.resize())
+  window.addEventListener('resize', resizeVisitChart)
 }
 
 const fetchVisitTrend = async () => {
@@ -402,11 +405,13 @@ const updateArticleChart = () => {
   }, true)
 }
 
+const resizeArticleChart = () => articleChartInstance?.resize()
+
 const initArticleChart = () => {
   if (!articleChartRef.value) return
   articleChartInstance = echarts.init(articleChartRef.value)
   updateArticleChart()
-  window.addEventListener('resize', () => articleChartInstance?.resize())
+  window.addEventListener('resize', resizeArticleChart)
 }
 
 const fetchArticleTrend = async () => {
@@ -452,7 +457,8 @@ watch(articleVisitData, () => {
 }, { deep: true })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', () => chartInstance?.resize())
+  window.removeEventListener('resize', resizeVisitChart)
+  window.removeEventListener('resize', resizeArticleChart)
   chartInstance?.dispose()
   chartInstance = null
   articleChartInstance?.dispose()

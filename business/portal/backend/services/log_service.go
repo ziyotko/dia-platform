@@ -102,9 +102,15 @@ func (s *LogService) GetLoginLogList(page, pageSize int, username, status, start
 	}, nil
 }
 
-func (s *LogService) GetRecentLoginLogs(limit int) ([]models.LoginLog, error) {
+// GetRecentLoginLogs 最近登录日志。
+// usernames 非空时只返回这些用户名的记录（登录成功记录显示名、失败记录登录输入值，故调用方传多个候选）。
+func (s *LogService) GetRecentLoginLogs(limit int, usernames []string) ([]models.LoginLog, error) {
 	var logs []models.LoginLog
-	err := utils.DB.Model(&models.LoginLog{}).Order("id DESC").Limit(limit).Find(&logs).Error
+	query := utils.DB.Model(&models.LoginLog{})
+	if len(usernames) > 0 {
+		query = query.Where("username IN ?", usernames)
+	}
+	err := query.Order("id DESC").Limit(limit).Find(&logs).Error
 	return logs, err
 }
 

@@ -10,7 +10,7 @@
       >
         {{ tag.title }}
         <el-icon
-          v-if="tag.path !== '/dashboard'"
+          v-if="tag.path !== homePath"
           class="close-icon"
           @click.stop="handleClose(tag)"
         >
@@ -32,6 +32,8 @@
 import { ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Close, CircleClose } from '@element-plus/icons-vue'
+import { useUserStore } from '@/stores/user'
+import { resolveHomePath } from '@/utils/permission'
 
 interface TagView {
   path: string
@@ -40,9 +42,13 @@ interface TagView {
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
+
+// 首页标签跟随当前用户已授权菜单：无「管理首页」菜单（如仅授「待审核」的审核角色）时退回首个已授权菜单
+const homePath = resolveHomePath(userStore.menuList)
 
 const visitedViews = ref<TagView[]>([
-  { path: '/dashboard', title: '首页' }
+  { path: homePath, title: '首页' }
 ])
 
 const isActive = (tag: TagView) => tag.path === route.path
@@ -71,9 +77,9 @@ const handleClose = (tag: TagView) => {
 }
 
 const handleCloseAll = () => {
-  visitedViews.value = [{ path: '/dashboard', title: '首页' }]
-  if (route.path !== '/dashboard') {
-    router.push('/dashboard')
+  visitedViews.value = [{ path: homePath, title: '首页' }]
+  if (route.path !== homePath) {
+    router.push(homePath)
   }
 }
 

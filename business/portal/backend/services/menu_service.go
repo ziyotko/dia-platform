@@ -11,15 +11,6 @@ import (
 
 type MenuService struct{}
 
-func (s *MenuService) GetMenuList() ([]models.Menu, error) {
-	var menus []models.Menu
-	err := utils.DB.Where("status = ?", 1).Order("sort ASC, id ASC").Find(&menus).Error
-	if err != nil {
-		return nil, err
-	}
-	return buildMenuTree(menus, 0), nil
-}
-
 func (s *MenuService) GetAllMenus() ([]models.Menu, error) {
 	var menus []models.Menu
 	err := utils.DB.Order("sort ASC, id ASC").Find(&menus).Error

@@ -25,6 +25,7 @@ var apiPrefixExemptPaths = map[string]bool{
 	"/profile":                   true,
 	"/profile/password":          true,
 	"/menus/user":                true,
+	"/menus/tree":                true,
 	"/upload":                    true,
 	"/user-options":              true,
 	"/workflow-role-options":     true,
@@ -34,6 +35,28 @@ var apiPrefixExemptPaths = map[string]bool{
 	"/tags/all":                  true,
 	"/columns":                   true,
 	"/minPasswordLengthSettings": true,
+}
+
+// 按「路径前缀」豁免的只读子路径：用于 /xxx/{id} 这类精确匹配覆盖不到的动态路径。
+// 仅影响成员组中的只读接口；同名的写接口都在 admin 组，需先过 AdminMiddleware（仅角色 1），不受本表影响。
+var apiPrefixExemptPrefixes = []string{
+	// 审核弹窗读取流程定义与节点（GET /workflows/:id、GET /workflows/:id/nodes）。
+	// 审核角色（内容审核/内容作者）默认只被授予 /articles、/dashboard 前缀，若不豁免，
+	// 打开审核弹窗时每个栏目都会报「没有授权」且节点为空，审核无法进行。
+	"/workflows/",
+}
+
+// isExemptPath 判断路径是否属于豁免范围（先精确匹配，再前缀匹配）
+func isExemptPath(path string) bool {
+	if apiPrefixExemptPaths[path] {
+		return true
+	}
+	for _, prefix := range apiPrefixExemptPrefixes {
+		if strings.HasPrefix(path, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // pathMatchesAPIPrefix 判断请求路径是否命中某个 api_prefix。
@@ -59,7 +82,7 @@ func MenuAPIPrefixMiddleware() gin.HandlerFunc {
 		}
 
 		// 账户/工具类及无菜单只读接口直接放行
-		if apiPrefixExemptPaths[path] {
+		if isExemptPath(path) {
 			c.Next()
 			return
 		}

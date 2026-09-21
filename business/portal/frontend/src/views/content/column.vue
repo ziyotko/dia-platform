@@ -422,6 +422,9 @@ const fetchColumns = async () => {
 }
 
 watch(() => columnForm.name, (val) => {
+  // 仅「新增」时按名称自动生成编码/访问路径：编辑时 handleEditColumn 会先写入原有 code/routePath，
+  // 本回调随后触发并把它们覆盖为名称拼音，保存后原编码/访问路径丢失（静态化路径也随之变化）。
+  if (columnForm.id) return
   if (val) {
     columnForm.code = toPinyinCode(val)
     columnForm.routePath = `/${toPinyinCode(val)}`
@@ -476,10 +479,13 @@ const handleEditColumn = (row: ColumnItem) => {
 }
 
 const handleDeleteColumn = async (row: ColumnItem) => {
+  // 后端在存在子栏目时拒绝删除（不做级联删除），这里提前拦下，避免“一并删除”的误导文案
   const hasChildren = allColumns.value.some(c => c.parentId === row.id)
-  const msg = hasChildren
-    ? `栏目 "${row.name}" 下存在子栏目，确定要一并删除吗？`
-    : `确定要删除栏目 "${row.name}" 吗？`
+  if (hasChildren) {
+    ElMessage.warning(`栏目 "${row.name}" 下存在子栏目，请先删除或调整子栏目后再删除`)
+    return
+  }
+  const msg = `确定要删除栏目 "${row.name}" 吗？`
   try {
     await ElMessageBox.confirm(msg, '提示', {
       confirmButtonText: '确定',

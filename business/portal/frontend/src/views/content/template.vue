@@ -541,8 +541,7 @@ const handleDesignSave = async () => {
   designSubmitLoading.value = true
   try {
     await saveTemplateDesign(designForm.id!, {
-      sourceCode: designForm.sourceCode,
-      layout: ''
+      sourceCode: designForm.sourceCode
     })
     ElMessage.success('模板设计保存成功')
     designDialogVisible.value = false

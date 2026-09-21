@@ -183,19 +183,31 @@ func (c *TemplateController) SaveTemplateDesign(ctx *gin.Context) {
 		return
 	}
 
+	// 字段用指针接收：仅在请求体显式携带该字段时才更新。
+	// 原先 layout 为 string，前端每次「保存设计」都发送 layout:""，会把模板已有的 layout 清空
+	// （layout 是模板预览的兜底数据源，清空后预览只剩空态）。
 	var req struct {
-		SourceCode string `json:"sourceCode"`
-		Layout     string `json:"layout"`
+		SourceCode *string `json:"sourceCode"`
+		Layout     *string `json:"layout"`
 	}
 	if err = ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "参数错误"))
 		return
 	}
 
-	err = c.templateService.UpdateTemplate(uint(id), map[string]any{
-		"source_code": req.SourceCode,
-		"layout":      req.Layout,
-	})
+	updates := map[string]any{}
+	if req.SourceCode != nil {
+		updates["source_code"] = *req.SourceCode
+	}
+	if req.Layout != nil {
+		updates["layout"] = *req.Layout
+	}
+	if len(updates) == 0 {
+		ctx.JSON(http.StatusOK, utils.Error(1, "没有需要保存的内容"))
+		return
+	}
+
+	err = c.templateService.UpdateTemplate(uint(id), updates)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("保存设计失败", err)))
 		return

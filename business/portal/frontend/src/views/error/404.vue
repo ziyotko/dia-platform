@@ -12,13 +12,27 @@
         />
       </template>
       <template #extra>
-        <el-button type="primary" @click="$router.push('/dashboard')">
+        <el-button type="primary" @click="goHome">
           返回首页
         </el-button>
       </template>
     </el-result>
   </div>
 </template>
+
+<script setup lang="ts">
+import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
+import { resolveHomePath } from '@/utils/permission'
+
+const router = useRouter()
+const userStore = useUserStore()
+
+// 硬编码 /dashboard 在未授「管理首页」菜单时会再次落到 404
+const goHome = () => {
+  router.push(resolveHomePath(userStore.menuList))
+}
+</script>
 
 <style scoped>
 .error-page {

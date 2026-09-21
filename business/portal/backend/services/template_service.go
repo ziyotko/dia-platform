@@ -12,9 +12,23 @@ import (
 
 // 模板类型（与前端 首页/栏目页/详情页/专题页 一致）。
 const (
-	templateTypeColumn = "column"
-	templateTypeDetail = "detail"
+	templateTypeHome    = "home"
+	templateTypeColumn  = "column"
+	templateTypeDetail  = "detail"
+	templateTypeSpecial = "special"
 )
+
+// validateTemplateType 校验模板类型白名单。
+// 类型非法（含空串）时模板不会出现在「栏目管理」的任何类型页签下（前端按 type 过滤），
+// 也无法再编辑或删除，只能进库修正。
+func validateTemplateType(t string) error {
+	switch t {
+	case templateTypeHome, templateTypeColumn, templateTypeDetail, templateTypeSpecial:
+		return nil
+	default:
+		return errors.New("模板类型无效，仅支持 home（首页）/column（栏目页）/detail（详情页）/special（专题页）")
+	}
+}
 
 type TemplateService struct{}
 
@@ -115,6 +129,9 @@ func enforceSingleActiveTemplate(tx *gorm.DB, id uint) error {
 }
 
 func (s *TemplateService) CreateTemplate(template *models.Template) error {
+	if err := validateTemplateType(template.Type); err != nil {
+		return err
+	}
 	return utils.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(template).Error; err != nil {
 			return err
@@ -129,6 +146,11 @@ func (s *TemplateService) CreateTemplate(template *models.Template) error {
 // UpdateTemplate 更新模板。写入后统一应用「栏目页/详情页模板同时只能启用一个」约束，
 // 避免从编辑信息 / 保存设计等入口绕过状态开关，造成同类型出现多个启用模板。
 func (s *TemplateService) UpdateTemplate(id uint, updates map[string]any) error {
+	if t, ok := updates["type"].(string); ok {
+		if err := validateTemplateType(t); err != nil {
+			return err
+		}
+	}
 	return utils.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Model(&models.Template{}).Where("id = ?", id).Updates(updates).Error; err != nil {
 			return err
@@ -170,5 +192,19 @@ func (s *TemplateService) DeleteTemplate(id uint) error {
 	default:
 		return fmt.Errorf("该模板下仍有 %d 个栏目，请先删除或调整这些栏目后再删除模板", len(columns))
 	}
+
+	// 广告/友链同样引用 template_id（无外键约束）：仍被引用时删除会让其「位置」失效，
+	// 且编辑保存时会被 ValidateTemplateColumn 判为「所选栏目不属于该模板」，使记录无法再保存。
+	var adCount, linkCount int64
+	if err := utils.DB.Model(&models.Ad{}).Where("template_id = ?", id).Count(&adCount).Error; err != nil {
+		return err
+	}
+	if err := utils.DB.Model(&models.Link{}).Where("template_id = ?", id).Count(&linkCount).Error; err != nil {
+		return err
+	}
+	if adCount > 0 || linkCount > 0 {
+		return fmt.Errorf("该模板仍被 %d 条广告、%d 条友链使用，请先调整这些记录后再删除模板", adCount, linkCount)
+	}
+
 	return utils.DB.Unscoped().Delete(&models.Template{}, id).Error
 }

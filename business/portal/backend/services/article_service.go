@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"server/models"
 	"server/utils"
@@ -198,6 +199,12 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 		if err := tx.First(&old, id).Error; err != nil {
 			return err
 		}
+		// 审核中/已发布（audit_status != 0）的文章不允许通过编辑接口改内容：
+		// 否则作者可在审核人查看后替换正文（上线的是未审内容），或对已发布文章做无需审核的修改。
+		// 已下线文章（takeOffline 已把 audit_status 归零）不受此限制。
+		if old.AuditStatus != 0 && old.Status != models.ArticleStatusOffline {
+			return fmt.Errorf("文章正在审核或已发布，不能编辑；如需修改请先撤回审核或将文章下线")
+		}
 		// 发布/审核状态不由本接口（编辑内容）变更，防止作者用 PUT {"status":1} 绕过审核：
 		//   - 文章当前为「已下线」：编辑动作将其转回草稿，并清理栏目/审核/发布等关联数据；
 		//   - 其余情况：一律沿用数据库中的当前值（请求体中的 status/auditStatus 被忽略）。
@@ -314,8 +321,10 @@ func (s *ArticleService) UpdateArticleStatus(id uint, status int) error {
 		if err := tx.Model(&article).Update("status", status).Error; err != nil {
 			return err
 		}
-		// 下线：清理发布/审核/栏目关联，避免“下线后仍保留栏目绑定与发布记录”
-		if status == models.ArticleStatusOffline {
+		// 草稿(0)/下线(2) 都代表不再对外发布，统一清理发布/审核/栏目关联：
+		// 否则会出现 (status=0, audit_status=2) 这类非法组合——前端显示「已审核」但文章是草稿，
+		// 且栏目绑定/发布记录残留、列表仍会按栏目命中。
+		if status != models.ArticleStatusPublished {
 			return takeOffline(tx, &article)
 		}
 		return nil
@@ -532,11 +541,12 @@ func (s *ArticleService) StartArticleAudit(articleID uint) error {
 			// 流程无节点或审批人为空都会让审核永久卡住，这里直接返回可定位的原因。
 			workflowService := WorkflowService{}
 			if err := workflowService.ValidateWorkflowResolvable(*col.WorkflowID); err != nil {
-				return fmt.Errorf("栏目「%s」的审核流程不可用: %s", col.Name, err.Error())
+				// 用 %w 保留错误链：否则 controller 的 SanitizeError 无法识别 DB 错误，会把 SQL/表名透传给前端
+				return fmt.Errorf("栏目「%s」的审核流程不可用: %w", col.Name, err)
 			}
 			// 「部门负责人」节点需作者已归属部门且该部门已配置负责人，否则无人可审
 			if err := s.validateDeptHeadApprovers(*col.WorkflowID, article.AuthorCode); err != nil {
-				return fmt.Errorf("栏目「%s」的审核流程不可用: %s", col.Name, err.Error())
+				return fmt.Errorf("栏目「%s」的审核流程不可用: %w", col.Name, err)
 			}
 			var firstNode models.WorkflowNode
 			if err := tx.Where("workflow_id = ?", *col.WorkflowID).Order("sort_order ASC").First(&firstNode).Error; err != nil {
@@ -647,8 +657,14 @@ func (s *ArticleService) canUserApproveNode(node *models.WorkflowNode, userID ui
 		if err != nil {
 			return false, err
 		}
+		// leader_code 的当前口径是「用户 ID」（部门管理/机构管理均按下拉选中用户写入）；
+		// 机构管理页早期版本写入的是用户账号，这里兼容两种取值，避免历史数据导致审批人永远匹配不上。
+		leaderCodes := []string{strconv.FormatUint(uint64(currentUser.ID), 10)}
+		if currentUser.Account != "" {
+			leaderCodes = append(leaderCodes, currentUser.Account)
+		}
 		var headDepartments []models.Department
-		if err := utils.DB.Where("leader_code = ?", currentUser.ID).Find(&headDepartments).Error; err != nil {
+		if err := utils.DB.Where("leader_code IN ?", leaderCodes).Find(&headDepartments).Error; err != nil {
 			return false, err
 		}
 		for _, hd := range headDepartments {
@@ -787,33 +803,49 @@ func (s *ArticleService) AdvanceArticleAudit(articleID uint, columnID uint, user
 		OperatorName: userName,
 		Remark:       remark,
 	}
-	if err := utils.DB.Create(&history).Error; err != nil {
-		return err
-	}
 	// 查找下一个节点
 	var nextNode models.WorkflowNode
-	err = utils.DB.Where("workflow_id = ? AND sort_order > ?", audit.WorkflowID, currentNode.SortOrder).Order("sort_order ASC").First(&nextNode).Error
-	if err != nil {
-		// 没有下一个节点，标记为已通过，记录通过人信息
-		now := time.Now()
-		if err := utils.DB.Model(&audit).Updates(map[string]any{
-			"status":            1,
-			"current_node_id":   0,
-			"approve_remark":    remark,
-			"approve_user_id":   userID,
-			"approve_user_name": userName,
-			"approve_time":      now,
-		}).Error; err != nil {
-			return err
-		}
-		s.tryCompleteArticleAudit(articleID)
-		return nil
+	nextErr := utils.DB.Where("workflow_id = ? AND sort_order > ?", audit.WorkflowID, currentNode.SortOrder).Order("sort_order ASC").First(&nextNode).Error
+	if nextErr != nil && !errors.Is(nextErr, gorm.ErrRecordNotFound) {
+		return nextErr
 	}
-	// 推进到下一个节点
-	return utils.DB.Model(&audit).Updates(map[string]any{
-		"current_node_id": nextNode.ID,
-		"approve_remark":  remark,
-	}).Error
+	hasNext := nextErr == nil
+
+	// 状态变更与历史记录放在同一事务，并用「条件更新」保证并发/重复点击时只有一个请求生效：
+	// WHERE status = 0（推进时再限定 current_node_id），受影响行数为 0 说明该节点已被处理。
+	// 否则同一节点会被推进两次、写入重复审核历史（原先先写历史再改状态，第一步失败还会留下分叉）。
+	where, args := "id = ? AND status = 0", []any{audit.ID}
+	updates := map[string]any{"approve_remark": remark}
+	if hasNext {
+		where += " AND current_node_id = ?"
+		args = append(args, currentNode.ID)
+		updates["current_node_id"] = nextNode.ID
+	} else {
+		// 没有下一个节点：标记为已通过，记录通过人信息
+		updates["status"] = 1
+		updates["current_node_id"] = 0
+		updates["approve_user_id"] = userID
+		updates["approve_user_name"] = userName
+		updates["approve_time"] = time.Now()
+	}
+
+	err = utils.DB.Transaction(func(tx *gorm.DB) error {
+		res := tx.Model(&models.ArticleColumnAudit{}).Where(where, args...).Updates(updates)
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return fmt.Errorf("该审核节点已被处理，请刷新后重试")
+		}
+		return tx.Create(&history).Error
+	})
+	if err != nil {
+		return err
+	}
+	if !hasNext {
+		s.tryCompleteArticleAudit(articleID)
+	}
+	return nil
 }
 
 // RejectArticleAudit 驳回指定文章栏目的审核
@@ -855,13 +887,21 @@ func (s *ArticleService) RejectArticleAudit(articleID uint, columnID uint, userI
 		OperatorName: userName,
 		Remark:       remark,
 	}
-	if err := utils.DB.Create(&history).Error; err != nil {
-		return err
-	}
-	if err := utils.DB.Model(&audit).Updates(map[string]any{
-		"status":        2,
-		"reject_remark": remark,
-	}).Error; err != nil {
+	if err := utils.DB.Transaction(func(tx *gorm.DB) error {
+		res := tx.Model(&models.ArticleColumnAudit{}).
+			Where("id = ? AND status = 0", audit.ID).
+			Updates(map[string]any{
+				"status":        2,
+				"reject_remark": remark,
+			})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return nil // 已被其他审批人处理，不再重复记录历史
+		}
+		return tx.Create(&history).Error
+	}); err != nil {
 		return err
 	}
 	s.tryCompleteArticleAudit(articleID)

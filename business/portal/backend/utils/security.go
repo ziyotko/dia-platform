@@ -57,9 +57,3 @@ func RecordReplayFail(c *gin.Context, reason string, userID uint, escalate bool)
 		Redis1.Set(Ctx, fmt.Sprintf("replay:ban:%s", ip), "1", time.Duration(banMinutes)*time.Minute)
 	}
 }
-
-// GetReplayFailCount 返回某来源当前累计的失败次数（用于测试/诊断）。
-func GetReplayFailCount(ip string) int64 {
-	c, _ := Redis1.Get(Ctx, fmt.Sprintf("replay:fail:%s", ip)).Int64()
-	return c
-}

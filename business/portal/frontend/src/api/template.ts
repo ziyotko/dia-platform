@@ -19,8 +19,8 @@ export interface TemplateForm {
 }
 
 export interface DesignForm {
-  sourceCode: string
-  layout: string
+  sourceCode?: string
+  layout?: string
 }
 
 export function getTemplateList(params: TemplateQuery) {

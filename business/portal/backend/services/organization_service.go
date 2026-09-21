@@ -170,17 +170,6 @@ func (s *OrganizationService) AssignOrganizationUsers(id uint, userIds []int) er
 	})
 }
 
-func (s *OrganizationService) GetOrganizationByUserId(userId uint) (*models.Organization, error) {
-	orgs, err := s.GetOrganizationsByUserId(userId)
-	if err != nil {
-		return nil, err
-	}
-	if len(orgs) == 0 {
-		return nil, errors.New("未找到所属机构")
-	}
-	return &orgs[0], nil
-}
-
 func (s *OrganizationService) GetOrganizationsByUserId(userId uint) ([]models.Organization, error) {
 	var orgs []models.Organization
 	uidStr := strconv.Itoa(int(userId))

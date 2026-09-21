@@ -116,15 +116,32 @@ func (s *WorkflowRoleService) UpdateWorkflowRoleUsers(id uint, userIDs []uint) e
 			return err
 		}
 		if len(userIDs) > 0 {
+			// 去重并剔除不存在的用户：成员来源为前端多选，重复提交会产生重复行，
+			// 已删除用户残留则会产生悬挂成员（审批人解析时看似有成员实则无人）。
+			var existing []uint
+			if err := tx.Model(&models.User{}).Where("id IN ?", userIDs).Pluck("id", &existing).Error; err != nil {
+				return err
+			}
+			valid := make(map[uint]bool, len(existing))
+			for _, uid := range existing {
+				valid[uid] = true
+			}
 			records := make([]models.WorkflowRoleUser, 0, len(userIDs))
+			seen := make(map[uint]bool, len(userIDs))
 			for _, uid := range userIDs {
+				if uid == 0 || seen[uid] || !valid[uid] {
+					continue
+				}
+				seen[uid] = true
 				records = append(records, models.WorkflowRoleUser{
 					WorkflowRoleID: id,
 					UserID:         uid,
 				})
 			}
-			if err := tx.CreateInBatches(records, 100).Error; err != nil {
-				return err
+			if len(records) > 0 {
+				if err := tx.CreateInBatches(records, 100).Error; err != nil {
+					return err
+				}
 			}
 		}
 		return nil

@@ -39,8 +39,9 @@ func GenerateToken(userID uint, email string, expiresHour int) (string, error) {
 
 func ParseToken(tokenString string) (*Claims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (any, error) {
-		// 只接受 HS256，防止算法混淆攻击
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+		// 只接受 HS256（与本服务签发算法一致），防止算法混淆攻击：
+		// 原先只排除非 HMAC 算法，HS384/HS512 也会被放行。
+		if token.Method.Alg() != jwt.SigningMethodHS256.Alg() {
 			return nil, jwt.ErrSignatureInvalid
 		}
 		return []byte(config.AppConfig.JWT.Secret), nil

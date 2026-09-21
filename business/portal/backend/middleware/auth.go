@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 
+	"server/models"
 	"server/utils"
 )
 
@@ -45,6 +46,15 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 		if err != redis.Nil {
 			c.JSON(http.StatusOK, utils.Error(1, "服务异常，请稍后重试"))
+			c.Abort()
+			return
+		}
+
+		// 账号存活校验：被禁用/删除的账号立即失效，否则「禁用」要等 JWT 自然过期（默认 24h）才生效，
+		// 期间持旧 Token 仍可访问全部 member/admin 接口。用户表极小且按主键查询，代价可忽略。
+		var user models.User
+		if err := utils.DB.Select("id", "status").First(&user, claims.UserID).Error; err != nil || user.Status != 1 {
+			c.JSON(http.StatusOK, utils.Error(AuthErrorCode, "账号不存在或已被禁用"))
 			c.Abort()
 			return
 		}

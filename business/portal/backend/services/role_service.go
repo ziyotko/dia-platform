@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -78,9 +79,23 @@ func (s *RoleService) UpdateRole(id uint, role *models.Role, updatePermissions b
 	return utils.DB.Model(&models.Role{}).Where("id = ?", id).Updates(updates).Error
 }
 
+// DeleteRole 删除角色：仍被用户引用时拒绝。
+// user.role_ids 是逗号分隔字符串（无外键），删除后该用户会残留一个不存在的角色 ID，
+// GetUserMenus 解析不到其权限且错误被忽略 → 用户侧边栏静默清空、界面上无从自查。
 func (s *RoleService) DeleteRole(id uint) error {
 	if models.IsBuiltinRoleID(id) {
 		return errors.New("系统内置角色不允许删除")
+	}
+	target := strconv.FormatUint(uint64(id), 10)
+	var count int64
+	if err := utils.DB.Model(&models.User{}).
+		Where("role_ids = ? OR role_ids LIKE ? OR role_ids LIKE ? OR role_ids LIKE ?",
+			target, target+",%", "%,"+target, "%,"+target+",%").
+		Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		return fmt.Errorf("该角色仍被 %d 个用户使用，请先调整这些用户的角色后再删除", count)
 	}
 	return utils.DB.Unscoped().Delete(&models.Role{}, id).Error
 }

@@ -742,7 +742,7 @@ const fetchStaticMonitor = async () => {
       monitorData.lastCheckTime = res.data?.lastCheckTime || new Date().toLocaleString()
       monitorData.message = res.data?.message || ''
     } else {
-      ElMessage.error(res.msg || '获取静态化服务状态失败')
+      ElMessage.error(res.message || '获取静态化服务状态失败')
     }
   } catch (error) {
     ElMessage.error('获取静态化服务状态失败')
@@ -997,6 +997,11 @@ const handleDeleteArticle = (row: any) => {
     ElMessage.warning('静态化服务已停止，无法删除静态文件')
     return
   }
+  // 输出路径取自后端全局设置（GET /settings）；未取到时不能带空 path 调用静态化程序
+  if (!staticPath.value) {
+    ElMessage.warning('未读取到静态化输出路径，请先在「基础配置-静态化设置」中配置并刷新页面')
+    return
+  }
   const name = row.title || row.name || row.id
   ElMessageBox.confirm(
     `确定要删除文章「${name}」(ID: ${row.id}) 的静态文件吗？删除后需重新生成才能恢复。`,
@@ -1034,6 +1039,11 @@ const handleDeleteTopic = (row: any) => {
   // 静态化服务停止时禁止删除静态文件
   if (!monitorData.online) {
     ElMessage.warning('静态化服务已停止，无法删除静态文件')
+    return
+  }
+  // 输出路径取自后端全局设置（GET /settings）；未取到时不能带空 path 调用静态化程序
+  if (!staticPath.value) {
+    ElMessage.warning('未读取到静态化输出路径，请先在「基础配置-静态化设置」中配置并刷新页面')
     return
   }
   const name = row.title || row.name || row.id
