@@ -2226,7 +2226,6 @@ const previewVisible = ref(false)
 const previewData = reactive({
   title: '',
   author: '',
-  authorCode: '',
   source: '',
   createdAt: '',
   summary: '',

@@ -12,11 +12,11 @@ export function formatDateTime(value?: string | number | Date | null): string {
   )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
-/** 日志保留策略：系统保留最近半年日志，「清空日志」仅删除该日期之前的记录 */
-export const LOG_RETENTION_MONTHS = 6
+/** 日志保留策略：系统保留最近半年日志，「清空日志」仅删除该日期之前的记录（仅本模块使用） */
+const LOG_RETENTION_MONTHS = 6
 
-/** 「清空日志」截止日期（YYYY-MM-DD）：该日期之前的日志可被清空（三个日志页面统一） */
-export function getLogClearCutoff(): string {
+/** 「清空日志」截止日期（YYYY-MM-DD）：该日期之前的日志可被清空（仅本模块使用） */
+function getLogClearCutoff(): string {
   const now = new Date()
   const cutoff = new Date(now.getFullYear(), now.getMonth() - LOG_RETENTION_MONTHS, now.getDate())
   const pad = (n: number) => n.toString().padStart(2, '0')

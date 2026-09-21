@@ -520,6 +520,10 @@ const jobLoading = ref(false)
 const jobList = ref<any[]>([])
 const activeJobIds = new Set<string>()
 const POLL_INTERVAL = 3000
+// 单个任务状态查询的连续失败次数：静态化程序重启/任务记录被清理后，该任务 ID 会永久查不到，
+// 达到阈值即停止轮询该任务，避免每 3 秒永久轮询一个已不存在的任务。
+const JOB_REFRESH_FAIL_LIMIT = 3
+const jobRefreshFailures = new Map<string, number>()
 let pollTimer: any = null
 
 const kindMap: Record<string, { text: string; type: string }> = {
@@ -662,7 +666,13 @@ const stopPolling = () => {
 
 // 刷新所有活动任务（自动轮询不显示加载遮罩，仅手动刷新时显示）
 const refreshAllJobs = async (showLoading = false) => {
-  const ids = Array.from(activeJobIds)
+  // 自动轮询只跟活动任务；手动点「刷新任务」时把已停止轮询的「状态未知」任务一并重试
+  const ids = showLoading
+    ? Array.from(new Set([
+      ...activeJobIds,
+      ...jobList.value.filter(j => j.status === 'unknown').map(j => j.id)
+    ]))
+    : Array.from(activeJobIds)
   if (ids.length === 0) {
     stopPolling()
     return
@@ -675,6 +685,27 @@ const refreshAllJobs = async (showLoading = false) => {
   }
 }
 
+// 任务状态查询失败处理：连续失败达到阈值后停止轮询该任务，并把行标为「状态未知」（可手动刷新重试）
+const handleJobRefreshFailure = (id: string) => {
+  const failures = (jobRefreshFailures.get(id) || 0) + 1
+  if (failures < JOB_REFRESH_FAIL_LIMIT) {
+    jobRefreshFailures.set(id, failures)
+    return
+  }
+  jobRefreshFailures.delete(id)
+  activeJobIds.delete(id)
+  const row = jobList.value.find(j => j.id === id)
+  if (row) {
+    row.status = 'unknown'
+    row.statusText = '状态未知'
+    row.statusType = 'info'
+    row.progressIndeterminate = false
+    row.progressStatus = undefined
+  }
+  ElMessage.warning('静态化任务状态查询失败，已停止轮询；可点击「刷新任务」重试')
+  if (activeJobIds.size === 0) stopPolling()
+}
+
 // 刷新单个任务状态
 const refreshJob = async (id: string) => {
   const row = jobList.value.find(j => j.id === id)
@@ -683,6 +714,7 @@ const refreshJob = async (id: string) => {
     const res = await getStaticJob(id)
     // 任务状态查询接口返回 200（仅发起任务时返回 202），此处兼容 2xx 成功码
     if ((res.status === 200 || res.status === 202) && res.data?.ok && res.data.job) {
+      jobRefreshFailures.delete(id)
       const prevStatus = row?.status
       const updated = normalizeJob(res.data.job)
       const idx = jobList.value.findIndex(j => j.id === id)
@@ -700,9 +732,13 @@ const refreshJob = async (id: string) => {
         activeJobIds.delete(id)
         if (activeJobIds.size === 0) stopPolling()
       }
+      return
     }
+    // 响应不完整（任务不存在/静态化程序不可达）：计入失败次数
+    handleJobRefreshFailure(id)
   } catch (error) {
-    // 单个任务刷新失败忽略，等待下次轮询
+    // 单个任务刷新失败：累计次数，超限即停止轮询（否则会永久轮询一个查不到的任务）
+    handleJobRefreshFailure(id)
   } finally {
     const r = jobList.value.find(j => j.id === id)
     if (r) r.refreshing = false
