@@ -1,35 +1,32 @@
 <template>
   <div class="page-container">
-    <div class="type-section">
-      <div
-        v-for="type in pageTypeList"
-        :key="type.value"
-        class="type-card"
-        :class="{ active: activePageType === type.value }"
-        @click="handleTypeChange(type.value)"
-      >
-        <div class="type-icon">
-          <el-icon :size="28">
-            <HomeFilled v-if="type.value === 'home'" />
-            <List v-else-if="type.value === 'column'" />
-            <Document v-else-if="type.value === 'detail'" />
-            <Grid v-else />
-          </el-icon>
-        </div>
-        <div class="type-info">
-          <div class="type-name">{{ type.label }}</div>
-          <div class="type-desc">{{ type.description }}</div>
-        </div>
-        <div class="type-arrow">
-          <el-icon><ArrowRight /></el-icon>
-        </div>
-      </div>
-    </div>
-
     <el-card shadow="hover" class="page-card">
       <template #header>
         <div class="card-header">
-          <span>{{ currentTypeLabel }}模板列表</span>
+          <div class="header-title">
+            <span class="title-badge">
+              <el-icon :size="16"><Tickets /></el-icon>
+            </span>
+            <span class="title-text">模板列表</span>
+            <el-tag v-if="templateTableData.length" size="small" type="info" effect="plain" round>
+              共 {{ templateTableData.length }} 个
+            </el-tag>
+          </div>
+          <el-radio-group
+            v-model="activePageType"
+            size="small"
+            class="type-switch"
+            @change="handleTypeChange"
+          >
+            <el-radio-button
+              v-for="type in pageTypeList"
+              :key="type.value"
+              :value="type.value"
+              :title="type.description"
+            >
+              {{ type.label }}
+            </el-radio-button>
+          </el-radio-group>
         </div>
       </template>
 
@@ -44,12 +41,6 @@
         <el-table-column type="index" width="60" align="center" />
         <el-table-column prop="name" label="模板名称" min-width="160" show-overflow-tooltip />
         <el-table-column prop="description" label="模板描述" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="pageName" label="绑定页面" min-width="160" show-overflow-tooltip>
-          <template #default="{ row }">
-            <span v-if="row.pageName">{{ row.pageName }}</span>
-            <span v-else style="color: #c0c4cc">未绑定</span>
-          </template>
-        </el-table-column>
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
@@ -60,7 +51,7 @@
         <el-table-column prop="createdAt" label="创建时间" width="170" />
       </el-table>
 
-      <el-empty v-if="!templateTableData.length && !templateLoading" description="该页面类型下暂无模板" />
+      <el-empty v-if="!templateTableData.length && !templateLoading" description="该页面类型下暂无启用的模板" />
     </el-card>
 
     <el-card v-if="selectedPage" shadow="hover" class="column-card">
@@ -236,17 +227,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import {
-  Plus,
-  Edit,
-  Delete,
-  CirclePlus,
-  ArrowRight,
-  HomeFilled,
-  List,
-  Document,
-  Grid
-} from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, CirclePlus, ArrowRight, Tickets } from '@element-plus/icons-vue'
 import { getPages } from '@/api/page'
 import {
   getColumns,
@@ -388,14 +369,9 @@ const pageTypeList = computed(() => [
   }
 ])
 
-const currentTypeLabel = computed(() => {
-  const map: Record<string, string> = { home: '首页', column: '栏目页', detail: '详情页', special: '专题页' }
-  return map[activePageType.value] || ''
-})
-
-// 模板列表：仅展示当前页面类型的模板（模板 type 与页面类型同值：home/column/detail/special）
+// 模板列表：仅展示当前页面类型、且状态为启用的模板（模板 type 与页面类型同值：home/column/detail/special）
 const templateTableData = computed(() => {
-  return templateList.value.filter((t: any) => t.type === activePageType.value)
+  return templateList.value.filter((t: any) => t.type === activePageType.value && t.status === 1)
 })
 
 // 模板与页面一一绑定（后端 services/page_service.go 强制），按 templateId 反查模板对应的页面
@@ -496,9 +472,8 @@ watch(() => columnForm.name, (val) => {
   }
 })
 
-const handleTypeChange = (type: string) => {
-  if (activePageType.value === type) return
-  activePageType.value = type
+const handleTypeChange = () => {
+  // 注意：选项值已由 el-radio-group 的 v-model 写入 activePageType，这里只负责重载数据
   selectedTemplate.value = null
   selectedPage.value = null
   fetchData()
@@ -637,104 +612,92 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .page-container {
-  .type-section {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 20px;
-    margin-bottom: 20px;
+  /* 两张卡片的头部统一样式：紧凑内边距 + 极浅渐变，标题区更清爽 */
+  .page-card,
+  .column-card {
+    border-radius: 12px;
+    border: 1px solid #e6f2ff;
 
-    .type-card {
+    :deep(.el-card__header) {
+      padding: 12px 20px;
+      border-bottom: 1px solid #eef4fd;
+      background: linear-gradient(90deg, #f8fbff 0%, #ffffff 70%);
+    }
+
+    .card-header {
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 16px;
-      padding: 20px 24px;
-      background: #fff;
-      border-radius: 12px;
-      border: 1px solid #e6f2ff;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-
-      &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(0, 47, 167, 0.12);
-        border-color: #002fa7;
-      }
-
-      &.active {
-        border-color: #002fa7;
-        background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%);
-        box-shadow: 0 4px 16px rgba(0, 47, 167, 0.15);
-
-        .type-arrow {
-          color: #002fa7;
-          transform: translateX(4px);
-        }
-      }
-
-      .type-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 56px;
-        height: 56px;
-        border-radius: 12px;
-        flex-shrink: 0;
-        /* 背景与图标统一为品牌蓝 */
-        background-color: #e6f2ff;
-        color: #002fa7;
-      }
-
-      .type-info {
-        flex: 1;
-        min-width: 0;
-
-        .type-name {
-          font-size: 16px;
-          font-weight: 600;
-          color: #2c3e50;
-          margin-bottom: 6px;
-        }
-
-        .type-desc {
-          font-size: 13px;
-          color: #909399;
-        }
-      }
-
-      .type-arrow {
-        color: #c0c4cc;
-        transition: all 0.3s ease;
-        flex-shrink: 0;
-      }
+      gap: 12px;
+      font-weight: 600;
+      color: #2c3e50;
     }
   }
 
   .page-card {
     margin-bottom: 20px;
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
 
-    .card-header {
+    /* 图标圆底徽标 + 标题 + 启用模板数标签 */
+    .header-title {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      font-weight: 600;
-      color: #2c3e50;
+      gap: 10px;
+      min-width: 0;
+
+      /* 图标圆底徽标 */
+      .title-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        color: #002fa7;
+        background: linear-gradient(135deg, #e6f2ff 0%, #d3e4fb 100%);
+        box-shadow: 0 2px 6px rgba(0, 47, 167, 0.18);
+      }
+
+      .title-text {
+        font-size: 16px;
+        letter-spacing: 0.5px;
+      }
+    }
+
+    /* 胶囊 pill 分段控件：浅色底槽 + 选中白色胶囊 */
+    .type-switch {
+      flex-shrink: 0;
+      gap: 2px;
+      padding: 3px;
+      border-radius: 999px;
+      background: #eef3fb;
+
+      :deep(.el-radio-button__inner) {
+        padding: 5px 16px;
+        border-radius: 999px;
+        outline: none;
+        background: transparent;
+        color: #5a6b8c;
+        font-weight: 500;
+        box-shadow: none;
+        transition: all 0.2s ease;
+      }
+
+      :deep(.el-radio-button__inner:hover) {
+        color: #002fa7;
+      }
+
+      /* 覆盖 EP 默认的主色实心块，改为白色胶囊 + 品牌蓝文字 */
+      :deep(.el-radio-button.is-active .el-radio-button__original-radio:not(:disabled) + .el-radio-button__inner) {
+        color: #002fa7;
+        background-color: #fff;
+        box-shadow: 0 2px 8px rgba(0, 47, 167, 0.16);
+      }
     }
   }
 
   .column-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
-
     .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 600;
-      color: #2c3e50;
-
       .breadcrumb-title {
         display: flex;
         align-items: center;
