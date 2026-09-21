@@ -34,8 +34,10 @@ func BodyLimitMiddleware(maxMB int) gin.HandlerFunc {
 	maxBytes := int64(maxMB) << 20
 
 	reject := func(c *gin.Context) {
-		utils.Logger.Warnf("请求体过大（上限 %dMB）: %s %s from %s",
-			maxMB, c.Request.Method, c.Request.URL.Path, utils.RealIP(c))
+		if utils.Logger != nil {
+			utils.Logger.Warnf("请求体过大（上限 %dMB）: %s %s from %s",
+				maxMB, c.Request.Method, c.Request.URL.Path, utils.RealIP(c))
+		}
 		c.JSON(http.StatusOK, utils.Error(1, fmt.Sprintf("请求体过大，已超过 %dMB 上限", maxMB)))
 		c.Abort()
 	}
