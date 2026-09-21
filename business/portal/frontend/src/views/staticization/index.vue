@@ -34,14 +34,6 @@
           <el-switch v-model="form.homeGray" active-text="开启" inactive-text="关闭" />
         </el-form-item>
 
-        <el-alert
-          type="info"
-          :closable="false"
-          show-icon
-          title="「固定静态化时间」（定时自动静态化）尚未实现：后端没有定时调度器，外部静态化程序也未提供对应接口，因此本页暂不提供该项配置。"
-          style="margin-bottom: 18px"
-        />
-
         <el-form-item>
           <el-button type="primary" :loading="loading" @click="handleSave">保存设置</el-button>
         </el-form-item>

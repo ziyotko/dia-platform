@@ -131,3 +131,7 @@ func AllModels() []any {
 // 已于 2026-09-21 移除（各环境旧结构库均已迁移完成）。
 // 如需从旧结构（存在 `page` 表与 `column`/`ad`/`link`/`article_column_publish.page_id`）升级，
 // 请按 `business/portal/DEPLOY.md` 的「页面层合并迁移」章节手工执行 SQL（先备份，注意外键需先 DROP）。
+//
+// 另：「固定静态化时间」（定时自动静态化）功能已整体移除（模型/设置页/文档均无该配置，
+// AutoMigrate 不会删列），旧库 `setting` 表残留的 8 个 `*_static_time*` 列
+// 请按 `business/portal/DEPLOY.md` 的「移除「固定静态化时间」遗留列」章节手工 DROP。

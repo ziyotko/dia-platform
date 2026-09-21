@@ -157,6 +157,32 @@ DROP TABLE `page`;
 - 健康检查（公开接口，无需 Token、无需防重放头）：`GET /xxxxx/api/site-info`
 - 接口统一返回 HTTP 200 + 业务码：`code=0` 成功、`code=1` 失败、`code=401` 未认证/Token 失效（前端据此自动跳登录页）
 
+#### ⚠️ 移除「固定静态化时间」遗留列（2026-09-21，手工执行）
+
+「固定静态化时间」（定时自动静态化）功能已**整体移除**：后端没有定时调度器，外部静态化程序也未提供对应接口，模型、设置页与文档均已删除该配置。
+`AutoMigrate` **不会删除已存在的列**，所以旧库的 `setting` 表仍会看到下面 8 列（新库不受影响），需手工清理：
+
+```sql
+-- 1) 核对（旧库一般能看到 8 列）
+SELECT COLUMN_NAME FROM information_schema.COLUMNS
+ WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'setting'
+   AND COLUMN_NAME LIKE '%static_time%';
+
+-- 2) 清理（这些列已无任何代码读写）
+ALTER TABLE `setting`
+  DROP COLUMN `home_static_time_enabled`,
+  DROP COLUMN `home_static_time`,
+  DROP COLUMN `column_static_time_enabled`,
+  DROP COLUMN `column_static_time`,
+  DROP COLUMN `special_static_time_enabled`,
+  DROP COLUMN `special_static_time`,
+  DROP COLUMN `detail_static_time_enabled`,
+  DROP COLUMN `detail_static_time`;
+```
+
+- 只删列，`setting` 表其余字段与数据不受影响；删除前建议先 `mysqldump` 备份
+- 若执行报 `1091 Can't DROP ... check that column/key exists`，说明该库已无这些列，可忽略
+
 ### 5. 静态化（外部程序联动）
 
 - 后端通过 `POST /xxxxx/api/static/*` 转发到「外部静态化程序」，非本仓库代码

@@ -312,14 +312,6 @@
 | ssl | boolean | 是 | true | - | SMTP 是否使用 SSL |
 | static_path | varchar(255) | 是 | - | - | 静态化输出路径 |
 | home_gray | boolean | 是 | false | - | 首页整体变灰 |
-| home_static_time_enabled | boolean | 是 | false | - | 首页定时静态化开关 |
-| home_static_time | varchar(10) | 是 | - | - | 首页静态化时间 |
-| column_static_time_enabled | boolean | 是 | false | - | 栏目定时静态化开关 |
-| column_static_time | varchar(10) | 是 | - | - | 栏目静态化时间 |
-| special_static_time_enabled | boolean | 是 | false | - | 专题定时静态化开关 |
-| special_static_time | varchar(10) | 是 | - | - | 专题静态化时间 |
-| detail_static_time_enabled | boolean | 是 | false | - | 详情定时静态化开关 |
-| detail_static_time | varchar(10) | 是 | - | - | 详情静态化时间 |
 | static_program_addr | varchar(100) | 是 | - | - | 外部静态化程序地址 |
 | static_program_token_name | varchar(100) | 是 | - | - | 静态化令牌环境变量名 |
 
