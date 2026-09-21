@@ -23,8 +23,8 @@ type StaticLogListResult struct {
 }
 
 // StaticLatestTimes 各类型页面最后一次静态化成功时间（读取静态化日志最新成功记录）。
-// 专题页仅有「单页操作」（重新生成/删除静态文件），无批量任务，
-// 其时间取自「生成专题页任务完成」日志，与首页/栏目页/详情页口径一致。
+// 专题页既有批量任务（生成专题页）也有单页操作（重新生成/删除静态文件），
+// 批量任务完成与单页同步生成共用「生成专题页任务完成」日志，故与首页/栏目页/详情页口径一致。
 type StaticLatestTimes struct {
 	Site       string `json:"site"`       // 全站最后静态化时间
 	Home       string `json:"home"`       // 首页最后静态化时间
