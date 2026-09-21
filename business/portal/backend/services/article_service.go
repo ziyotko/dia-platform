@@ -464,21 +464,6 @@ func (s *ArticleService) GetArticleAuthorStats(period string, authorCode string)
 	return results, total, nil
 }
 
-// RestartArticleAudit 重新提交文章审核（清空旧记录后重新走提交流程）
-func (s *ArticleService) RestartArticleAudit(articleID uint) error {
-	var article models.Article
-	if err := utils.DB.First(&article, articleID).Error; err != nil {
-		return err
-	}
-	if article.Status != 0 {
-		return fmt.Errorf("只有草稿状态的文章可以重新提交审核")
-	}
-	if article.AuditStatus != 2 {
-		return fmt.Errorf("只有已审核状态的文章可以重新提交审核")
-	}
-	return s.StartArticleAudit(articleID)
-}
-
 // WithdrawArticleAudit 撤回文章审核
 func (s *ArticleService) WithdrawArticleAudit(articleID uint) error {
 	var article models.Article
@@ -1008,7 +993,7 @@ func (s *ArticleService) tryCompleteArticleAudit(articleID uint) {
 }
 
 // rejectArticleAudit 存在被驳回栏目时回退文章状态：不发布，标记为未提交（audit_status=0），
-// 并清理可能残留的发布记录，供作者修改后重新提交审核。
+// 并清理可能残留的发布记录，供作者修改后重新送审（走「提交审核」）。
 func (s *ArticleService) rejectArticleAudit(articleID uint) error {
 	return utils.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Model(&models.Article{}).Where("id = ?", articleID).

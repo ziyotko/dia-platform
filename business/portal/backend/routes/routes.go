@@ -117,7 +117,6 @@ func SetupRoutes(router *gin.Engine) {
 		member.DELETE("/articles/:id", articleController.DeleteArticle)
 		member.PATCH("/articles/:id/status", articleController.UpdateArticleStatus)
 		member.PATCH("/articles/:id/audit", articleController.AuditArticle)
-		member.POST("/articles/:id/audit-restart", articleController.RestartArticleAudit)
 		member.POST("/articles/:id/audit-withdraw", articleController.WithdrawArticleAudit)
 		member.GET("/articles/:id/audit-progress", articleController.GetArticleAuditProgress)
 		member.POST("/articles/:id/audit-advance", articleController.AdvanceArticleAudit)

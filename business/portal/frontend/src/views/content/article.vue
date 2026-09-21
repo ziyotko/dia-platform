@@ -164,9 +164,6 @@
             <el-button v-if="isAuthor(row) && row.status === 0 && row.columnCount > 0 && row.auditStatus === 0" link type="warning" @click="handleAudit(row)">
               <el-icon><CircleCheck /></el-icon>提交审核
             </el-button>
-            <el-button v-if="isAuthor(row) && row.status === 0 && row.columnCount > 0 && row.auditStatus === 2" link type="warning" @click="handleReAudit(row)">
-              <el-icon><CircleCheck /></el-icon>重新提交审核
-            </el-button>
             <el-button v-if="isAuthor(row) && row.auditStatus === 1" link type="warning" @click="handleWithdrawAudit(row)">
               <el-icon><CircleClose /></el-icon>撤回审核
             </el-button>
@@ -1034,7 +1031,6 @@ import {
   updateArticle,
   deleteArticle,
   auditArticle,
-  restartArticleAudit,
   withdrawArticleAudit,
   updateArticleStatus,
   setArticleColumns,
@@ -2118,38 +2114,6 @@ const handleAudit = async (row: any) => {
     try {
       await auditArticle(row.id, 1)
       ElMessage.success('提交审核成功')
-      fetchData()
-    } finally {
-      deleting.value = false
-    }
-  })
-}
-
-const handleReAudit = async (row: any) => {
-  if (columnList.value.length === 0) {
-    await fetchColumns()
-  }
-  const columns = columnList.value.filter((col: any) => (row.columnIds || []).includes(col.id))
-  const noWorkflowColumns = columns.filter((col: any) => !col.workflowId)
-  let message = `确定要重新提交文章 "${row.title}" 进行审核吗？此操作将清空之前的栏目审核记录。`
-  if (noWorkflowColumns.length > 0) {
-    const names = noWorkflowColumns.map((col: any) => col.name).join('、')
-    message += `\n\n以下栏目未配置审核流程，将直接通过：${names}`
-  }
-  ElMessageBox.confirm(
-    message,
-    '重新提交审核',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(async () => {
-    deletingText.value = '重新提交审核中...'
-    deleting.value = true
-    try {
-      await restartArticleAudit(row.id)
-      ElMessage.success('重新提交审核成功')
       fetchData()
     } finally {
       deleting.value = false
