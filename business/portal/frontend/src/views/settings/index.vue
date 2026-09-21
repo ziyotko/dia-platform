@@ -98,6 +98,43 @@
             </el-form-item>
           </el-form>
         </el-tab-pane>
+
+        <el-tab-pane label="静态化设置" name="static">
+          <el-form :model="staticForm" label-width="180px" class="settings-form">
+            <el-form-item label="静态化输出路径">
+              <el-input
+                v-model="staticForm.staticPath"
+                placeholder="请输入静态化输出路径，如 D:/static"
+                clearable
+              />
+            </el-form-item>
+
+            <el-form-item label="静态化程序访问地址">
+              <el-input
+                v-model="staticForm.staticProgramAddr"
+                placeholder="请输入静态化程序访问地址，如 127.0.0.1:8889"
+                clearable
+              />
+            </el-form-item>
+
+            <el-form-item label="静态化程序访问令牌名">
+              <el-input
+                v-model="staticForm.staticProgramTokenName"
+                placeholder="请输入静态化程序访问令牌名，如 CAAM_TOKEN"
+                clearable
+              />
+            </el-form-item>
+
+            <el-form-item label="首页整体变灰">
+              <el-switch v-model="staticForm.homeGray" active-text="开启" inactive-text="关闭" />
+            </el-form-item>
+
+            <el-form-item>
+              <el-button type="primary" :loading="loading" @click="handleSaveStatic">保存设置</el-button>
+              <span class="form-tip">此项保存后不会退出登录</span>
+            </el-form-item>
+          </el-form>
+        </el-tab-pane>
       </el-tabs>
     </el-card>
   </div>
@@ -187,6 +224,13 @@ const emailForm = reactive({
   ssl: true
 })
 
+const staticForm = reactive({
+  staticPath: '',
+  staticProgramAddr: '',
+  staticProgramTokenName: '',
+  homeGray: false
+})
+
 const loadSettings = async () => {
   try {
     const res: any = await getSettings()
@@ -214,6 +258,11 @@ const loadSettings = async () => {
     emailForm.fromName = data.fromName || ''
     emailForm.password = data.emailPassword || ''
     emailForm.ssl = data.ssl ?? true
+
+    staticForm.staticPath = data.staticPath || ''
+    staticForm.staticProgramAddr = data.staticProgramAddr || ''
+    staticForm.staticProgramTokenName = data.staticProgramTokenName || ''
+    staticForm.homeGray = data.homeGray ?? false
   } catch {
     ElMessage.error('获取设置失败')
   }
@@ -310,6 +359,24 @@ const handleTestEmail = async () => {
     // 失败原因由 request 拦截器统一提示
   } finally {
     testingEmail.value = false
+  }
+}
+
+// 静态化参数不影响当前登录态，保存后无需强制重新登录
+const handleSaveStatic = async () => {
+  loading.value = true
+  try {
+    await updateSettings({
+      staticPath: staticForm.staticPath,
+      staticProgramAddr: staticForm.staticProgramAddr,
+      staticProgramTokenName: staticForm.staticProgramTokenName,
+      homeGray: staticForm.homeGray
+    })
+    ElMessage.success('保存成功')
+  } catch {
+    // 失败原因由 request 拦截器统一提示
+  } finally {
+    loading.value = false
   }
 }
 

@@ -11,8 +11,8 @@ import (
 
 // 静态化管理页面会调用多个模块的接口（静态化任务/静态化日志/静态化服务监控），
 // 因此该菜单声明多个 api_prefix（逗号分隔，见 middleware/api_prefix.go）。
-// 另：该页面需读取全局设置（静态化输出路径 / 首页整体变灰，GET /settings 在 admin 组），故追加 /settings。
-// 需与「基础配置-静态化设置」区分：后者对应全局设置的 /settings。
+// 另：该页面需读取全局设置（静态化输出路径 / 首页整体变灰，GET /settings 在 admin 组），故追加 /settings
+// （静态化参数已并入「基础配置-系统设置」的「静态化设置」页签，与此处 /settings 同源，不再单设菜单）。
 const staticManagementAPIPrefix = "/static,/static-logs,/static-monitor,/settings"
 
 // 「栏目管理」页面除栏目本身外，还需读取模板列表（页面层已合并进模板，栏目挂 template_id），
@@ -104,11 +104,10 @@ var defaultMenus = []menuSeedItem{
 		Name: "基础配置", Path: "/config",
 		Icon: "Setting", Type: "directory", Sort: 4, Status: 1,
 		Children: []menuSeedItem{
-			// 静态化管理属于站点级运维操作（对应接口仅在管理员路由组），故与「静态化设置」同放「基础配置」，
+			// 静态化管理属于站点级运维操作（对应接口仅在管理员路由组），故与「系统设置」同放「基础配置」，
 			// 避免误授予内容角色后出现「菜单可见、页面全报没有授权」
 			{Name: "静态化管理", Path: "/config/static", Component: "content/static", Icon: "Monitor", Type: "menu", Sort: 0, Status: 1, APIPrefix: staticManagementAPIPrefix},
-			{Name: "静态化设置", Path: "/staticization", Component: "staticization/index", Icon: "Cpu", Type: "menu", Sort: 1, Status: 1, APIPrefix: "/settings"},
-			{Name: "系统设置", Path: "/settings", Component: "settings/index", Icon: "Tools", Type: "menu", Sort: 2, Status: 1, APIPrefix: "/settings"},
+			{Name: "系统设置", Path: "/settings", Component: "settings/index", Icon: "Tools", Type: "menu", Sort: 1, Status: 1, APIPrefix: "/settings"},
 		},
 	},
 }
@@ -133,6 +132,24 @@ func SeedDefaultMenus() {
 	upgradeMenuAPIPrefix("流程角色", "/workflow-roles", workflowRoleManagementAPIPrefix)
 	// 历史版本「静态化管理」挂在「内容管理」下（非管理员即使被授权也调不通其接口），迁移到「基础配置」。
 	moveMenuToParent("静态化管理", "内容管理", "基础配置", "/config/static")
+	// 「静态化设置」独立页面已并入「系统设置」的「静态化设置」页签，清理旧环境残留菜单。
+	removeLegacyStaticizationMenu()
+}
+
+// removeLegacyStaticizationMenu 幂等删除历史版本遗留的「静态化设置」独立菜单
+// （该页已并入「基础配置-系统设置」的「静态化设置」页签，前端页面文件已删除）。
+// 仅当菜单仍指向旧页面组件时才删除，避免误删使用方自行新增的同名菜单；
+// 角色 permissions 中残留的菜单 ID 匹配不到已删除的菜单，无副作用。
+func removeLegacyStaticizationMenu() {
+	var menu Menu
+	if err := utils.DB.Where("name = ? AND component = ?", "静态化设置", "staticization/index").First(&menu).Error; err != nil {
+		return
+	}
+	if err := utils.DB.Delete(&menu).Error; err != nil {
+		utils.Logger.Warnf("清理历史菜单[静态化设置]失败: %v", err)
+		return
+	}
+	utils.Logger.Infof("已清理历史菜单: 静态化设置（已并入系统设置-静态化设置页签）")
 }
 
 // moveMenuToParent 幂等调整内置菜单的归属目录（仅当当前父目录仍为旧目录时），并同步 path。

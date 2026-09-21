@@ -91,7 +91,7 @@ func (s *StaticJobService) Call(ctx context.Context, method, targetPath string, 
 func (s *StaticJobService) CallWithParams(ctx context.Context, params *StaticParams, method, targetPath string, query map[string]string) (*StaticProgramResult, error) {
 	base := staticProgramBaseURL(params)
 	if base == "" {
-		return nil, &StaticProgramError{Kind: StaticErrConfigNotSet, Message: "静态化程序访问地址未配置，请先在「基础配置-静态化设置」中配置"}
+		return nil, &StaticProgramError{Kind: StaticErrConfigNotSet, Message: "静态化程序访问地址未配置，请先在「系统设置-静态化设置」中配置"}
 	}
 
 	target := base + targetPath

@@ -209,7 +209,7 @@ func (c *StaticJobController) resolveOutputPath(ctx *gin.Context, params *servic
 	if p := strings.TrimSpace(params.StaticPath); p != "" {
 		return p, true
 	}
-	ctx.JSON(http.StatusOK, utils.Error(1, "静态化输出路径未配置，请先在「基础配置-静态化设置」中配置"))
+	ctx.JSON(http.StatusOK, utils.Error(1, "静态化输出路径未配置，请先在「系统设置-静态化设置」中配置"))
 	return "", false
 }
 

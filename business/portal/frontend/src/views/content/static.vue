@@ -1035,7 +1035,7 @@ const handleDeleteArticle = (row: any) => {
   }
   // 输出路径取自后端全局设置（GET /settings）；未取到时不能带空 path 调用静态化程序
   if (!staticPath.value) {
-    ElMessage.warning('未读取到静态化输出路径，请先在「基础配置-静态化设置」中配置并刷新页面')
+    ElMessage.warning('未读取到静态化输出路径，请先在「系统设置-静态化设置」中配置并刷新页面')
     return
   }
   const name = row.title || row.name || row.id
@@ -1079,7 +1079,7 @@ const handleDeleteTopic = (row: any) => {
   }
   // 输出路径取自后端全局设置（GET /settings）；未取到时不能带空 path 调用静态化程序
   if (!staticPath.value) {
-    ElMessage.warning('未读取到静态化输出路径，请先在「基础配置-静态化设置」中配置并刷新页面')
+    ElMessage.warning('未读取到静态化输出路径，请先在「系统设置-静态化设置」中配置并刷新页面')
     return
   }
   const name = row.title || row.name || row.id
