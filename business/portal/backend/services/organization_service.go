@@ -119,7 +119,7 @@ func (s *OrganizationService) DeleteOrganization(id uint) error {
 	if deptCount > 0 {
 		return fmt.Errorf("该机构下存在 %d 个部门，请先移除或调整部门归属", deptCount)
 	}
-	return utils.DB.Unscoped().Delete(&models.Organization{}, id).Error
+	return utils.DB.Delete(&models.Organization{}, id).Error
 }
 
 func (s *OrganizationService) GetOrganizationUsers(id uint) ([]int, error) {

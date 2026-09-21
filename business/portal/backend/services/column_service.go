@@ -171,5 +171,5 @@ func (s *ColumnService) DeleteColumn(id uint) error {
 	if childCount > 0 {
 		return fmt.Errorf("该栏目下仍有 %d 个子栏目，请先删除或调整子栏目后再删除", childCount)
 	}
-	return utils.DB.Unscoped().Delete(&column).Error
+	return utils.DB.Delete(&column).Error
 }

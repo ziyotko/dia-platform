@@ -30,7 +30,7 @@ func (c *VisitController) RecordVisit(ctx *gin.Context) {
 	// 校验文章存在且已发布，避免伪造/无效 ID 污染统计
 	var article models.Article
 	if err := utils.DB.Select("id").
-		Where("id = ? AND status = ? AND deleted_at IS NULL", req.ArticleID, 1).
+		Where("id = ? AND status = ?", req.ArticleID, 1).
 		First(&article).Error; err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "文章不存在或未发布"))
 		return

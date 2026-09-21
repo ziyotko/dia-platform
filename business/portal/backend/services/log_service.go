@@ -50,7 +50,7 @@ func (s *LogService) GetLogList(page, pageSize int, username, logType string, st
 // ClearLogs 仅清空半年前的日志，系统必须保留最近半年的日志。返回删除条数。
 func (s *LogService) ClearLogs() (int64, error) {
 	cutoff := time.Now().AddDate(0, -6, 0)
-	result := utils.DB.Where("created_at < ?", cutoff).Unscoped().Delete(&models.OperationLog{})
+	result := utils.DB.Where("created_at < ?", cutoff).Delete(&models.OperationLog{})
 	return result.RowsAffected, result.Error
 }
 
@@ -117,6 +117,6 @@ func (s *LogService) GetRecentLoginLogs(limit int, usernames []string) ([]models
 // ClearLoginLogs 与 ClearLogs 保持同一语义：仅清空半年前的登录日志，保留最近半年。返回删除条数。
 func (s *LogService) ClearLoginLogs() (int64, error) {
 	cutoff := time.Now().AddDate(0, -6, 0)
-	result := utils.DB.Where("created_at < ?", cutoff).Unscoped().Delete(&models.LoginLog{})
+	result := utils.DB.Where("created_at < ?", cutoff).Delete(&models.LoginLog{})
 	return result.RowsAffected, result.Error
 }

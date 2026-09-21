@@ -22,7 +22,7 @@
 - **表名使用单数**：GORM 配置了 `SingularTable`，所有表均为单数（如 `user`、`menu`，而非 `users`、`menus`）。
 - **主键**：所有表主键为 `id`，类型 `bigint unsigned AUTO_INCREMENT`。
 - **时间字段**：`datetime(3)` 毫秒精度；`created_at` / `updated_at` 由 GORM 自动维护。
-- **软删除**：大多数业务表包含 `deleted_at`（`datetime(3)`，带索引），删除为逻辑删除；`login_log`、`article_attachment`、`article_column_audit_history`、`article_category` 等日志/关联表无软删除。
+- **物理删除（硬删）**：模型不再内嵌 `gorm.DeletedAt`，各表**没有** `deleted_at` 列，删除即 `DELETE`（无回收站/恢复语义）。旧库中残留的 `deleted_at` 列与 `idx_<表名>_deleted_at` 索引按 `business/portal/DEPLOY.md` 的「移除软删除列」手工清理。
 - **保留字注意**：表名 `column` 是 MySQL 保留字，在 SQL 中必须使用反引号：`` `column` ``。
 - **布尔字段**：MySQL 中映射为 `tinyint(1)`（`boolean`）。
 
@@ -76,7 +76,6 @@
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at | datetime(3) | 是 | - | - | 创建时间 |
 | updated_at | datetime(3) | 是 | - | - | 更新时间 |
-| deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
 | username | varchar(50) | 是 | - | - | 用户名/昵称 |
 | email | varchar(100) | 否 | - | UNIQUE | 邮箱 |
 | password | varchar(255) | 否 | - | - | 密码（SM3 加盐哈希，见下方说明） |
@@ -98,7 +97,6 @@
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
-| deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
 | parent_id | bigint unsigned | 是 | 0 | IDX | 父菜单 ID（0 为顶级） |
 | name | varchar(50) | 否 | - | - | 菜单名称 |
 | path | varchar(100) | 是 | - | - | 路由路径（绝对路径，如 `/content/article`） |
@@ -114,7 +112,6 @@
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
-| deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
 | name | varchar(50) | 否 | - | - | 角色名称 |
 | code | varchar(50) | 否 | - | UNIQUE | 角色编码 |
 | description | varchar(255) | 是 | - | - | 角色描述 |
@@ -129,7 +126,6 @@
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
-| deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
 | user_id | bigint unsigned | 是 | - | IDX | 操作人 ID |
 | username | varchar(50) | 是 | - | - | 操作人名称 |
 | type | varchar(20) | 是 | - | - | 操作类型（增/删/改/查等） |
@@ -164,7 +160,6 @@
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
-| deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
 | parent_id | bigint unsigned | 是 | 0 | IDX | 上级部门 ID |
 | org_id | bigint unsigned | 是 | 0 | IDX(org_id,status) | 所属机构 ID |
 | name | varchar(50) | 否 | - | - | 部门名称 |
@@ -183,7 +178,6 @@
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
-| deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
 | parent_id | bigint unsigned | 是 | 0 | IDX | 上级机构 ID |
 | name | varchar(100) | 否 | - | - | 机构名称 |
 | code | varchar(50) | 否 | - | UNIQUE | 机构编码 |
@@ -210,7 +204,6 @@
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
-| deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
 | name | varchar(200) | 否 | - | - | 流程名称 |
 | status | bigint | 是 | 1 | IDX | 状态：1 启用 / 0 禁用 |
 | description | varchar(500) | 是 | - | - | 描述 |
@@ -234,7 +227,6 @@
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
-| deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
 | name | varchar(50) | 否 | - | - | 角色名称 |
 | code | varchar(50) | 否 | - | UNIQUE | 角色编码 |
 | description | varchar(255) | 是 | - | - | 描述 |
@@ -254,7 +246,6 @@
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
-| deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
 | article_id | bigint unsigned | 否 | - | IDX(article_id,column_id) / (article_id,status) | 文章 ID |
 | column_id | bigint unsigned | 否 | - | IDX(article_id,column_id) | 栏目 ID |
 | workflow_id | bigint unsigned | 否 | - | IDX | 流程 ID |
@@ -291,7 +282,6 @@
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
-| deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
 | site_name | varchar(100) | 是 | - | - | 站点名称 |
 | logo | varchar(500) | 是 | - | - | 站点 Logo |
 | icp | varchar(200) | 是 | - | - | ICP 备案号 |
@@ -328,7 +318,6 @@
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
-| deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
 | name | varchar(100) | 否 | - | - | 模板名称 |
 | code | varchar(100) | 是 | - | IDX | 模板编码（由原页面 code 迁移） |
 | type | varchar(20) | 否 | - | IDX | 模板类型（=页面类型：home/column/detail/special） |
@@ -344,7 +333,6 @@
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
-| deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
 | name | varchar(100) | 否 | - | - | 栏目名称 |
 | code | varchar(100) | 否 | - | - | 栏目编码 |
 | template_id | bigint unsigned | 否 | - | IDX | 所属模板 ID |
@@ -365,7 +353,6 @@
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
-| deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
 | name | varchar(100) | 否 | - | - | 分类名称 |
 | code | varchar(100) | 否 | - | - | 分类编码 |
 | description | varchar(500) | 是 | - | - | 描述 |
@@ -378,7 +365,6 @@
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
-| deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
 | name | varchar(100) | 否 | - | - | 标签名称 |
 | color | varchar(20) | 是 | `rgb(64,158,255)` | - | 标签颜色 |
 | status | bigint | 是 | 1 | IDX | 状态 |
@@ -389,7 +375,6 @@
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
-| deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
 | title | varchar(200) | 否 | - | - | 标题 |
 | type | bigint | 是 | 1 | IDX | 类型：1 图文 / 2 视频 / 3 数据 |
 | summary | varchar(500) | 是 | - | - | 摘要 |
@@ -453,7 +438,6 @@
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
-| deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
 | template_id | bigint unsigned | 否 | - | IDX | 模板 ID（FK→template） |
 | column_id | bigint unsigned | 否 | - | IDX | 栏目 ID（FK→column） |
 | article_id | bigint unsigned | 否 | - | IDX | 文章 ID |
@@ -472,7 +456,6 @@
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
-| deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
 | name | varchar(200) | 否 | - | - | 广告名称 |
 | template_id | bigint unsigned | 否 | - | IDX | 所属模板 ID |
 | column_id | bigint unsigned | 是 | 0 | IDX | 所属栏目 ID（0 为不限） |
@@ -491,7 +474,6 @@
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
-| deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
 | name | varchar(200) | 否 | - | - | 链接名称 |
 | url | varchar(500) | 否 | - | - | 链接地址 |
 | logo | varchar(500) | 是 | - | - | Logo |
@@ -511,7 +493,6 @@
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
-| deleted_at | datetime(3) | 是 | - | IDX | 软删除时间 |
 | operation | varchar(50) | 是 | - | - | 操作类型 |
 | page_name | varchar(100) | 是 | - | - | 页面名称 |
 | path | varchar(255) | 是 | - | - | 输出路径 |
@@ -660,7 +641,7 @@ erDiagram
 
 1. **表名单数**：编写原生 SQL 或排查时注意，GORM 使用单数表名（`user` 而非 `users`）。
 2. **`column` 保留字**：任何针对该表的 SQL 都需写成 `` `column` ``（加反引号）。
-3. **软删除**：业务表默认逻辑删除，`deleted_at` 非空即视为已删除；GORM 查询自动过滤。
+3. **物理删除（硬删）**：各表均无 `deleted_at`，删除即物理删除，删除后不可恢复；旧库残留的 `deleted_at` 列/索引按 `DEPLOY.md` 的「移除软删除列」手工清理。
 4. **密码安全**：`user.password` 为 SM3 加盐哈希，禁止明文。
 5. **多对多连接表**：`article_tag`、`article_column` 为 GORM 自动生成（无显式模型）；`article_category` 同时存在显式模型与 many2many 标签，二者指向同一张表。
 6. **`column_count`**：`article.column_count` 为冗余计数（列名显式指定为 `column_count`），需在业务逻辑中维护其一致性。

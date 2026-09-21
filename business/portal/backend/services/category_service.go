@@ -60,7 +60,7 @@ func (s *CategoryService) DeleteCategory(id uint) error {
 	if err := utils.DB.First(&category, id).Error; err != nil {
 		return err
 	}
-	return utils.DB.Unscoped().Delete(&category).Error
+	return utils.DB.Delete(&category).Error
 }
 
 type CategoryArticleStat struct {
@@ -79,7 +79,7 @@ func (s *CategoryService) GetCategoryArticleStats() ([]CategoryArticleStat, int6
 	err := utils.DB.Model(&models.Category{}).
 		Select("category.id as category_id, category.name as category_name, COUNT(article.id) as count").
 		Joins("LEFT JOIN article_category ON article_category.category_id = category.id").
-		Joins("LEFT JOIN article ON article.id = article_category.article_id AND article.status = ? AND article.deleted_at IS NULL", models.ArticleStatusPublished).
+		Joins("LEFT JOIN article ON article.id = article_category.article_id AND article.status = ?", models.ArticleStatusPublished).
 		Group("category.id, category.name").
 		Order("count DESC, category.id ASC").
 		Scan(&results).Error

@@ -85,7 +85,7 @@ func (s *WorkflowRoleService) DeleteWorkflowRole(id uint) error {
 		if err := tx.Where("workflow_role_id = ?", id).Delete(&models.WorkflowRoleUser{}).Error; err != nil {
 			return err
 		}
-		if err := tx.Unscoped().Delete(&models.WorkflowRole{}, id).Error; err != nil {
+		if err := tx.Delete(&models.WorkflowRole{}, id).Error; err != nil {
 			return err
 		}
 		return nil

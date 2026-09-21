@@ -135,7 +135,7 @@ func settingFieldsFromKeys(raw map[string]json.RawMessage) []string {
 	t := reflect.TypeOf(models.Setting{})
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
-		if field.Anonymous { // 跳过 gorm.Model 内嵌字段（id/created_at/updated_at/deleted_at）
+		if field.Anonymous { // 兜底：跳过内嵌结构体字段（Setting 的字段均平铺定义）
 			continue
 		}
 		tag := field.Tag.Get("json")
@@ -147,9 +147,9 @@ func settingFieldsFromKeys(raw map[string]json.RawMessage) []string {
 	}
 
 	// 主键与时间戳等系统字段禁止通过请求体覆盖
-	// （Setting 未内嵌 gorm.Model，Anonymous 恒为 false，需显式排除）
+	// （Setting 的字段均平铺定义，Anonymous 恒为 false，需显式排除）
 	skipFields := map[string]bool{
-		"id": true, "createdAt": true, "updatedAt": true, "deletedAt": true,
+		"id": true, "createdAt": true, "updatedAt": true,
 	}
 
 	fields := make([]string, 0, len(raw))

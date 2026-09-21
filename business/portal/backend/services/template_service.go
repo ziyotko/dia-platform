@@ -206,5 +206,5 @@ func (s *TemplateService) DeleteTemplate(id uint) error {
 		return fmt.Errorf("该模板仍被 %d 条广告、%d 条友链使用，请先调整这些记录后再删除模板", adCount, linkCount)
 	}
 
-	return utils.DB.Unscoped().Delete(&models.Template{}, id).Error
+	return utils.DB.Delete(&models.Template{}, id).Error
 }

@@ -115,7 +115,7 @@ func (s *MenuService) DeleteMenu(id uint) error {
 	if count > 0 {
 		return errors.New("该菜单下存在子菜单，无法删除")
 	}
-	return utils.DB.Unscoped().Delete(&models.Menu{}, id).Error
+	return utils.DB.Delete(&models.Menu{}, id).Error
 }
 
 // buildMenuTree 将扁平菜单列表组装为层级树。

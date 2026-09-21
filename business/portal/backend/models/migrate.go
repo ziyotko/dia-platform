@@ -135,3 +135,8 @@ func AllModels() []any {
 // 另：「固定静态化时间」（定时自动静态化）功能已整体移除（模型/设置页/文档均无该配置，
 // AutoMigrate 不会删列），旧库 `setting` 表残留的 8 个 `*_static_time*` 列
 // 请按 `business/portal/DEPLOY.md` 的「移除「固定静态化时间」遗留列」章节手工 DROP。
+//
+// 再另：本项目已统一为物理删除（硬删）——模型不再内嵌 `gorm.DeletedAt`，代码中不再有
+// `Unscoped()` 与 `deleted_at IS NULL`，删除即 `DELETE`。AutoMigrate 不会删列/索引，
+// 旧库残留的 `deleted_at` 列与 `idx_<表名>_deleted_at` 索引（以及历史软删数据）
+// 请按 `business/portal/DEPLOY.md` 的「移除软删除列 deleted_at」章节手工清理。

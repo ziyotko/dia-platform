@@ -57,7 +57,7 @@ func normalizeMemberIDs(ids []uint, maxChars int) ([]uint, string, int, error) {
 		return []uint{}, "", 0, nil
 	}
 
-	// 只保留真实存在的用户（models.User 带软删除，已删除用户会被自动排除）
+	// 只保留真实存在的用户（用户为硬删除，已删除用户不在 user 表中）
 	var existing []uint
 	if err := utils.DB.Model(&models.User{}).Where("id IN ?", cleaned).Pluck("id", &existing).Error; err != nil {
 		return nil, "", 0, err

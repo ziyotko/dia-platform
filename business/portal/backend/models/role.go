@@ -4,8 +4,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"gorm.io/gorm"
 )
 
 // 系统内置角色 ID（与 seed.go 默认角色、前端 src/utils/permission.ts 保持一致）。
@@ -57,13 +55,12 @@ func HasAdminRoleStr(roleIdsStr string) bool {
 }
 
 type Role struct {
-	ID          uint           `gorm:"primarykey" json:"id"`
-	CreatedAt   time.Time      `json:"createdAt"`
-	UpdatedAt   time.Time      `json:"updatedAt"`
-	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
-	Name        string         `gorm:"size:50;not null" json:"name"`
-	Code        string         `gorm:"unique;size:50;not null" json:"code"`
-	Description string         `gorm:"size:255" json:"description"`
-	Status      int            `gorm:"default:1" json:"status"`
-	Permissions string         `gorm:"size:500" json:"permissions"`
+	ID          uint      `gorm:"primarykey" json:"id"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+	Name        string    `gorm:"size:50;not null" json:"name"`
+	Code        string    `gorm:"unique;size:50;not null" json:"code"`
+	Description string    `gorm:"size:255" json:"description"`
+	Status      int       `gorm:"default:1" json:"status"`
+	Permissions string    `gorm:"size:500" json:"permissions"`
 }

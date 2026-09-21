@@ -393,12 +393,12 @@ func (s *UserService) DeleteUser(id uint) error {
 	if err := deptService.RemoveUserFromAllDepartments(id); err != nil {
 		return err
 	}
-	// 流程角色成员关系（workflow_role_user）无软删，同样需要清理：否则残留悬挂成员行，
+	// 流程角色成员关系（workflow_role_user）同样需要清理：否则残留悬挂成员行，
 	// 审批人解析时该流程角色看似有成员实则无人。
 	if err := utils.DB.Where("user_id = ?", id).Delete(&models.WorkflowRoleUser{}).Error; err != nil {
 		return err
 	}
-	return utils.DB.Unscoped().Delete(&models.User{}, id).Error
+	return utils.DB.Delete(&models.User{}, id).Error
 }
 
 func (s *UserService) UpdateUserStatus(id uint, status int) error {

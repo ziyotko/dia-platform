@@ -72,5 +72,5 @@ func (s *LinkService) DeleteLink(id uint) error {
 	if err := utils.DB.First(&link, id).Error; err != nil {
 		return err
 	}
-	return utils.DB.Unscoped().Delete(&link).Error
+	return utils.DB.Delete(&link).Error
 }

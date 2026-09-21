@@ -308,13 +308,13 @@ func takeOffline(tx *gorm.DB, article *models.Article) error {
 	if err := tx.Model(article).Association("Columns").Clear(); err != nil {
 		return err
 	}
-	if err := tx.Where("article_id = ?", article.ID).Unscoped().Delete(&models.ArticleColumnAudit{}).Error; err != nil {
+	if err := tx.Where("article_id = ?", article.ID).Delete(&models.ArticleColumnAudit{}).Error; err != nil {
 		return err
 	}
-	if err := tx.Where("article_id = ?", article.ID).Unscoped().Delete(&models.ArticleColumnAuditHistory{}).Error; err != nil {
+	if err := tx.Where("article_id = ?", article.ID).Delete(&models.ArticleColumnAuditHistory{}).Error; err != nil {
 		return err
 	}
-	if err := tx.Where("article_id = ?", article.ID).Unscoped().Delete(&models.ArticleColumnPublish{}).Error; err != nil {
+	if err := tx.Where("article_id = ?", article.ID).Delete(&models.ArticleColumnPublish{}).Error; err != nil {
 		return err
 	}
 	return tx.Model(article).Update("audit_status", 0).Error
@@ -382,19 +382,19 @@ func (s *ArticleService) DeleteArticle(id uint) error {
 		if err := tx.Model(&article).Association("Columns").Clear(); err != nil {
 			return err
 		}
-		if err := tx.Where("article_id = ?", id).Unscoped().Delete(&models.ArticleColumnAudit{}).Error; err != nil {
+		if err := tx.Where("article_id = ?", id).Delete(&models.ArticleColumnAudit{}).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("article_id = ?", id).Unscoped().Delete(&models.ArticleColumnAuditHistory{}).Error; err != nil {
+		if err := tx.Where("article_id = ?", id).Delete(&models.ArticleColumnAuditHistory{}).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("article_id = ?", id).Unscoped().Delete(&models.ArticleColumnPublish{}).Error; err != nil {
+		if err := tx.Where("article_id = ?", id).Delete(&models.ArticleColumnPublish{}).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("article_id = ?", id).Unscoped().Delete(&models.ArticleAttachment{}).Error; err != nil {
+		if err := tx.Where("article_id = ?", id).Delete(&models.ArticleAttachment{}).Error; err != nil {
 			return err
 		}
-		return tx.Unscoped().Delete(&article).Error
+		return tx.Delete(&article).Error
 	})
 }
 
@@ -477,10 +477,10 @@ func (s *ArticleService) WithdrawArticleAudit(articleID uint) error {
 		if err := tx.Model(&article).Update("audit_status", 0).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("article_id = ?", articleID).Unscoped().Delete(&models.ArticleColumnAudit{}).Error; err != nil {
+		if err := tx.Where("article_id = ?", articleID).Delete(&models.ArticleColumnAudit{}).Error; err != nil {
 			return err
 		}
-		if err := tx.Where("article_id = ?", articleID).Unscoped().Delete(&models.ArticleColumnAuditHistory{}).Error; err != nil {
+		if err := tx.Where("article_id = ?", articleID).Delete(&models.ArticleColumnAuditHistory{}).Error; err != nil {
 			return err
 		}
 		return nil
@@ -511,11 +511,11 @@ func (s *ArticleService) StartArticleAudit(articleID uint) error {
 			return err
 		}
 		// 清除旧的审核记录
-		if err := tx.Where("article_id = ?", articleID).Unscoped().Delete(&models.ArticleColumnAudit{}).Error; err != nil {
+		if err := tx.Where("article_id = ?", articleID).Delete(&models.ArticleColumnAudit{}).Error; err != nil {
 			return err
 		}
 		// 清除旧的审核历史记录
-		if err := tx.Where("article_id = ?", articleID).Unscoped().Delete(&models.ArticleColumnAuditHistory{}).Error; err != nil {
+		if err := tx.Where("article_id = ?", articleID).Delete(&models.ArticleColumnAuditHistory{}).Error; err != nil {
 			return err
 		}
 		// 为每个栏目创建审核记录：有流程的走审核，无流程的直接通过
@@ -1000,7 +1000,7 @@ func (s *ArticleService) rejectArticleAudit(articleID uint) error {
 			Update("audit_status", 0).Error; err != nil {
 			return err
 		}
-		return tx.Where("article_id = ?", articleID).Unscoped().Delete(&models.ArticleColumnPublish{}).Error
+		return tx.Where("article_id = ?", articleID).Delete(&models.ArticleColumnPublish{}).Error
 	})
 }
 
@@ -1139,7 +1139,7 @@ func (s *ArticleService) CompleteArticleAudit(articleID uint) error {
 			return err
 		}
 		// 清除该文章旧的发布记录
-		if err := tx.Where("article_id = ?", articleID).Unscoped().Delete(&models.ArticleColumnPublish{}).Error; err != nil {
+		if err := tx.Where("article_id = ?", articleID).Delete(&models.ArticleColumnPublish{}).Error; err != nil {
 			return err
 		}
 		// 只查询审核通过的栏目记录

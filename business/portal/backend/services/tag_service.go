@@ -58,7 +58,7 @@ func (s *TagService) DeleteTag(id uint) error {
 	if err := utils.DB.First(&tag, id).Error; err != nil {
 		return err
 	}
-	return utils.DB.Unscoped().Delete(&tag).Error
+	return utils.DB.Delete(&tag).Error
 }
 
 type TagArticleStat struct {
@@ -75,7 +75,7 @@ func (s *TagService) GetTagArticleStats() ([]TagArticleStat, error) {
 	err := utils.DB.Model(&models.Tag{}).
 		Select("tag.id as tag_id, tag.name, tag.color, COUNT(article.id) as count").
 		Joins("LEFT JOIN article_tag ON article_tag.tag_id = tag.id").
-		Joins("LEFT JOIN article ON article.id = article_tag.article_id AND article.status = ? AND article.deleted_at IS NULL", models.ArticleStatusPublished).
+		Joins("LEFT JOIN article ON article.id = article_tag.article_id AND article.status = ?", models.ArticleStatusPublished).
 		Group("tag.id, tag.name, tag.color").
 		Order("count DESC, tag.id ASC").
 		Scan(&results).Error

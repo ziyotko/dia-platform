@@ -3,25 +3,22 @@ package models
 import (
 	"encoding/json"
 	"time"
-
-	"gorm.io/gorm"
 )
 
 type Link struct {
-	ID          uint           `gorm:"primarykey" json:"id"`
-	CreatedAt   time.Time      `json:"createdAt"`
-	UpdatedAt   time.Time      `json:"updatedAt"`
-	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deletedAt"`
-	Name        string         `gorm:"size:200;not null" json:"name"`
-	Url         string         `gorm:"size:500;not null" json:"url"`
-	Logo        string         `gorm:"size:500" json:"logo"`
-	Description string         `gorm:"size:500" json:"description"`
-	TemplateID  uint           `gorm:"not null;index" json:"templateId"`
-	ColumnID    uint           `gorm:"default:0;index" json:"columnId"`
-	Sort        int            `gorm:"default:0" json:"sort"`
-	Status      int            `gorm:"default:1;index" json:"status"`
-	Author      string         `gorm:"size:100" json:"author"`
-	AuthorCode  string         `gorm:"size:100" json:"authorCode"`
+	ID          uint      `gorm:"primarykey" json:"id"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
+	Name        string    `gorm:"size:200;not null" json:"name"`
+	Url         string    `gorm:"size:500;not null" json:"url"`
+	Logo        string    `gorm:"size:500" json:"logo"`
+	Description string    `gorm:"size:500" json:"description"`
+	TemplateID  uint      `gorm:"not null;index" json:"templateId"`
+	ColumnID    uint      `gorm:"default:0;index" json:"columnId"`
+	Sort        int       `gorm:"default:0" json:"sort"`
+	Status      int       `gorm:"default:1;index" json:"status"`
+	Author      string    `gorm:"size:100" json:"author"`
+	AuthorCode  string    `gorm:"size:100" json:"authorCode"`
 }
 
 func (l Link) MarshalJSON() ([]byte, error) {

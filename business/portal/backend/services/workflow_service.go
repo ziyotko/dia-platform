@@ -79,7 +79,7 @@ func (s *WorkflowService) DeleteWorkflow(id uint) error {
 	if pendingCount > 0 {
 		return fmt.Errorf("该流程存在 %d 条进行中的审核，无法删除", pendingCount)
 	}
-	return utils.DB.Unscoped().Delete(&models.Workflow{}, id).Error
+	return utils.DB.Delete(&models.Workflow{}, id).Error
 }
 
 // ValidateNodesResolvable 校验节点审批人配置是否可解析。
@@ -150,7 +150,7 @@ func (s *WorkflowService) SaveWorkflowNodes(workflowID uint, nodes []models.Work
 		return fmt.Errorf("该流程存在 %d 条进行中的审核，请等待审核完成或先撤回后再修改节点", pendingCount)
 	}
 	return utils.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("workflow_id = ?", workflowID).Unscoped().Delete(&models.WorkflowNode{}).Error; err != nil {
+		if err := tx.Where("workflow_id = ?", workflowID).Delete(&models.WorkflowNode{}).Error; err != nil {
 			return err
 		}
 		if len(nodes) > 0 {

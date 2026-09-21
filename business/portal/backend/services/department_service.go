@@ -224,7 +224,7 @@ func (s *DepartmentService) DeleteDepartment(id uint) error {
 	if count > 0 {
 		return errors.New("存在子部门，无法删除")
 	}
-	return utils.DB.Unscoped().Delete(&models.Department{}, id).Error
+	return utils.DB.Delete(&models.Department{}, id).Error
 }
 
 // parseUserIDs 将 department.user_ids（逗号分隔字符串）解析为 int 列表

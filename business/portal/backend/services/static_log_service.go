@@ -60,7 +60,7 @@ func (s *StaticLogService) GetList(page, pageSize int) (*StaticLogListResult, er
 // Clear 与操作日志/登录日志保持同一语义：仅清空半年前的静态化日志，保留最近半年。返回删除条数。
 func (s *StaticLogService) Clear() (int64, error) {
 	cutoff := time.Now().AddDate(0, -6, 0)
-	result := utils.DB.Where("created_at < ?", cutoff).Unscoped().Delete(&models.StaticLog{})
+	result := utils.DB.Where("created_at < ?", cutoff).Delete(&models.StaticLog{})
 	return result.RowsAffected, result.Error
 }
 

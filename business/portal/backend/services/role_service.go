@@ -97,7 +97,7 @@ func (s *RoleService) DeleteRole(id uint) error {
 	if count > 0 {
 		return fmt.Errorf("该角色仍被 %d 个用户使用，请先调整这些用户的角色后再删除", count)
 	}
-	return utils.DB.Unscoped().Delete(&models.Role{}, id).Error
+	return utils.DB.Delete(&models.Role{}, id).Error
 }
 
 func (s *RoleService) UpdateRolePermissions(id uint, permissions []uint) error {
