@@ -18,7 +18,7 @@ type MessageService struct{}
 // broadcastReadExists 子查询：判断广播消息对指定用户是否已有已读记录。
 // 广播消息（receiver_id = 0）在库中只有一行数据，行级 is_read 会被所有人共享，
 // 因此广播的已读状态存放在 base_message_read，定向消息继续使用 base_message.is_read。
-const broadcastReadExists = "EXISTS (SELECT 1 FROM base_message_read mr WHERE mr.message_id = base_message.id AND mr.user_id = ? AND mr.deleted_at IS NULL)"
+const broadcastReadExists = "EXISTS (SELECT 1 FROM base_message_read mr WHERE mr.message_id = base_message.id AND mr.user_id = ?)"
 
 // CreateDraft 新建草稿。草稿不会进入任何人的收件箱，发送需走 /messages/send（新建发送）
 // 或 /messages/:id/send（发送已有草稿）。

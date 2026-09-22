@@ -35,7 +35,7 @@ var obsoleteMenuComponents = []string{
 	"base/workflow/designer/index.vue",
 }
 
-// cleanupObsoleteMenus 软删除废弃菜单，并解除其与角色的菜单关联。
+// cleanupObsoleteMenus 物理删除废弃菜单，并解除其与角色的菜单关联。
 func cleanupObsoleteMenus() error {
 	var ids []uint64
 	if err := db.DB.Model(&models.Menu{}).Where("component IN ?", obsoleteMenuComponents).Pluck("id", &ids).Error; err != nil {

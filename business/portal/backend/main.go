@@ -21,6 +21,11 @@ func main() {
 	utils.InitRedisCache()
 	utils.InitRedisAnti()
 
+	// 统一硬删：模型已不再内嵌 gorm.DeletedAt（查询不过滤 deleted_at），
+	// 先把旧库遗留的软删除数据物理清掉，否则它们会重新"出现"在列表里
+	if purged := models.PurgeLegacySoftDeletedRows(); purged > 0 {
+		utils.Logger.Infof("[migrate] 共物理删除 %d 条历史软删除记录", purged)
+	}
 	for _, m := range models.AllModels() {
 		utils.DB.AutoMigrate(m)
 	}

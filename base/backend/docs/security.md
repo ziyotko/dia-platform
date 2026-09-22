@@ -149,7 +149,7 @@ GORM 的 `Updates` / `Delete` 在 `WHERE` 命中 0 行时**不返回错误**，�
 
 - 更新前用 `ensureRecordExists(...)` 先做一次存在性 + 归属校验（`COUNT`）；
   **不要用 `RowsAffected` 判断更新**：MySQL 默认返回「实际变更行数」，原样保存时会得到 0，会被误判为失败。
-- 删除后用 `ensureDeleteAffected(...)` 校验 `RowsAffected > 0`（软删除一定会改 `deleted_at`，因此可靠）。
+- 删除后用 `ensureDeleteAffected(...)` 校验 `RowsAffected > 0`（物理删除会真实删除行，因此可靠）。
 
 #### Controller 层
 
@@ -315,13 +315,20 @@ if tenantID > 0 {
   `base_role_menu` / `base_role_permission` / `base_user_role`；删除菜单清理 `base_role_menu`；
   删除权限清理 `base_role_permission`。均在事务内完成。
 - **账号保护**：不能删除当前登录用户；平台内置 `admin` 账号与 `tenant_id=0, code=super_admin` 角色不可删除。
-- **应用实例唯一**：同一租户同一应用不可重复开通（应用层校验，软删除后允许重新开通）。
+- **应用实例唯一**：同一租户同一应用不可重复开通（应用层校验，删除后可以重新开通）。
 - **用户名唯一**：`base_user` 上有唯一索引 `uk_base_user_tenant_username (tenant_id, username)` ——
   同租户内不可重名、跨租户可同名（与登录按 `租户编码 + 用户名` 定位的口径一致）。
   service 层的预检查只负责给出友好提示，**并发由索引兜底**（MySQL 1062 会被转成「该租户下用户名已存在」，不暴露 SQL 细节）。
-  唯一索引在软删除后仍占位，因此「删除用户 → 用同名重建」会**恢复原记录并覆盖字段**（沿用租户/应用的软删除重建口径）。
-  启动时 `db.dedupeUserUsernames` 先把历史重复数据整理成一组一行（软删除的重复行物理删除、存活重复行改名 `<原名>_dup<id>` 并打日志），
+  唯一索引只被存活记录占用：「删除用户 → 用同名重建」会得到**一条全新记录**（新 ID，不会恢复旧记录）。
+  启动时 `db.dedupeUserUsernames` 先把历史重复数据整理成一组一行（保留 id 最小的一条，其余改名 `<原名>_dup<id>` 并打日志），
   否则建索引会失败导致服务无法启动；同时删除历史遗留的单列非唯一索引 `idx_base_user_username`。
+
+## 7.1 删除语义（统一硬删）
+
+- 模型不内嵌 `gorm.DeletedAt`，代码里没有 `Unscoped()`，删除即 `DELETE`（无回收站/恢复语义）。
+- 启动时 `pkg/db` 的 `purgeLegacySoftDeletedRows()` 把旧库 `deleted_at IS NOT NULL` 的残留行物理删除：
+  查询已不过滤 `deleted_at`，不清理这些行它们会重新"出现"在列表里并继续占用唯一索引；幂等，新库自动跳过。
+- 旧库的 `deleted_at` 列与索引由 `AutoMigrate` 保留（无害），需彻底清掉时按 `backend/README.md` 的手工 SQL 执行。
 
 ## 8. 文件上传
 

@@ -12,40 +12,28 @@ import (
 
 type AppService struct{}
 
-// Create 创建应用。
-// 同编码的软删除记录会被恢复并覆盖字段（原因同租户：软删除不会释放唯一索引）。
+// Create 创建应用。应用编码唯一（重名直接报错），删除是物理删除，
+// 编码删除后可以直接重新使用。
 func (s AppService) Create(a *models.App) error {
 	if a.Code == "" {
 		return errors.New("请填写应用编码")
 	}
 
-	var existing models.App
-	err := db.DB.Unscoped().Where("code = ?", a.Code).First(&existing).Error
-	switch {
-	case err == nil:
-		if !existing.DeletedAt.Valid {
-			return errors.New("应用编码已存在")
-		}
-		if err := db.DB.Unscoped().Model(&models.App{}).Where("id = ?", existing.ID).Updates(map[string]interface{}{
-			"deleted_at":   nil,
-			"name":         a.Name,
-			"icon":         a.Icon,
-			"type":         a.Type,
-			"frontend_url": a.FrontendURL,
-			"backend_url":  a.BackendURL,
-			"api_prefix":   a.ApiPrefix,
-			"status":       a.Status,
-			"sort":         a.Sort,
-			"description":  a.Description,
-		}).Error; err != nil {
-			return err
-		}
-		return db.DB.Where("id = ?", existing.ID).First(a).Error
-	case errors.Is(err, gorm.ErrRecordNotFound):
-		return db.DB.Create(a).Error
-	default:
+	var count int64
+	if err := db.DB.Model(&models.App{}).Where("code = ?", a.Code).Count(&count).Error; err != nil {
 		return err
 	}
+	if count > 0 {
+		return errors.New("应用编码已存在")
+	}
+	if err := db.DB.Create(a).Error; err != nil {
+		// 并发下两个请求可能同时通过预检查，唯一索引兜底
+		if isDuplicateEntry(err) {
+			return errors.New("应用编码已存在")
+		}
+		return err
+	}
+	return nil
 }
 
 func (s AppService) Update(a *models.App) error {

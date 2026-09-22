@@ -113,6 +113,26 @@ jwt:
   issuer: base-platform
 ```
 
+## 删除语义（统一硬删）
+
+本项目**不使用软删除**：模型不内嵌 `gorm.DeletedAt`，代码里没有 `Unscoped()` / `deleted_at IS NULL`，
+删除接口直接 `DELETE`（无回收站/恢复语义，删除后不可恢复）。
+
+- 唯一索引只被**存活**记录占用：删除后同编码/同名的租户、应用、用户可以直接重新创建（是一条全新记录，ID 不复用，
+  旧版的「删除后同名重建=恢复原记录」行为已取消）。同名更新也无需担心软删占位。
+- 启动时 `pkg/db.purgeLegacySoftDeletedRows()` 会把旧库中 `deleted_at IS NOT NULL` 的残留行物理删除，
+  并打日志 `[migrate] <表> 表物理删除 N 条历史软删除记录`。原因：查询已不过滤 `deleted_at`，不清理这些行会重新"出现"
+  在列表里并继续占用唯一索引。新库没有 `deleted_at` 列，自动跳过；幂等，可反复启动。
+- `AutoMigrate` 不会删除已存在的列/索引，旧库的 `deleted_at` 列与 `idx_<表>_deleted_at` 索引会保留（无害）。
+  如需彻底清掉，先用下面语句生成 SQL（GORM 默认索引名 `idx_<表名>_deleted_at`；某表若没有该索引，单独执行 `DROP COLUMN`）：
+
+```sql
+SELECT CONCAT('ALTER TABLE `', TABLE_NAME, '` DROP INDEX `', INDEX_NAME, '`, DROP COLUMN `deleted_at`;')
+  FROM information_schema.STATISTICS
+ WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME = 'deleted_at'
+ GROUP BY TABLE_NAME, INDEX_NAME;
+```
+
 ## 核心接口
 
 ### 公开接口
@@ -201,7 +221,7 @@ jwt:
 - **超时提醒**：节点可配置 `timeout_minutes`（0 = 不提醒），任务行冗余该值；`StartWorkflowReminder` 按 `server.workflow_remind_interval_seconds` 周期扫描（`status=1` 且实例进行中且 `TIMESTAMPADD(MINUTE, timeout_minutes, created_at) <= NOW()` 的待办），给审批人发站内信并写 `remind` 日志；`reminded_at` / `remind_count` 记录提醒时间与次数，按超时时长周期复提醒（单次扫描上限 200 条）。
 - **驳回**：实例置「已驳回」、结束时间落库，实例下所有未处理待办置为「已失效」。
 - **撤销**：实例置「已撤销」，未处理待办失效；仅发起人本人或管理员可撤销。
-- **删除**：仅管理员（`base:workflow-instance:delete`），软删除实例及其任务与流转日志。
+- **删除**：仅管理员（`base:workflow-instance:delete`），物理删除实例及其任务与流转日志。
 - **可见性**：详情允许发起人、参与审批的人、管理员查看；列表对非管理员强制 `initiator_id = 自己`。
 - **节点改动保护**：`PUT /workflows/:id/nodes` 在存在进行中实例时拒绝保存，避免「流程跑到一半结构变了」；保存时会归一化节点（`approve_mode` 非 `and` 一律按 `or` 处理，`timeout_minutes` 限制在 0~10080 分钟）。
 - **仪表盘口径**：平台超管看全平台资源概览；租户管理员看本租户资源概览（机构/消息等含 `tenant_id = 0` 的共享数据）；普通用户不返回资源汇总（保持 0），只返回「我的」待办与趋势（普通用户无趋势）。趋势为最近 7 天按天聚合、缺日补 0。

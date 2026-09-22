@@ -13,37 +13,28 @@ import (
 
 type TenantService struct{}
 
-// Create 创建租户。
-// 若存在同编码的软删除记录，直接恢复并覆盖字段：唯一索引在软删除后仍占位，
-// 不这样做用户会看到数据库的 Duplicate entry 错误，且永远无法重建同编码租户。
+// Create 创建租户。租户编码唯一（重名直接报错），删除是物理删除，
+// 编码删除后可以直接重新使用。
 func (s TenantService) Create(t *models.Tenant) error {
 	if t.Code == "" {
 		t.Code = "T" + utils.RandomDigit(8)
 	}
 
-	var existing models.Tenant
-	err := db.DB.Unscoped().Where("code = ?", t.Code).First(&existing).Error
-	switch {
-	case err == nil:
-		if !existing.DeletedAt.Valid {
-			return errors.New("租户编码已存在")
-		}
-		if err := db.DB.Unscoped().Model(&models.Tenant{}).Where("id = ?", existing.ID).Updates(map[string]interface{}{
-			"deleted_at":    nil,
-			"name":          t.Name,
-			"status":        t.Status,
-			"contact_name":  t.ContactName,
-			"contact_phone": t.ContactPhone,
-			"description":   t.Description,
-		}).Error; err != nil {
-			return err
-		}
-		return db.DB.Where("id = ?", existing.ID).First(t).Error
-	case errors.Is(err, gorm.ErrRecordNotFound):
-		return db.DB.Create(t).Error
-	default:
+	var count int64
+	if err := db.DB.Model(&models.Tenant{}).Where("code = ?", t.Code).Count(&count).Error; err != nil {
 		return err
 	}
+	if count > 0 {
+		return errors.New("租户编码已存在")
+	}
+	if err := db.DB.Create(t).Error; err != nil {
+		// 并发下两个请求可能同时通过预检查，唯一索引兜底
+		if isDuplicateEntry(err) {
+			return errors.New("租户编码已存在")
+		}
+		return err
+	}
+	return nil
 }
 
 func (s TenantService) Update(t *models.Tenant) error {

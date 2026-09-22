@@ -243,7 +243,7 @@ func (s WorkflowEngineService) Cancel(instanceID uint64, actor WorkflowActor) er
 	})
 }
 
-// Delete 删除流程实例（仅管理员）：软删除实例及其任务与流转日志。
+// Delete 删除流程实例（仅管理员）：物理删除实例及其任务与流转日志。
 func (s WorkflowEngineService) Delete(instanceID uint64, actor WorkflowActor) error {
 	if !actor.IsAdmin && !models.IsPlatformTenant(actor.TenantID) {
 		return errors.New("只有管理员可以删除流程实例")

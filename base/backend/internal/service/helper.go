@@ -23,7 +23,7 @@ func ensureRecordExists(query *gorm.DB, message string) error {
 }
 
 // ensureDeleteAffected 校验删除确实命中了记录。
-// 软删除一定会修改 deleted_at，因此 RowsAffected 可靠；命中 0 行说明记录不存在或不属于当前租户，
+// 物理删除会真实删除行，RowsAffected 可靠；命中 0 行说明记录不存在或不属于当前租户，
 // 此时必须报错，否则接口返回「删除成功」但数据仍在。
 func ensureDeleteAffected(res *gorm.DB, message string) error {
 	if res.Error != nil {

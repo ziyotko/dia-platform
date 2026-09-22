@@ -191,15 +191,23 @@ ALTER TABLE `setting`
 - 只删列，`setting` 表其余字段与数据不受影响；删除前建议先 `mysqldump` 备份
 - 若执行报 `1091 Can't DROP ... check that column/key exists`，说明该库已无这些列，可忽略
 
-#### ⚠️ 移除软删除列 deleted_at（2026-09-21，手工执行）
+#### ⚠️ 移除软删除列 deleted_at（2026-09-22：数据清理已自动化，删列仍需手工）
 
 后端已统一为**物理删除（硬删）**：模型不再内嵌 `gorm.DeletedAt`，代码里的 `Unscoped()` 与
 `deleted_at IS NULL` 条件全部移除，删除接口直接 `DELETE`（不再保留可恢复的"回收站"语义）。
-`AutoMigrate` **不会删除已存在的列与索引**，因此旧库仍会看到 `deleted_at` 列和
-`idx_<表名>_deleted_at` 索引（新库不受影响），需手工清理：
 
-> 顺序要求：若目标库**同时**还需要执行上面的「页面层合并迁移」，请**先做那一段**——它的回填 SQL
-> 里用到了 `page.deleted_at IS NULL`，删列后会报 `1054 Unknown column`。两段都不要放在启动期自动执行。
+- **历史软删数据由启动期自动清理**：`models.PurgeLegacySoftDeletedRows()`（在 `main.go` 里 AutoMigrate 之前调用）
+  会找出库里所有带 `deleted_at` 列的表并执行 `DELETE FROM x WHERE deleted_at IS NOT NULL`，
+  日志形如 `[migrate] user 表物理删除 N 条历史软删除记录`。幂等：新库没有该列，直接跳过。
+  必须走这一步，否则这些行会因查询不再过滤 `deleted_at` 而重新"出现"在列表里。
+- **列与索引仍需手工 DROP**：`AutoMigrate` 不会删除已存在的列与索引，所以旧库仍会看到 `deleted_at` 列和
+  `idx_<表名>_deleted_at` 索引（新库不受影响，无害），按下节 SQL 清理。
+
+> 顺序要求：
+> ① 若目标库**同时**还需要执行上面的「页面层合并迁移」，请**先做那一段**——它的回填 SQL
+>   用到了 `page.deleted_at IS NULL`；
+> ② 删列**之前必须先启动过一次新版后端**（让启动期清理把软删行删掉）——直接删列会让这些行
+>   失去删除标记，被当作正常数据"复活"。
 
 ```sql
 -- 1) 核对：哪些表还带 deleted_at（含旧的 page 表，若已随页面层迁移删除则不会出现）
@@ -207,29 +215,7 @@ SELECT TABLE_NAME FROM information_schema.COLUMNS
  WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME = 'deleted_at'
  ORDER BY TABLE_NAME;
 
--- 2) 先物理清掉历史软删数据：否则删列后这些行会被当作正常数据"复活"
---    （主要是早期版本软删过的菜单/日志等；没有软删行的表受影响 0 行，可忽略）
-DELETE FROM `user`                    WHERE deleted_at IS NOT NULL;
-DELETE FROM `menu`                    WHERE deleted_at IS NOT NULL;
-DELETE FROM `role`                    WHERE deleted_at IS NOT NULL;
-DELETE FROM `operation_log`           WHERE deleted_at IS NOT NULL;
-DELETE FROM `setting`                 WHERE deleted_at IS NOT NULL;
-DELETE FROM `template`                WHERE deleted_at IS NOT NULL;
-DELETE FROM `column`                  WHERE deleted_at IS NOT NULL;
-DELETE FROM `category`                WHERE deleted_at IS NOT NULL;
-DELETE FROM `tag`                     WHERE deleted_at IS NOT NULL;
-DELETE FROM `article`                 WHERE deleted_at IS NOT NULL;
-DELETE FROM `ad`                      WHERE deleted_at IS NOT NULL;
-DELETE FROM `link`                    WHERE deleted_at IS NOT NULL;
-DELETE FROM `department`              WHERE deleted_at IS NOT NULL;
-DELETE FROM `organization`            WHERE deleted_at IS NOT NULL;
-DELETE FROM `workflow`                WHERE deleted_at IS NOT NULL;
-DELETE FROM `workflow_role`           WHERE deleted_at IS NOT NULL;
-DELETE FROM `article_column_audit`    WHERE deleted_at IS NOT NULL;
-DELETE FROM `article_column_publish`  WHERE deleted_at IS NOT NULL;
-DELETE FROM `static_log`              WHERE deleted_at IS NOT NULL;
-
--- 3) 删索引 + 删列（索引名遵循 GORM 默认的 idx_<表名>_deleted_at；缺失时整条语句会报 1091，可忽略）
+-- 2) 删索引 + 删列（索引名遵循 GORM 默认的 idx_<表名>_deleted_at；缺失时整条语句会报 1091，可忽略）
 ALTER TABLE `user`                   DROP INDEX `idx_user_deleted_at`,                   DROP COLUMN `deleted_at`;
 ALTER TABLE `menu`                   DROP INDEX `idx_menu_deleted_at`,                   DROP COLUMN `deleted_at`;
 ALTER TABLE `role`                   DROP INDEX `idx_role_deleted_at`,                   DROP COLUMN `deleted_at`;
@@ -254,7 +240,7 @@ ALTER TABLE `static_log`             DROP INDEX `idx_static_log_deleted_at`,    
 - 库中若存在**自定义命名**的 deleted_at 索引，先用下面语句查出再手工替换索引名：
   `SELECT TABLE_NAME, INDEX_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME = 'deleted_at' GROUP BY TABLE_NAME, INDEX_NAME;`
 - 只删列/索引，各表其余字段与数据不受影响；执行前建议先 `mysqldump` 备份
-- 若某张表报 `1091`（列或索引不存在）或 `1054`（DELETE 时列不存在），说明该表已清理过，可忽略
+- 若某张表报 `1091`（列或索引不存在），说明该表已清理过，可忽略
 - 影响面：删除后同名/同编码记录可直接新建（唯一索引不再被软删行占位）；`/xxx/{id}` 查不到的记录即真的不存在
 
 ### 5. 静态化（外部程序联动）

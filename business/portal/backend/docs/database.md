@@ -22,7 +22,7 @@
 - **表名使用单数**：GORM 配置了 `SingularTable`，所有表均为单数（如 `user`、`menu`，而非 `users`、`menus`）。
 - **主键**：所有表主键为 `id`，类型 `bigint unsigned AUTO_INCREMENT`。
 - **时间字段**：`datetime(3)` 毫秒精度；`created_at` / `updated_at` 由 GORM 自动维护。
-- **物理删除（硬删）**：模型不再内嵌 `gorm.DeletedAt`，各表**没有** `deleted_at` 列，删除即 `DELETE`（无回收站/恢复语义）。旧库中残留的 `deleted_at` 列与 `idx_<表名>_deleted_at` 索引按 `business/portal/DEPLOY.md` 的「移除软删除列」手工清理。
+- **物理删除（硬删）**：模型不再内嵌 `gorm.DeletedAt`，各表**没有** `deleted_at` 列，删除即 `DELETE`（无回收站/恢复语义）。旧库中残留的软删数据由启动期 `models.PurgeLegacySoftDeletedRows()` 自动物理删除（幂等）；残留的 `deleted_at` 列与 `idx_<表名>_deleted_at` 索引按 `business/portal/DEPLOY.md` 的「移除软删除列」手工 DROP。
 - **保留字注意**：表名 `column` 是 MySQL 保留字，在 SQL 中必须使用反引号：`` `column` ``。
 - **布尔字段**：MySQL 中映射为 `tinyint(1)`（`boolean`）。
 
@@ -660,7 +660,7 @@ erDiagram
 
 1. **表名单数**：编写原生 SQL 或排查时注意，GORM 使用单数表名（`user` 而非 `users`）。
 2. **`column` 保留字**：任何针对该表的 SQL 都需写成 `` `column` ``（加反引号）。
-3. **物理删除（硬删）**：各表均无 `deleted_at`，删除即物理删除，删除后不可恢复；旧库残留的 `deleted_at` 列/索引按 `DEPLOY.md` 的「移除软删除列」手工清理。
+3. **物理删除（硬删）**：各表均无 `deleted_at`，删除即物理删除，删除后不可恢复；旧库残留的软删数据由启动期 `PurgeLegacySoftDeletedRows()` 自动清理，残留的 `deleted_at` 列/索引按 `DEPLOY.md` 的「移除软删除列」手工 DROP。
 4. **密码安全**：`user.password` 为 SM3 加盐哈希，禁止明文。
 5. **多对多连接表**：`article_tag`、`article_column` 为 GORM 自动生成（无显式模型）；`article_category` 同时存在显式模型与 many2many 标签，二者指向同一张表。
 6. **菜单 `api_prefix` 决定接口可调用范围**：`middleware/api_prefix.go` 把请求路径去掉 `server.api_prefix` 后与用户已授权菜单的前缀逐一比对（支持逗号分隔多前缀），未命中且不在豁免表内则返回「没有授权」。新增页面/接口时必须确保：该页调用的每个接口要么被其菜单 `api_prefix` 覆盖，要么在 `apiPrefixExemptPaths`（精确匹配）/`apiPrefixExemptPrefixes`（前缀匹配）豁免表内。

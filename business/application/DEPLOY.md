@@ -205,6 +205,25 @@ server {
 - 更换 `APPLICATION_JWT_SECRET` 会使两套 Token 立即失效（在线用户需重新登录）
 - 备份建议：`mysqldump` 数据库 + `backend/uploads` 目录（申报材料、证书附件）+ `backend/config.yaml`（不含密码明文）
 
+### 移除软删除残留（2026-09-22，无手工 SQL 也能跑）
+
+后端已统一为**物理删除（硬删）**：模型不再内嵌 `gorm.DeletedAt`，代码里没有 `Unscoped()` 与
+`deleted_at IS NULL`，删除接口直接 `DELETE`（无回收站/恢复语义，删除后不可恢复）。
+唯一索引只被存活记录占用，删除后同用户名/同编码可以直接重新创建（是一条全新记录，ID 不复用）。
+
+- 服务启动时 `pkg/db.purgeLegacySoftDeletedRows()` 会自动物理删除旧库中 `deleted_at IS NOT NULL` 的残留行，
+  并打日志 `[migrate] <表> 表物理删除 N 条历史软删除记录`。原因：查询已不过滤 `deleted_at`，不清理这些行会重新"出现"
+  在列表里。新库没有 `deleted_at` 列，自动跳过；幂等，可反复启动。
+- `AutoMigrate` 不会删除已存在的列/索引，旧库的 `deleted_at` 列与 `idx_<表>_deleted_at` 索引会保留（无害）。
+  如需彻底清掉，先用下面语句生成 SQL（某表若没有该索引，单独执行 `DROP COLUMN`）：
+
+```sql
+SELECT CONCAT('ALTER TABLE `', TABLE_NAME, '` DROP INDEX `', INDEX_NAME, '`, DROP COLUMN `deleted_at`;')
+  FROM information_schema.STATISTICS
+ WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME = 'deleted_at'
+ GROUP BY TABLE_NAME, INDEX_NAME;
+```
+
 ---
 
 ## 七、业务速览

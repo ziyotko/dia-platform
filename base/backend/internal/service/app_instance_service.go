@@ -10,7 +10,7 @@ import (
 type AppInstanceService struct{}
 
 // Create 开通应用。校验应用存在，且同一租户同一应用不能重复开通
-// （软删除的历史实例不再占用该组合，因此删除后可以重新开通）。
+// （删除是物理删除，删掉的历史实例不再占用该组合，因此删除后可以重新开通）。
 func (s AppInstanceService) Create(i *models.AppInstance) error {
 	if i.AppID == 0 {
 		return errors.New("请选择应用")
