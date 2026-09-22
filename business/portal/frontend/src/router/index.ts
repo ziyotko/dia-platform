@@ -105,7 +105,12 @@ export function generateRoutes(menus: MenuItem[]): any[] {
  */
 function findFirstValidRoute(routes: any[], parentPath = ''): string | undefined {
   for (const route of routes) {
-    const fullPath = parentPath + (route.path.startsWith('/') ? route.path : '/' + route.path)
+    // 菜单表里的子菜单存的是「完整绝对路径」（如 /content/article），此时不能再前置父目录路径，
+    // 否则会得到 /content/content/article 这类不存在的路径（登录后 router.push('/') 直接落到 404）。
+    // 首次进入「无管理首页」的场景（自定义角色只授子菜单、或管理员把「管理首页」设为隐藏）必然命中这里。
+    const fullPath = route.path.startsWith('/')
+      ? route.path
+      : `${parentPath}/${route.path}`.replace(/\/+/g, '/')
     if (route.component) return fullPath
     if (route.children) {
       const child = findFirstValidRoute(route.children, fullPath)

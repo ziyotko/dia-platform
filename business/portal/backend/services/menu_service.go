@@ -29,10 +29,23 @@ func (s *MenuService) GetUserMenus(userID uint) ([]models.Menu, error) {
 		return nil, err
 	}
 
+	// 角色「状态」即时生效：只有启用中的角色才提供菜单权限（含管理员身份）。
+	// 原实现从不读 role.status，「角色管理」里的「禁用」开关形同虚设——禁用后该角色的用户
+	// 依然拥有侧边栏与接口权限（角色 1 更是依然被当作管理员）。
+	var enabledRoles []models.Role
+	if err := utils.DB.Where("id IN ?", roleIds).Find(&enabledRoles).Error; err != nil {
+		return nil, err
+	}
 	permMap := make(map[uint]bool)
+	enabledRoleIDs := make([]int, 0, len(enabledRoles))
 	roleService := &RoleService{}
-	for _, roleId := range roleIds {
-		perms, err := roleService.GetRolePermissions(uint(roleId))
+	for i := range enabledRoles {
+		role := enabledRoles[i]
+		if role.Status != 1 {
+			continue
+		}
+		enabledRoleIDs = append(enabledRoleIDs, int(role.ID))
+		perms, err := roleService.GetRolePermissions(role.ID)
 		if err != nil {
 			continue
 		}
@@ -49,7 +62,8 @@ func (s *MenuService) GetUserMenus(userID uint) ([]models.Menu, error) {
 
 	// 管理员（角色 ID=1）默认拥有一切菜单权限，直接返回全部启用菜单；
 	// 其余角色的菜单由「角色管理-分配权限」决定，以便按机构/职责范围收缩可见范围。
-	if slices.Contains(roleIds, models.RoleIDSuperAdmin) {
+	// 注：用 enabledRoleIDs 判定，禁用中的管理员角色不再放行（内置角色禁止修改，故属防御性判断）。
+	if slices.Contains(enabledRoleIDs, models.RoleIDSuperAdmin) {
 		return buildMenuTree(allMenus, 0), nil
 	}
 

@@ -13,12 +13,23 @@ import (
 // 仅 1=管理员（2026-09-21 由「超级管理员」更名；原 2=普通管理员 已下线移除）；中间件、控制器与前端 hasAdminRole 均使用这一套判定。
 
 // IsAdminUser 查询用户是否具备管理员角色。
+// 角色状态即时生效：管理员角色被禁用后不再具备管理权限（与 MenuService.GetUserMenus 同一口径）。
+// 注：内置角色（含管理员）在 RoleService.UpdateRole 中禁止修改，正常不会出现该状态，此处属防御性判断。
 func IsAdminUser(userID uint) bool {
 	var user models.User
 	if err := utils.DB.First(&user, userID).Error; err != nil {
 		return false
 	}
-	return models.HasAdminRoleStr(user.RoleIds)
+	if !models.HasAdminRoleStr(user.RoleIds) {
+		return false
+	}
+	var enabled int64
+	if err := utils.DB.Model(&models.Role{}).
+		Where("id = ? AND status = ?", models.RoleIDSuperAdmin, 1).
+		Count(&enabled).Error; err != nil {
+		return false
+	}
+	return enabled > 0
 }
 
 // AdminMiddleware 要求当前登录用户必须是管理员（角色 ID=1）。

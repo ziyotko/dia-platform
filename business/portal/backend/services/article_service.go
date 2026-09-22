@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"server/models"
 	"server/utils"
@@ -567,7 +568,11 @@ func (s *ArticleService) StartArticleAudit(articleID uint) error {
 	if err != nil {
 		return err
 	}
-	s.tryCompleteArticleAudit(articleID)
+	// 提交成功后若「全部栏目都免审」会立即发布；发布失败必须让调用方看到，
+	// 否则作者以为已提交（界面停在「审核中」），实际永远不会上线。此时可先「撤回」再重试。
+	if err := s.tryCompleteArticleAudit(articleID); err != nil {
+		return fmt.Errorf("审核已提交，但文章自动发布失败: %w", err)
+	}
 	return nil
 }
 
@@ -861,7 +866,10 @@ func (s *ArticleService) AdvanceArticleAudit(articleID uint, columnID uint, user
 		return err
 	}
 	if !hasNext {
-		s.tryCompleteArticleAudit(articleID)
+		// 末节点通过后立即尝试发布：失败必须上报，否则审批人看到「已通过」而文章永不发布。
+		if err := s.tryCompleteArticleAudit(articleID); err != nil {
+			return fmt.Errorf("当前节点已通过，但文章发布失败，请联系管理员重试: %w", err)
+		}
 	}
 	return nil
 }
@@ -922,7 +930,10 @@ func (s *ArticleService) RejectArticleAudit(articleID uint, columnID uint, userI
 	}); err != nil {
 		return err
 	}
-	s.tryCompleteArticleAudit(articleID)
+	// 驳回后可能触发「状态回退」（清发布记录 + audit_status 归零），失败同样需上报
+	if err := s.tryCompleteArticleAudit(articleID); err != nil {
+		return fmt.Errorf("驳回已记录，但文章状态回退失败: %w", err)
+	}
 	return nil
 }
 
@@ -989,28 +1000,30 @@ func (s *ArticleService) GetArticleAuditHistory(articleID uint, columnID uint) (
 
 // tryCompleteArticleAudit 检查文章各栏目的审核流程是否都已结束：
 //   - 仍有栏目在审核中：不做处理；
-//   - 存在被驳回的栏目：不发布，回退为未提交状态，供作者修改后重新提审；
+//   - 存在被驳回的栏目：不发布，回退为未提交状态，供作者修改后重新送审；
 //   - 全部栏目通过：完成审核并发布。
-func (s *ArticleService) tryCompleteArticleAudit(articleID uint) {
+//
+// 返回值必须由调用方上抛：发布/回退失败若被吞掉，审批人会看到「已通过」而文章永不发布（或状态停在审核中），
+// 前端也无从得知需要重试。
+func (s *ArticleService) tryCompleteArticleAudit(articleID uint) error {
 	var pendingCount, rejectedCount int64
-	utils.DB.Model(&models.ArticleColumnAudit{}).
+	if err := utils.DB.Model(&models.ArticleColumnAudit{}).
 		Where("article_id = ? AND status = ?", articleID, 0).
-		Count(&pendingCount)
+		Count(&pendingCount).Error; err != nil {
+		return err
+	}
 	if pendingCount > 0 {
-		return
+		return nil
 	}
-	utils.DB.Model(&models.ArticleColumnAudit{}).
+	if err := utils.DB.Model(&models.ArticleColumnAudit{}).
 		Where("article_id = ? AND status = ?", articleID, 2).
-		Count(&rejectedCount)
+		Count(&rejectedCount).Error; err != nil {
+		return err
+	}
 	if rejectedCount > 0 {
-		if err := s.rejectArticleAudit(articleID); err != nil {
-			utils.Logger.Errorf("回退文章[%d]审核状态失败: %s", articleID, err)
-		}
-		return
+		return s.rejectArticleAudit(articleID)
 	}
-	if err := s.CompleteArticleAudit(articleID); err != nil {
-		utils.Logger.Errorf("完成文章[%d]审核失败: %s", articleID, err)
-	}
+	return s.CompleteArticleAudit(articleID)
 }
 
 // rejectArticleAudit 存在被驳回栏目时回退文章状态：不发布，标记为未提交（audit_status=0），
@@ -1171,8 +1184,13 @@ func (s *ArticleService) CompleteArticleAudit(articleID uint) error {
 		// 为每个通过的栏目创建发布记录
 		for _, audit := range audits {
 			var col models.Column
+			// 只有「栏目确实不存在」才跳过；其它错误（DB 抖动/超时）必须中止事务，
+			// 否则文章已置为已发布但 article_column_publish 缺行，栏目列表/静态化都会漏掉这篇文章。
 			if err := tx.First(&col, audit.ColumnID).Error; err != nil {
-				continue // 栏目不存在则跳过
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					continue
+				}
+				return err
 			}
 			publish := models.ArticleColumnPublish{
 				TemplateID:   col.TemplateID,

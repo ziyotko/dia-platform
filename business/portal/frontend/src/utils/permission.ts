@@ -39,10 +39,20 @@ export function collectMenuPaths(menus?: any[] | null): string[] {
 }
 
 /**
- * 首页路径：优先「管理首页」(/dashboard)；未授权该菜单时退回第一个已授权菜单路径。
- * 动态路由由已授权菜单生成，硬编码 /dashboard 会让无该菜单的用户（例如只授「待审核」的审核角色）跳到 404。
+ * 首页路径：优先「管理首页」(/dashboard)；未授权该菜单时退回第一个已授权的**菜单**（type === 'menu'）路径。
+ *
+ * 必须排除「目录」（type === 'directory'）：目录在动态路由里没有组件，跳过去后 vue-router 只渲染空的 Layout
+ * （内容区空白），既不是首页也不是 404，用户会以为系统坏了。因此不能简单地取 collectMenuPaths 的第一项。
+ * 动态路由由已授权菜单生成，硬编码 /dashboard 又会让无该菜单的用户（例如只授「待审核」的审核角色）跳到 404。
  */
 export function resolveHomePath(menus?: any[] | null): string {
-  const paths = collectMenuPaths(menus)
-  return paths.find((path) => path === '/dashboard') || paths[0] || '/dashboard'
+  const menuPaths: string[] = []
+  const walk = (items: any[]) => {
+    items.forEach((menu) => {
+      if (menu.type === 'menu' && menu.path) menuPaths.push(menu.path)
+      if (menu.children && menu.children.length > 0) walk(menu.children)
+    })
+  }
+  walk(menus || [])
+  return menuPaths.find((path) => path === '/dashboard') || menuPaths[0] || '/dashboard'
 }
