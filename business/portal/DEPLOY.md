@@ -122,6 +122,24 @@ powershell -ExecutionPolicy Bypass -File .\build-backends.ps1 -Only portal -Vet
 - 登出黑名单的值由 **Token 原文**改为占位符 `1`（鉴权只判 key 是否存在）：旧键仍可用（存在即失效），无需迁移。
 - 行为收紧：① 栏目绑定的**审核流程被禁用**后，送审会被拒绝并提示（需先启用或改绑）；② 文章投放的栏目**必须存在且启用**；③ 「待办/可见性」判断遇到数据库错误时不再当作「无权限」，而是报错让前端提示重试；④ 静态化日志去重改为 Redis 原子占位（并发轮询不再重复计数）；⑤ 「分配权限」弹窗对管理员（角色 1）显示**全部勾选**（只读）。
 
+#### 升级说明（2026-09-23，含一次手工 SQL）
+
+- **历史静态资源死链归一（手工 SQL，已在本仓库连接的开发库执行；其它环境需按需执行一次）**：早期版本上传的文件地址带旧访问前缀 `/caamm/`，现已不生效（当前前缀为 `/business_portal/`），表现为封面/附件 404。执行前请先备份：
+
+```sql
+-- 封面（article.cover）与附件（article_attachment.url）中残留的旧前缀
+UPDATE article SET cover = REPLACE(cover, '/caamm/uploads/', '/business_portal/uploads/')
+ WHERE cover LIKE '/caamm/uploads/%';
+UPDATE article_attachment SET url = REPLACE(url, '/caamm/uploads/', '/business_portal/uploads/')
+ WHERE url LIKE '/caamm/uploads/%';
+```
+
+> `operation_log.path`（约 4 千行 `/caamm/api/...`）与 `operation_log.params` 属**历史日志原文**，不做改写。
+
+- **菜单权限判定加 15 秒缓存**：菜单 API 前缀与「是否管理员」改为按用户缓存 15 秒（原先每个请求都要跑「角色→权限→菜单→前缀」4~6 次查询）。改菜单/角色后**最多 15 秒**生效（此前是立即生效）；如需强制即时生效可重启后端。
+- **错误提示统一由请求拦截器给出**：各页面 `catch` 中的重复提示与 `if (res.code === 0) {…} else {…}` 死分支已清理，同一次失败不再弹两个提示（静态化 raw 接口仍由页面自行提示）。
+- **弹窗/表单交互统一**：表单类弹窗补 `:close-on-click-modal="false"`（防误点遮罩丢内容），常规表单弹窗宽度统一 600px，`label-width` 统一 90px（系统设置统一 120px）；筛选区输入框支持回车即搜索；删除确认框标题统一「提示」（清空日志等不可逆操作「警告」）、文案统一用「」包裹名称、确认按钮统一「确定」。
+
 #### ⚠️ 页面层合并迁移（2026-09-21，手工执行，不可逆）
 
 模板即「页面」：原 `page` 表已合并进 `template`，`column`/`ad`/`link`/`article_column_publish` 改用 `template_id`。

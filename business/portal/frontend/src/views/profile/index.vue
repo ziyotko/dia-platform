@@ -89,7 +89,7 @@
             ref="formRef"
             :model="form"
             :rules="rules"
-            label-width="100px"
+            label-width="90px"
             class="profile-form"
           >
             <el-form-item label="邮箱" prop="email">
@@ -115,7 +115,7 @@
             ref="pwdFormRef"
             :model="pwdForm"
             :rules="pwdRules"
-            label-width="100px"
+            label-width="90px"
           >
             <el-form-item label="原密码" prop="oldPassword">
               <el-input v-model="pwdForm.oldPassword" type="password" show-password clearable placeholder="请输入原密码" maxlength="64" />
@@ -315,9 +315,7 @@ const loadProfile = async () => {
         avatar: data.avatar || ''
       })
     }
-  } catch {
-    ElMessage.error('获取用户信息失败')
-  } finally {
+  } catch {} finally {
     profileLoading.value = false
   }
 }

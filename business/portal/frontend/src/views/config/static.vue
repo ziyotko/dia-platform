@@ -621,6 +621,7 @@ const runStaticJob = async (kind: 'site' | 'pages' | 'lists' | 'articles' | 'top
     }
   } catch (error: any) {
     const msg = getErrorMessage(error)
+    // 静态化接口走 raw 模式（拦截器不提示），此处必须给出失败原因
     ElMessage.error(`${title}失败：${msg}`)
   } finally {
     submitting.value = null
@@ -777,12 +778,8 @@ const fetchStaticMonitor = async () => {
       monitorData.httpStatus = res.data?.httpStatus || 0
       monitorData.lastCheckTime = res.data?.lastCheckTime || new Date().toLocaleString()
       monitorData.message = res.data?.message || ''
-    } else {
-      ElMessage.error(res.message || '获取静态化服务状态失败')
     }
-  } catch (error) {
-    ElMessage.error('获取静态化服务状态失败')
-  } finally {
+  } catch {} finally {
     monitorLoading.value = false
   }
 }
@@ -897,9 +894,7 @@ const fetchLogList = async () => {
       }))
       logTotal.value = res.data.total || 0
     }
-  } catch (error) {
-    ElMessage.error('获取静态化日志失败')
-  } finally {
+  } catch {} finally {
     logLoading.value = false
   }
 }
@@ -935,9 +930,7 @@ const fetchPageList = async () => {
       const res: any = await getStaticPages({ pageType: 'special' })
       topicList.value = res.data || []
     }
-  } catch (error) {
-    ElMessage.error('获取静态化页面失败')
-  } finally {
+  } catch {} finally {
     loading.value = false
   }
 }
@@ -1018,6 +1011,7 @@ const handleGenerateSingle = async (row: any) => {
     }
   } catch (error: any) {
     const msg = getErrorMessage(error)
+    // raw 模式（拦截器不提示），失败原因需在此展示
     ElMessage.error(`「${name}」生成失败：${msg}`)
   } finally {
     row.generating = false
@@ -1042,7 +1036,7 @@ const handleDeleteArticle = (row: any) => {
     `确定要删除文章「${name}」(ID: ${row.id}) 的静态文件吗？删除后需重新生成才能恢复。`,
     '确认删除',
     {
-      confirmButtonText: '确定删除',
+      confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     }
@@ -1061,6 +1055,7 @@ const handleDeleteArticle = (row: any) => {
       }
     } catch (error: any) {
       const msg = getErrorMessage(error)
+      // raw 模式（拦截器不提示），失败原因需在此展示
       ElMessage.error(`「${name}」删除失败：${msg}`)
     } finally {
       row.deleting = false
@@ -1086,7 +1081,7 @@ const handleDeleteTopic = (row: any) => {
     `确定要删除专题「${name}」(ID: ${row.id}) 的静态文件吗？删除后需重新生成才能恢复。`,
     '确认删除',
     {
-      confirmButtonText: '确定删除',
+      confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     }
@@ -1105,6 +1100,7 @@ const handleDeleteTopic = (row: any) => {
       }
     } catch (error: any) {
       const msg = getErrorMessage(error)
+      // raw 模式（拦截器不提示），失败原因需在此展示
       ElMessage.error(`「${name}」删除失败：${msg}`)
     } finally {
       row.deleting = false
@@ -1140,12 +1136,8 @@ const clearLogs = () => {
         if (res.code === 0) {
           ElMessage.success(buildClearLogsSuccessText(res.data?.count ?? 0))
           fetchLogList()
-        } else {
-          ElMessage.error(res.message || '清空日志失败')
         }
-      } catch (error) {
-        ElMessage.error('清空日志失败')
-      }
+      } catch {}
     })
     .catch(() => {})
 }

@@ -16,6 +16,14 @@ import (
 
 type ArticleService struct{}
 
+// keywordCondition 关键词匹配条件：把 MATCH ... AGAINST（走 FULLTEXT 索引）与 LIKE（兜底模糊匹配）
+// 用 UNION 拆成两段子查询。原写法 "MATCH(col) AGAINST (...) OR col LIKE '%kw%'" 会让全文索引失效，
+// 退化成全表扫描（列表与服务端搜索接口共用同一条件）。
+// 说明：column 只会传固定字面量（title/author/source），不来自请求参数。
+func keywordCondition(column string) string {
+	return fmt.Sprintf("article.id IN ((SELECT id FROM article WHERE MATCH(%s) AGAINST (? IN BOOLEAN MODE)) UNION (SELECT id FROM article WHERE %s LIKE ?))", column, column)
+}
+
 func (s *ArticleService) buildArticleListQuery(title string, categoryID int, tagID int, columnID int, status int, auditStatus int, articleType int, author string, authorCode string, source string) *gorm.DB {
 	query := utils.DB.Model(&models.Article{})
 	// authorCode：归属过滤（非管理员只能看到自己的文章），author：按作者名搜索
@@ -23,7 +31,7 @@ func (s *ArticleService) buildArticleListQuery(title string, categoryID int, tag
 		query = query.Where("article.author_code = ?", authorCode)
 	}
 	if title != "" {
-		query = query.Where("MATCH(title) AGAINST (? IN BOOLEAN MODE) OR title LIKE ?", title, "%"+title+"%")
+		query = query.Where(keywordCondition("title"), title, "%"+title+"%")
 	}
 	if categoryID > 0 {
 		query = query.Where("article.id IN (SELECT article_id FROM article_category WHERE category_id = ?)", categoryID)
@@ -44,10 +52,10 @@ func (s *ArticleService) buildArticleListQuery(title string, categoryID int, tag
 		query = query.Where("type = ?", articleType)
 	}
 	if author != "" {
-		query = query.Where("MATCH(author) AGAINST (? IN BOOLEAN MODE) OR author LIKE ?", author, "%"+author+"%")
+		query = query.Where(keywordCondition("author"), author, "%"+author+"%")
 	}
 	if source != "" {
-		query = query.Where("MATCH(source) AGAINST (? IN BOOLEAN MODE) OR source LIKE ?", source, "%"+source+"%")
+		query = query.Where(keywordCondition("source"), source, "%"+source+"%")
 	}
 	return query
 }
@@ -85,7 +93,7 @@ func (s *ArticleService) GetArticles(title string, categoryID int, tagID int, co
 func (s *ArticleService) SearchPublishedArticles(title string, categoryID int, tagID int, articleType int, author string, source string, page int, pageSize int) ([]models.Article, int64, error) {
 	query := utils.DB.Model(&models.Article{}).Where("status = ?", 1)
 	if title != "" {
-		query = query.Where("MATCH(title) AGAINST (? IN BOOLEAN MODE) OR title LIKE ?", title, "%"+title+"%")
+		query = query.Where(keywordCondition("title"), title, "%"+title+"%")
 	}
 	if categoryID > 0 {
 		query = query.Where("article.id IN (SELECT article_id FROM article_category WHERE category_id = ?)", categoryID)
@@ -97,10 +105,10 @@ func (s *ArticleService) SearchPublishedArticles(title string, categoryID int, t
 		query = query.Where("type = ?", articleType)
 	}
 	if author != "" {
-		query = query.Where("MATCH(author) AGAINST (? IN BOOLEAN MODE) OR author LIKE ?", author, "%"+author+"%")
+		query = query.Where(keywordCondition("author"), author, "%"+author+"%")
 	}
 	if source != "" {
-		query = query.Where("MATCH(source) AGAINST (? IN BOOLEAN MODE) OR source LIKE ?", source, "%"+source+"%")
+		query = query.Where(keywordCondition("source"), source, "%"+source+"%")
 	}
 
 	var total int64
@@ -151,6 +159,9 @@ func (s *ArticleService) CreateArticle(article *models.Article, tagIDs []uint, c
 			article.Type = models.ArticleTypeGraphic
 		}
 		// 先暂存附件，避免 GORM Create 自动关联插入导致重复
+		if err := validateAttachmentLimit(article.Attachments); err != nil {
+			return err
+		}
 		attachments := article.Attachments
 		article.Attachments = nil
 
@@ -276,6 +287,9 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 			}
 		}
 		// 更新附件：删除旧附件，创建新附件（去重）
+		if err := validateAttachmentLimit(article.Attachments); err != nil {
+			return err
+		}
 		if err := tx.Where("article_id = ?", id).Delete(&models.ArticleAttachment{}).Error; err != nil {
 			return err
 		}
@@ -649,48 +663,94 @@ func (s *ArticleService) getUserDepartmentIDs(userID uint) ([]uint, error) {
 	return result, nil
 }
 
-// canUserApproveNode 判断指定用户是否有权限审批当前节点
-func (s *ArticleService) canUserApproveNode(node *models.WorkflowNode, userID uint, authorCode string) (bool, error) {
+// approvalContext 审批判定所需的预加载数据：当前用户 + 其流程角色 / 担任负责人的部门 + 作者部门缓存。
+// 列表场景（GetMyAuditArticles）若逐行判定会产生 N+1 查询，这里改为一次加载后纯内存判定。
+type approvalContext struct {
+	user            *models.User
+	workflowRoleIDs []uint
+	rolesLoaded     bool
+	headDepartments []models.Department
+	headDeptsLoaded bool
+	authorDeptCache map[string][]uint
+}
+
+func (s *ArticleService) newApprovalContext(userID uint) (*approvalContext, error) {
+	var user models.User
+	if err := utils.DB.First(&user, userID).Error; err != nil {
+		return nil, err
+	}
+	return &approvalContext{user: &user, authorDeptCache: make(map[string][]uint)}, nil
+}
+
+// workflowRoles 当前用户的流程角色 ID（按需加载并缓存）
+func (ac *approvalContext) workflowRoles() ([]uint, error) {
+	if !ac.rolesLoaded {
+		roleIDs, err := (&WorkflowRoleService{}).GetUserWorkflowRoleIds(ac.user.ID)
+		if err != nil {
+			return nil, err
+		}
+		ac.workflowRoleIDs = roleIDs
+		ac.rolesLoaded = true
+	}
+	return ac.workflowRoleIDs, nil
+}
+
+// leadingDepartments 当前用户担任负责人的部门（leader_code 存用户 ID，历史数据可能是账号，两种都匹配）
+func (ac *approvalContext) leadingDepartments() ([]models.Department, error) {
+	if !ac.headDeptsLoaded {
+		leaderCodes := []string{strconv.FormatUint(uint64(ac.user.ID), 10)}
+		if ac.user.Account != "" {
+			leaderCodes = append(leaderCodes, ac.user.Account)
+		}
+		var departments []models.Department
+		if err := utils.DB.Where("leader_code IN ?", leaderCodes).Find(&departments).Error; err != nil {
+			return nil, err
+		}
+		ac.headDepartments = departments
+		ac.headDeptsLoaded = true
+	}
+	return ac.headDepartments, nil
+}
+
+// authorDepartments 作者所属部门 ID（同一作者在一次请求内只查一次）
+func (s *ArticleService) authorDepartments(ac *approvalContext, authorCode string) ([]uint, error) {
+	if ids, ok := ac.authorDeptCache[authorCode]; ok {
+		return ids, nil
+	}
+	authorID, err := strconv.ParseUint(authorCode, 10, 32)
+	if err != nil {
+		// 与旧实现一致：作者 code 非法视为「不匹配任何部门」
+		ac.authorDeptCache[authorCode] = nil
+		return nil, nil
+	}
+	ids, err := s.getUserDepartmentIDs(uint(authorID))
+	if err != nil {
+		return nil, err
+	}
+	ac.authorDeptCache[authorCode] = ids
+	return ids, nil
+}
+
+// canApprove 与 canUserApproveNode 完全同口径，但复用 approvalContext，不再逐行查库
+func (s *ArticleService) canApprove(ac *approvalContext, node *models.WorkflowNode, authorCode string) (bool, error) {
 	switch node.ApproverType {
 	case "role":
 		// 未指定审批角色 = 无人可审，必须拒绝：否则任意登录用户（含作者本人）都能审批通过
 		if node.ApproverID == 0 {
 			return false, nil
 		}
-		workflowRoleService := WorkflowRoleService{}
-		roleIDs, err := workflowRoleService.GetUserWorkflowRoleIds(userID)
+		roleIDs, err := ac.workflowRoles()
 		if err != nil {
 			return false, err
 		}
-		if slices.Contains(roleIDs, node.ApproverID) {
-			return true, nil
-		}
-		return false, nil
+		return slices.Contains(roleIDs, node.ApproverID), nil
 	case "dept_head":
-		var currentUser models.User
-		if err := utils.DB.First(&currentUser, userID).Error; err != nil {
-			return false, err
-		}
-		authorID, err := strconv.ParseUint(authorCode, 10, 32)
-		if err != nil {
-			return false, nil
-		}
-		var author models.User
-		if err := utils.DB.First(&author, authorID).Error; err != nil {
-			return false, nil
-		}
-		authorDeptIDs, err := s.getUserDepartmentIDs(author.ID)
+		authorDeptIDs, err := s.authorDepartments(ac, authorCode)
 		if err != nil {
 			return false, err
 		}
-		// leader_code 的当前口径是「用户 ID」（部门管理/机构管理均按下拉选中用户写入）；
-		// 机构管理页早期版本写入的是用户账号，这里兼容两种取值，避免历史数据导致审批人永远匹配不上。
-		leaderCodes := []string{strconv.FormatUint(uint64(currentUser.ID), 10)}
-		if currentUser.Account != "" {
-			leaderCodes = append(leaderCodes, currentUser.Account)
-		}
-		var headDepartments []models.Department
-		if err := utils.DB.Where("leader_code IN ?", leaderCodes).Find(&headDepartments).Error; err != nil {
+		headDepartments, err := ac.leadingDepartments()
+		if err != nil {
 			return false, err
 		}
 		for _, hd := range headDepartments {
@@ -701,13 +761,19 @@ func (s *ArticleService) canUserApproveNode(node *models.WorkflowNode, userID ui
 		return false, nil
 	case "user", "":
 		// 未指定审批人一律拒绝（原因同上），仅显式指定为当前用户时放行
-		if node.ApproverID != 0 && node.ApproverID == userID {
-			return true, nil
-		}
-		return false, nil
+		return node.ApproverID != 0 && node.ApproverID == ac.user.ID, nil
 	default:
 		return false, fmt.Errorf("未知的审批人类型: %s", node.ApproverType)
 	}
+}
+
+// canUserApproveNode 判断指定用户是否有权限审批当前节点（单篇场景入口，内部复用 canApprove）
+func (s *ArticleService) canUserApproveNode(node *models.WorkflowNode, userID uint, authorCode string) (bool, error) {
+	ac, err := s.newApprovalContext(userID)
+	if err != nil {
+		return false, err
+	}
+	return s.canApprove(ac, node, authorCode)
 }
 
 // CanApproveArticleColumn 判断指定用户是否能审批文章指定栏目的当前节点
@@ -1137,56 +1203,102 @@ func (s *ArticleService) GetArticleColumnPublishes(articleTitle string, columnID
 // 若作者本人正好是节点审批人（例如部门负责人提交自己的文章），该文章应出现在其待办中；
 // 是否能审批由 canUserApproveNode 统一判定，此处不再做额外过滤。
 func (s *ArticleService) GetMyAuditArticles(userID uint, page, pageSize int) ([]models.Article, int64, error) {
-	type auditItem struct {
-		ArticleID    uint
-		AuthorCode   string
-		ApproverType string
-		ApproverID   uint
+	if page < 1 {
+		page = 1
 	}
-	var items []auditItem
-	err := utils.DB.Table("article_column_audit aca").
-		Select("aca.article_id, article.author_code, wn.approver_type, wn.approver_id").
-		Joins("JOIN article ON article.id = aca.article_id").
-		Joins("JOIN workflow_node wn ON wn.id = aca.current_node_id").
-		Where("aca.status = ?", 0).
-		Scan(&items).Error
+	if pageSize < 1 {
+		pageSize = 10
+	}
+
+	ac, err := s.newApprovalContext(userID)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	seen := make(map[uint]bool)
-	var allowedArticleIDs []uint
-	for _, item := range items {
-		node := &models.WorkflowNode{
-			ApproverType: item.ApproverType,
-			ApproverID:   item.ApproverID,
-		}
-
-		ok, err := s.canUserApproveNode(node, userID, item.AuthorCode)
-		if err != nil {
-			// 待办列表宁可报错也不能静默少显示（调用方会把错误返回给前端提示重试）
-			utils.Logger.Warnf("判断用户[%d]对文章[%d]的审批权限失败: %s", userID, item.ArticleID, err)
-			return nil, 0, err
-		}
-		if ok && !seen[item.ArticleID] {
-			seen[item.ArticleID] = true
-			allowedArticleIDs = append(allowedArticleIDs, item.ArticleID)
-		}
+	// 在 SQL 层按「审批人类型」过滤，避免把全部待审记录取回内存逐行判定（原实现是 N+1 判定 + 内存分页）。
+	// 口径与 canApprove 一致：user/'' 比用户 ID、role 比用户流程角色、dept_head 比「我是负责人的部门」的成员。
+	countQuery, err := s.buildPendingAuditQuery(ac)
+	if err != nil {
+		return nil, 0, err
+	}
+	var total int64
+	if err := countQuery.Distinct("aca.article_id").Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if total == 0 {
+		return []models.Article{}, 0, nil
 	}
 
-	total := int64(len(allowedArticleIDs))
-	start := (page - 1) * pageSize
-	if start >= len(allowedArticleIDs) {
+	idQuery, err := s.buildPendingAuditQuery(ac)
+	if err != nil {
+		return nil, 0, err
+	}
+	var pageIDs []uint
+	if err := idQuery.Select("aca.article_id").Group("aca.article_id").
+		Order("MAX(article.created_at) DESC").
+		Limit(pageSize).Offset((page - 1) * pageSize).
+		Scan(&pageIDs).Error; err != nil {
+		return nil, 0, err
+	}
+	if len(pageIDs) == 0 {
 		return []models.Article{}, total, nil
 	}
-	end := min(start+pageSize, len(allowedArticleIDs))
-	pageIDs := allowedArticleIDs[start:end]
 
 	var articles []models.Article
-	if len(pageIDs) > 0 {
-		err = utils.DB.Where("id IN ?", pageIDs).Order("created_at DESC").Find(&articles).Error
+	if err := utils.DB.Where("id IN ?", pageIDs).Order("created_at DESC").Find(&articles).Error; err != nil {
+		return nil, 0, err
 	}
-	return articles, total, err
+	return articles, total, nil
+}
+
+// buildPendingAuditQuery 构造「待我审批」的过滤条件（与 canApprove 同口径，供 count 与取 id 两次调用）
+func (s *ArticleService) buildPendingAuditQuery(ac *approvalContext) (*gorm.DB, error) {
+	query := utils.DB.Table("article_column_audit aca").
+		Joins("JOIN article ON article.id = aca.article_id").
+		Joins("JOIN workflow_node wn ON wn.id = aca.current_node_id").
+		Where("aca.status = ?", 0)
+
+	conds := []string{"(wn.approver_type IN ('user','') AND wn.approver_id = ?)"}
+	args := []any{ac.user.ID}
+
+	roleIDs, err := ac.workflowRoles()
+	if err != nil {
+		return nil, err
+	}
+	if len(roleIDs) > 0 {
+		conds = append(conds, "(wn.approver_type = 'role' AND wn.approver_id IN ?)")
+		args = append(args, roleIDs)
+	}
+	headCodes, err := s.headDepartmentMemberCodes(ac)
+	if err != nil {
+		return nil, err
+	}
+	if len(headCodes) > 0 {
+		conds = append(conds, "(wn.approver_type = 'dept_head' AND article.author_code IN ?)")
+		args = append(args, headCodes)
+	}
+
+	return query.Where("("+strings.Join(conds, " OR ")+")", args...), nil
+}
+
+// headDepartmentMemberCodes 当前用户担任负责人的部门下的全部成员（作者 code 形式，用于 SQL 过滤）
+func (s *ArticleService) headDepartmentMemberCodes(ac *approvalContext) ([]string, error) {
+	departments, err := ac.leadingDepartments()
+	if err != nil {
+		return nil, err
+	}
+	seen := make(map[int]bool)
+	codes := make([]string, 0)
+	for _, dept := range departments {
+		for _, uid := range parseUserIDs(dept.UserIds) {
+			if seen[uid] {
+				continue
+			}
+			seen[uid] = true
+			codes = append(codes, strconv.Itoa(uid))
+		}
+	}
+	return codes, nil
 }
 
 // CompleteArticleAudit 完成文章审核（所有栏目审核通过后调用）。

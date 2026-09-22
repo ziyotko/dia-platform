@@ -96,14 +96,15 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="500px"
+      width="600px"
       destroy-on-close
+      :close-on-click-modal="false"
     >
       <el-form
         ref="formRef"
         :model="form"
         :rules="formRules"
-        label-width="80px"
+        label-width="90px"
       >
         <el-form-item label="用户名" prop="username">
           <el-input v-model="form.username" placeholder="请输入用户名" :disabled="isReadonly" />
@@ -172,8 +173,9 @@
     <el-dialog
       v-model="importDialogVisible"
       title="导入用户"
-      width="500px"
+      width="600px"
       destroy-on-close
+      :close-on-click-modal="false"
     >
       <el-upload
         ref="uploadRef"
@@ -202,7 +204,7 @@
     </el-dialog>
 
     <!-- 初始密码 / 导入结果 -->
-    <el-dialog v-model="credentialDialogVisible" :title="credentialTitle" width="560px" destroy-on-close>
+    <el-dialog v-model="credentialDialogVisible" :title="credentialTitle" width="600px" destroy-on-close :close-on-click-modal="false">
       <template v-if="credentialList.length > 0">
         <el-alert
           type="warning"
@@ -403,9 +405,7 @@ const fetchOrgs = async () => {
     if (res && res.code === 0) {
       orgOptions.value = res.data.list || []
     }
-  } catch (error) {
-    ElMessage.error('获取机构列表失败')
-  }
+  } catch {}
 }
 
 const fetchRoles = async () => {
@@ -414,9 +414,7 @@ const fetchRoles = async () => {
     if (res && res.code === 0) {
       roleOptions.value = res.data || []
     }
-  } catch (error) {
-    ElMessage.error('获取角色列表失败')
-  }
+  } catch {}
 }
 
 const handleSearch = () => {
@@ -444,9 +442,7 @@ const fetchData = async () => {
     })
     tableData.value = res.data.list || []
     total.value = res.data.total || 0
-  } catch (error) {
-    ElMessage.error('获取用户列表失败')
-  } finally {
+  } catch {} finally {
     loading.value = false
   }
 }
@@ -479,7 +475,7 @@ const handleEdit = (row: any) => {
 }
 
 const handleDelete = (row: any) => {
-  ElMessageBox.confirm(`确定要删除用户 "${row.username}" 吗？`, '提示', {
+  ElMessageBox.confirm(`确定要删除用户 「${row.username}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
@@ -488,10 +484,8 @@ const handleDelete = (row: any) => {
       await deleteUser(row.id)
       ElMessage.success('删除成功')
       fetchData()
-    } catch (error) {
-      ElMessage.error('删除用户失败')
-    }
-  })
+    } catch {}
+  }).catch(() => {})
 }
 
 const handleStatusChange = async (row: any, val: number) => {
@@ -500,7 +494,6 @@ const handleStatusChange = async (row: any, val: number) => {
     ElMessage.success(`用户状态已${val === 1 ? '启用' : '禁用'}`)
   } catch (error) {
     row.status = val === 1 ? 0 : 1
-    ElMessage.error('更新状态失败')
   }
 }
 
@@ -547,9 +540,7 @@ const handleSubmit = async () => {
     }
     dialogVisible.value = false
     fetchData()
-  } catch (error) {
-    ElMessage.error('提交失败')
-  } finally {
+  } catch {} finally {
     submitLoading.value = false
   }
 }
@@ -604,9 +595,7 @@ const handleImportSubmit = async () => {
       importDialogVisible.value = false
       fetchData()
     }
-  } catch (error) {
-    ElMessage.error('导入失败')
-  } finally {
+  } catch {} finally {
     importLoading.value = false
   }
 }

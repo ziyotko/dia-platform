@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"server/models"
+	"server/services"
 	"server/utils"
 )
 
@@ -16,20 +16,12 @@ import (
 // 角色状态即时生效：管理员角色被禁用后不再具备管理权限（与 MenuService.GetUserMenus 同一口径）。
 // 注：内置角色（含管理员）在 RoleService.UpdateRole 中禁止修改，正常不会出现该状态，此处属防御性判断。
 func IsAdminUser(userID uint) bool {
-	var user models.User
-	if err := utils.DB.First(&user, userID).Error; err != nil {
+	// 与菜单前缀校验共用同一份短 TTL 缓存（services.GetUserAccess），避免每个请求重复查库
+	access, err := services.GetUserAccess(userID)
+	if err != nil {
 		return false
 	}
-	if !models.HasAdminRoleStr(user.RoleIds) {
-		return false
-	}
-	var enabled int64
-	if err := utils.DB.Model(&models.Role{}).
-		Where("id = ? AND status = ?", models.RoleIDSuperAdmin, 1).
-		Count(&enabled).Error; err != nil {
-		return false
-	}
-	return enabled > 0
+	return access.IsAdmin
 }
 
 // AdminMiddleware 要求当前登录用户必须是管理员（角色 ID=1）。

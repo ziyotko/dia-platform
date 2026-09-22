@@ -167,6 +167,9 @@ func (s *ColumnService) CreateColumn(column *models.Column) error {
 	if err := s.validateColumnBinding(0, column.TemplateID, column.ParentID); err != nil {
 		return err
 	}
+	if err := ensureNameCodeUnique(&models.Column{}, "栏目", column.Name, column.Code, 0, &uniqueScope{Field: "template_id", Value: column.TemplateID}); err != nil {
+		return err
+	}
 	return utils.DB.Create(column).Error
 }
 
@@ -180,6 +183,9 @@ func columnWorkflowID(id *uint) uint {
 
 func (s *ColumnService) UpdateColumn(id uint, column *models.Column) error {
 	if err := s.validateColumnBinding(id, column.TemplateID, column.ParentID); err != nil {
+		return err
+	}
+	if err := ensureNameCodeUnique(&models.Column{}, "栏目", column.Name, column.Code, id, &uniqueScope{Field: "template_id", Value: column.TemplateID}); err != nil {
 		return err
 	}
 	var old models.Column

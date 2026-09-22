@@ -19,6 +19,20 @@ var logService = &services.LogService{}
 // operationLogParamsMaxRunes 操作日志请求体最大保留字符数（按 rune 计）
 const operationLogParamsMaxRunes = 2000
 
+// logUserDisplayName 操作人展示名（优先级：用户名 > 账号 > 邮箱），与旧实现的取值顺序一致
+func logUserDisplayName(user *models.User) string {
+	if user == nil {
+		return ""
+	}
+	if user.Username != "" {
+		return user.Username
+	}
+	if user.Account != "" {
+		return user.Account
+	}
+	return user.Email
+}
+
 func getLogType(method, path string) string {
 	// 仅精确匹配登录接口，避免 /login-logs 等路径被误判为登录操作
 	if strings.Trim(strings.TrimPrefix(path, config.AppConfig.Server.ApiPrefix), "/") == "login" {
@@ -224,14 +238,16 @@ func OperationLog() gin.HandlerFunc {
 
 		username := ""
 		if uid, ok := userID.(uint); ok && uid > 0 {
-			var user models.User
-			if err := utils.DB.First(&user, uid).Error; err == nil {
-				if user.Username != "" {
-					username = user.Username
-				} else if user.Account != "" {
-					username = user.Account
-				} else {
-					username = user.Email
+			// 复用 AuthMiddleware 已加载的用户（其中已含用户名/账号/邮箱），避免每个请求再查一次用户表
+			if currentUser, ok := c.Get("currentUser"); ok {
+				if user, ok := currentUser.(*models.User); ok && user != nil {
+					username = logUserDisplayName(user)
+				}
+			}
+			if username == "" {
+				var user models.User
+				if err := utils.DB.First(&user, uid).Error; err == nil {
+					username = logUserDisplayName(&user)
 				}
 			}
 		} else {

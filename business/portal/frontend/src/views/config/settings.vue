@@ -52,7 +52,7 @@
         </el-tab-pane>
 
         <el-tab-pane label="安全设置" name="security">
-          <el-form :model="securityForm" label-width="160px" class="settings-form">
+          <el-form :model="securityForm" label-width="120px" class="settings-form">
             <el-form-item label="登录验证码">
               <el-switch v-model="securityForm.captchaEnabled" />
               <span class="form-tip">关闭后登录页不再显示验证码输入框</span>
@@ -106,7 +106,7 @@
         </el-tab-pane>
 
         <el-tab-pane label="静态化设置" name="static">
-          <el-form :model="staticForm" label-width="180px" class="settings-form">
+          <el-form :model="staticForm" label-width="120px" class="settings-form">
             <el-form-item label="静态化输出路径">
               <el-input
                 v-model="staticForm.staticPath"
@@ -176,12 +176,9 @@ const handleLogoUpload = async (options: any) => {
       logoPreviewError.value = false
       ElMessage.success('上传成功')
       options.onSuccess(res)
-    } else {
-      ElMessage.error(res.message || '上传失败')
-      options.onError(new Error(res.message || '上传失败'))
     }
   } catch (error: any) {
-    ElMessage.error(error?.message || '上传失败')
+    // 失败提示由 request 拦截器统一给出（code !== 0 会在此处抛出）
     options.onError(error)
   }
 }

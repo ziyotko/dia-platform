@@ -3,7 +3,7 @@
     <el-card shadow="hover" class="search-card">
       <el-form :model="queryForm" inline>
         <el-form-item label="模板名称">
-          <el-input v-model="queryForm.name" placeholder="请输入模板名称" clearable />
+          <el-input v-model="queryForm.name" placeholder="请输入模板名称" clearable @keyup.enter="handleSearch" />
         </el-form-item>
         <el-form-item label="模板类型">
           <el-select v-model="queryForm.type" placeholder="全部类型" clearable style="width: 140px">
@@ -100,6 +100,7 @@
       :title="dialogTitle"
       width="600px"
       destroy-on-close
+      :close-on-click-modal="false"
     >
       <el-form
         ref="formRef"
@@ -167,6 +168,7 @@
       top="2vh"
       class="design-dialog"
       destroy-on-close
+      :close-on-click-modal="false"
     >
       <div class="source-editor">
         <el-input
@@ -401,9 +403,7 @@ const fetchData = async () => {
     })
     tableData.value = res.data.list || []
     total.value = res.data.total || 0
-  } catch (error) {
-    ElMessage.error('获取模板列表失败')
-  } finally {
+  } catch {} finally {
     loading.value = false
   }
 }
@@ -447,11 +447,11 @@ const handleDelete = (row: TemplateItem) => {
   // 模板仍被页面应用时后端会拒绝删除，这里提前提示，避免无意义的确认弹窗
   if (row.columnCount > 0) {
     ElMessage.warning(
-      `模板 "${row.name}" 下仍有栏目「${row.columnName || '未知栏目'}」，请先删除或调整这些栏目后再删除模板`
+      `模板 「${row.name}」 下仍有栏目「${row.columnName || '未知栏目'}」，请先删除或调整这些栏目后再删除模板`
     )
     return
   }
-  const msg = `确定要删除模板 "${row.name}" 吗？`
+  const msg = `确定要删除模板 「${row.name}」 吗？`
   ElMessageBox.confirm(msg, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
@@ -461,10 +461,8 @@ const handleDelete = (row: TemplateItem) => {
       await deleteTemplate(row.id)
       ElMessage.success('删除成功')
       fetchData()
-    } catch (error) {
-      ElMessage.error('删除模板失败')
-    }
-  })
+    } catch {}
+  }).catch(() => {})
 }
 
 const handleStatusChange = async (row: TemplateItem, val: number) => {
@@ -483,7 +481,6 @@ const handleStatusChange = async (row: TemplateItem, val: number) => {
     ElMessage.success(`模板状态已${val === 1 ? '启用' : '禁用'}`)
   } catch (error) {
     row.status = val === 1 ? 0 : 1
-    ElMessage.error('更新状态失败')
   }
 }
 
@@ -515,9 +512,7 @@ const handleSubmit = async () => {
     }
     dialogVisible.value = false
     fetchData()
-  } catch (error) {
-    ElMessage.error('提交失败')
-  } finally {
+  } catch {} finally {
     submitLoading.value = false
   }
 }
@@ -554,9 +549,7 @@ const handleDesignSave = async () => {
     ElMessage.success('模板设计保存成功')
     designDialogVisible.value = false
     fetchData()
-  } catch (error) {
-    ElMessage.error('保存设计失败')
-  } finally {
+  } catch {} finally {
     designSubmitLoading.value = false
   }
 }

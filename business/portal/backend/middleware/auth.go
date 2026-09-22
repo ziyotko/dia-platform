@@ -53,11 +53,13 @@ func AuthMiddleware() gin.HandlerFunc {
 		// 账号存活校验：被禁用/删除的账号立即失效，否则「禁用」要等 JWT 自然过期（默认 24h）才生效，
 		// 期间持旧 Token 仍可访问全部 member/admin 接口。用户表极小且按主键查询，代价可忽略。
 		var user models.User
-		if err := utils.DB.Select("id", "status", "password_changed_at").First(&user, claims.UserID).Error; err != nil || user.Status != 1 {
+		// 一并取出 username/account/email：操作日志中间件要用它记录操作人，避免每个请求再查一次用户表
+		if err := utils.DB.Select("id", "status", "password_changed_at", "username", "account", "email").First(&user, claims.UserID).Error; err != nil || user.Status != 1 {
 			c.JSON(http.StatusOK, utils.Error(AuthErrorCode, "账号不存在或已被禁用"))
 			c.Abort()
 			return
 		}
+		c.Set("currentUser", &user)
 
 		// 改密/重置密码后，改密前签发的 Token 立即失效（否则被盗 Token 在自然过期前仍可用）。
 		// 写入方将 password_changed_at 截断到秒，与 JWT iat 的秒级精度对齐。

@@ -3,7 +3,7 @@
     <el-card shadow="hover" class="search-card">
       <el-form :model="queryForm" inline>
         <el-form-item label="文章标题">
-          <el-input v-model="queryForm.title" placeholder="请输入文章标题" clearable />
+          <el-input v-model="queryForm.title" placeholder="请输入文章标题" clearable @keyup.enter="handleSearch" />
         </el-form-item>
         <el-form-item label="发布栏目">
           <el-cascader
@@ -59,10 +59,10 @@
           </el-select>
         </el-form-item>
         <el-form-item label="作者">
-          <el-input v-model="queryForm.author" placeholder="请输入作者" clearable />
+          <el-input v-model="queryForm.author" placeholder="请输入作者" clearable @keyup.enter="handleSearch" />
         </el-form-item>
         <el-form-item label="来源">
-          <el-input v-model="queryForm.source" placeholder="请输入来源" clearable />
+          <el-input v-model="queryForm.source" placeholder="请输入来源" clearable @keyup.enter="handleSearch" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
@@ -201,7 +201,7 @@
         ref="formRef"
         :model="form"
         :rules="formRules"
-        label-width="80px"
+        label-width="90px"
         class="article-form"
       >
         <div class="form-section">
@@ -1861,7 +1861,7 @@ const handleEdit = async (row: any) => {
 }
 
 const handleDelete = (row: any) => {
-  ElMessageBox.confirm(`确定要删除文章 "${row.title}" 吗？`, '提示', {
+  ElMessageBox.confirm(`确定要删除文章 「${row.title}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
@@ -1875,7 +1875,7 @@ const handleDelete = (row: any) => {
     } finally {
       deleting.value = false
     }
-  })
+  }).catch(() => {})
 }
 
 const currentAuditRow = ref<any>(null)
@@ -2100,12 +2100,12 @@ const handleAudit = async (row: any) => {
   }
   const columns = columnList.value.filter((col: any) => (row.columnIds || []).includes(col.id))
   const noWorkflowColumns = columns.filter((col: any) => !col.workflowId)
-  let message = `确定要提交文章 "${row.title}" 进行审核吗？`
+  let message = `确定要提交文章 「${row.title}」 进行审核吗？`
   if (noWorkflowColumns.length > 0) {
     const names = noWorkflowColumns.map((col: any) => col.name).join('、')
     message += `\n\n以下栏目未配置审核流程，将直接通过：${names}`
   }
-  ElMessageBox.confirm(message, '提交审核', {
+  ElMessageBox.confirm(message, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
@@ -2119,11 +2119,11 @@ const handleAudit = async (row: any) => {
     } finally {
       deleting.value = false
     }
-  })
+  }).catch(() => {})
 }
 
 const handleWithdrawAudit = (row: any) => {
-  ElMessageBox.confirm(`确定要撤回文章 "${row.title}" 的审核吗？`, '撤回审核', {
+  ElMessageBox.confirm(`确定要撤回文章 「${row.title}」 的审核吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
@@ -2131,11 +2131,11 @@ const handleWithdrawAudit = (row: any) => {
     await withdrawArticleAudit(row.id)
     ElMessage.success('撤回审核成功')
     fetchData()
-  })
+  }).catch(() => {})
 }
 
 const handleOffShelf = (row: any) => {
-  ElMessageBox.confirm(`确定要下线文章 "${row.title}" 吗？`, '下线确认', {
+  ElMessageBox.confirm(`确定要下线文章 「${row.title}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
@@ -2149,7 +2149,7 @@ const handleOffShelf = (row: any) => {
     } finally {
       deleting.value = false
     }
-  })
+  }).catch(() => {})
 }
 
 const handleSetColumns = async (row: any) => {

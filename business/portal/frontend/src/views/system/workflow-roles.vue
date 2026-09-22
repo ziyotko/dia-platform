@@ -3,7 +3,7 @@
     <el-card shadow="hover" class="search-card">
       <el-form :model="queryForm" inline>
         <el-form-item label="角色名称">
-          <el-input v-model="queryForm.name" placeholder="请输入角色名称" clearable />
+          <el-input v-model="queryForm.name" placeholder="请输入角色名称" clearable @keyup.enter="handleSearch" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
@@ -70,14 +70,15 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="500px"
+      width="600px"
       destroy-on-close
+      :close-on-click-modal="false"
     >
       <el-form
         ref="formRef"
         :model="form"
         :rules="formRules"
-        label-width="80px"
+        label-width="90px"
       >
         <el-form-item label="角色名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入角色名称" />
@@ -108,6 +109,7 @@
       top="8vh"
       destroy-on-close
       class="members-dialog"
+      :close-on-click-modal="false"
     >
       <div class="members-header">
         <div class="members-role">
@@ -224,12 +226,8 @@ const fetchData = async () => {
         createdAt: formatDateTime(item.createdAt)
       }))
       total.value = res.data.total || 0
-    } else {
-      ElMessage.error(res?.message || '获取流程角色列表失败')
     }
-  } catch (error) {
-    ElMessage.error('获取流程角色列表失败')
-  } finally {
+  } catch {} finally {
     loading.value = false
   }
 }
@@ -239,12 +237,8 @@ const fetchUsers = async () => {
     const res: any = await getAllUsers(1)
     if (res && res.code === 0) {
       userList.value = res.data.list || []
-    } else {
-      ElMessage.error(res?.message || '获取用户列表失败')
     }
-  } catch (error) {
-    ElMessage.error('获取用户列表失败')
-  }
+  } catch {}
 }
 
 const handleAdd = () => {
@@ -260,7 +254,7 @@ const handleEdit = (row: any) => {
 }
 
 const handleDelete = (row: any) => {
-  ElMessageBox.confirm(`确定要删除流程角色 "${row.name}" 吗？`, '提示', {
+  ElMessageBox.confirm(`确定要删除流程角色 「${row.name}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
@@ -270,13 +264,9 @@ const handleDelete = (row: any) => {
       if (res && res.code === 0) {
         ElMessage.success('删除成功')
         fetchData()
-      } else {
-        ElMessage.error(res?.message || '删除失败')
       }
-    } catch {
-      ElMessage.error('删除失败')
-    }
-  })
+    } catch {}
+  }).catch(() => {})
 }
 
 const handleMembers = async (row: any) => {
@@ -290,12 +280,8 @@ const handleMembers = async (row: any) => {
     if (res && res.code === 0) {
       const users = res.data || []
       selectedUserIds.value = users.map((u: any) => u.id)
-    } else {
-      ElMessage.error(res?.message || '获取成员失败')
     }
-  } catch {
-    ElMessage.error('获取成员失败')
-  }
+  } catch {}
 }
 
 const handleMembersSubmit = async () => {
@@ -306,12 +292,8 @@ const handleMembersSubmit = async () => {
     if (res && res.code === 0) {
       ElMessage.success('成员设置成功')
       membersVisible.value = false
-    } else {
-      ElMessage.error(res?.message || '成员设置失败')
     }
-  } catch {
-    ElMessage.error('成员设置失败')
-  } finally {
+  } catch {} finally {
     membersLoading.value = false
   }
 }
@@ -337,12 +319,8 @@ const handleSubmit = async () => {
       ElMessage.success(form.id ? '修改成功' : '新增成功')
       dialogVisible.value = false
       fetchData()
-    } else {
-      ElMessage.error(res?.message || (form.id ? '修改失败' : '新增失败'))
     }
-  } catch {
-    ElMessage.error(form.id ? '修改失败' : '新增失败')
-  } finally {
+  } catch {} finally {
     submitLoading.value = false
   }
 }

@@ -3,7 +3,7 @@
     <el-card shadow="hover" class="search-card">
       <el-form :model="queryForm" inline>
         <el-form-item label="机构名称">
-          <el-input v-model="queryForm.name" placeholder="请输入机构名称" clearable />
+          <el-input v-model="queryForm.name" placeholder="请输入机构名称" clearable @keyup.enter="handleSearch" />
         </el-form-item>
         <el-form-item label="机构类型">
           <el-select v-model="queryForm.orgType" placeholder="全部类型" clearable style="width: 140px">
@@ -121,12 +121,13 @@
       :title="dialogTitle"
       width="620px"
       destroy-on-close
+      :close-on-click-modal="false"
     >
       <el-form
         ref="formRef"
         :model="form"
         :rules="formRules"
-        label-width="100px"
+        label-width="90px"
       >
         <el-row :gutter="16">
           <el-col :span="12">
@@ -249,8 +250,9 @@
     <el-dialog
       v-model="deptDialogVisible"
       title="新增内设机构"
-      width="520px"
+      width="600px"
       destroy-on-close
+      :close-on-click-modal="false"
     >
       <el-form
         ref="deptFormRef"
@@ -650,12 +652,8 @@ const fetchData = async () => {
     })
     if (res && res.code === 0) {
       tableData.value = res.data.list || []
-    } else {
-      ElMessage.error(res?.message || '获取机构列表失败')
     }
-  } catch (error) {
-    ElMessage.error('获取机构列表失败')
-  } finally {
+  } catch {} finally {
     loading.value = false
   }
 }
@@ -709,7 +707,7 @@ const handleDelete = (row: OrgItem) => {
     ElMessage.warning('请先删除子机构')
     return
   }
-  ElMessageBox.confirm(`确定要删除机构 "${row.name}" 吗？`, '提示', {
+  ElMessageBox.confirm(`确定要删除机构 「${row.name}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
@@ -719,13 +717,9 @@ const handleDelete = (row: OrgItem) => {
       if (res && res.code === 0) {
         ElMessage.success('删除成功')
         fetchData()
-      } else {
-        ElMessage.error(res?.message || '删除失败')
       }
-    } catch (error) {
-      ElMessage.error('删除机构失败')
-    }
-  })
+    } catch {}
+  }).catch(() => {})
 }
 
 const handleSubmit = async () => {
@@ -764,12 +758,8 @@ const handleSubmit = async () => {
       ElMessage.success(form.id ? '修改成功' : '新增成功')
       dialogVisible.value = false
       fetchData()
-    } else {
-      ElMessage.error(res?.message || (form.id ? '修改失败' : '新增失败'))
     }
-  } catch (error) {
-    ElMessage.error('提交失败')
-  } finally {
+  } catch {} finally {
     submitLoading.value = false
   }
 }
@@ -795,12 +785,8 @@ const handleDeptSubmit = async () => {
       ElMessage.success('新增成功')
       deptDialogVisible.value = false
       fetchData()
-    } else {
-      ElMessage.error(res?.message || '新增失败')
     }
-  } catch (error) {
-    ElMessage.error('提交失败')
-  } finally {
+  } catch {} finally {
     deptSubmitLoading.value = false
   }
 }
@@ -896,9 +882,7 @@ const fetchDialogUsers = async () => {
         roleIds: u.roleIds || []
       }))
     }
-  } catch (error) {
-    ElMessage.error('获取用户列表失败')
-  }
+  } catch {}
 }
 
 const handleAssignUsers = async (row: OrgItem) => {
@@ -924,9 +908,7 @@ const handleAssignUsers = async (row: OrgItem) => {
       account: u.account,
       phone: u.phone || u.mobile || ''
     }))
-  } catch (error) {
-    ElMessage.error('获取机构用户失败')
-  } finally {
+  } catch {} finally {
     userLoading.value = false
   }
 }

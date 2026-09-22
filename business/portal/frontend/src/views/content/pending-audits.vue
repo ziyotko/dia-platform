@@ -80,9 +80,7 @@ const fetchData = async () => {
       tableData.value = res.data.list || []
       total.value = res.data.total || 0
     }
-  } catch (error) {
-    ElMessage.error('获取待审核文章失败')
-  } finally {
+  } catch {} finally {
     loading.value = false
   }
 }

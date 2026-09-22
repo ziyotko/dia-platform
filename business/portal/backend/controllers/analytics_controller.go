@@ -50,9 +50,14 @@ func (c *AnalyticsController) GetArticleAnalyticsTrend(ctx *gin.Context) {
 		return
 	}
 
-	like := countAnalyticsSeries(&models.LikeAnalytics{}, "liked_at", windows)
-	share := countAnalyticsSeries(&models.ShareAnalytics{}, "shared_at", windows)
-	visit := countAnalyticsSeries(&models.VisitAnalytics{}, "visited_at", windows)
+	// 桶粒度与窗口边界对齐：week/month 按天、year 按月（与 buildAnalyticsWindows 一致）
+	mysqlLayout, goLayout := "%Y-%m-%d", "2006-01-02"
+	if period == "year" {
+		mysqlLayout, goLayout = "%Y-%m", "2006-01"
+	}
+	like := countAnalyticsSeries(&models.LikeAnalytics{}, "liked_at", mysqlLayout, goLayout, windows)
+	share := countAnalyticsSeries(&models.ShareAnalytics{}, "shared_at", mysqlLayout, goLayout, windows)
+	visit := countAnalyticsSeries(&models.VisitAnalytics{}, "visited_at", mysqlLayout, goLayout, windows)
 
 	ctx.JSON(http.StatusOK, utils.Success("获取成功", gin.H{
 		"labels":     labels,
@@ -105,30 +110,37 @@ func buildAnalyticsWindows(period string, year int, now time.Time, loc *time.Loc
 	}
 }
 
-// countAnalyticsSeries 统计某一 analytics 表在各时间窗口内的记录数（单次查询，内存分桶）
-func countAnalyticsSeries(model any, timeCol string, windows []analyticsWindow) []int64 {
+// countAnalyticsSeries 统计某一 analytics 表在各时间窗口内的记录数。
+// 统计在 SQL 里按桶（天/月）完成，只回传桶行；原实现把整段范围内的记录全部读进内存再逐条分桶。
+func countAnalyticsSeries(model any, timeCol, mysqlLayout, goLayout string, windows []analyticsWindow) []int64 {
 	values := make([]int64, len(windows))
 	if len(windows) == 0 {
 		return values
 	}
 
+	// 窗口与桶边界对齐（按天或按月），因此可以直接用「桶 → 窗口」映射
+	index := make(map[string]int, len(windows))
+	for i := range windows {
+		index[windows[i].Start.Format(goLayout)] = i
+	}
+
 	var rows []struct {
-		At time.Time `gorm:"column:at"`
+		Bucket string `gorm:"column:bucket"`
+		Total  int64  `gorm:"column:total"`
 	}
 	start := windows[0].Start
 	end := windows[len(windows)-1].End
-	utils.DB.Model(model).
-		Select(timeCol+" AS at").
+	if err := utils.DB.Model(model).
+		Select("DATE_FORMAT("+timeCol+", ?) AS bucket, COUNT(*) AS total", mysqlLayout).
 		Where(timeCol+" >= ? AND "+timeCol+" < ?", start, end).
-		Scan(&rows)
-
-	// 按记录时间落入的窗口计数：直接用时间区间判断，兼容“按天/按月”等不同粒度的窗口
+		Group("bucket").
+		Scan(&rows).Error; err != nil {
+		utils.Logger.Warnf("统计 %s 趋势失败: %s", timeCol, err)
+		return values
+	}
 	for _, row := range rows {
-		for i := range windows {
-			if !row.At.Before(windows[i].Start) && row.At.Before(windows[i].End) {
-				values[i]++
-				break
-			}
+		if i, ok := index[row.Bucket]; ok {
+			values[i] = row.Total
 		}
 	}
 	return values

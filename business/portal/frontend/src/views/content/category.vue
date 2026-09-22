@@ -3,7 +3,7 @@
     <el-card shadow="hover" class="search-card">
       <el-form :model="queryForm" inline>
         <el-form-item label="分类名称">
-          <el-input v-model="queryForm.name" placeholder="请输入分类名称" clearable />
+          <el-input v-model="queryForm.name" placeholder="请输入分类名称" clearable @keyup.enter="handleSearch" />
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="queryForm.status" placeholder="全部状态" clearable style="width: 120px">
@@ -77,14 +77,15 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="500px"
+      width="600px"
       destroy-on-close
+      :close-on-click-modal="false"
     >
       <el-form
         ref="formRef"
         :model="form"
         :rules="formRules"
-        label-width="80px"
+        label-width="90px"
       >
         <el-form-item label="分类名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入分类名称" />
@@ -212,7 +213,7 @@ const handleEdit = (row: any) => {
 }
 
 const handleDelete = (row: any) => {
-  ElMessageBox.confirm(`确定要删除分类 "${row.name}" 吗？`, '提示', {
+  ElMessageBox.confirm(`确定要删除分类 「${row.name}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
@@ -220,7 +221,7 @@ const handleDelete = (row: any) => {
     await deleteCategory(row.id)
     ElMessage.success('删除成功')
     fetchData()
-  })
+  }).catch(() => {})
 }
 
 const handleStatusChange = async (row: any, val: number) => {

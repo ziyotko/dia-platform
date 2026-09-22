@@ -203,8 +203,7 @@ const fetchStats = async () => {
       stats.myArticleCount = res.data.myArticleCount || 0
     }
   } catch (error) {
-    // 失败必须提示：否则卡片显示 0 会被误认为「真的没有数据」
-    ElMessage.error('获取仪表盘统计失败，请稍后重试')
+    // 失败时卡片会保持 0 值，具体原因由 request 拦截器统一提示（拦截器已覆盖 code !== 0 与网络异常）
   }
 }
 
@@ -216,9 +215,7 @@ const fetchLoginLogs = async () => {
     if (res && res.data) {
       loginLogs.value = res.data
     }
-  } catch (error) {
-    ElMessage.error('获取登录日志失败，请稍后重试')
-  }
+  } catch {}
 }
 
 const pendingAudits = ref<any[]>([])
@@ -229,9 +226,7 @@ const fetchPendingAudits = async () => {
     if (res && res.data) {
       pendingAudits.value = res.data.list || []
     }
-  } catch (error) {
-    ElMessage.error('获取待处理事项失败，请稍后重试')
-  }
+  } catch {}
 }
 
 // 跳转前校验路由是否存在（动态路由只注册已授权菜单），避免落到 404
@@ -339,9 +334,7 @@ const fetchVisitTrend = async () => {
       }))
       nextTick(() => updateChart())
     }
-  } catch (error) {
-    ElMessage.error('获取访问趋势失败')
-  }
+  } catch {}
 }
 
 watch(chartPeriod, () => {
@@ -435,9 +428,7 @@ const fetchArticleTrend = async () => {
       }))
       nextTick(() => updateArticleChart())
     }
-  } catch (error) {
-    ElMessage.error('获取文章发布趋势失败')
-  }
+  } catch {}
 }
 
 watch(articleChartPeriod, () => {

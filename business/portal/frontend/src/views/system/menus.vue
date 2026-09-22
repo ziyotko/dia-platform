@@ -63,8 +63,9 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="500px"
+      width="600px"
       destroy-on-close
+      :close-on-click-modal="false"
     >
       <el-form
         ref="formRef"
@@ -234,9 +235,7 @@ const fetchMenus = async () => {
     const res: any = await getMenuList()
     tableData.value = res.data || []
     menuTreeData.value = [{ id: 0, parentId: 0, name: '顶级菜单', path: '', component: '', apiPrefix: '', icon: '', type: 'directory', sort: 0, status: 1, children: [] }, ...tableData.value]
-  } catch (error) {
-    ElMessage.error('获取菜单列表失败')
-  } finally {
+  } catch {} finally {
     loading.value = false
   }
 }
@@ -272,7 +271,7 @@ const handleEdit = (row: MenuItem) => {
 }
 
 const handleDelete = (row: MenuItem) => {
-  ElMessageBox.confirm(`确定要删除菜单 "${row.name}" 吗？`, '提示', {
+  ElMessageBox.confirm(`确定要删除菜单 「${row.name}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
@@ -281,10 +280,8 @@ const handleDelete = (row: MenuItem) => {
       await deleteMenu(row.id)
       ElMessage.success('删除成功')
       fetchMenus()
-    } catch (error) {
-      ElMessage.error('删除菜单失败')
-    }
-  })
+    } catch {}
+  }).catch(() => {})
 }
 
 const handleSubmit = async () => {
@@ -303,9 +300,7 @@ const handleSubmit = async () => {
     }
     dialogVisible.value = false
     fetchMenus()
-  } catch (error) {
-    ElMessage.error('提交失败')
-  } finally {
+  } catch {} finally {
     submitLoading.value = false
   }
 }

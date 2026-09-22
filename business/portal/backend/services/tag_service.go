@@ -34,12 +34,18 @@ func (s *TagService) GetAllTags() ([]models.Tag, error) {
 }
 
 func (s *TagService) CreateTag(tag *models.Tag) error {
+	if err := ensureValueUnique(&models.Tag{}, "name", tag.Name, "标签", "名称", 0, nil); err != nil {
+		return err
+	}
 	return utils.DB.Create(tag).Error
 }
 
 func (s *TagService) UpdateTag(id uint, tag *models.Tag) error {
 	var old models.Tag
 	if err := utils.DB.First(&old, id).Error; err != nil {
+		return err
+	}
+	if err := ensureValueUnique(&models.Tag{}, "name", tag.Name, "标签", "名称", id, nil); err != nil {
 		return err
 	}
 	updates := map[string]any{

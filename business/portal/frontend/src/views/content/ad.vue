@@ -3,7 +3,7 @@
     <el-card shadow="hover" class="search-card">
       <el-form :model="queryForm" inline>
         <el-form-item label="广告名称">
-          <el-input v-model="queryForm.name" placeholder="请输入广告名称" clearable />
+          <el-input v-model="queryForm.name" placeholder="请输入广告名称" clearable @keyup.enter="handleSearch" />
         </el-form-item>
         <el-form-item label="广告位置">
           <el-select
@@ -430,7 +430,7 @@ const handleEdit = async (row: any) => {
 }
 
 const handleDelete = (row: any) => {
-  ElMessageBox.confirm(`确定要删除广告 "${row.name}" 吗？`, '提示', {
+  ElMessageBox.confirm(`确定要删除广告 「${row.name}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
@@ -442,7 +442,7 @@ const handleDelete = (row: any) => {
     } catch {
       // 失败提示由 request 拦截器统一给出
     }
-  })
+  }).catch(() => {})
 }
 
 const handleStatusChange = async (row: any, val: number) => {
@@ -508,12 +508,8 @@ const handleImageUpload = async (options: any) => {
     if (res.code === 0) {
       form.image = res.data.url
       ElMessage.success('上传成功')
-    } else {
-      ElMessage.error(res.message || '上传失败')
     }
-  } catch {
-    ElMessage.error('上传失败')
-  }
+  } catch {}
 }
 
 const handleRemoveImage = () => {

@@ -3,7 +3,7 @@
     <el-card shadow="hover" class="search-card">
       <el-form :model="queryForm" inline>
         <el-form-item label="部门名称">
-          <el-input v-model="queryForm.name" placeholder="请输入部门名称" clearable />
+          <el-input v-model="queryForm.name" placeholder="请输入部门名称" clearable @keyup.enter="handleSearch" />
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="queryForm.status" placeholder="全部状态" clearable style="width: 120px">
@@ -91,8 +91,9 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="520px"
+      width="600px"
       destroy-on-close
+      :close-on-click-modal="false"
     >
       <el-form
         ref="formRef"
@@ -173,8 +174,9 @@
     <el-dialog
       v-model="importDialogVisible"
       title="导入部门"
-      width="500px"
+      width="600px"
       destroy-on-close
+      :close-on-click-modal="false"
     >
       <el-upload
         ref="uploadRef"
@@ -256,6 +258,7 @@
       title="部门选人"
       width="700px"
       destroy-on-close
+      :close-on-click-modal="false"
     >
       <div class="user-select-header">
         <span>当前部门：{{ currentDeptName }}</span>
@@ -476,12 +479,8 @@ const fetchData = async () => {
     })
     if (res && res.code === 0) {
       tableData.value = res.data.list || []
-    } else {
-      ElMessage.error(res?.message || '获取部门列表失败')
     }
-  } catch (error) {
-    ElMessage.error('获取部门列表失败')
-  } finally {
+  } catch {} finally {
     loading.value = false
   }
 }
@@ -492,9 +491,7 @@ const fetchOrgTreeData = async () => {
     if (res && res.code === 0) {
       orgTreeData.value = res.data || []
     }
-  } catch (error) {
-    ElMessage.error('获取机构树失败')
-  }
+  } catch {}
 }
 
 const handleAdd = async () => {
@@ -538,7 +535,7 @@ const handleDelete = (row: DeptItem) => {
     ElMessage.warning('请先删除子部门')
     return
   }
-  ElMessageBox.confirm(`确定要删除部门 "${row.name}" 吗？`, '提示', {
+  ElMessageBox.confirm(`确定要删除部门 「${row.name}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
@@ -548,13 +545,9 @@ const handleDelete = (row: DeptItem) => {
       if (res && res.code === 0) {
         ElMessage.success('删除成功')
         fetchData()
-      } else {
-        ElMessage.error(res?.message || '删除失败')
       }
-    } catch (error) {
-      ElMessage.error('删除部门失败')
-    }
-  })
+    } catch {}
+  }).catch(() => {})
 }
 
 const handleSubmit = async () => {
@@ -583,12 +576,8 @@ const handleSubmit = async () => {
       ElMessage.success(form.id ? '修改成功' : '新增成功')
       dialogVisible.value = false
       fetchData()
-    } else {
-      ElMessage.error(res?.message || (form.id ? '修改失败' : '新增失败'))
     }
-  } catch (error) {
-    ElMessage.error('提交失败')
-  } finally {
+  } catch {} finally {
     submitLoading.value = false
   }
 }
@@ -639,9 +628,7 @@ const handleImportSubmit = async () => {
       importDialogVisible.value = false
       fetchData()
     }
-  } catch (error) {
-    ElMessage.error('导入失败')
-  } finally {
+  } catch {} finally {
     importLoading.value = false
   }
 }
@@ -693,9 +680,7 @@ const handleViewUsers = async (row: DeptItem) => {
         account: u.account,
         phone: u.phone || u.mobile || ''
       }))
-  } catch (error) {
-    ElMessage.error('获取部门人员失败')
-  } finally {
+  } catch {} finally {
     viewUserLoading.value = false
   }
 }
@@ -711,9 +696,7 @@ const fetchDialogUsers = async () => {
         phone: u.phone || u.mobile || ''
       }))
     }
-  } catch (error) {
-    ElMessage.error('获取用户列表失败')
-  }
+  } catch {}
 }
 
 // 部门负责人必须是该机构的人：按所选机构过滤负责人候选
@@ -770,9 +753,7 @@ const handleAssignUsers = async (row: DeptItem) => {
         userTableRef.value?.toggleRowSelection(r, true)
       })
     })
-  } catch (error) {
-    ElMessage.error('获取部门用户失败')
-  } finally {
+  } catch {} finally {
     userLoading.value = false
   }
 }
@@ -789,12 +770,8 @@ const handleUserSubmit = async () => {
       ElMessage.success('人员分配成功')
       userDialogVisible.value = false
       fetchData()
-    } else {
-      ElMessage.error(res?.message || '人员分配失败')
     }
-  } catch (error) {
-    ElMessage.error('人员分配失败')
-  } finally {
+  } catch {} finally {
     userSubmitLoading.value = false
   }
 }

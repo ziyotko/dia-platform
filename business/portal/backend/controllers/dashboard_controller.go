@@ -67,6 +67,27 @@ type TrendItem struct {
 	Value int64  `json:"value"`
 }
 
+// countVisitsByBucket 按 MySQL 时间格式分桶统计访问量（只回传分桶行，不在内存里逐条累加）。
+// 原实现把整段时间范围内的记录全部读进内存再分桶，年窗口下会一次加载全年记录。
+func countVisitsByBucket(mysqlLayout string, start, end time.Time) (map[string]int64, error) {
+	var rows []struct {
+		Bucket string `gorm:"column:bucket"`
+		Total  int64  `gorm:"column:total"`
+	}
+	if err := utils.DB.Model(&models.VisitAnalytics{}).
+		Select("DATE_FORMAT(visited_at, ?) AS bucket, COUNT(*) AS total", mysqlLayout).
+		Where("visited_at >= ? AND visited_at < ?", start, end).
+		Group("bucket").
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	countMap := make(map[string]int64, len(rows))
+	for _, row := range rows {
+		countMap[row.Bucket] = row.Total
+	}
+	return countMap, nil
+}
+
 func (c *DashboardController) GetVisitTrend(ctx *gin.Context) {
 	period := ctx.Query("period")
 	now := time.Now()
@@ -90,13 +111,10 @@ func (c *DashboardController) GetVisitTrend(ctx *gin.Context) {
 		monday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).AddDate(0, 0, -(weekday - 1))
 		nextMonday := monday.AddDate(0, 0, 7)
 
-		var visits []models.VisitAnalytics
-		utils.DB.Where("visited_at >= ? AND visited_at < ?", monday, nextMonday).Find(&visits)
-
-		countMap := make(map[string]int64)
-		for _, v := range visits {
-			dateStr := v.VisitedAt.Format("2006-01-02")
-			countMap[dateStr]++
+		countMap, err := countVisitsByBucket("%Y-%m-%d", monday, nextMonday)
+		if err != nil {
+			ctx.JSON(http.StatusOK, utils.Error(1, "获取访问趋势失败"))
+			return
 		}
 
 		days := []string{"周一", "周二", "周三", "周四", "周五", "周六", "周日"}
@@ -111,13 +129,10 @@ func (c *DashboardController) GetVisitTrend(ctx *gin.Context) {
 		endOfMonth := startOfMonth.AddDate(0, 1, 0)
 		daysInMonth := endOfMonth.AddDate(0, 0, -1).Day()
 
-		var visits []models.VisitAnalytics
-		utils.DB.Where("visited_at >= ? AND visited_at < ?", startOfMonth, endOfMonth).Find(&visits)
-
-		countMap := make(map[string]int64)
-		for _, v := range visits {
-			dateStr := v.VisitedAt.Format("2006-01-02")
-			countMap[dateStr]++
+		countMap, err := countVisitsByBucket("%Y-%m-%d", startOfMonth, endOfMonth)
+		if err != nil {
+			ctx.JSON(http.StatusOK, utils.Error(1, "获取访问趋势失败"))
+			return
 		}
 
 		for i := 1; i <= daysInMonth; i++ {
@@ -130,13 +145,10 @@ func (c *DashboardController) GetVisitTrend(ctx *gin.Context) {
 		startOfYear := time.Date(year, 1, 1, 0, 0, 0, 0, now.Location())
 		endOfYear := startOfYear.AddDate(1, 0, 0)
 
-		var visits []models.VisitAnalytics
-		utils.DB.Where("visited_at >= ? AND visited_at < ?", startOfYear, endOfYear).Find(&visits)
-
-		countMap := make(map[string]int64)
-		for _, v := range visits {
-			monthStr := v.VisitedAt.Format("2006-01")
-			countMap[monthStr]++
+		countMap, err := countVisitsByBucket("%Y-%m", startOfYear, endOfYear)
+		if err != nil {
+			ctx.JSON(http.StatusOK, utils.Error(1, "获取访问趋势失败"))
+			return
 		}
 
 		months := []string{"1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"}

@@ -135,6 +135,7 @@
       :title="columnDialogTitle"
       width="600px"
       destroy-on-close
+      :close-on-click-modal="false"
     >
       <el-form ref="columnFormRef" :model="columnForm" :rules="columnFormRules" label-width="90px">
         <el-row :gutter="16">
@@ -309,9 +310,7 @@ const fetchWorkflows = async () => {
   try {
     const res: any = await getAllWorkflows()
     workflowList.value = (res.data.list || []).filter((w: any) => w.status === 1)
-  } catch (error) {
-    ElMessage.error('获取流程列表失败')
-  }
+  } catch {}
 }
 
 const columnFormRules = {
@@ -419,9 +418,7 @@ const fetchTemplates = async () => {
   try {
     const res: any = await getAllTemplates(activePageType.value)
     templateList.value = res.data.list || []
-  } catch (error) {
-    ElMessage.error('获取模板列表失败')
-  } finally {
+  } catch {} finally {
     templateLoading.value = false
   }
 }
@@ -436,9 +433,7 @@ const fetchColumns = async () => {
   try {
     const res: any = await getColumns({ templateId })
     allColumns.value = res.data || []
-  } catch (error) {
-    ElMessage.error('获取栏目列表失败')
-  } finally {
+  } catch {} finally {
     columnLoading.value = false
   }
 }
@@ -504,10 +499,10 @@ const handleDeleteColumn = async (row: ColumnItem) => {
   // 后端在存在子栏目时拒绝删除（不做级联删除），这里提前拦下，避免“一并删除”的误导文案
   const hasChildren = allColumns.value.some(c => c.parentId === row.id)
   if (hasChildren) {
-    ElMessage.warning(`栏目 "${row.name}" 下存在子栏目，请先删除或调整子栏目后再删除`)
+    ElMessage.warning(`栏目 「${row.name}」 下存在子栏目，请先删除或调整子栏目后再删除`)
     return
   }
-  const msg = `确定要删除栏目 "${row.name}" 吗？`
+  const msg = `确定要删除栏目 「${row.name}」 吗？`
   try {
     await ElMessageBox.confirm(msg, '提示', {
       confirmButtonText: '确定',

@@ -3,7 +3,7 @@
     <el-card shadow="hover" class="search-card">
       <el-form :model="queryForm" inline>
         <el-form-item label="操作人">
-          <el-input v-model="queryForm.username" placeholder="请输入操作人" clearable />
+          <el-input v-model="queryForm.username" placeholder="请输入操作人" clearable @keyup.enter="handleSearch" />
         </el-form-item>
         <el-form-item label="操作类型">
           <el-select v-model="queryForm.type" placeholder="全部类型" clearable style="width: 140px">
@@ -181,9 +181,7 @@ const fetchData = async () => {
       tableData.value = res.data.list || []
       total.value = res.data.total || 0
     }
-  } catch (error) {
-    ElMessage.error('获取日志列表失败')
-  } finally {
+  } catch {} finally {
     loading.value = false
   }
 }
@@ -199,13 +197,9 @@ const handleClear = () => {
       if (res.code === 0) {
         ElMessage.success(buildClearLogsSuccessText(res.data?.count ?? 0))
         fetchData()
-      } else {
-        ElMessage.error(res.message || '清空日志失败')
       }
-    } catch (error) {
-      ElMessage.error('清空日志失败')
-    }
-  })
+    } catch {}
+  }).catch(() => {})
 }
 
 const handleDetail = (row: any) => {

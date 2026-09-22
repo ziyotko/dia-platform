@@ -34,12 +34,18 @@ func (s *CategoryService) GetAllCategories() ([]models.Category, error) {
 }
 
 func (s *CategoryService) CreateCategory(category *models.Category) error {
+	if err := ensureNameCodeUnique(&models.Category{}, "分类", category.Name, category.Code, 0, nil); err != nil {
+		return err
+	}
 	return utils.DB.Create(category).Error
 }
 
 func (s *CategoryService) UpdateCategory(id uint, category *models.Category) error {
 	var old models.Category
 	if err := utils.DB.First(&old, id).Error; err != nil {
+		return err
+	}
+	if err := ensureNameCodeUnique(&models.Category{}, "分类", category.Name, category.Code, id, nil); err != nil {
 		return err
 	}
 	updates := map[string]any{

@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"server/config"
-	"server/models"
 	"server/services"
 	"server/utils"
 )
@@ -94,12 +93,14 @@ func MenuAPIPrefixMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		prefixes, err := getUserMenuAPIPrefixes(userID)
+		// 菜单前缀 + 管理员标记按用户缓存（15s TTL）：原先每个请求都要「角色→权限→菜单→前缀」查 4~6 次
+		access, err := services.GetUserAccess(userID)
 		if err != nil {
 			c.JSON(http.StatusOK, utils.Error(1, "服务异常，请稍后重试"))
 			c.Abort()
 			return
 		}
+		prefixes := access.Prefixes
 
 		for _, prefix := range prefixes {
 			if pathMatchesAPIPrefix(path, prefix) {
@@ -113,29 +114,5 @@ func MenuAPIPrefixMiddleware() gin.HandlerFunc {
 	}
 }
 
-// getUserMenuAPIPrefixes 收集用户已授权菜单（含子菜单）中所有非空的 api_prefix。
-func getUserMenuAPIPrefixes(userID uint) ([]string, error) {
-	menuService := &services.MenuService{}
-	menus, err := menuService.GetUserMenus(userID)
-	if err != nil {
-		return nil, err
-	}
-
-	var prefixes []string
-	var collect func([]models.Menu)
-	collect = func(items []models.Menu) {
-		for _, m := range items {
-			// 一个菜单可声明多个前缀（逗号分隔），便于「一个页面调用多个模块接口」的场景
-			for _, prefix := range strings.Split(m.APIPrefix, ",") {
-				if prefix = strings.TrimSpace(prefix); prefix != "" {
-					prefixes = append(prefixes, prefix)
-				}
-			}
-			if len(m.Children) > 0 {
-				collect(m.Children)
-			}
-		}
-	}
-	collect(menus)
-	return prefixes, nil
-}
+// collectMenuAPIPrefixes（含多前缀拆分）与缓存已下沉到 services/user_access_cache.go，
+// 供菜单授权校验与管理判定共用。

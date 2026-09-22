@@ -3,7 +3,7 @@
     <el-card shadow="hover" class="search-card">
       <el-form :model="queryForm" inline>
         <el-form-item label="流程名称">
-          <el-input v-model="queryForm.name" placeholder="请输入流程名称" clearable />
+          <el-input v-model="queryForm.name" placeholder="请输入流程名称" clearable @keyup.enter="handleSearch" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
@@ -70,8 +70,9 @@
     <el-dialog
       v-model="dialogVisible"
       :title="dialogTitle"
-      width="520px"
+      width="600px"
       destroy-on-close
+      :close-on-click-modal="false"
     >
       <el-form
         ref="formRef"
@@ -305,9 +306,7 @@ const fetchData = async () => {
     })
     tableData.value = res.data?.list || []
     total.value = res.data?.total || 0
-  } catch (error) {
-    ElMessage.error('获取流程列表失败')
-  } finally {
+  } catch {} finally {
     loading.value = false
   }
 }
@@ -359,7 +358,7 @@ const handleEdit = (row: any) => {
 }
 
 const handleDelete = (row: any) => {
-  ElMessageBox.confirm(`确定要删除流程 "${row.name}" 吗？`, '提示', {
+  ElMessageBox.confirm(`确定要删除流程 「${row.name}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
@@ -368,10 +367,8 @@ const handleDelete = (row: any) => {
       await deleteWorkflow(row.id)
       ElMessage.success('删除成功')
       fetchData()
-    } catch (error) {
-      ElMessage.error('删除流程失败')
-    }
-  })
+    } catch {}
+  }).catch(() => {})
 }
 
 const handleSubmit = async () => {
@@ -393,9 +390,7 @@ const handleSubmit = async () => {
     }
     dialogVisible.value = false
     fetchData()
-  } catch (error) {
-    ElMessage.error('提交流程失败')
-  } finally {
+  } catch {} finally {
     submitLoading.value = false
   }
 }
@@ -486,9 +481,7 @@ const handleSaveDesign = async () => {
     ElMessage.success('流程设计保存成功')
     designVisible.value = false
     fetchData()
-  } catch (error) {
-    ElMessage.error('保存流程设计失败')
-  } finally {
+  } catch {} finally {
     designLoading.value = false
   }
 }
