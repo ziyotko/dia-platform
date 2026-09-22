@@ -480,10 +480,9 @@ func (s *ArticleService) WithdrawArticleAudit(articleID uint) error {
 		if err := tx.Model(&article).Update("audit_status", 0).Error; err != nil {
 			return err
 		}
+		// 只清「当前审核记录」，与 StartArticleAudit 同口径保留审核历史：
+		// 撤回后重新送审时，之前各节点的通过/驳回记录应仍可追溯（历史接口按轮次累积展示）。
 		if err := tx.Where("article_id = ?", articleID).Delete(&models.ArticleColumnAudit{}).Error; err != nil {
-			return err
-		}
-		if err := tx.Where("article_id = ?", articleID).Delete(&models.ArticleColumnAuditHistory{}).Error; err != nil {
 			return err
 		}
 		return nil
@@ -997,10 +996,20 @@ func (s *ArticleService) CanApproveAnyColumn(articleID, userID uint) (bool, erro
 	return false, nil
 }
 
-// GetArticleAuditHistory 获取文章指定栏目的审核历史
+// GetArticleAuditHistory 获取文章指定栏目的审核历史（**只返回当前一轮**）。
+// 撤回/重新送审不再删除历史（便于审计留痕），但界面按「每个节点最新的处置」展示当前进度，
+// 若把往轮记录一并下发，节点会显示上一轮的「已通过/已驳回」，与实际进度不符。
+// 判定当前轮的起点：该 (article, column) 当前审核记录（article_column_audit）的创建时间——
+// 撤回/重新送审会重建审核记录，因此早于它的历史属于上一轮。
+// 若当前没有审核记录（如已撤回、已下线），则返回该栏目全部历史，供追溯参考。
 func (s *ArticleService) GetArticleAuditHistory(articleID uint, columnID uint) ([]models.ArticleColumnAuditHistory, error) {
+	query := utils.DB.Where("article_id = ? AND column_id = ?", articleID, columnID)
+	var current models.ArticleColumnAudit
+	if err := utils.DB.Where("article_id = ? AND column_id = ?", articleID, columnID).First(&current).Error; err == nil {
+		query = query.Where("created_at >= ?", current.CreatedAt)
+	}
 	var histories []models.ArticleColumnAuditHistory
-	err := utils.DB.Where("article_id = ? AND column_id = ?", articleID, columnID).Order("created_at ASC").Find(&histories).Error
+	err := query.Order("created_at ASC").Find(&histories).Error
 	return histories, err
 }
 
