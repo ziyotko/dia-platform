@@ -122,8 +122,17 @@ func (s *WorkflowService) ValidateNodesResolvable(nodes []models.WorkflowNode) e
 	return nil
 }
 
-// ValidateWorkflowResolvable 校验指定流程的全部节点是否可用（至少一个节点 + 审批人可解析）
+// ValidateWorkflowResolvable 校验指定流程是否可用于送审（流程处于启用状态 + 至少一个节点 + 审批人可解析）。
+// 仅由「提交审核」调用；已禁用的流程不应再被送审使用（前端下拉只列启用流程，
+// 但「先绑定后禁用」或直调 API 仍会遇到，原先会静默按禁用流程送审）。
 func (s *WorkflowService) ValidateWorkflowResolvable(workflowID uint) error {
+	var workflow models.Workflow
+	if err := utils.DB.First(&workflow, workflowID).Error; err != nil {
+		return fmt.Errorf("审核流程不存在或已被删除")
+	}
+	if workflow.Status != 1 {
+		return fmt.Errorf("审核流程「%s」已禁用，请先启用该流程或为栏目改绑其它流程", workflow.Name)
+	}
 	nodes, err := s.GetWorkflowNodes(workflowID)
 	if err != nil {
 		return err

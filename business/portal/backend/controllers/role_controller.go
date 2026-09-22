@@ -147,6 +147,18 @@ func (c *RoleController) GetRolePermissions(ctx *gin.Context) {
 		return
 	}
 
+	// 管理员（角色 1）的菜单权限不来自 permissions 字段，直接下发全部菜单 ID（详见 RoleService.GetAllMenuIDs）。
+	// 该角色不可被修改（canModifyRole 拦截），前端只读展示，不会因“全选”而写库。
+	if uint(id) == models.RoleIDSuperAdmin {
+		ids, err := c.roleService.GetAllMenuIDs()
+		if err != nil {
+			ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("获取角色权限失败", err)))
+			return
+		}
+		ctx.JSON(http.StatusOK, utils.Success("获取角色权限成功", ids))
+		return
+	}
+
 	perms, err := c.roleService.GetRolePermissions(uint(id))
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("获取角色权限失败", err)))

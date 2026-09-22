@@ -47,6 +47,7 @@ business/portal/
 - `server.max_concurrent_ips`: 单个 IP 的并发请求上限（默认 50）
 - `server.max_json_body_mb`: 非 multipart（JSON）请求体上限，默认 64（MB，`<=0` 回退 64）。**富文本正文会内联 base64 图片**，故默认值留足余量；文件上传（multipart）不受此限制，另有单文件限制（视频 800MB、其它 50MB）与 Nginx `client_max_body_size` 兜底。超限时返回业务码 1 + 「请求体过大，已超过 NMB 上限」并记 Warn 日志
 - 限流（Redis db 7 固定窗口，按真实客户端 IP 计数；Redis 不可用时退化为进程内限流）：`analytics_rate_limit`/`analytics_rate_window_seconds`（站点分析，默认 60 次/60s）、`login_rate_limit`/`login_rate_window_seconds`（登录，默认 10 次/300s）、`captcha_rate_limit`/`captcha_rate_window_seconds`（验证码，默认 30 次/60s）、`public_rate_limit`/`public_rate_window_seconds`（公开只读接口 `/site-info`、`/search/articles`，默认 120 次/60s，未配置回退 60 次/60s）、`upload_rate_limit`/`upload_rate_window_seconds`（文件上传 `POST /upload`，默认 30 次/60s，未配置回退 60 次/60s）。计数器 key 形如 `ratelimit:{用途}:{limit}:{ip}:{窗口}`；**个人改密（`PUT /profile/password`）复用登录的限流配置**（同一额度池内的独立计数器，用途名 `password`）
+- `server.upload_daily_quota_mb`：**单账号每日上传量上限（MB，默认 4096 = 4GB，`<=0` 回退 4096）**。按实际上传字节累计，键 `upload:quota:{用户ID}:{YYYY-MM-DD}`（Redis db 7，TTL 48h）。超限返回业务码 1 + 「今日上传量已达上限（N MB）」；**Redis 不可用时放行并记 Warn**（配额属防滥用加固，可用性优先，与限流的 fail-closed 取舍不同）。频率限流挡不住「慢速大量上传」，单文件上限也挡不住多次上传，故保留此配额
 - 防重放：`replay_window_seconds`（时间戳新鲜度窗口，默认 120s）、`replay_max_fail`（同一 IP 窗口内失败次数阈值，默认 10）、`replay_ban_minutes`（达阈值后临时封禁分钟数，默认 15）。**匿名只读请求（GET/HEAD/OPTIONS）不消耗 nonce**（不会写 Redis 键），匿名写接口（登录/站点分析写入）仍逐次占用 nonce
 - `database`: host / port / username / `password`（**只填占位值 `PORTAL_DB_PASSWORD`**）/ dbname / charset(`utf8mb4`) / `loc: Asia/Shanghai` / 读写超时与连接池
 - `redis`: host / port / password / **`db`=6 验证码、`db1`=7 防重放+限流、`db2`=8 缓存**
@@ -117,6 +118,9 @@ powershell -ExecutionPolicy Bypass -File .\build-backends.ps1 -Only portal -Vet
 - 已下线无前端调用的只读接口：`GET /departments/tree`（前端封装同步删除；如外部系统有调用需先改造）。
 - **「测试连接」不再接受未加密的 SMTP 认证**：启用 SSL 但服务器未宣告 STARTTLS、或未启用 SSL 却填了邮箱密码时**直接报错**（防止邮箱密码/授权码明文出网）。静态化程序访问地址若写了非 `http/https` 协议会被**拒绝**（未写协议仍按 `http://` 处理并记 Warn，建议显式写 `http://` 或 `https://`）。
 - 其它：上传文件落盘权限 0755 → **0644**；操作日志对 `email/phone/mobile` 一并脱敏；`POST /menus|/roles|/departments|/organizations` 忽略请求体里的主键（不再能指定 ID）；「密码最小长度」上限由 20 放宽到 **64**（与后端 1–64 一致，个人中心密码输入框同步放宽）；重新送审**不再清空审核历史**（多轮记录累积，便于追溯）。
+- 新增**单账号每日上传配额** `upload_daily_quota_mb`（默认 4096 = 4GB，见上方配置说明）；上传成功后会写入 Redis 计数键（db 7），不会影响历史数据。
+- 登出黑名单的值由 **Token 原文**改为占位符 `1`（鉴权只判 key 是否存在）：旧键仍可用（存在即失效），无需迁移。
+- 行为收紧：① 栏目绑定的**审核流程被禁用**后，送审会被拒绝并提示（需先启用或改绑）；② 文章投放的栏目**必须存在且启用**；③ 「待办/可见性」判断遇到数据库错误时不再当作「无权限」，而是报错让前端提示重试；④ 静态化日志去重改为 Redis 原子占位（并发轮询不再重复计数）；⑤ 「分配权限」弹窗对管理员（角色 1）显示**全部勾选**（只读）。
 
 #### ⚠️ 页面层合并迁移（2026-09-21，手工执行，不可逆）
 
@@ -364,7 +368,7 @@ server {
 | 登录/验证码返回「请求过于频繁，请稍后再试」 | 命中固定窗口限流或防重放临时封禁（Redis db 7）。优先确认 `server.trusted_proxies` 是否填了 Nginx IP，否则全站共用一个 IP 会误伤合法用户 |
 | 多用户同时被登出、接口返回 `code=401` | Token 过期（`jwt.expires_hour`/`setting.token_expire`）或 `PORTAL_JWT_SECRET` 被更换；前端收到 401 会自动跳登录页 |
 | 静态化请求 502 / 504 | 502 = 外部静态化程序不可达（检查「系统设置」中的地址与网络连通）；504 = 生成耗时超过网关超时（后端客户端 120s，Nginx `proxy_read_timeout` 建议 ≥180s） |
-| 上传大文件失败 | 后端按扩展名限制：**`.mp4` 视频 800MB**，其余格式（图片/附件/其它视频）50MB；同时确认 Nginx `client_max_body_size` ≥ 该值；`POST /upload` 另有 `upload_rate_limit` 限流（默认 30 次/60s） |
+| 上传大文件失败 | 后端按扩展名限制：**`.mp4` 视频 800MB**，其余格式（图片/附件/其它视频）50MB；同时确认 Nginx `client_max_body_size` ≥ 该值；`POST /upload` 另有 `upload_rate_limit` 限流（默认 30 次/60s）；单账号每日上传量超 `upload_daily_quota_mb`（默认 4GB）会报「今日上传量已达上限」 |
 | 用户反映"改完密码后其他设备被登出" | 属正常安全机制：`user.password_changed_at` 会作废旧 Token（含管理员重置密码），前端提示"密码已修改，请重新登录" |
 | 静态化操作提示"静态化程序访问令牌未配置" | 后台填的是**环境变量名**，但服务端未设置同名环境变量；注入该变量后重试即可（不再退化为把令牌名当令牌发送） |
 | 启动即退出并打印 `程序退出` | 未注入 `PORTAL_DB_PASSWORD` 或 `PORTAL_JWT_SECRET`（仍为占位值），或 `./config.yaml` 不在进程工作目录下 |

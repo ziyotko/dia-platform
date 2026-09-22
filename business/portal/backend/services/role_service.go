@@ -108,6 +108,15 @@ func (s *RoleService) UpdateRolePermissions(id uint, permissions []uint) error {
 	return utils.DB.Model(&models.Role{}).Where("id = ?", id).Update("permissions", strings.Join(perms, ",")).Error
 }
 
+// GetAllMenuIDs 返回全部菜单 ID（升序）。供「分配权限」展示管理员角色的“全部权限”：
+// 管理员（角色 1）的权限不来自 permissions 字段（GetUserMenus 对角色 1 直接返回全部启用菜单），
+// 若按库中空值下发，界面会显示「未勾选任何权限」，与实际权限不符。
+func (s *RoleService) GetAllMenuIDs() ([]uint, error) {
+	var ids []uint
+	err := utils.DB.Model(&models.Menu{}).Order("id ASC").Pluck("id", &ids).Error
+	return ids, err
+}
+
 func (s *RoleService) GetRolePermissions(id uint) ([]uint, error) {
 	role, err := s.GetRoleByID(id)
 	if err != nil {

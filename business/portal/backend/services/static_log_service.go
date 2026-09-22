@@ -64,20 +64,41 @@ func (s *StaticLogService) Clear() (int64, error) {
 	return result.RowsAffected, result.Error
 }
 
-// CreateIfNotExists 按 任务ID + 状态 去重创建静态化日志（同一任务同一状态只记录一次）
+// staticLogDedupeTTL 去重占位键的存活时间：远大于任务生命周期，避免同一任务被重复记录
+const staticLogDedupeTTL = 30 * 24 * time.Hour
+
+// CreateIfNotExists 按 任务ID + 状态 去重创建静态化日志（同一任务同一状态只记录一次）。
+// 去重改用 Redis SETNX 原子占位：原「先 Count 再 Create」在多管理员并发轮询同一任务时会同时
+// 通过检查而重复落库（「今日文件数」等统计随之虚高）。Redis 不可用时退化为「按库检查」（尽力去重），
+// 不阻断日志写入；写库失败则释放占位，避免日志永久丢失。
 func (s *StaticLogService) CreateIfNotExists(log *models.StaticLog) error {
+	dedupeKey := ""
 	if log.JobID != "" {
-		var count int64
-		if err := utils.DB.Model(&models.StaticLog{}).
-			Where("job_id = ? AND status = ?", log.JobID, log.Status).
-			Count(&count).Error; err != nil {
-			return err
-		}
-		if count > 0 {
-			return nil
+		dedupeKey = fmt.Sprintf("staticlog:dedup:%s:%s", log.JobID, log.Status)
+		ok, err := utils.Redis1.SetNX(utils.Ctx, dedupeKey, "1", staticLogDedupeTTL).Result()
+		if err != nil {
+			utils.Logger.Warnf("静态化日志去重占位失败，降级为按库去重: %s", err)
+			var count int64
+			if err := utils.DB.Model(&models.StaticLog{}).
+				Where("job_id = ? AND status = ?", log.JobID, log.Status).
+				Count(&count).Error; err != nil {
+				return err
+			}
+			if count > 0 {
+				return nil
+			}
+			dedupeKey = ""
+		} else if !ok {
+			return nil // 该任务该状态已记录过
 		}
 	}
-	return utils.DB.Create(log).Error
+	if err := utils.DB.Create(log).Error; err != nil {
+		if dedupeKey != "" {
+			utils.Redis1.Del(utils.Ctx, dedupeKey)
+		}
+		return err
+	}
+	return nil
 }
 
 // GetOperatorByJobID 读取该静态化任务「提交时」记录的操作人（取该 JobID 最早一条日志的 Operator）。

@@ -23,6 +23,42 @@ type UploadController struct{}
 // orgCodePattern 机构编码允许的字符集（作为上传目录段使用，必须无法表达路径）。
 var orgCodePattern = regexp.MustCompile(`^[a-z0-9_-]{1,32}$`)
 
+const (
+	// uploadQuotaKeyPrefix 单账号当日上传配额计数的 Redis 键前缀（anti 库）
+	uploadQuotaKeyPrefix = "upload:quota:"
+	// defaultUploadDailyQuotaMB 未配置（<=0）时的每日上传配额默认值（MB）
+	defaultUploadDailyQuotaMB = 4096
+)
+
+// uploadQuotaLimitBytes 单账号当日上传配额（字节）
+func uploadQuotaLimitBytes() int64 {
+	mb := config.AppConfig.Server.UploadDailyQuotaMB
+	if mb <= 0 {
+		mb = defaultUploadDailyQuotaMB
+	}
+	return int64(mb) << 20
+}
+
+// reserveUploadQuota 预占当日上传配额（Redis 原子自增，按自然日分键）。返回 false 表示已超限。
+// Redis 不可用时放行（仅记 Warn）：配额属防滥用加固，不应因缓存故障阻断正常发文
+// （与限流「fail-closed」的取舍不同，此处可用性优先）。
+func reserveUploadQuota(userID uint, size int64) bool {
+	if userID == 0 || size <= 0 {
+		return true
+	}
+	key := fmt.Sprintf("%s%d:%s", uploadQuotaKeyPrefix, userID, time.Now().Format("2006-01-02"))
+	used, err := utils.Redis1.IncrBy(utils.Ctx, key, size).Result()
+	if err != nil {
+		utils.Logger.Warnf("上传配额计数失败（本次放行）: %s", err)
+		return true
+	}
+	if used == size {
+		// 首次写入当天计数器，设置过期避免键永久驻留
+		utils.Redis1.Expire(utils.Ctx, key, 48*time.Hour)
+	}
+	return used <= uploadQuotaLimitBytes()
+}
+
 // randomHexToken 生成 n 字节随机数的十六进制串（用于文件名去重）；随机源不可用时返回空串。
 func randomHexToken(nBytes int) string {
 	buf := make([]byte, nBytes)
@@ -96,6 +132,12 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 	}
 	if file.Size > maxSize {
 		ctx.JSON(http.StatusOK, utils.Error(1, "文件大小超出限制"))
+		return
+	}
+
+	// 单账号当日上传配额：防止已认证账号（哪怕无任何菜单）长期循环上传写满磁盘
+	if !reserveUploadQuota(ctx.GetUint("userID"), file.Size) {
+		ctx.JSON(http.StatusOK, utils.Error(1, fmt.Sprintf("今日上传量已达上限（%d MB），请明日再试或联系管理员调整", uploadQuotaLimitBytes()>>20)))
 		return
 	}
 

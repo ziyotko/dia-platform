@@ -113,16 +113,18 @@ func (s *UserService) Logout(token string) error {
 		return err
 	}
 
-	// 黑名单 TTL 取 Token 剩余有效期，避免 key 永久驻留导致 Redis 无限增长
+	// 黑名单仅用于「判断该 Token 是否已登出」（鉴权侧只查 key 是否存在），
+	// 因此值固定写占位符，不存 Token 原文——否则能读 Redis 的人可直接拿到一个可用凭证。
+	// TTL 取 Token 剩余有效期，避免 key 永久驻留导致 Redis 无限增长。
 	if claims.ExpiresAt == nil {
-		return utils.Redis.Set(utils.Ctx, "blacklist:"+claims.ID, token, 24*time.Hour).Err()
+		return utils.Redis.Set(utils.Ctx, "blacklist:"+claims.ID, "1", 24*time.Hour).Err()
 	}
 	ttl := time.Until(claims.ExpiresAt.Time)
 	if ttl <= 0 {
 		// Token 本身已过期，无需再拉黑
 		return nil
 	}
-	return utils.Redis.Set(utils.Ctx, "blacklist:"+claims.ID, token, ttl).Err()
+	return utils.Redis.Set(utils.Ctx, "blacklist:"+claims.ID, "1", ttl).Err()
 }
 
 func (s *UserService) GetUserByID(userID uint) (*models.User, error) {

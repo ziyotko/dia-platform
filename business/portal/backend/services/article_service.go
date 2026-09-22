@@ -351,11 +351,37 @@ func (s *ArticleService) SetArticleColumns(id uint, columnIDs []uint) error {
 			return fmt.Errorf("文章正在审核或已发布，不能修改栏目；如需调整请先撤回审核或将文章下线")
 		}
 		if len(columnIDs) > 0 {
-			var columns []models.Column
+			// 先去重（保持顺序）：前端下拉只会给启用栏目，但直调 API 可传任意 ID；
+			// 关联表 FK 只保证「存在」，禁用栏目不应再被投放（否则会排到静态化列表里）。
+			unique := make([]uint, 0, len(columnIDs))
+			seen := make(map[uint]bool, len(columnIDs))
 			for _, cid := range columnIDs {
-				columns = append(columns, models.Column{ID: cid})
+				if cid == 0 || seen[cid] {
+					continue
+				}
+				seen[cid] = true
+				unique = append(unique, cid)
 			}
-			if err := tx.Model(&article).Association("Columns").Replace(&columns); err != nil {
+			if len(unique) == 0 {
+				return fmt.Errorf("请选择至少一个有效栏目")
+			}
+			var columns []models.Column
+			if err := tx.Where("id IN ?", unique).Find(&columns).Error; err != nil {
+				return err
+			}
+			if len(columns) != len(unique) {
+				return fmt.Errorf("所选栏目不存在或已被删除，请刷新后重试")
+			}
+			for i := range columns {
+				if columns[i].Status != 1 {
+					return fmt.Errorf("栏目「%s」已禁用，不能投放文章", columns[i].Name)
+				}
+			}
+			toBind := make([]models.Column, 0, len(unique))
+			for _, cid := range unique {
+				toBind = append(toBind, models.Column{ID: cid})
+			}
+			if err := tx.Model(&article).Association("Columns").Replace(&toBind); err != nil {
 				return err
 			}
 		} else {
@@ -987,7 +1013,9 @@ func (s *ArticleService) CanApproveAnyColumn(articleID, userID uint) (bool, erro
 	for _, audit := range audits {
 		ok, err := s.CanApproveArticleColumn(articleID, audit.ColumnID, userID)
 		if err != nil {
-			continue
+			// 不能把 DB 错误当成「无权限」：否则审批人会看不到本该由他审批的文章，且无任何提示
+			utils.Logger.Warnf("判断文章[%d]栏目[%d]的审批权限失败: %s", articleID, audit.ColumnID, err)
+			return false, err
 		}
 		if ok {
 			return true, nil
@@ -1136,7 +1164,9 @@ func (s *ArticleService) GetMyAuditArticles(userID uint, page, pageSize int) ([]
 
 		ok, err := s.canUserApproveNode(node, userID, item.AuthorCode)
 		if err != nil {
-			continue
+			// 待办列表宁可报错也不能静默少显示（调用方会把错误返回给前端提示重试）
+			utils.Logger.Warnf("判断用户[%d]对文章[%d]的审批权限失败: %s", userID, item.ArticleID, err)
+			return nil, 0, err
 		}
 		if ok && !seen[item.ArticleID] {
 			seen[item.ArticleID] = true

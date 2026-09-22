@@ -50,6 +50,10 @@ type ServerConfig struct {
 	UploadRateLimit      int `mapstructure:"upload_rate_limit"`          // 每窗口允许的最大上传次数（<=0 时回退 60）
 	UploadRateWindowSecs int `mapstructure:"upload_rate_window_seconds"` // 限流窗口（秒，<=0 时回退 60）
 
+	// 单账号每日上传量上限（MB，按实际上传字节累计）：频率限流挡不住「慢速大量上传」，
+	// 单文件上限也挡不住多次上传，故再加一层配额。<=0 时回退 defaultUploadDailyQuotaMB。
+	UploadDailyQuotaMB int `mapstructure:"upload_daily_quota_mb"`
+
 	// 防重放/请求签名校验（主动检测与临时封禁）
 	ReplayWindowSecs int `mapstructure:"replay_window_seconds"` // 时间戳新鲜度窗口（秒），默认 120
 	ReplayMaxFail    int `mapstructure:"replay_max_fail"`       // 触发临时封禁的失败次数

@@ -1132,7 +1132,8 @@ const articleTypeName = computed(() => {
 
 const selectedColumnTemplateColumns = computed(() => {
   if (!selectedColumnTemplateId.value) return []
-  let cols = columnList.value.filter((col: any) => col.templateId === selectedColumnTemplateId.value)
+  // 仅启用栏目可投放；历史上已选定、后被禁用的栏目仍会出现在「已选栏目」列表中，可逐个移除后保存
+  let cols = getPublishableColumnsByTemplate(selectedColumnTemplateId.value)
   const type = currentArticleType.value
   if (type === 2) {
     cols = cols.filter((col: any) => col.displayType === 8)
@@ -1305,8 +1306,13 @@ const getColumnsByTemplate = (templateId: number) => {
   return columnList.value.filter((col: any) => col.templateId === templateId)
 }
 
+// 投放弹窗专用：仅启用栏目可投放（与后端 SetArticleColumns 的校验一致）
+const getPublishableColumnsByTemplate = (templateId: number) => {
+  return getColumnsByTemplate(templateId).filter((col: any) => col.status === 1)
+}
+
 const getColumnCountByTemplate = (templateId: number) => {
-  const cols = getColumnsByTemplate(templateId)
+  const cols = getPublishableColumnsByTemplate(templateId)
   const type = currentArticleType.value
   if (type === 2) {
     return cols.filter((col: any) => col.displayType === 8).length
