@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+	"runtime/debug"
 
 	"github.com/gin-gonic/gin"
 
@@ -27,7 +29,11 @@ func main() {
 		utils.Logger.Infof("[migrate] 共物理删除 %d 条历史软删除记录", purged)
 	}
 	for _, m := range models.AllModels() {
-		utils.DB.AutoMigrate(m)
+		if err := utils.DB.AutoMigrate(m); err != nil {
+			// 结构同步失败（列类型冲突、大表 DDL 超时等）不阻断启动，但必须记录，
+			// 否则后续代码只会以「未知列」的形式报错，排查时找不到根因
+			utils.Logger.Errorf("[migrate] 表结构同步失败 %T: %s", m, err)
+		}
 	}
 	// FULLTEXT 索引不在 AutoMigrate 能力范围内（文章搜索的 MATCH ... AGAINST 依赖它），启动时幂等补齐
 	models.EnsureFulltextIndexes()
@@ -55,7 +61,13 @@ func main() {
 	}
 
 	router := gin.New()
-	router.Use(middleware.GinLogger(), gin.Recovery())
+	// panic 兜底：gin.Recovery() 会返回 HTTP 500 空响应体，违反「HTTP 200 + 业务码」约定
+	// （前端只能显示「请求失败(HTTP 500)」），且堆栈只写 stderr、不进 logs/*.log。
+	// 这里改为记录到日志文件并返回统一业务错误。
+	router.Use(middleware.GinLogger(), gin.CustomRecovery(func(c *gin.Context, err any) {
+		utils.Logger.Errorf("服务内部异常: %v\n%s", err, debug.Stack())
+		c.JSON(http.StatusOK, utils.Error(1, "服务内部异常，请稍后重试"))
+	}))
 
 	// 可信反向代理读取自配置；若为空则回退为仅信任本机回环，避免误信任任意代理头
 	trustedProxies := config.AppConfig.Server.TrustedProxies

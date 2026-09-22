@@ -3,7 +3,13 @@
     <div class="login-box">
       <div class="login-left">
         <div class="login-brand">
-          <img v-if="siteInfo.logo" :src="resolveLogoUrl(siteInfo.logo)" alt="logo" class="login-logo" />
+          <img
+            v-if="siteInfo.logo && !logoError"
+            :src="resolveLogoUrl(siteInfo.logo)"
+            alt="logo"
+            class="login-logo"
+            @error="logoError = true"
+          />
           <el-icon v-else size="72" color="var(--el-color-primary)"><Platform /></el-icon>
           <h1>{{ siteInfo.siteName }}</h1>
           <p>统一管理平台</p>
@@ -84,7 +90,7 @@
                 :loading="loading"
                 @click="handleLogin"
               >
-                登 录
+                登录
               </el-button>
             </el-form-item>
           </el-form>
@@ -111,6 +117,7 @@ import { User, Lock, Grid, Platform, Check } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { getCaptcha, login } from '@/api/auth'
 import { getPublicSiteInfo } from '@/api/settings'
+import { resolveAssetUrl as resolveLogoUrl } from '@/utils/asset'
 
 // 前端版本号（每次发版同步更新，展示在登录页底部）
 const APP_VERSION = 'V202609211114'
@@ -123,6 +130,8 @@ const captchaImage = ref('')
 const captchaId = ref('')
 // 登录验证码开关（来自系统设置 captchaEnabled，公共站点信息接口下发）
 const captchaEnabled = ref(true)
+// 站点 Logo 加载失败（设置里指向的文件在服务器上已丢失）时降级为品牌图标，避免裂图
+const logoError = ref(false)
 
 const form = reactive({
   username: '',
@@ -138,16 +147,13 @@ const siteInfo = reactive({
   copyright: '机械工业信息中心数智应用处 版权所有'
 })
 
-const resolveLogoUrl = (url: string) => {
-  return url
-}
-
 const loadSiteInfo = async () => {
   try {
     const res: any = await getPublicSiteInfo()
     if (res.data) {
       siteInfo.siteName = res.data.siteName || siteInfo.siteName
       siteInfo.logo = res.data.logo || ''
+      logoError.value = false
       siteInfo.icp = res.data.icp || ''
       siteInfo.copyright = res.data.copyright || siteInfo.copyright
       captchaEnabled.value = res.data.captchaEnabled !== false

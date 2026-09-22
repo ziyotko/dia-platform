@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
@@ -165,6 +166,10 @@ func (c *AdController) CreateAd(ctx *gin.Context) {
 		ad.Author = user.Username
 		ad.AuthorCode = strconv.FormatUint(uint64(user.ID), 10)
 	}
+	if err := validateAdTimeRange(startTime, endTime); err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, err.Error()))
+		return
+	}
 	err = c.adService.CreateAd(ad)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("创建广告失败", err)))
@@ -226,6 +231,10 @@ func (c *AdController) UpdateAd(ctx *gin.Context) {
 		ad.Author = user.Username
 		ad.AuthorCode = strconv.FormatUint(uint64(user.ID), 10)
 	}
+	if err := validateAdTimeRange(startTime, endTime); err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, err.Error()))
+		return
+	}
 	err = c.adService.UpdateAd(uint(id), ad)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("更新广告失败", err)))
@@ -276,6 +285,14 @@ func formatTime(t *time.Time) string {
 		return ""
 	}
 	return t.Format("2006-01-02 15:04:05")
+}
+
+// validateAdTimeRange 校验广告投放时间段：两端均允许留空，但都填写时结束时间不能早于开始时间。
+func validateAdTimeRange(start, end *time.Time) error {
+	if start != nil && end != nil && end.Before(*start) {
+		return errors.New("结束时间不能早于开始时间")
+	}
+	return nil
 }
 
 func parseTime(s string) (*time.Time, error) {

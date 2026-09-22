@@ -102,6 +102,7 @@ import type { MenuItem } from '@/api/menus'
 import { getPublicSiteInfo, getMinPasswordLengthSettings } from '@/api/settings'
 import { logout as logoutApi } from '@/api/auth'
 import type { Settings } from '@/api/settings'
+import { resolveAssetUrl as resolveLogoUrl } from '@/utils/asset'
 import Breadcrumb from '@/components/Breadcrumb.vue'
 import TagsView from '@/components/TagsView.vue'
 
@@ -136,12 +137,6 @@ const SidebarMenuItem = {
       })
     }
   }
-}
-
-const resolveLogoUrl = (url: string) => {
-  if (!url) return ''
-  if (url.startsWith('http')) return url
-  return `${window.location.origin}${url}`
 }
 
 const loadSiteInfo = async () => {

@@ -74,7 +74,7 @@ func (s *ColumnService) GetColumnPublishes() ([]ColumnPublishItem, error) {
 		}
 		if hasTemplate {
 			item.Template = page.Name
-			item.RoutePath = col.RoutePath + page.RoutePath
+			item.RoutePath = JoinAccessPath(col.RoutePath, page.RoutePath)
 			item.CreatedAt = page.CreatedAt.Format("2006-01-02 15:04:05")
 			item.UpdatedAt = page.UpdatedAt.Format("2006-01-02 15:04:05")
 		}

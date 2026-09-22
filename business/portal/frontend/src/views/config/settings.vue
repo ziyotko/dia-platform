@@ -23,7 +23,13 @@
                 :http-request="handleLogoUpload"
                 :before-upload="beforeLogoUpload"
               >
-                <img v-if="basicForm.logo" :src="resolveLogoUrl(basicForm.logo)" alt="站点 Logo" class="logo-preview" />
+                <img
+                  v-if="basicForm.logo && !logoPreviewError"
+                  :src="resolveLogoUrl(basicForm.logo)"
+                  alt="站点 Logo"
+                  class="logo-preview"
+                  @error="logoPreviewError = true"
+                />
                 <el-icon v-else class="logo-icon"><Plus /></el-icon>
               </el-upload>
             </el-form-item>
@@ -151,6 +157,7 @@ import { getSettings, updateSettings, testEmailConnection } from '@/api/settings
 import type { Settings } from '@/api/settings'
 import { logout as logoutApi } from '@/api/auth'
 import { uploadFile } from '@/api/upload'
+import { resolveAssetUrl as resolveLogoUrl } from '@/utils/asset'
 
 const appStore = useAppStore()
 const userStore = useUserStore()
@@ -158,17 +165,15 @@ const testingEmail = ref(false)
 const router = useRouter()
 const activeTab = ref('basic')
 const loading = ref(false)
-const resolveLogoUrl = (url: string) => {
-  if (!url) return ''
-  if (url.startsWith('http')) return url
-  return `${window.location.origin}${url}`
-}
+// Logo 预览加载失败（设置里指向的文件已丢失）时回退为上传占位图，避免裂图
+const logoPreviewError = ref(false)
 
 const handleLogoUpload = async (options: any) => {
   try {
     const res: any = await uploadFile(options.file, 'setting')
     if (res.code === 0) {
       basicForm.logo = res.data?.url || res.url || ''
+      logoPreviewError.value = false
       ElMessage.success('上传成功')
       options.onSuccess(res)
     } else {

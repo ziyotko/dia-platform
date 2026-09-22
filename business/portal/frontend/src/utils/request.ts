@@ -18,6 +18,11 @@ const request = axios.create({
   }
 })
 
+// 静态化代理请求超时：后端服务端等待上游的上限是 120s（services/static_program_client.go），
+// 前端必须大于该值。若沿用默认 30s，任务仍在执行时前端会先报「请求超时」，
+// 拿不到 job.id（无法进入任务轮询）且用户会重复提交。raw 模式仅静态化接口使用。
+const STATIC_PROXY_TIMEOUT = 150000
+
 /**
  * 鉴权失效（业务码 401）统一处理：清本地登录态并跳转登录页。
  * 跳转必须带部署子路径（VITE_BASE_PATH，如 /business_portal/），否则子路径部署下会跳到不存在的一级路径 /login。
@@ -154,6 +159,10 @@ function createRequestSignature(
 
 request.interceptors.request.use(
   async (config) => {
+    if ((config as any).raw && config.timeout === undefined) {
+      config.timeout = STATIC_PROXY_TIMEOUT
+    }
+
     const userStore = useUserStore()
     if (userStore.token) {
       config.headers.Authorization = `Bearer ${userStore.token}`

@@ -25,6 +25,31 @@ func SiteBaseURL() string {
 //
 // 注意：「静态化输出路径」（setting.static_path，如 D:/static）是服务器上的文件输出目录，
 // 不是可访问地址，故不参与拼接。
+// JoinAccessPath 拼接站内访问路径（如「栏目 route_path」+「模板 route_path」）。
+// 保证段间恰好一个「/」且结果以「/」开头，避免两端各写一段时拼成 /listdetail。
+// 任一段已是 http(s) 完整地址时无法拼接，直接返回该段（调用方应保证不出现这种配置）。
+func JoinAccessPath(parts ...string) string {
+	joined := ""
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		if isAbsoluteHTTPURL(part) {
+			return part
+		}
+		if joined == "" {
+			joined = "/" + strings.Trim(part, "/")
+			continue
+		}
+		joined = strings.TrimRight(joined, "/") + "/" + strings.Trim(part, "/")
+	}
+	if joined == "/" {
+		return ""
+	}
+	return joined
+}
+
 func BuildPageAccessURL(baseURL, accessPath string) string {
 	path := strings.TrimSpace(accessPath)
 	if path == "" {

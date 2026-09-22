@@ -308,11 +308,23 @@ const form = reactive({
   endTime: ''
 })
 
+// 投放时间段校验：两端均可留空，但都填写时结束时间不能早于开始时间
+// （日期组件 value-format 固定为 'YYYY-MM-DD HH:mm:ss'，同格式字符串可直接比较）
+const validateTimeRange = (_rule: any, _value: string, callback: Function) => {
+  if (form.startTime && form.endTime && form.endTime < form.startTime) {
+    callback(new Error('结束时间不能早于开始时间'))
+    return
+  }
+  callback()
+}
+
 const formRules = {
   name: [{ required: true, message: '请输入广告名称', trigger: 'blur' }],
   templateId: [{ required: true, message: '请选择广告位置', trigger: 'change' }],
   columnId: [{ required: true, message: '请选择栏目', trigger: 'change' }],
-  link: [{ required: true, message: '请输入跳转链接', trigger: 'blur' }]
+  link: [{ required: true, message: '请输入跳转链接', trigger: 'blur' }],
+  startTime: [{ validator: validateTimeRange, trigger: 'change' }],
+  endTime: [{ validator: validateTimeRange, trigger: 'change' }]
 }
 
 const tableData = ref<any[]>([])
