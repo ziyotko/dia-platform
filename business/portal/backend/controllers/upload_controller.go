@@ -139,7 +139,9 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 	filename := fmt.Sprintf("%d_%s%s", time.Now().UnixNano(), randomHexToken(8), ext)
 	dst := filepath.Join(uploadDir, filename)
 
-	if err := ctx.SaveUploadedFile(file, dst, 0755); err != nil {
+	// 0644（而非 0755）：上传目录里都是静态资源，不应带可执行位；
+	// Nginx/反代以自身运行用户读取，同用户可读写即可。
+	if err := ctx.SaveUploadedFile(file, dst, 0644); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "保存文件失败"))
 		return
 	}

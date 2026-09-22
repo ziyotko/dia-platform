@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -137,15 +138,19 @@ func (c *StaticJobController) currentOperator(ctx *gin.Context) string {
 	return "admin"
 }
 
-// writeStaticLog 记录静态化日志（后端业务统一记录，按 任务ID+状态 自动去重）
-func (c *StaticJobController) writeStaticLog(ctx *gin.Context, status, operation, message string, job *staticProgramJob) {
+// writeStaticLog 记录静态化日志（后端业务统一记录，按 任务ID+状态 自动去重）。
+// operator 为空时取当前请求的登录人；异步任务的完成日志应显式传「提交人」。
+func (c *StaticJobController) writeStaticLog(ctx *gin.Context, status, operation, message string, job *staticProgramJob, operator string) {
+	if operator == "" {
+		operator = c.currentOperator(ctx)
+	}
 	log := &models.StaticLog{
 		Operation: operation,
 		PageName:  "-",
 		Path:      "-",
 		Duration:  staticJobDuration(job),
 		FileSize:  "-",
-		Operator:  c.currentOperator(ctx),
+		Operator:  operator,
 		Status:    status,
 		Message:   message,
 		JobID:     job.ID,
@@ -167,7 +172,7 @@ func (c *StaticJobController) writeTaskSubmitLog(ctx *gin.Context, statusCode in
 	if err := json.Unmarshal(body, &resp); err != nil || !resp.OK || resp.Job == nil {
 		return
 	}
-	c.writeStaticLog(ctx, "primary", staticKindText(kind)+"任务提交", staticJobLogMessage(resp.Job, "等待执行"), resp.Job)
+	c.writeStaticLog(ctx, "primary", staticKindText(kind)+"任务提交", staticJobLogMessage(resp.Job, "等待执行"), resp.Job, "")
 }
 
 // writeTaskDoneLog 任务进入终态后记录完成/失败/中断日志（由查询任务状态接口检测）
@@ -180,13 +185,20 @@ func (c *StaticJobController) writeTaskDoneLog(ctx *gin.Context, statusCode int,
 		return
 	}
 	job := resp.Job
+	// 非终态直接返回：轮询期间不写日志，也避免每次轮询都白查一次「提交人」
+	if job.Status != "succeeded" && job.Status != "failed" && job.Status != "interrupted" {
+		return
+	}
+	// 完成/失败/中断日志是前端轮询「查询任务状态」时写入的：操作人取任务提交人，
+	// 否则任何管理员刷新任务列表都会以自己的名字写下别人的任务日志。
+	operator := c.staticLogService.GetOperatorByJobID(job.ID)
 	switch job.Status {
 	case "succeeded":
-		c.writeStaticLog(ctx, "success", staticKindText(job.Kind)+"任务完成", staticJobLogMessage(job, "执行成功"), job)
+		c.writeStaticLog(ctx, "success", staticKindText(job.Kind)+"任务完成", staticJobLogMessage(job, "执行成功"), job, operator)
 	case "failed":
-		c.writeStaticLog(ctx, "danger", staticKindText(job.Kind)+"任务失败", staticJobLogMessage(job, "执行失败"), job)
+		c.writeStaticLog(ctx, "danger", staticKindText(job.Kind)+"任务失败", staticJobLogMessage(job, "执行失败"), job, operator)
 	case "interrupted":
-		c.writeStaticLog(ctx, "warning", staticKindText(job.Kind)+"任务中断", staticJobLogMessage(job, "已中断"), job)
+		c.writeStaticLog(ctx, "warning", staticKindText(job.Kind)+"任务中断", staticJobLogMessage(job, "已中断"), job, operator)
 	}
 }
 
@@ -479,7 +491,9 @@ func (c *StaticJobController) DeleteArticleStaticByID(ctx *gin.Context, id strin
 		return
 	}
 
-	res, err := c.staticJobService.CallWithParams(ctx.Request.Context(), params, http.MethodDelete, "/api/static/article", map[string]string{
+	// 用 context.Background() 而非请求上下文：本调用由「文章下线/删除」在数据库事务提交后触发，
+	// 客户端（或前端跳转）此时断开不应取消删除，否则已下线/已删除文章的静态页会继续对外提供。
+	res, err := c.staticJobService.CallWithParams(context.Background(), params, http.MethodDelete, "/api/static/article", map[string]string{
 		"id":   id,
 		"path": path,
 	})

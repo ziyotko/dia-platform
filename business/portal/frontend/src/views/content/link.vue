@@ -349,8 +349,8 @@ const fetchData = async () => {
     const data = res.data || {}
     tableData.value = data.list || []
     total.value = data.total || 0
-  } catch (error: any) {
-    ElMessage.error(error?.message || '获取友链列表失败')
+  } catch {
+    // 失败提示由 request 拦截器统一给出，避免重复弹窗
   } finally {
     loading.value = false
   }
@@ -407,8 +407,8 @@ const handleDelete = (row: any) => {
       await deleteLink(row.id)
       ElMessage.success('删除成功')
       fetchData()
-    } catch (error: any) {
-      ElMessage.error(error?.message || '删除失败')
+    } catch {
+      // 失败提示由 request 拦截器统一给出
     }
   })
 }
@@ -417,8 +417,8 @@ const handleStatusChange = async (row: any, val: number) => {
   try {
     await updateLinkStatus(row.id, val)
     ElMessage.success(`友链已${val === 1 ? '启用' : '禁用'}`)
-  } catch (error: any) {
-    ElMessage.error(error?.message || '状态更新失败')
+  } catch {
+    // 失败提示由 request 拦截器统一给出；回滚开关状态
     row.status = val === 1 ? 0 : 1
   }
 }
@@ -447,8 +447,8 @@ const handleSubmit = async () => {
     }
     dialogVisible.value = false
     fetchData()
-  } catch (error: any) {
-    ElMessage.error(error?.message || '提交失败')
+  } catch {
+    // 失败提示由 request 拦截器统一给出
   } finally {
     submitLoading.value = false
   }

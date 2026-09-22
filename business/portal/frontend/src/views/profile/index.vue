@@ -118,13 +118,13 @@
             label-width="100px"
           >
             <el-form-item label="原密码" prop="oldPassword">
-              <el-input v-model="pwdForm.oldPassword" type="password" show-password clearable placeholder="请输入原密码" maxlength="20" />
+              <el-input v-model="pwdForm.oldPassword" type="password" show-password clearable placeholder="请输入原密码" maxlength="64" />
             </el-form-item>
             <el-form-item label="新密码" prop="newPassword">
-              <el-input v-model="pwdForm.newPassword" type="password" show-password clearable :placeholder="`请输入新密码，长度不少于${appStore.minPasswordLength}位`" maxlength="20" />
+              <el-input v-model="pwdForm.newPassword" type="password" show-password clearable :placeholder="`请输入新密码，长度不少于${appStore.minPasswordLength}位`" maxlength="64" />
             </el-form-item>
             <el-form-item label="确认密码" prop="confirmPassword">
-              <el-input v-model="pwdForm.confirmPassword" type="password" show-password clearable placeholder="请再次输入新密码" maxlength="20" />
+              <el-input v-model="pwdForm.confirmPassword" type="password" show-password clearable placeholder="请再次输入新密码" maxlength="64" />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" :loading="pwdLoading" @click="handleChangePassword">确认修改</el-button>
@@ -232,8 +232,8 @@ const handleAvatarUpload = async (options: any) => {
       })
     }
     ElMessage.success('头像上传成功')
-  } catch (error: any) {
-    ElMessage.error(error?.message || '头像上传失败')
+  } catch {
+    // 失败提示由 request 拦截器统一给出
   }
 }
 
@@ -254,8 +254,8 @@ const handleRemoveAvatar = async () => {
       })
     }
     ElMessage.success('头像删除成功')
-  } catch (error: any) {
-    ElMessage.error(error?.message || '头像删除失败')
+  } catch {
+    // 失败提示由 request 拦截器统一给出
   }
 }
 

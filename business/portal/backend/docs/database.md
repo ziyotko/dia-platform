@@ -264,6 +264,10 @@
 
 #### `article_column_audit_history` 审核历史表（留痕，不可修改）
 
+> 口径（2026-09-22）：历史**多轮累积保留**——撤回、重新送审（`StartArticleAudit`）都不再删除本表记录，
+> 只有文章被删除、或文章「下线/转草稿」清理关联（`takeOffline`）时才一并清除。
+> 查询按 `(article_id, column_id)` 正序返回，因此同一栏目可见每一轮的通过/驳回记录。
+
 | 字段 | 类型 | 允许空 | 默认 | 键 | 说明 |
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |

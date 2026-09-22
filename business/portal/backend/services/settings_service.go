@@ -101,15 +101,24 @@ func (s *SettingsService) TestEmailConnection() error {
 	}
 	defer client.Close()
 
+	encrypted := implicitTLS
 	if settings.Ssl && !implicitTLS {
-		if ok, _ := client.Extension("STARTTLS"); ok {
-			if err := client.StartTLS(&tls.Config{ServerName: host}); err != nil {
-				return fmt.Errorf("STARTTLS 握手失败: %w", err)
-			}
+		ok, _ := client.Extension("STARTTLS")
+		if !ok {
+			// 服务器未宣告 STARTTLS 时不能继续：下一步的 PlainAuth 会把邮箱密码/授权码明文发出
+			return errors.New("SMTP 服务器不支持 STARTTLS，已终止测试：请改用 465 端口（隐式 TLS），或确认服务端支持 STARTTLS 后再启用 SSL")
 		}
+		if err := client.StartTLS(&tls.Config{ServerName: host}); err != nil {
+			return fmt.Errorf("STARTTLS 握手失败: %w", err)
+		}
+		encrypted = true
 	}
 
 	if settings.EmailPassword != "" {
+		// 凭据不得明文出网：未加密连接下直接拒绝认证（原实现在关闭 SSL 或 STARTTLS 缺失时会 PlainAuth）
+		if !encrypted {
+			return errors.New("当前邮件配置未启用加密连接，已终止测试：邮箱密码/授权码不能明文传输，请启用 SSL（465 隐式 TLS 或 STARTTLS）")
+		}
 		auth := smtp.PlainAuth("", strings.TrimSpace(settings.FromEmail), settings.EmailPassword, host)
 		if err := client.Auth(auth); err != nil {
 			return fmt.Errorf("SMTP 认证失败: %w", err)

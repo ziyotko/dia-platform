@@ -55,6 +55,10 @@
             "approve": true,
             "matchCommandLine": true
         },
-        "&": true
+        "&": true,
+        "/^cmd /c \"cd /d D:\\\\Projects\\\\dia-platform\\\\business\\\\portal\\\\frontend && npx vue-tsc --noEmit\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
     }
 }

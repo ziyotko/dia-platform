@@ -513,12 +513,9 @@ func (s *ArticleService) StartArticleAudit(articleID uint) error {
 		if err := tx.Model(&article).Update("audit_status", 1).Error; err != nil {
 			return err
 		}
-		// 清除旧的审核记录
+		// 清除旧的「当前审核记录」（按栏目重建），但**保留审核历史**：
+		// 历史接口按 (article_id, column_id) 正序返回，多轮送审的记录会自然累积，便于追溯每一轮的驳回/通过。
 		if err := tx.Where("article_id = ?", articleID).Delete(&models.ArticleColumnAudit{}).Error; err != nil {
-			return err
-		}
-		// 清除旧的审核历史记录
-		if err := tx.Where("article_id = ?", articleID).Delete(&models.ArticleColumnAuditHistory{}).Error; err != nil {
 			return err
 		}
 		// 为每个栏目创建审核记录：有流程的走审核，无流程的直接通过
@@ -786,6 +783,11 @@ func (s *ArticleService) AdvanceArticleAudit(articleID uint, columnID uint, user
 	if err := utils.DB.First(&article, articleID).Error; err != nil {
 		return err
 	}
+	// 只有「审核中」(audit_status=1) 的文章可以推进：被驳回后文章回到未提交态（audit_status=0）并清空发布记录，
+	// 此时同一文章其它栏目残留的待审记录不应再被推进（否则界面显示「待审核」却还能继续审批）。
+	if article.AuditStatus != 1 {
+		return fmt.Errorf("该文章当前不在审核中，无法推进审核，请刷新后重试")
+	}
 	canApprove, err := s.canUserApproveNode(&currentNode, userID, article.AuthorCode)
 	if err != nil {
 		return err
@@ -891,6 +893,10 @@ func (s *ArticleService) RejectArticleAudit(articleID uint, columnID uint, userI
 	var article models.Article
 	if err := utils.DB.First(&article, articleID).Error; err != nil {
 		return err
+	}
+	// 只有「审核中」(audit_status=1) 的文章可以驳回（口径同 AdvanceArticleAudit）
+	if article.AuditStatus != 1 {
+		return fmt.Errorf("该文章当前不在审核中，无法驳回，请刷新后重试")
 	}
 	canApprove, err := s.canUserApproveNode(&currentNode, userID, article.AuthorCode)
 	if err != nil {

@@ -65,10 +65,10 @@
         <el-table-column prop="createdAt" label="创建时间" width="170" />
         <el-table-column label="操作" width="360" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleDesign(row)">
+            <el-button v-if="isAdmin" link type="primary" @click="handleDesign(row)">
               模板设计
             </el-button>
-            <el-button link type="primary" @click="handlePreview(row)">
+            <el-button v-if="isAdmin" link type="primary" @click="handlePreview(row)">
              预览模板
             </el-button>
             <el-button link type="primary" @click="handleEdit(row)">
@@ -213,6 +213,8 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useUserStore } from '@/stores/user'
+import { hasAdminRole } from '@/utils/permission'
 import {
   Search,
   RefreshRight,
@@ -529,6 +531,12 @@ const resetForm = () => {
   form.description = ''
   form.status = 1
 }
+
+const userStore = useUserStore()
+
+// 模板源码（sourceCode/layout）只对管理员下发；非管理员打开「模板设计」只会看到空内容、保存也必被后端拒绝
+// （写接口在 admin 组），因此直接隐藏「模板设计 / 预览模板」入口（与「模板管理」菜单可授予非管理员无关）。
+const isAdmin = computed(() => hasAdminRole(userStore.userInfo?.roleIds))
 
 const handleDesign = (row: TemplateItem) => {
   designForm.id = row.id

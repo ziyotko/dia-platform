@@ -93,7 +93,7 @@
           <template #header>
             <div class="card-header">
               <span>待处理</span>
-              <el-link type="primary" underline="never" @click="$router.push('/content/pending-audits')">更多</el-link>
+              <el-link type="primary" underline="never" @click="gotoIfAllowed('/content/pending-audits', '待审核')">更多</el-link>
             </div>
           </template>
           <div class="notice-list">
@@ -139,7 +139,7 @@
           <template #header>
             <div class="card-header">
               <span>登录日志</span>
-              <el-link type="primary" underline="never" @click="$router.push('/system/login-logs')">更多</el-link>
+              <el-link type="primary" underline="never" @click="gotoIfAllowed('/system/login-logs', '登录日志')">更多</el-link>
             </div>
           </template>
           <div class="table-container">
@@ -202,7 +202,8 @@ const fetchStats = async () => {
       stats.myArticleCount = res.data.myArticleCount || 0
     }
   } catch (error) {
-    // 静默失败，保持默认值
+    // 失败必须提示：否则卡片显示 0 会被误认为「真的没有数据」
+    ElMessage.error('获取仪表盘统计失败，请稍后重试')
   }
 }
 
@@ -215,7 +216,7 @@ const fetchLoginLogs = async () => {
       loginLogs.value = res.data
     }
   } catch (error) {
-    // 静默失败
+    ElMessage.error('获取登录日志失败，请稍后重试')
   }
 }
 
@@ -228,8 +229,17 @@ const fetchPendingAudits = async () => {
       pendingAudits.value = res.data.list || []
     }
   } catch (error) {
-    // 静默失败
+    ElMessage.error('获取待处理事项失败，请稍后重试')
   }
+}
+
+// 跳转前校验路由是否存在（动态路由只注册已授权菜单），避免落到 404
+const gotoIfAllowed = (path: string, label: string) => {
+  if (!canAccessPath(path)) {
+    ElMessage.warning(`您没有「${label}」的访问权限`)
+    return
+  }
+  router.push(path)
 }
 
 const handleAuditClick = (item: any) => {

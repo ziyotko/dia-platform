@@ -51,16 +51,28 @@ type StaticProgramResult struct {
 	Body        []byte
 }
 
-// staticProgramBaseURL 规范化静态化程序访问地址（缺失协议时默认 http，并去除末尾斜杠）
-func staticProgramBaseURL(params *StaticParams) string {
+// staticProgramBaseURL 规范化静态化程序访问地址（去除末尾斜杠）。
+// 协议护栏：显式写了协议时只接受 http:// 与 https://（其余如 file://、ftp:// 一律拒绝）；
+// 未写协议时仍按 http:// 处理以兼容既有配置（如“127.0.0.1:8889”），但记 Warn 提醒显式声明——
+// 非 https 时访问令牌会明文出网，内网部署可接受，公网/跨网段建议改用 https。
+func staticProgramBaseURL(params *StaticParams) (string, error) {
 	addr := strings.TrimSpace(params.StaticProgramAddr)
 	if addr == "" {
-		return ""
+		return "", &StaticProgramError{Kind: StaticErrConfigNotSet, Message: "静态化程序访问地址未配置，请先在「系统设置-静态化设置」中配置"}
 	}
-	if !strings.HasPrefix(addr, "http://") && !strings.HasPrefix(addr, "https://") {
+	lower := strings.ToLower(addr)
+	switch {
+	case strings.HasPrefix(lower, "http://"), strings.HasPrefix(lower, "https://"):
+	case strings.Contains(addr, "://"):
+		return "", &StaticProgramError{
+			Kind:    StaticErrConfigNotSet,
+			Message: "静态化程序访问地址只支持 http:// 或 https:// 开头，当前值: " + addr + "，请在「系统设置-静态化设置」中修正",
+		}
+	default:
+		utils.Logger.Warnf("静态化程序访问地址未指定协议，已按 http:// 处理（建议显式配置 https:// 以保护访问令牌）: %q", addr)
 		addr = "http://" + addr
 	}
-	return strings.TrimRight(addr, "/")
+	return strings.TrimRight(addr, "/"), nil
 }
 
 // staticProgramToken 获取静态化程序访问令牌。
@@ -93,9 +105,9 @@ func (s *StaticJobService) Call(ctx context.Context, method, targetPath string, 
 
 // CallWithParams 使用已解析的静态化参数调用静态化程序，避免在同一次请求内重复读取缓存。
 func (s *StaticJobService) CallWithParams(ctx context.Context, params *StaticParams, method, targetPath string, query map[string]string) (*StaticProgramResult, error) {
-	base := staticProgramBaseURL(params)
-	if base == "" {
-		return nil, &StaticProgramError{Kind: StaticErrConfigNotSet, Message: "静态化程序访问地址未配置，请先在「系统设置-静态化设置」中配置"}
+	base, err := staticProgramBaseURL(params)
+	if err != nil {
+		return nil, err
 	}
 
 	target := base + targetPath

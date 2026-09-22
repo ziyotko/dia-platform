@@ -61,7 +61,7 @@
               <el-input-number v-model="securityForm.lockDuration" :min="5" :max="60" />
             </el-form-item>
             <el-form-item label="密码最小长度">
-              <el-input-number v-model="securityForm.minPasswordLength" :min="6" :max="20" />
+              <el-input-number v-model="securityForm.minPasswordLength" :min="6" :max="64" />
             </el-form-item>
             <el-form-item label="Token有效期(小时)">
               <el-input-number v-model="securityForm.tokenExpire" :min="1" :max="72" />
@@ -272,42 +272,31 @@ const loadSettings = async () => {
     staticForm.staticProgramTokenName = data.staticProgramTokenName || ''
     staticForm.homeGray = data.homeGray ?? false
   } catch {
-    ElMessage.error('获取设置失败')
+    // 失败提示由 request 拦截器统一给出
   }
 }
 
+// 只提交当前页签的字段：原实现无论保存哪个页签都会提交「基础+安全+邮件」全量字段
+// （等于用页面里的旧值覆盖其它页签、甚至覆盖他人刚改的配置），并且一律强制重新登录。
 const doSave = async (data: Partial<Settings>) => {
   loading.value = true
   try {
-    const payload: Partial<Settings> = {
-      siteName: basicForm.siteName,
-      siteUrl: basicForm.siteUrl,
-      logo: basicForm.logo,
-      icp: basicForm.icp,
-      copyright: basicForm.copyright,
-      captchaEnabled: securityForm.captchaEnabled,
-      lockEnabled: securityForm.lockEnabled,
-      maxFailCount: securityForm.maxFailCount,
-      lockDuration: securityForm.lockDuration,
-      minPasswordLength: securityForm.minPasswordLength,
-      tokenExpire: securityForm.tokenExpire,
-      smtpHost: emailForm.smtpHost,
-      smtpPort: emailForm.smtpPort,
-      fromEmail: emailForm.fromEmail,
-      fromName: emailForm.fromName,
-      emailPassword: emailForm.password,
-      ssl: emailForm.ssl
-    }
+    await updateSettings(data)
+    ElMessage.success('保存成功')
+  } catch {
+    // 失败原因由 request 拦截器统一提示
+  } finally {
+    loading.value = false
+  }
+}
 
-    Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined) {
-        (payload as any)[key] = value
-      }
-    })
-
-    await updateSettings(payload)
+// 安全设置（登录验证码/失败锁定/密码长度/Token 有效期）属登录态相关配置：保存后重新登录，
+// 让本次会话立即按新策略生效（登出前先把后端 Token 拉黑）。
+const doSaveWithRelogin = async (data: Partial<Settings>) => {
+  loading.value = true
+  try {
+    await updateSettings(data)
     ElMessage.success('保存成功，请重新登录')
-    // 通知后端将当前 Token 加入黑名单，避免登出后旧 Token 仍可使用
     try {
       await logoutApi()
     } catch {
@@ -316,6 +305,7 @@ const doSave = async (data: Partial<Settings>) => {
     userStore.logout()
     router.push('/login')
   } catch {
+    // 失败原因由 request 拦截器统一提示
   } finally {
     loading.value = false
   }
@@ -334,7 +324,7 @@ const handleSaveBasic = () => {
 }
 
 const handleSaveSecurity = async () => {
-  await doSave({
+  await doSaveWithRelogin({
     captchaEnabled: securityForm.captchaEnabled,
     lockEnabled: securityForm.lockEnabled,
     maxFailCount: securityForm.maxFailCount,

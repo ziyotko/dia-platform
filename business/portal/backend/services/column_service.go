@@ -7,6 +7,8 @@ import (
 
 	"server/models"
 	"server/utils"
+
+	"gorm.io/gorm"
 )
 
 type ColumnService struct{}
@@ -145,7 +147,12 @@ func ensureColumnNotDescendant(nodeID, parentID uint) error {
 		}
 		var node models.Column
 		if err := utils.DB.Select("id, parent_id").First(&node, cur).Error; err != nil {
-			return nil // 数据异常（已在上面校验过存在性），不阻断
+			// 只有「记录确实不存在」才视为数据异常不阻断；其它错误（DB 抖动/超时）必须上抛，
+			// 否则会把「查不到祖先」当成「不是后代」而放行成环（成环后整枝栏目从界面消失）。
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return err
 		}
 		if node.ParentID == 0 || seen[node.ParentID] {
 			return nil
@@ -163,6 +170,14 @@ func (s *ColumnService) CreateColumn(column *models.Column) error {
 	return utils.DB.Create(column).Error
 }
 
+// columnWorkflowID 取栏目绑定的审核流程 ID（nil 与 0 等价，均表示未绑定流程）
+func columnWorkflowID(id *uint) uint {
+	if id == nil {
+		return 0
+	}
+	return *id
+}
+
 func (s *ColumnService) UpdateColumn(id uint, column *models.Column) error {
 	if err := s.validateColumnBinding(id, column.TemplateID, column.ParentID); err != nil {
 		return err
@@ -170,6 +185,30 @@ func (s *ColumnService) UpdateColumn(id uint, column *models.Column) error {
 	var old models.Column
 	if err := utils.DB.First(&old, id).Error; err != nil {
 		return err
+	}
+	// 更换所属模板时必须先清空子栏目：子栏目的 parent_id 仍指向本栏目而 template_id 还是旧模板，
+	// 前端栏目树按「同模板 + parent_id」过滤 → 子栏目既不是根节点、父节点又不在当前模板的列表里，
+	// 会从「栏目管理」中彻底消失（只能进库修正）。
+	if old.TemplateID != column.TemplateID {
+		var childCount int64
+		if err := utils.DB.Model(&models.Column{}).Where("parent_id = ?", id).Count(&childCount).Error; err != nil {
+			return err
+		}
+		if childCount > 0 {
+			return fmt.Errorf("该栏目下仍有 %d 个子栏目，不能更换所属模板（更换后子栏目会因父子模板不一致而不可见），请先删除或迁移子栏目", childCount)
+		}
+	}
+	// 审核中的文章按 article_column_audit.workflow_id 推进，改栏目流程会让界面展示的流程与实际执行的不一致。
+	if columnWorkflowID(old.WorkflowID) != columnWorkflowID(column.WorkflowID) {
+		var pending int64
+		if err := utils.DB.Model(&models.ArticleColumnAudit{}).
+			Where("column_id = ? AND status = ?", id, 0).
+			Count(&pending).Error; err != nil {
+			return err
+		}
+		if pending > 0 {
+			return fmt.Errorf("该栏目下有 %d 篇文章正在审核，不能修改审核流程，请等待审核结束后再改", pending)
+		}
 	}
 	updates := map[string]any{
 		"name":         column.Name,

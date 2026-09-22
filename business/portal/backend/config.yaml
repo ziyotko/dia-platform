@@ -1,7 +1,7 @@
 server:
   port: 8092
   host: 0.0.0.0
-  # 生产环境务必使用 release；可用环境变量覆盖
+  # 生产环境务必使用 release（仅支持 debug/release/test，其它取值会导致启动失败）
   mode: release
   api_prefix: /business_portal/api
   upload_dir_prefix: "/business_portal"

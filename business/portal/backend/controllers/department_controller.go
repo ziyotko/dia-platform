@@ -81,23 +81,14 @@ func (c *DepartmentController) GetDepartments(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("获取部门列表成功", utils.AllData(tree, result.Total)))
 }
 
-func (c *DepartmentController) GetDepartmentTree(ctx *gin.Context) {
-	list, err := c.deptService.GetDepartmentTree()
-	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "获取部门树失败"))
-		return
-	}
-	orgs, _ := c.orgService.GetOrganizationTree()
-	tree := buildDeptTree(list, buildOrgNameMap(orgs))
-	ctx.JSON(http.StatusOK, utils.Success("获取部门树成功", tree))
-}
-
 func (c *DepartmentController) CreateDepartment(ctx *gin.Context) {
 	var req models.Department
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
+	// 忽略请求体携带的主键：避免指定 ID 写入
+	req.ID = 0
 	if err := c.deptService.CreateDepartment(&req); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("创建部门失败", err)))
 		return

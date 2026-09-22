@@ -13,17 +13,24 @@ import (
 // 静态化管理页面会调用多个模块的接口（静态化任务/静态化日志/静态化服务监控），
 // 因此该菜单声明多个 api_prefix（逗号分隔，见 middleware/api_prefix.go）。
 // 另：该页面需读取全局设置（静态化输出路径 / 首页整体变灰，GET /settings 在 admin 组），故追加 /settings
-// （静态化参数已并入「基础配置-系统设置」的「静态化设置」页签，与此处 /settings 同源，不再单设菜单）。
-const staticManagementAPIPrefix = "/static,/static-logs,/static-monitor,/settings"
+// （静态化参数已并入「基础配置-系统设置」的「静态化设置」页签，与此处 /settings 同源，不再单设菜单）；
+// 列表 Tab 还读 GET /columns/publishes 与 GET /articles/column-publishes（member 组），故追加 /columns、/articles。
+const staticManagementAPIPrefix = "/static,/static-logs,/static-monitor,/settings,/columns,/articles"
 
 // 「栏目管理」页面除栏目本身外，还需读取模板列表（页面层已合并进模板，栏目挂 template_id），
-// 因此 api_prefix 追加 /templates（/columns 已足够覆盖栏目读写）。
-const columnManagementAPIPrefix = "/columns,/templates"
+// 以及「栏目审核流程」下拉使用的全部流程列表（GET /workflows?all=1），
+// 因此 api_prefix 追加 /templates 与 /workflows（/columns 已足够覆盖栏目读写）。
+const columnManagementAPIPrefix = "/columns,/templates,/workflows"
+
+// 「管理首页」除仪表盘数据外，还会拉取「待我审核」列表（GET /articles/my-audits，member 组）用于「待处理」卡片，
+// 未同时授予「待审核」/「图文管理」菜单的角色否则会报「没有授权」并静默显示空列表。
+const dashboardAPIPrefix = "/dashboard,/articles/my-audits"
 
 // 以下为「页面实际调用的跨模块接口」补充（口径：菜单可见范围 = 接口可调用范围）：
 //   - 「用户管理」用机构列表作「所属机构」下拉；
 //   - 「部门管理」用机构树/机构成员（负责人候选按机构过滤）与全量用户列表；
-//   - 「机构管理」「流程角色」用全量用户列表（负责人/成员选择）；
+//   - 「机构管理」用全量用户列表 + 其「内设机构」Tab 直接新增部门（POST /departments）；
+//   - 「流程角色」用全量用户列表（成员选择）；
 //   - 「流程管理」用全量用户与流程角色列表（节点审批人下拉）。
 //
 // 这些都是 admin 组的只读接口（除 GET /users 在 member 组），管理员默认拥有全部菜单不受影响；
@@ -33,7 +40,7 @@ const userManagementAPIPrefix = "/users,/organizations"
 
 const departmentManagementAPIPrefix = "/departments,/organizations,/users"
 
-const organizationManagementAPIPrefix = "/organizations,/users"
+const organizationManagementAPIPrefix = "/organizations,/users,/departments"
 
 const workflowManagementAPIPrefix = "/workflows,/users,/workflow-roles"
 
@@ -63,7 +70,7 @@ type menuSeedItem struct {
 var defaultMenus = []menuSeedItem{
 	{
 		Name: "管理首页", Path: "/dashboard", Component: "dashboard/index",
-		Icon: "HomeFilled", Type: "menu", Sort: 0, Status: 1, APIPrefix: "/dashboard",
+		Icon: "HomeFilled", Type: "menu", Sort: 0, Status: 1, APIPrefix: dashboardAPIPrefix,
 	},
 	{
 		Name: "内容管理", Path: "/content",
@@ -130,13 +137,18 @@ func SeedDefaultMenus() {
 	// 这里对未自定义过该值的环境做一次幂等升级。
 	upgradeMenuAPIPrefix("静态化管理", "/static", staticManagementAPIPrefix)
 	upgradeMenuAPIPrefix("静态化管理", "/static,/static-logs,/static-monitor", staticManagementAPIPrefix)
+	upgradeMenuAPIPrefix("静态化管理", "/static,/static-logs,/static-monitor,/settings", staticManagementAPIPrefix)
 	// 历史版本「栏目管理」声明的是 /columns,/pages（页面层已移除）或早期仅 /columns，这里做幂等升级。
 	upgradeMenuAPIPrefix("栏目管理", "/columns", columnManagementAPIPrefix)
 	upgradeMenuAPIPrefix("栏目管理", "/columns,/pages", columnManagementAPIPrefix)
+	upgradeMenuAPIPrefix("栏目管理", "/columns,/templates", columnManagementAPIPrefix)
+	// 「管理首页」补 /articles/my-audits（供「待处理」卡片）。
+	upgradeMenuAPIPrefix("管理首页", "/dashboard", dashboardAPIPrefix)
 	// 历史版本各管理页只声明了自身前缀，缺少页面实际调用的跨模块只读接口（详见上方常量注释）。
 	upgradeMenuAPIPrefix("用户管理", "/users", userManagementAPIPrefix)
 	upgradeMenuAPIPrefix("部门管理", "/departments", departmentManagementAPIPrefix)
 	upgradeMenuAPIPrefix("机构管理", "/organizations", organizationManagementAPIPrefix)
+	upgradeMenuAPIPrefix("机构管理", "/organizations,/users", organizationManagementAPIPrefix)
 	upgradeMenuAPIPrefix("流程管理", "/workflows", workflowManagementAPIPrefix)
 	upgradeMenuAPIPrefix("流程角色", "/workflow-roles", workflowRoleManagementAPIPrefix)
 	// 「静态化设置」独立页面已并入「系统设置」的「静态化设置」页签，清理旧环境残留菜单。

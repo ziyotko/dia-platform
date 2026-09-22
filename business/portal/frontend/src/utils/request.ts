@@ -111,7 +111,7 @@ async function hashBlob(blob: Blob, hasher: any): Promise<void> {
 // 仅对小于阈值（默认 50MB）的上传计算文件内容哈希；超大文件回退为空串哈希，兼容旧逻辑
 const MAX_MULTIPART_HASH_BYTES = 50 * 1024 * 1024
 
-async function computeFormDataHash(formData: FormData): Promise<string> {
+async function computeFormDataHash(formData: FormData): Promise<{ hash: string; hasFile: boolean }> {
   const hasher = CryptoJS.algo.SHA256.create()
   let total = 0
   let hasFile = false
@@ -120,20 +120,22 @@ async function computeFormDataHash(formData: FormData): Promise<string> {
       hasFile = true
       total += value.size
       if (total > MAX_MULTIPART_HASH_BYTES) {
-        return sha256('')
+        return { hash: sha256(''), hasFile }
       }
       await hashBlob(value, hasher)
     }
   }
-  if (!hasFile) return sha256('')
-  return hasher.finalize().toString(CryptoJS.enc.Hex)
+  if (!hasFile) return { hash: sha256(''), hasFile: false }
+  return { hash: hasher.finalize().toString(CryptoJS.enc.Hex), hasFile: true }
 }
 
-// 计算请求体哈希；multipart 时返回文件内容哈希，并在 fileHash 中回传用于上报 X-Body-Hash-Value
+// 计算请求体哈希；multipart 时返回文件内容哈希，并在 fileHash 中回传用于上报 X-Body-Hash-Value。
+// 只要请求里含文件就必须上报（即使哈希恰好是空串哈希）：后端对「含文件但缺声明哈希」是直接拒绝的，
+// 而 0 字节文件的哈希恒等于 sha256('')，不能用「哈希值是否为空串哈希」判断有没有文件。
 async function computeBodyHash(body: unknown): Promise<{ hash: string; fileHash?: string }> {
   if (body instanceof FormData) {
-    const fileHash = await computeFormDataHash(body)
-    return fileHash !== sha256('') ? { hash: fileHash, fileHash } : { hash: fileHash }
+    const { hash, hasFile } = await computeFormDataHash(body)
+    return hasFile ? { hash, fileHash: hash } : { hash }
   }
   return { hash: sha256(getBodyString(body)) }
 }

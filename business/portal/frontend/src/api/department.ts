@@ -25,10 +25,6 @@ export function getDepartmentList(params?: DepartmentQuery) {
   return request.get('/departments', { params })
 }
 
-export function getDepartmentTree() {
-  return request.get('/departments/tree')
-}
-
 export function getDepartmentUsers(id: number) {
   return request.get(`/departments/${id}/users`)
 }

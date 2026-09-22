@@ -945,7 +945,6 @@
             <div v-if="item.auditStatus === 0 && item.workflow && item.workflow.nodes && item.currentNodeId" class="audit-current-node">
               <el-icon><User /></el-icon>
               <span>当前节点审批人：{{ formatApprover(item) }}</span>
-              <span v-if="item.currentApproverName" class="audit-debug-name">（调试：{{ item.currentApproverName }}）</span>
             </div>
             <div v-if="item.auditStatus === 1 && item.approveUserName" class="audit-flow-result">
               <el-icon color="#67c23a"><CircleCheck /></el-icon>
@@ -1413,6 +1412,8 @@ const uploadImageFile = async (
   }
   const formData = new FormData()
   formData.append('file', file)
+  // 与其它上传保持一致：落到 uploads/article（不传 dir 会落到 uploads 根目录）
+  formData.append('dir', 'article')
   try {
     const res: any = await request.post('/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
@@ -1424,7 +1425,7 @@ const uploadImageFile = async (
       ElMessage.error('图片上传失败')
     }
   } catch {
-    ElMessage.error('图片上传失败')
+    // 失败提示由 request 拦截器统一给出
   }
 }
 
@@ -1978,7 +1979,6 @@ const handleShowAuditFlow = async (row: any) => {
         auditStatus: -1,
         currentApproverId: 0,
         currentApproverType: 'user',
-        currentApproverName: '',
         canApprove: false,
         approveUserName: '',
         approveTime: '',
@@ -1995,7 +1995,6 @@ const handleShowAuditFlow = async (row: any) => {
         item.approveRemark = progress.approveRemark || ''
         item.rejectRemark = progress.rejectRemark || ''
         item.canApprove = !!progress.canApprove
-        item.currentApproverName = progress.currentApproverName || ''
       }
       if (col.workflowId) {
         try {
@@ -2006,10 +2005,6 @@ const handleShowAuditFlow = async (row: any) => {
             if (node) {
               item.currentApproverId = node.approverId || 0
               item.currentApproverType = node.approverType || 'user'
-              // 优先使用后端 progress 返回的具体审批人名称，workflow 节点本身不保存名称
-              if (!item.currentApproverName) {
-                item.currentApproverName = node.approverName || ''
-              }
             }
           }
         } catch {
@@ -2054,8 +2049,8 @@ const handleAdvanceAuditNode = async (columnId: number) => {
     ElMessage.success('已通过当前节点')
     await handleShowAuditFlow(row)
     await fetchData()
-  } catch (error: any) {
-    ElMessage.error(error?.message || '操作失败')
+  } catch {
+    // 失败提示由 request 拦截器统一给出
   } finally {
     auditFlowSubmitting.value = false
     auditFlowSubmittingKey.value = ''
@@ -2085,8 +2080,8 @@ const handleRejectAuditNode = async (columnId: number) => {
     ElMessage.success('已驳回')
     await handleShowAuditFlow(row)
     await fetchData()
-  } catch (error: any) {
-    ElMessage.error(error?.message || '操作失败')
+  } catch {
+    // 失败提示由 request 拦截器统一给出
   } finally {
     auditFlowSubmitting.value = false
     auditFlowSubmittingKey.value = ''
@@ -2265,8 +2260,8 @@ const handleCoverUpload = async (options: any) => {
     const res: any = await uploadFile(options.file, 'article')
     form.cover = res.data?.url || res.url || ''
     ElMessage.success('封面图上传成功')
-  } catch (error: any) {
-    ElMessage.error(error?.message || '封面图上传失败')
+  } catch {
+    // 失败提示由 request 拦截器统一给出
   }
 }
 
@@ -2279,8 +2274,8 @@ const handleVideoCoverUpload = async (options: any) => {
     const res: any = await uploadFile(options.file, 'article')
     videoForm.cover = res.data?.url || res.url || ''
     ElMessage.success('封面图上传成功')
-  } catch (error: any) {
-    ElMessage.error(error?.message || '封面图上传失败')
+  } catch {
+    // 失败提示由 request 拦截器统一给出
   }
 }
 
@@ -2323,7 +2318,7 @@ const handleAttachmentUpload = async (options: any) => {
     }
   } catch (error: any) {
     options.onError(error)
-    ElMessage.error(error?.message || '附件上传失败')
+    // 失败提示由 request 拦截器统一给出
   }
 }
 
@@ -2441,7 +2436,7 @@ const handleVideoUpload = async (options: any) => {
     }
   } catch (error: any) {
     options.onError(error)
-    ElMessage.error(error?.message || '视频上传失败')
+    // 失败提示由 request 拦截器统一给出
   }
 }
 
@@ -2550,8 +2545,8 @@ const handlePaperCoverUpload = async (options: any) => {
     const res: any = await uploadFile(options.file, 'article')
     paperForm.cover = res.data?.url || res.url || ''
     ElMessage.success('封面图上传成功')
-  } catch (error: any) {
-    ElMessage.error(error?.message || '封面图上传失败')
+  } catch {
+    // 失败提示由 request 拦截器统一给出
   }
 }
 
@@ -2592,7 +2587,7 @@ const handlePaperAttachmentUpload = async (options: any) => {
     }
   } catch (error: any) {
     options.onError(error)
-    ElMessage.error(error?.message || '报刊文件上传失败')
+    // 失败提示由 request 拦截器统一给出
   }
 }
 
@@ -3007,11 +3002,6 @@ onMounted(() => {
   margin-top: 12px;
   color: #606266;
   font-size: 13px;
-
-  .audit-debug-name {
-    color: #909399;
-    font-size: 12px;
-  }
 }
 
 .audit-flow-result {

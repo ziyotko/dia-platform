@@ -47,8 +47,19 @@ func (c *StaticMonitorController) GetStaticMonitor(ctx *gin.Context) {
 		return
 	}
 
-	// 规范化访问地址：缺少协议时默认 http，并去除末尾斜杠
+	// 规范化访问地址：缺少协议时默认 http；显式写了非 http/https 协议视为配置错误
+	// （与 services.staticProgramBaseURL 的口径保持一致，否则「监控显示在线」而实际调用全失败）
 	if !strings.HasPrefix(addr, "http://") && !strings.HasPrefix(addr, "https://") {
+		if strings.Contains(addr, "://") {
+			ctx.JSON(http.StatusOK, utils.Success("静态化服务监控", gin.H{
+				"online":        false,
+				"address":       addr,
+				"httpStatus":    0,
+				"lastCheckTime": checkTime,
+				"message":       "静态化程序访问地址只支持 http:// 或 https:// 开头，请在「系统设置-静态化设置」中修正",
+			}))
+			return
+		}
 		addr = "http://" + addr
 	}
 	healthURL := strings.TrimRight(addr, "/") + "/healthz"

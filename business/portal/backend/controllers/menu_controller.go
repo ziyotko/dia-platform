@@ -57,6 +57,8 @@ func (c *MenuController) CreateMenu(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
+	// 忽略请求体携带的主键：否则可指定 ID 写入（例如伪造内置菜单 ID）
+	req.ID = 0
 	if err := c.menuService.CreateMenu(&req); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("创建菜单失败", err)))
 		return

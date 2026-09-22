@@ -979,7 +979,7 @@ const handleGenerateSingle = async (row: any) => {
   row.generating = true
   const name = row.title || row.name
   try {
-    let res: { status: number; data: any }
+    let res: { status: number; data: any } | undefined
     if (activeTab.value === 'home') {
       // 首页重新生成：调用后端代理 /static/page（自动附带验证头）
       // 输出目录与首页整体变灰由后端全局变量决定，前端仅传页面名
@@ -996,10 +996,9 @@ const handleGenerateSingle = async (row: any) => {
       // 专题页重新生成：调用后端代理 /static/topic（自动附带验证头）
       // 输出目录由后端全局变量决定，前端仅传专题ID
       res = await startStaticTopic(row.id)
-    } else {
-      ElMessage.info('该类型暂未接入单页生成接口')
-      return
     }
+    // activeTab 仅 home/column/detail/topic（上方分支已全覆盖），此处仅作防御性兜底
+    if (!res) return
     const data: any = res.data || {}
     if (res.status === 200 && data.ok && data.result) {
       const r = data.result

@@ -268,7 +268,6 @@ func SetupRoutes(router *gin.Engine) {
 
 		// 部门管理
 		admin.GET("/departments", deptController.GetDepartments)
-		admin.GET("/departments/tree", deptController.GetDepartmentTree)
 		admin.GET("/departments/:id/users", deptController.GetDepartmentUsers)
 		admin.PUT("/departments/:id/users", deptController.AssignDepartmentUsers)
 		admin.POST("/departments", deptController.CreateDepartment)

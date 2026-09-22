@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"sort"
 	"strconv"
@@ -12,6 +13,14 @@ import (
 )
 
 type MenuService struct{}
+
+// 权限配置入口菜单：一旦置为「隐藏」，其 api_prefix 立即从用户前缀集合中消失
+// （菜单可见范围 = 接口可调用范围），同时前端不再注册该页面路由，
+// 管理员在界面上再也无法把它改回来，只能改库。故禁止隐藏这几项。
+var protectedMenuNames = map[string]bool{
+	"菜单管理": true,
+	"角色管理": true,
+}
 
 func (s *MenuService) GetAllMenus() ([]models.Menu, error) {
 	var menus []models.Menu
@@ -111,6 +120,14 @@ func (s *MenuService) CreateMenu(menu *models.Menu) error {
 func (s *MenuService) UpdateMenu(id uint, menu *models.Menu) error {
 	if err := validateTreeParent("menu", id, menu.ParentID); err != nil {
 		return err
+	}
+	// 禁止隐藏「菜单管理」「角色管理」（详见 protectedMenuNames 注释）；
+	// 编辑其它字段（名称/图标/排序等）时表单也会带上 status，故仅当本次提交为隐藏时才拦。
+	if menu.Status != 1 {
+		var existing models.Menu
+		if err := utils.DB.First(&existing, id).Error; err == nil && protectedMenuNames[existing.Name] {
+			return fmt.Errorf("「%s」是权限配置入口，隐藏后将无法在界面上恢复，请勿将其设为隐藏", existing.Name)
+		}
 	}
 	return utils.DB.Model(&models.Menu{}).Where("id = ?", id).Updates(map[string]any{
 		"parent_id":  menu.ParentID,

@@ -128,7 +128,8 @@ func (w *customResponseWriter) WriteString(s string) (int, error) {
 	return w.ResponseWriter.WriteString(s)
 }
 
-// sensitiveParamKeys 请求体中需要脱敏的字段名（小写匹配），避免密码/令牌被明文写入操作日志
+// sensitiveParamKeys 请求体中需要脱敏的字段名（小写匹配），避免密码/令牌/联系方式被明文写入操作日志。
+// email/phone/mobile 属个人信息（日志保留半年且管理端可查），一并脱敏。
 var sensitiveParamKeys = map[string]bool{
 	"password":      true,
 	"oldpassword":   true,
@@ -136,6 +137,9 @@ var sensitiveParamKeys = map[string]bool{
 	"emailpassword": true,
 	"token":         true,
 	"signkey":       true,
+	"email":         true,
+	"phone":         true,
+	"mobile":        true,
 }
 
 // formatParamsForLog 将请求体格式化为便于阅读的 JSON 字符串，并对敏感字段脱敏。

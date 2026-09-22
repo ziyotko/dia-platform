@@ -80,6 +80,20 @@ func (s *StaticLogService) CreateIfNotExists(log *models.StaticLog) error {
 	return utils.DB.Create(log).Error
 }
 
+// GetOperatorByJobID 读取该静态化任务「提交时」记录的操作人（取该 JobID 最早一条日志的 Operator）。
+// 用途：任务完成/失败日志是在前端轮询「查询任务状态」时写入的，若直接取当前请求的登录人，
+// 会把「谁刷新了任务列表」记成操作人；提交日志与完成日志共用同一个 JobID，故取最早一条即可。
+func (s *StaticLogService) GetOperatorByJobID(jobID string) string {
+	if strings.TrimSpace(jobID) == "" {
+		return ""
+	}
+	var log models.StaticLog
+	if err := utils.DB.Where("job_id = ?", jobID).Order("id ASC").First(&log).Error; err != nil {
+		return ""
+	}
+	return log.Operator
+}
+
 // StaticPageResult 静态化程序「单页/详情页同步生成」结果结构
 type StaticPageResult struct {
 	GeneratedAt      string  `json:"generated_at"`
