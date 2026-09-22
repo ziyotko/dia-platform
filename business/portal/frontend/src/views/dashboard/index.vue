@@ -180,6 +180,7 @@ import { ElMessage } from 'element-plus'
 import { getDashboardStats, getLoginLogs, getVisitTrend, getArticleTrend, getMyAuditArticles } from '@/api/dashboard'
 import { useUserStore } from '@/stores/user'
 import { canAccessPath } from '@/utils/permission'
+import { BRAND_THEME_COLOR } from '@/stores/app'
 
 const userStore = useUserStore()
 
@@ -306,8 +307,8 @@ const updateChart = () => {
       smooth: true,
       symbol: 'circle',
       symbolSize: 8,
-      itemStyle: { color: '#002fa7' },
-      lineStyle: { width: 3, color: '#002fa7' },
+      itemStyle: { color: BRAND_THEME_COLOR },
+      lineStyle: { width: 3, color: BRAND_THEME_COLOR },
       areaStyle: {
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
           { offset: 0, color: 'rgba(0, 47, 167, 0.3)' },
@@ -403,8 +404,8 @@ const updateArticleChart = () => {
       smooth: true,
       symbol: 'circle',
       symbolSize: 8,
-      itemStyle: { color: '#002fa7' },
-      lineStyle: { width: 3, color: '#002fa7' },
+      itemStyle: { color: BRAND_THEME_COLOR },
+      lineStyle: { width: 3, color: BRAND_THEME_COLOR },
       areaStyle: {
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
           { offset: 0, color: 'rgba(0, 47, 167, 0.3)' },
@@ -595,7 +596,7 @@ const visibleQuickLinks = computed(() => quickLinks.filter((link) => accessibleP
     .notice-empty {
       text-align: center;
       padding: 24px 0;
-      color: #c0c4cc;
+      color: var(--app-text-secondary);
       font-size: 14px;
       height: 360px;
       line-height: 330px;
@@ -629,7 +630,7 @@ const visibleQuickLinks = computed(() => quickLinks.filter((link) => accessibleP
 
       .notice-time {
         font-size: 12px;
-        color: #c0c4cc;
+        color: var(--app-text-secondary);
       }
     }
   }

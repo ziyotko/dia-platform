@@ -217,7 +217,7 @@
         </el-table>
       </template>
       <template v-if="importFailDetails.length > 0">
-        <div style="margin-top: 12px; font-weight: 600; color: #2c3e50">
+        <div style="margin-top: 12px; font-weight: 600; color: var(--app-text-heading)">
           失败详情（{{ importFailDetails.length }} 条）
         </div>
         <div
@@ -630,34 +630,15 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .page-container {
-  .search-card {
-    margin-bottom: 20px;
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
-  }
-
+  /* 列表页骨架（.search-card / .table-card / .card-header / .pagination）已统一到
+     styles/global.scss 的 .page-container 规则（2026-09-22），此处仅保留页面特有部分 */
   .table-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
-
     .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 600;
-      color: #2c3e50;
-
       .header-actions {
         display: flex;
         gap: 10px;
       }
     }
-  }
-
-  .pagination {
-    margin-top: 20px;
-    display: flex;
-    justify-content: flex-end;
   }
 }
 </style>

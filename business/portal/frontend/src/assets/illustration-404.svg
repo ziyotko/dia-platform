@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 200" width="320" height="200" role="img" aria-label="页面未找到">
+  <rect x="20" y="28" width="280" height="144" rx="16" fill="#f5f7fb" stroke="#e6f2ff" stroke-width="2" />
+  <circle cx="72" cy="72" r="10" fill="#ccd5ed" />
+  <circle cx="104" cy="72" r="10" fill="#ccd5ed" />
+  <circle cx="136" cy="72" r="10" fill="#ccd5ed" />
+  <text
+    x="160"
+    y="140"
+    text-anchor="middle"
+    font-family="Arial, Helvetica, sans-serif"
+    font-size="56"
+    font-weight="700"
+    fill="#002fa7"
+  >
+    404
+  </text>
+</svg>

@@ -148,7 +148,7 @@ import { uploadFile } from '@/api/upload'
 
 const userStore = useUserStore()
 const appStore = useAppStore()
-const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
+const defaultAvatar = new URL('../../assets/avatar-default.svg', import.meta.url).href
 
 const profileLoading = ref(false)
 const profile = reactive<ProfileUser>({
@@ -334,8 +334,8 @@ onMounted(() => {
 <style scoped lang="scss">
 .page-container {
   .profile-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
+    border-radius: var(--app-card-radius);
+    border: 1px solid var(--app-brand-soft);
 
     .profile-header {
       text-align: center;
@@ -345,7 +345,7 @@ onMounted(() => {
       h3 {
         margin: 12px 0 4px;
         font-size: 18px;
-        color: #2c3e50;
+        color: var(--app-text-heading);
       }
 
       p {
@@ -367,7 +367,7 @@ onMounted(() => {
         .stat-num {
           font-size: 20px;
           font-weight: 700;
-          color: #002fa7;
+          color: var(--el-color-primary);
         }
 
         .stat-label {
@@ -390,19 +390,19 @@ onMounted(() => {
         font-size: 14px;
 
         .el-icon {
-          color: #002fa7;
+          color: var(--el-color-primary);
         }
       }
     }
   }
 
   .edit-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
+    border-radius: var(--app-card-radius);
+    border: 1px solid var(--app-brand-soft);
 
     .card-header {
       font-weight: 600;
-      color: #2c3e50;
+      color: var(--app-text-heading);
     }
   }
 

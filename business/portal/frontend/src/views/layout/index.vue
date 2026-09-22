@@ -18,7 +18,7 @@
           :unique-opened="true"
           class="sidebar-menu"
           background-color="transparent"
-          text-color="#2c3e50"
+          text-color="var(--app-text-heading)"
           :active-text-color="appStore.themeColor"
           @select="handleMenuSelect"
         >
@@ -30,14 +30,17 @@
     <el-container>
       <el-header class="header">
         <div class="header-left">
-          <el-icon
-            class="collapse-btn"
-            size="36"
-            @click="appStore.toggleSidebar"
-          >
-            <Fold v-if="!appStore.sidebarCollapsed" />
-            <Expand v-else />
-          </el-icon>
+          <el-tooltip :content="appStore.sidebarCollapsed ? '展开菜单' : '折叠菜单'" placement="bottom">
+            <el-icon
+              class="collapse-btn"
+              size="36"
+              aria-label="展开或折叠侧边菜单"
+              @click="appStore.toggleSidebar"
+            >
+              <Fold v-if="!appStore.sidebarCollapsed" />
+              <Expand v-else />
+            </el-icon>
+          </el-tooltip>
           <breadcrumb />
         </div>
         <div class="header-right">
@@ -107,7 +110,7 @@ const router = useRouter()
 const userStore = useUserStore()
 const appStore = useAppStore()
 const menuList = computed(() => userStore.menuList)
-const defaultAvatar = 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'
+const defaultAvatar = new URL('../../assets/avatar-default.svg', import.meta.url).href
 
 const SidebarMenuItem = {
   name: 'SidebarMenuItem',
@@ -274,7 +277,7 @@ const handleCommand = (command: string) => {
     white-space: nowrap;
     transition: color 0.3s, opacity 0.2s;
     letter-spacing: 0.5px;
-    background: linear-gradient(90deg, #1d2739 0%, #002fa7 100%);
+    background: linear-gradient(90deg, #1d2739 0%, var(--el-color-primary) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;

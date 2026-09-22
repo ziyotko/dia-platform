@@ -7,7 +7,8 @@
     >
       <template #icon>
         <el-image
-          src="https://gw.alipayobjects.com/zos/antfincdn/zNkK7KS38h/404.svg"
+          src="@/assets/illustration-404.svg"
+          alt="页面未找到"
           style="width: 300px;"
         />
       </template>

@@ -4,7 +4,7 @@
       <div class="login-left">
         <div class="login-brand">
           <img v-if="siteInfo.logo" :src="resolveLogoUrl(siteInfo.logo)" alt="logo" class="login-logo" />
-          <el-icon v-else size="72" color="#002fa7"><Platform /></el-icon>
+          <el-icon v-else size="72" color="var(--el-color-primary)"><Platform /></el-icon>
           <h1>{{ siteInfo.siteName }}</h1>
           <p>统一管理平台</p>
         </div>
@@ -264,7 +264,7 @@ onMounted(() => {
 .login-left {
   position: relative;
   width: 440px;
-  background: linear-gradient(160deg, #1746d3 0%, #0b2f9e 50%, #001e6b 100%);
+  background: linear-gradient(160deg, var(--app-brand-deep) 0%, #0b2f9e 50%, #001e6b 100%);
   padding: 56px 44px;
   display: flex;
   flex-direction: column;
@@ -439,13 +439,13 @@ onMounted(() => {
   font-size: 16px;
   font-weight: 600;
   border-radius: 10px;
-  background: linear-gradient(135deg, #1746d3 0%, #002fa7 100%);
+  background: linear-gradient(135deg, var(--app-brand-deep) 0%, var(--el-color-primary) 100%);
   border: none;
   box-shadow: 0 6px 16px rgba(0, 47, 167, 0.35);
   letter-spacing: 4px;
 
   &:hover {
-    background: linear-gradient(135deg, #4d6dc1 0%, #002fa7 100%);
+    background: linear-gradient(135deg, var(--el-color-primary-light-3) 0%, var(--el-color-primary) 100%);
     box-shadow: 0 8px 20px rgba(0, 47, 167, 0.4);
   }
 }

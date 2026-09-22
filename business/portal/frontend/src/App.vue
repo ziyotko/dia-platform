@@ -12,10 +12,7 @@
   box-sizing: border-box;
 }
 
-body {
-  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB',
-    'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+/* 字体统一由 styles/global.scss 的 `--el-font-family` 提供（Element Plus 组件与正文同一字体栈）。
+   此处不得再声明 body 字体：本样式非 scoped 且后加载，同优先级下会覆盖字体令牌，
+   曾导致组件（读 --el-font-family）与正文（读 body）出现两套字体栈。 */
 </style>

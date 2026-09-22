@@ -49,7 +49,7 @@
       >
         <el-table-column prop="name" label="机构名称" min-width="200">
           <template #default="{ row }">
-            <el-icon style="margin-right: 6px; color: #002fa7;"><OfficeBuilding /></el-icon>
+            <el-icon style="margin-right: 6px; color: var(--el-color-primary);"><OfficeBuilding /></el-icon>
             <span>{{ row.name }}</span>
           </template>
         </el-table-column>
@@ -80,7 +80,7 @@
                 </template>
               </el-tree>
             </div>
-            <span v-else class="dept-empty">—</span>
+            <span v-else class="dept-empty">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="category" label="机构分类" min-width="120" />
@@ -198,7 +198,7 @@
                 >
                   <span style="display: flex; align-items: center; justify-content: space-between;">
                     <span>{{ user.username }} ({{ user.account }})</span>
-                    <el-icon v-if="form.managerCode === String(user.id)" color="#002fa7"><Check /></el-icon>
+                    <el-icon v-if="form.managerCode === String(user.id)" color="var(--el-color-primary)"><Check /></el-icon>
                   </span>
                 </el-option>
               </el-select>
@@ -291,7 +291,7 @@
             >
               <span style="display: flex; align-items: center; justify-content: space-between;">
                 <span>{{ user.username }} ({{ user.account }})</span>
-                <el-icon v-if="deptForm.leaderCode === String(user.id)" color="#002fa7"><Check /></el-icon>
+                <el-icon v-if="deptForm.leaderCode === String(user.id)" color="var(--el-color-primary)"><Check /></el-icon>
               </span>
             </el-option>
           </el-select>
@@ -951,30 +951,8 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .page-container {
-  .search-card {
-    margin-bottom: 20px;
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
-  }
-
-  .table-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
-
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 600;
-      color: #2c3e50;
-    }
-  }
-
-  .pagination {
-    margin-top: 20px;
-    display: flex;
-    justify-content: flex-end;
-  }
+  /* 列表页骨架（.search-card / .table-card / .card-header / .pagination）已统一到
+     styles/global.scss 的 .page-container 规则，此处不再重复定义（2026-09-22） */
 
   .user-select-header {
     display: flex;
@@ -982,7 +960,7 @@ onMounted(() => {
     align-items: center;
     margin-bottom: 16px;
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--app-text-heading);
   }
 
   .dept-tree {
@@ -1005,7 +983,7 @@ onMounted(() => {
   }
 
   .dept-empty {
-    color: #c0c4cc;
+    color: var(--app-text-secondary);
     font-size: 13px;
   }
 

@@ -23,7 +23,7 @@
                 :http-request="handleLogoUpload"
                 :before-upload="beforeLogoUpload"
               >
-                <img v-if="basicForm.logo" :src="resolveLogoUrl(basicForm.logo)" class="logo-preview" />
+                <img v-if="basicForm.logo" :src="resolveLogoUrl(basicForm.logo)" alt="站点 Logo" class="logo-preview" />
                 <el-icon v-else class="logo-icon"><Plus /></el-icon>
               </el-upload>
             </el-form-item>
@@ -57,13 +57,13 @@
             <el-form-item label="最大失败次数">
               <el-input-number v-model="securityForm.maxFailCount" :min="3" :max="10" />
             </el-form-item>
-            <el-form-item label="锁定时间(分钟)">
+            <el-form-item label="锁定时间（分钟）">
               <el-input-number v-model="securityForm.lockDuration" :min="5" :max="60" />
             </el-form-item>
             <el-form-item label="密码最小长度">
               <el-input-number v-model="securityForm.minPasswordLength" :min="6" :max="64" />
             </el-form-item>
-            <el-form-item label="Token有效期(小时)">
+            <el-form-item label="Token 有效期（小时）">
               <el-input-number v-model="securityForm.tokenExpire" :min="1" :max="72" />
             </el-form-item>
             <el-form-item>
@@ -74,10 +74,10 @@
 
         <el-tab-pane label="邮件设置" name="email">
           <el-form :model="emailForm" label-width="120px" class="settings-form">
-            <el-form-item label="SMTP服务器">
+            <el-form-item label="SMTP 服务器">
               <el-input v-model="emailForm.smtpHost" placeholder="如: smtp.example.com" />
             </el-form-item>
-            <el-form-item label="SMTP端口">
+            <el-form-item label="SMTP 端口">
               <el-input v-model="emailForm.smtpPort" placeholder="如: 587" />
             </el-form-item>
             <el-form-item label="发件人邮箱">
@@ -89,7 +89,7 @@
             <el-form-item label="邮箱密码">
               <el-input v-model="emailForm.password" type="password" show-password placeholder="请输入邮箱密码或授权码" />
             </el-form-item>
-            <el-form-item label="启用SSL">
+            <el-form-item label="启用 SSL">
               <el-switch v-model="emailForm.ssl" />
             </el-form-item>
             <el-form-item>
@@ -390,12 +390,12 @@ onMounted(() => {
 <style scoped lang="scss">
 .page-container {
   .settings-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
+    border-radius: var(--app-card-radius);
+    border: 1px solid var(--app-brand-soft);
 
     .card-header {
       font-weight: 600;
-      color: #2c3e50;
+      color: var(--app-text-heading);
     }
   }
 
@@ -412,7 +412,7 @@ onMounted(() => {
 
   .logo-uploader {
     :deep(.el-upload) {
-      border: 1px dashed #ccd5ed;
+      border: 1px dashed var(--el-color-primary-light-8);
       border-radius: 6px;
       cursor: pointer;
       position: relative;

@@ -329,20 +329,8 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.page-container {
-  .table-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
-
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 600;
-      color: #2c3e50;
-    }
-  }
-}
+/* 列表页骨架（.table-card / .card-header）已统一到 styles/global.scss 的
+   .page-container 规则，此处不再重复定义（2026-09-22） */
 
 .icon-select-row {
   display: flex;
@@ -368,12 +356,12 @@ onMounted(() => {
 
     &:hover {
       background: #f5f7fb;
-      border-color: #ccd5ed;
+      border-color: var(--el-color-primary-light-8);
     }
 
     &.active {
       background: rgba(0, 47, 167, 0.12);
-      border-color: #002fa7;
+      border-color: var(--el-color-primary);
     }
 
     .icon-name {

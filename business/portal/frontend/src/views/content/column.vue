@@ -51,7 +51,7 @@
         <el-table-column prop="createdAt" label="创建时间" width="170" />
       </el-table>
 
-      <el-empty v-if="!templateTableData.length && !templateLoading" description="该页面类型下暂无启用的模板" />
+      <el-empty v-if="!templateTableData.length && !templateLoading" description="该页面类型下暂无启用的模板" :image-size="80" />
     </el-card>
 
     <el-card v-if="selectedTemplate" shadow="hover" class="column-card">
@@ -96,7 +96,7 @@
         <el-table-column prop="workflow" label="栏目审核" min-width="140" show-overflow-tooltip>
           <template #default="{ row }">
             <el-tag v-if="row.workflow?.name" size="small" type="warning">{{ row.workflow.name }}</el-tag>
-            <span v-else style="color: #c0c4cc">未绑定</span>
+            <span v-else style="color: var(--app-text-secondary)">未绑定</span>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100" align="center">
@@ -125,10 +125,10 @@
         </el-table-column>
       </el-table>
 
-      <el-empty v-if="!columnTableData.length && !columnLoading" description="该模板下暂无栏目，请添加" />
+      <el-empty v-if="!columnTableData.length && !columnLoading" description="该模板下暂无栏目，请添加" :image-size="80" />
     </el-card>
 
-    <el-empty v-else description="请先在上方模板列表中选择模板" class="select-tip" />
+    <el-empty v-else description="请先在上方模板列表中选择模板" class="select-tip" :image-size="80" />
 
     <el-dialog
       v-model="columnDialogVisible"
@@ -597,8 +597,8 @@ onMounted(() => {
   /* 两张卡片的头部统一样式：紧凑内边距 + 极浅渐变，标题区更清爽 */
   .page-card,
   .column-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
+    border-radius: var(--app-card-radius);
+    border: 1px solid var(--app-brand-soft);
 
     :deep(.el-card__header) {
       padding: 12px 20px;
@@ -612,7 +612,7 @@ onMounted(() => {
       align-items: center;
       gap: 12px;
       font-weight: 600;
-      color: #2c3e50;
+      color: var(--app-text-heading);
     }
   }
 
@@ -635,8 +635,8 @@ onMounted(() => {
         width: 28px;
         height: 28px;
         border-radius: 50%;
-        color: #002fa7;
-        background: linear-gradient(135deg, #e6f2ff 0%, #d3e4fb 100%);
+        color: var(--el-color-primary);
+        background: linear-gradient(135deg, var(--app-brand-soft) 0%, var(--app-brand-mid) 100%);
         box-shadow: 0 2px 6px rgba(0, 47, 167, 0.18);
       }
 
@@ -666,12 +666,12 @@ onMounted(() => {
       }
 
       :deep(.el-radio-button__inner:hover) {
-        color: #002fa7;
+        color: var(--el-color-primary);
       }
 
       /* 覆盖 EP 默认的主色实心块，改为白色胶囊 + 品牌蓝文字 */
       :deep(.el-radio-button.is-active .el-radio-button__original-radio:not(:disabled) + .el-radio-button__inner) {
-        color: #002fa7;
+        color: var(--el-color-primary);
         background-color: #fff;
         box-shadow: 0 2px 8px rgba(0, 47, 167, 0.16);
       }
@@ -688,17 +688,17 @@ onMounted(() => {
         .page-name {
           font-size: 16px;
           font-weight: 600;
-          color: #002fa7;
+          color: var(--el-color-primary);
         }
 
         .breadcrumb-sep {
-          color: #c0c4cc;
+          color: var(--app-text-secondary);
           font-size: 14px;
         }
 
         .list-name {
           font-size: 16px;
-          color: #2c3e50;
+          color: var(--app-text-heading);
         }
       }
     }
@@ -706,7 +706,7 @@ onMounted(() => {
 
   .select-tip {
     margin-top: 20px;
-    border-radius: 12px;
+    border-radius: var(--app-card-radius);
     border: 1px dashed #dcdfe6;
     background: #fafafa;
   }

@@ -63,6 +63,7 @@ import type { ECharts } from 'echarts'
 import 'echarts-wordcloud'
 import { PriceTag, DocumentChecked, Trophy } from '@element-plus/icons-vue'
 import { getTagArticleStats } from '@/api/tag'
+import { BRAND_THEME_COLOR } from '@/stores/app'
 
 const loading = ref(false)
 const chartRef = ref<HTMLDivElement | null>(null)
@@ -97,7 +98,7 @@ const fetchData = async () => {
 }
 
 const defaultColors = [
-  '#002fa7', '#67c23a', '#e6a23c', '#f56c6c',
+  BRAND_THEME_COLOR, '#67c23a', '#e6a23c', '#f56c6c',
   '#a855f7', '#6366f1', '#14b8a6', '#f472b6',
   '#8b5cf6', '#22c55e', '#0ea5e9', '#ef4444',
   '#3b82f6', '#10b981', '#f59e0b', '#ec4899'
@@ -121,12 +122,12 @@ const updateChart = () => {
       show: true,
       formatter: (params: any) => {
         return `<div style="font-weight:600;margin-bottom:4px">${params.name}</div>
-                <div>绑定文章：${params.value} 篇</div>`
+                <div>绑定文章：${Number(params.value || 0).toLocaleString()} 篇</div>`
       },
       backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      borderColor: '#e6f2ff',
+      borderColor: 'var(--app-brand-soft)',
       borderWidth: 1,
-      textStyle: { color: '#2c3e50' },
+      textStyle: { color: 'var(--app-text-heading)' },
       extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 8px;'
     },
     series: [
@@ -189,8 +190,8 @@ onUnmounted(() => {
   }
 
   .stat-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
+    border-radius: var(--app-card-radius);
+    border: 1px solid var(--app-brand-soft);
 
     :deep(.el-card__body) {
       padding: 20px;
@@ -215,7 +216,7 @@ onUnmounted(() => {
   .stat-value {
     font-size: 22px;
     font-weight: 700;
-    color: #2c3e50;
+    color: var(--app-text-heading);
     line-height: 1.2;
   }
 
@@ -226,8 +227,8 @@ onUnmounted(() => {
   }
 
   .chart-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
+    border-radius: var(--app-card-radius);
+    border: 1px solid var(--app-brand-soft);
 
     :deep(.el-card__header) {
       padding: 16px 20px;
@@ -243,7 +244,7 @@ onUnmounted(() => {
     align-items: center;
     justify-content: space-between;
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--app-text-heading);
     font-size: 16px;
 
     .sub-title {

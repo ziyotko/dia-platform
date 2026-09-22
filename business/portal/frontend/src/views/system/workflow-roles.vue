@@ -33,7 +33,7 @@
         <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'info'">
+            <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
               {{ row.status === 1 ? '启用' : '禁用' }}
             </el-tag>
           </template>
@@ -372,30 +372,8 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .page-container {
-  .search-card {
-    margin-bottom: 20px;
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
-  }
-
-  .table-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
-
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 600;
-      color: #2c3e50;
-    }
-  }
-
-  .pagination {
-    margin-top: 20px;
-    display: flex;
-    justify-content: flex-end;
-  }
+  /* 列表页骨架（.search-card / .table-card / .card-header / .pagination）已统一到
+     styles/global.scss 的 .page-container 规则，此处不再重复定义（2026-09-22） */
 
   :deep(.members-dialog) {
     .el-dialog__body {
@@ -409,8 +387,8 @@ onMounted(() => {
     align-items: center;
     margin-bottom: 20px;
     padding: 14px 18px;
-    background: linear-gradient(135deg, #f0f7ff 0%, #e6f2ff 100%);
-    border-radius: 12px;
+    background: linear-gradient(135deg, #f0f7ff 0%, var(--app-brand-soft) 100%);
+    border-radius: var(--app-card-radius);
     border: 1px solid #d0e6ff;
 
     .members-role {
@@ -424,7 +402,7 @@ onMounted(() => {
         display: flex;
         align-items: center;
         justify-content: center;
-        background: #002fa7;
+        background: var(--el-color-primary);
         color: #fff;
         border-radius: 50%;
         font-size: 18px;
@@ -433,7 +411,7 @@ onMounted(() => {
       .role-name {
         font-size: 16px;
         font-weight: 600;
-        color: #2c3e50;
+        color: var(--app-text-heading);
       }
     }
   }
@@ -453,7 +431,7 @@ onMounted(() => {
 
       .el-transfer-panel__header {
         border-radius: 12px 12px 0 0;
-        background: #f5f7fa;
+        background: var(--el-fill-color-light);
         padding: 12px 16px;
 
         .el-checkbox__label {

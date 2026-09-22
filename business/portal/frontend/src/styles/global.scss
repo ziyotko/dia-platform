@@ -36,10 +36,17 @@
   --app-text-primary: #1d2739;
   --app-text-secondary: #667085;
   --app-text-muted: #98a2b3;
-  --app-card-radius: 14px;
+  --app-card-radius: 12px;
   --app-card-shadow: 0 1px 2px rgba(16, 24, 40, 0.04),
     0 1px 3px rgba(16, 24, 40, 0.06);
   --app-card-shadow-hover: 0 8px 24px rgba(16, 24, 40, 0.09);
+
+  /* 中性色 / 品牌衍生色补充令牌（2026-09-22：页面层硬编码统一收口到令牌）
+     页面 CSS 一律引用下列变量，不得再写死 #2c3e50 / #e6f2ff / 12px 圆角 */
+  --app-text-heading: #2c3e50; /* 卡片、区块标题（与正文主色分层） */
+  --app-brand-soft: #e6f2ff; /* 品牌浅色：卡片描边、选中态底色、浅色分区底 */
+  --app-brand-mid: #d3e4fb; /* 品牌浅色渐变深端 */
+  --app-brand-deep: #1746d3; /* 品牌深色渐变端（登录按钮、流程节点） */
 }
 
 html,
@@ -79,6 +86,38 @@ body {
 
 .el-card__body {
   padding: 20px;
+}
+
+/* ============================ 列表页骨架 ============================
+   2026-09-22 前，20 个列表页各自复制了一份 .search-card / .table-card /
+   .card-header / .pagination，并写死 border-radius: 12px、
+   border: 1px solid #e6f2ff、color: #2c3e50。现统一到此处（值与原页面一致，
+   仅改为令牌），页面里不再重复定义。 */
+.page-container {
+  .search-card {
+    margin-bottom: 20px;
+    border-radius: var(--app-card-radius);
+    border: 1px solid var(--app-brand-soft);
+  }
+
+  .table-card {
+    border-radius: var(--app-card-radius);
+    border: 1px solid var(--app-brand-soft);
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+      color: var(--app-text-heading);
+    }
+  }
+
+  .pagination {
+    margin-top: 20px;
+    display: flex;
+    justify-content: flex-end;
+  }
 }
 
 /* ============================ 按钮 ============================ */

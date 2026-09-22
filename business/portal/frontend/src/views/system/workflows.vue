@@ -31,7 +31,7 @@
         <el-table-column prop="name" label="流程名称" min-width="180" />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'info'">
+            <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
               {{ row.status === 1 ? '启用' : '禁用' }}
             </el-tag>
           </template>
@@ -211,7 +211,7 @@
             </div>
           </div>
           <div v-if="index < nodeList.length - 1" class="node-arrow">
-            <el-icon size="18" color="#002fa7"><Bottom /></el-icon>
+            <el-icon size="18" color="var(--el-color-primary)"><Bottom /></el-icon>
           </div>
         </div>
       </div>
@@ -502,30 +502,8 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .page-container {
-  .search-card {
-    margin-bottom: 20px;
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
-  }
-
-  .table-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
-
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 600;
-      color: #2c3e50;
-    }
-  }
-
-  .pagination {
-    margin-top: 20px;
-    display: flex;
-    justify-content: flex-end;
-  }
+  /* 列表页骨架（.search-card / .table-card / .card-header / .pagination）已统一到
+     styles/global.scss 的 .page-container 规则，此处不再重复定义（2026-09-22） */
 }
 
 .design-header {
@@ -534,12 +512,12 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #e6f2ff;
+  border-bottom: 1px solid var(--app-brand-soft);
 
   .design-title {
     font-size: 16px;
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--app-text-heading);
   }
 }
 
@@ -565,7 +543,7 @@ onMounted(() => {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #002fa7, #1746d3);
+  background: linear-gradient(135deg, var(--el-color-primary), var(--app-brand-deep));
   color: #fff;
   font-size: 13px;
   font-weight: 600;
@@ -580,14 +558,14 @@ onMounted(() => {
   width: 100%;
   max-width: 520px;
   background: #fff;
-  border: 1px solid #e6f2ff;
+  border: 1px solid var(--app-brand-soft);
   border-radius: 10px;
   padding: 14px 18px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
   transition: all 0.2s ease;
 
   &:hover {
-    border-color: #002fa7;
+    border-color: var(--el-color-primary);
     box-shadow: 0 4px 16px rgba(0, 47, 167, 0.12);
   }
 }

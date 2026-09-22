@@ -71,6 +71,7 @@ import { User, DocumentChecked, Trophy } from '@element-plus/icons-vue'
 import { getArticleAuthorStats } from '@/api/article'
 import { useUserStore } from '@/stores/user'
 import { hasAdminRole } from '@/utils/permission'
+import { BRAND_THEME_COLOR } from '@/stores/app'
 
 const userStore = useUserStore()
 // 后端与文章列表同一归属口径：非管理员只统计自己的文章，这里同步标注范围
@@ -123,12 +124,12 @@ const updateChart = () => {
       formatter: (params: any) => {
         const p = Array.isArray(params) ? params[0] : params
         return `<div style="font-weight:600;margin-bottom:4px">${p.name}</div>
-                <div>${periodText.value}已发布：${p.value} 篇</div>`
+                <div>${periodText.value}已发布：${Number(p.value).toLocaleString()} 篇</div>`
       },
       backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      borderColor: '#e6f2ff',
+      borderColor: 'var(--app-brand-soft)',
       borderWidth: 1,
-      textStyle: { color: '#2c3e50' },
+      textStyle: { color: 'var(--app-text-heading)' },
       extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 8px;'
     },
     grid: {
@@ -165,7 +166,7 @@ const updateChart = () => {
         barWidth: '60%',
         itemStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: '#002fa7' },
+              { offset: 0, color: BRAND_THEME_COLOR },
             { offset: 1, color: '#4d6dc1' }
           ]),
           borderRadius: [6, 6, 0, 0]
@@ -178,7 +179,7 @@ const updateChart = () => {
         label: {
           show: true,
           position: 'top',
-          color: '#002fa7',
+          color: BRAND_THEME_COLOR,
           fontWeight: 600
         }
       }
@@ -219,8 +220,8 @@ onUnmounted(() => {
   }
 
   .stat-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
+    border-radius: var(--app-card-radius);
+    border: 1px solid var(--app-brand-soft);
 
     :deep(.el-card__body) {
       padding: 20px;
@@ -245,7 +246,7 @@ onUnmounted(() => {
   .stat-value {
     font-size: 22px;
     font-weight: 700;
-    color: #2c3e50;
+    color: var(--app-text-heading);
     line-height: 1.2;
   }
 
@@ -256,15 +257,15 @@ onUnmounted(() => {
   }
 
   .chart-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
+    border-radius: var(--app-card-radius);
+    border: 1px solid var(--app-brand-soft);
 
     :deep(.el-card__header) {
       padding: 16px 20px;
     }
 
     :deep(.el-card__body) {
-      padding: 24px;
+      padding: 20px;
     }
   }
 
@@ -273,7 +274,7 @@ onUnmounted(() => {
     align-items: center;
     justify-content: space-between;
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--app-text-heading);
     font-size: 16px;
 
     .header-extra {

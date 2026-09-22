@@ -48,7 +48,7 @@
       >
         <el-table-column prop="name" label="部门名称" min-width="280">
           <template #default="{ row }">
-            <el-icon style="margin-right: 6px; color: #002fa7;"><OfficeBuilding /></el-icon>
+            <el-icon style="margin-right: 6px; color: var(--el-color-primary);"><OfficeBuilding /></el-icon>
             <span>{{ row.name }}</span>
           </template>
         </el-table-column>
@@ -59,7 +59,7 @@
         <el-table-column prop="sort" label="排序" width="80" align="center" />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'info'">
+            <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
               {{ row.status === 1 ? '启用' : '禁用' }}
             </el-tag>
           </template>
@@ -145,7 +145,7 @@
             >
               <span style="display: flex; align-items: center; justify-content: space-between;">
                 <span>{{ user.username }} ({{ user.account }})</span>
-                <el-icon v-if="form.leaderCode === String(user.id)" color="#002fa7"><Check /></el-icon>
+                <el-icon v-if="form.leaderCode === String(user.id)" color="var(--el-color-primary)"><Check /></el-icon>
               </span>
             </el-option>
           </el-select>
@@ -806,34 +806,15 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .page-container {
-  .search-card {
-    margin-bottom: 20px;
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
-  }
-
+  /* 列表页骨架（.search-card / .table-card / .card-header / .pagination）已统一到
+     styles/global.scss 的 .page-container 规则（2026-09-22），此处仅保留页面特有部分 */
   .table-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
-
     .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 600;
-      color: #2c3e50;
-
       .header-actions {
         display: flex;
         gap: 10px;
       }
     }
-  }
-
-  .pagination {
-    margin-top: 20px;
-    display: flex;
-    justify-content: flex-end;
   }
 
   .user-select-header {
@@ -842,7 +823,7 @@ onMounted(() => {
     align-items: center;
     margin-bottom: 16px;
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--app-text-heading);
   }
 
   .user-pagination {

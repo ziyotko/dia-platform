@@ -2,7 +2,8 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 // 品牌主题色（固定，不再支持后台配置）
-const BRAND_THEME_COLOR = '#002fa7'
+// 需要导出：Canvas 场景（ECharts）无法使用 CSS 变量 var(--el-color-primary)，只能取 JS 常量
+export const BRAND_THEME_COLOR = '#002fa7'
 
 // 按 Element Plus 算法混合两种颜色（weight 为 color2 占比 0~1）
 const mixColor = (color1: string, color2: string, weight: number): string => {

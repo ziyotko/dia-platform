@@ -48,7 +48,7 @@
         <el-table-column prop="routePath" label="访问路径" min-width="140" show-overflow-tooltip>
           <template #default="{ row }">
             <span v-if="row.routePath">{{ row.routePath }}</span>
-            <span v-else style="color: #c0c4cc">-</span>
+            <span v-else style="color: var(--app-text-secondary)">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="description" label="描述" min-width="100" show-overflow-tooltip />

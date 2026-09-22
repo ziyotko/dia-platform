@@ -37,8 +37,8 @@
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="queryForm.status" placeholder="全部状态" clearable style="width: 120px">
-            <el-option label="上架" :value="1" />
-            <el-option label="下架" :value="0" />
+            <el-option label="启用" :value="1" />
+            <el-option label="禁用" :value="0" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -217,8 +217,8 @@
           <el-col :span="12">
             <el-form-item label="状态" prop="status">
               <el-radio-group v-model="form.status">
-                <el-radio :value="1">上架</el-radio>
-                <el-radio :value="0">下架</el-radio>
+                <el-radio :value="1">启用</el-radio>
+                <el-radio :value="0">禁用</el-radio>
               </el-radio-group>
             </el-form-item>
           </el-col>
@@ -436,7 +436,7 @@ const handleDelete = (row: any) => {
 const handleStatusChange = async (row: any, val: number) => {
   try {
     await updateAdStatus(row.id, val)
-    ElMessage.success(`广告已${val === 1 ? '上架' : '下架'}`)
+    ElMessage.success(`广告状态已${val === 1 ? '启用' : '禁用'}`)
   } catch {
     // 失败提示由 request 拦截器统一给出；回滚开关状态
     row.status = val === 1 ? 0 : 1
@@ -526,30 +526,8 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .page-container {
-  .search-card {
-    margin-bottom: 20px;
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
-  }
-
-  .table-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
-
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 600;
-      color: #2c3e50;
-    }
-  }
-
-  .pagination {
-    margin-top: 20px;
-    display: flex;
-    justify-content: flex-end;
-  }
+  /* 列表页骨架（.search-card / .table-card / .card-header / .pagination）已统一到
+     styles/global.scss 的 .page-container 规则，此处不再重复定义（2026-09-22） */
 
   .position-arrow {
     margin: 0 4px;
@@ -574,7 +552,7 @@ onMounted(() => {
         justify-content: center;
         color: #8c939d;
         &:hover {
-          border-color: #002fa7;
+          border-color: var(--el-color-primary);
         }
         .uploader-icon {
           font-size: 28px;

@@ -5,7 +5,7 @@
         <div class="card-header">
           <span>分类文章统计</span>
           <div class="header-extra">
-            <span class="total-info">总文章数：<strong>{{ totalCount }}</strong> 篇</span>
+            <span class="total-info">总文章数：<strong>{{ Number(totalCount).toLocaleString() }}</strong> 篇</span>
           </div>
         </div>
       </template>
@@ -21,7 +21,7 @@
           >
             <span class="legend-dot" :style="{ background: colors[index % colors.length] }"></span>
             <span class="legend-name">{{ item.categoryName || '未分类' }}</span>
-            <span class="legend-value">{{ item.count }} 篇</span>
+            <span class="legend-value">{{ Number(item.count || 0).toLocaleString() }} 篇</span>
             <span class="legend-percent">{{ percentOf(item.count) }}%</span>
           </div>
         </div>
@@ -35,6 +35,7 @@ import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import type { ECharts } from 'echarts'
 import { getCategoryArticleStats } from '@/api/category'
+import { BRAND_THEME_COLOR } from '@/stores/app'
 
 const loading = ref(false)
 const chartRef = ref<HTMLDivElement | null>(null)
@@ -48,7 +49,7 @@ const percentOf = (count: number) =>
   totalCount.value > 0 ? ((count / totalCount.value) * 100).toFixed(1) : '0.0'
 
 const colors = [
-  '#002fa7',
+  BRAND_THEME_COLOR,
   '#67c23a',
   '#e6a23c',
   '#f56c6c',
@@ -93,13 +94,13 @@ const updateChart = () => {
       trigger: 'item',
       formatter: (params: any) => {
         return `<div style="font-weight:600;margin-bottom:4px">${params.name}</div>
-                <div>文章数：${params.value} 篇</div>
+                <div>文章数：${Number(params.value || 0).toLocaleString()} 篇</div>
                 <div>占比：${params.percent}%</div>`
       },
       backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      borderColor: '#e6f2ff',
+      borderColor: 'var(--app-brand-soft)',
       borderWidth: 1,
-      textStyle: { color: '#2c3e50' },
+      textStyle: { color: 'var(--app-text-heading)' },
       extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 8px;'
     },
     legend: { show: false },
@@ -116,7 +117,7 @@ const updateChart = () => {
         },
         label: {
           show: true,
-          formatter: '{b}\n{d}% ({c}篇)',
+          formatter: '{b}\n{d}%（{c} 篇）',
           color: '#606266',
           fontSize: 13,
           lineHeight: 18
@@ -204,15 +205,15 @@ onUnmounted(() => {
 <style scoped lang="scss">
 .page-container {
   .chart-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
+    border-radius: var(--app-card-radius);
+    border: 1px solid var(--app-brand-soft);
 
     :deep(.el-card__header) {
       padding: 16px 20px;
     }
 
     :deep(.el-card__body) {
-      padding: 24px;
+      padding: 20px;
     }
   }
 
@@ -221,7 +222,7 @@ onUnmounted(() => {
     align-items: center;
     justify-content: space-between;
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--app-text-heading);
     font-size: 16px;
 
     .header-extra {
@@ -231,7 +232,7 @@ onUnmounted(() => {
         font-weight: normal;
 
         strong {
-          color: #002fa7;
+          color: var(--el-color-primary);
           font-size: 18px;
         }
       }
@@ -257,14 +258,14 @@ onUnmounted(() => {
     overflow-y: auto;
     padding: 12px;
     background: #f8fafc;
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
+    border-radius: var(--app-card-radius);
+    border: 1px solid var(--app-brand-soft);
 
     &::-webkit-scrollbar {
       width: 4px;
     }
     &::-webkit-scrollbar-thumb {
-      background: #c0c4cc;
+      background: var(--app-text-muted);
       border-radius: 2px;
     }
 
@@ -291,7 +292,7 @@ onUnmounted(() => {
       .legend-name {
         flex: 1;
         font-size: 13px;
-        color: #2c3e50;
+        color: var(--app-text-heading);
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -305,7 +306,7 @@ onUnmounted(() => {
 
       .legend-percent {
         font-size: 13px;
-        color: #002fa7;
+        color: var(--el-color-primary);
         font-weight: 600;
         white-space: nowrap;
         width: 52px;

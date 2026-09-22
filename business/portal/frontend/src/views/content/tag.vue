@@ -129,6 +129,7 @@ import {
   updateTagStatus,
   deleteTag
 } from '@/api/tag'
+import { BRAND_THEME_COLOR } from '@/stores/app'
 
 const loading = ref(false)
 const dialogVisible = ref(false)
@@ -147,7 +148,7 @@ const queryForm = reactive({
 const form = reactive({
   id: undefined as number | undefined,
   name: '',
-  color: 'rgb(64, 158, 255)',
+  color: BRAND_THEME_COLOR,
   status: 1
 })
 
@@ -249,7 +250,7 @@ const handleSubmit = async () => {
 const resetForm = () => {
   form.id = undefined
   form.name = ''
-  form.color = 'rgb(64, 158, 255)'
+  form.color = BRAND_THEME_COLOR
   form.status = 1
 }
 
@@ -270,30 +271,8 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .page-container {
-  .search-card {
-    margin-bottom: 20px;
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
-  }
-
-  .table-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
-
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 600;
-      color: #2c3e50;
-    }
-  }
-
-  .pagination {
-    margin-top: 20px;
-    display: flex;
-    justify-content: flex-end;
-  }
+  /* 列表页骨架（.search-card / .table-card / .card-header / .pagination）已统一到
+     styles/global.scss 的 .page-container 规则，此处不再重复定义（2026-09-22） */
 }
 
 .color-preview {

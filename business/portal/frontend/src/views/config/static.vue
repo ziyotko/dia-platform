@@ -1168,8 +1168,8 @@ onUnmounted(() => {
     margin-bottom: 20px;
 
     .stat-card {
-      border-radius: 12px;
-      border: 1px solid #e6f2ff;
+      border-radius: var(--app-card-radius);
+      border: 1px solid var(--app-brand-soft);
 
       :deep(.el-card__body) {
         padding: 20px;
@@ -1194,7 +1194,7 @@ onUnmounted(() => {
     .stat-value {
       font-size: 24px;
       font-weight: 700;
-      color: #2c3e50;
+      color: var(--app-text-heading);
       line-height: 1.2;
     }
 
@@ -1207,15 +1207,15 @@ onUnmounted(() => {
 
   .monitor-card {
     margin-bottom: 20px;
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
+    border-radius: var(--app-card-radius);
+    border: 1px solid var(--app-brand-soft);
 
     .card-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       font-weight: 600;
-      color: #2c3e50;
+      color: var(--app-text-heading);
     }
 
     .monitor-actions {
@@ -1241,15 +1241,15 @@ onUnmounted(() => {
   }
 
   .tab-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
+    border-radius: var(--app-card-radius);
+    border: 1px solid var(--app-brand-soft);
 
     .card-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       font-weight: 600;
-      color: #2c3e50;
+      color: var(--app-text-heading);
 
       .header-right {
         display: flex;
@@ -1300,14 +1300,14 @@ onUnmounted(() => {
         align-items: center;
         gap: 12px;
         font-weight: 600;
-        color: #2c3e50;
+        color: var(--app-text-heading);
         padding: 12px 0;
       }
 
       .job-id {
         font-family: 'Consolas', 'Courier New', monospace;
         font-size: 13px;
-        color: #409eff;
+        color: var(--el-color-primary);
       }
 
       .job-progress {
@@ -1392,7 +1392,7 @@ onUnmounted(() => {
 
         .log-title {
           font-weight: 600;
-          color: #2c3e50;
+          color: var(--app-text-heading);
         }
       }
 
@@ -1407,7 +1407,7 @@ onUnmounted(() => {
           gap: 4px;
           font-size: 12px;
           color: #606266;
-          background: #f5f7fa;
+          background: var(--el-fill-color-light);
           padding: 2px 8px;
           border-radius: 4px;
         }

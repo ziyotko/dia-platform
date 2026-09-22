@@ -135,7 +135,7 @@
         <el-table-column prop="columnCount" label="发布栏目数量" width="120" align="center" />
         <el-table-column prop="status" label="发布状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : row.status === 0 ? 'info' : 'danger'">
+            <el-tag :type="row.status === 1 ? 'success' : row.status === 0 ? 'info' : 'danger'" size="small">
               {{ row.status === 1 ? '已发布' : row.status === 0 ? '草稿' : '已下线' }}
             </el-tag>
           </template>
@@ -824,10 +824,10 @@
             </div>
             <el-scrollbar height="420px" class="column-setting-scroll">
               <div v-if="!selectedColumnTemplateId" class="column-setting-empty">
-                <el-empty description="请先选择左侧模板" :image-size="100" />
+                <el-empty description="请先选择左侧模板" :image-size="80" />
               </div>
               <div v-else-if="selectedColumnTemplateColumns.length === 0" class="column-setting-empty">
-                <el-empty description="该模板下暂无符合当前文章类型的栏目" :image-size="100" />
+                <el-empty description="该模板下暂无符合当前文章类型的栏目" :image-size="80" />
               </div>
               <el-checkbox-group v-else v-model="selectedColumnIds" class="column-checkbox-group">
                 <div
@@ -898,7 +898,7 @@
         文章：{{ auditFlowArticleTitle }}
       </div>
       <el-skeleton v-if="auditFlowLoading" :rows="6" animated />
-      <el-empty v-else-if="auditFlowList.length === 0" description="暂无栏目或未绑定审核流程" />
+      <el-empty v-else-if="auditFlowList.length === 0" description="暂无栏目或未绑定审核流程" :image-size="80" />
       <div v-else class="audit-flow-list">
         <div
           v-for="(item, index) in auditFlowList"
@@ -941,14 +941,14 @@
                 </el-step>
               </el-steps>
             </div>
-            <el-empty v-else description="该流程未配置节点" :image-size="60" />
+            <el-empty v-else description="该流程未配置节点" :image-size="80" />
             <div v-if="item.auditStatus === 0 && item.workflow && item.workflow.nodes && item.currentNodeId" class="audit-current-node">
               <el-icon><User /></el-icon>
               <span>当前节点审批人：{{ formatApprover(item) }}</span>
             </div>
             <div v-if="item.auditStatus === 1 && item.approveUserName" class="audit-flow-result">
               <el-icon color="#67c23a"><CircleCheck /></el-icon>
-              <span>已通过：{{ item.approveRemark || '—' }}</span>
+              <span>已通过：{{ item.approveRemark || '-' }}</span>
             </div>
             <div v-if="item.auditStatus === 2 && item.rejectRemark" class="audit-flow-result audit-flow-reject-result">
               <el-icon color="#f56c6c"><CircleClose /></el-icon>
@@ -2681,23 +2681,10 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .page-container {
-  .search-card {
-    margin-bottom: 20px;
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
-  }
-
+  /* 列表页骨架（.search-card / .table-card / .card-header / .pagination）已统一到
+     styles/global.scss 的 .page-container 规则（2026-09-22），此处仅保留页面特有部分 */
   .table-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
-
     .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 600;
-      color: #2c3e50;
-
       .header-actions {
         display: flex;
         gap: 12px;
@@ -2722,10 +2709,10 @@ onMounted(() => {
     .section-title {
       font-size: 16px;
       font-weight: 600;
-      color: #2c3e50;
+      color: var(--app-text-heading);
       margin-bottom: 16px;
       padding-left: 10px;
-      border-left: 4px solid #002fa7;
+      border-left: 4px solid var(--el-color-primary);
     }
   }
 
@@ -2782,7 +2769,7 @@ onMounted(() => {
       transition: all 0.2s;
 
       &:hover {
-        background-color: #f5f7fa;
+        background-color: var(--el-fill-color-light);
       }
     }
   }
@@ -2791,7 +2778,7 @@ onMounted(() => {
 .preview-content {
   h2 {
     margin: 0 0 12px 0;
-    color: #2c3e50;
+    color: var(--app-text-heading);
   }
 
   .preview-meta {
@@ -2808,7 +2795,7 @@ onMounted(() => {
     margin-bottom: 16px;
     border-radius: 10px;
     overflow: hidden;
-    border: 1px solid #e6f2ff;
+    border: 1px solid var(--app-brand-soft);
 
     .preview-cover-image {
       display: block;
@@ -2817,7 +2804,7 @@ onMounted(() => {
   }
 
   .preview-summary {
-    background: #f5f7fa;
+    background: var(--el-fill-color-light);
     padding: 12px;
     border-radius: 8px;
     margin-bottom: 16px;
@@ -2832,7 +2819,7 @@ onMounted(() => {
     color: #666;
 
     a {
-      color: #002fa7;
+      color: var(--el-color-primary);
       text-decoration: none;
       word-break: break-all;
 
@@ -2866,12 +2853,12 @@ onMounted(() => {
   .preview-attachments {
     margin-top: 16px;
     padding-top: 16px;
-    border-top: 1px dashed #e6f2ff;
+    border-top: 1px dashed var(--app-brand-soft);
 
     strong {
       display: block;
       margin-bottom: 8px;
-      color: #2c3e50;
+      color: var(--app-text-heading);
     }
 
     .attachment-list {
@@ -2884,7 +2871,7 @@ onMounted(() => {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      color: #002fa7;
+      color: var(--el-color-primary);
       text-decoration: none;
       font-size: 14px;
 
@@ -2908,7 +2895,7 @@ onMounted(() => {
   font-size: 14px;
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #e6f2ff;
+  border-bottom: 1px solid var(--app-brand-soft);
 }
 
 .audit-flow-list {
@@ -2919,7 +2906,7 @@ onMounted(() => {
 
 .audit-flow-card {
   background: #fff;
-  border: 1px solid #e6f2ff;
+  border: 1px solid var(--app-brand-soft);
   border-radius: 10px;
   overflow: hidden;
   transition: box-shadow 0.2s;
@@ -2935,14 +2922,14 @@ onMounted(() => {
   gap: 12px;
   padding: 14px 16px;
   background: linear-gradient(90deg, #f5faff 0%, #ffffff 100%);
-  border-bottom: 1px solid #e6f2ff;
+  border-bottom: 1px solid var(--app-brand-soft);
 }
 
 .audit-flow-index {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: #002fa7;
+  background: var(--el-color-primary);
   color: #fff;
   font-size: 13px;
   font-weight: 600;
@@ -2957,7 +2944,7 @@ onMounted(() => {
   flex: 1;
   font-size: 15px;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--app-text-heading);
 }
 
 .audit-flow-card-body {
@@ -2985,7 +2972,7 @@ onMounted(() => {
   gap: 12px;
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px dashed #e6f2ff;
+  border-top: 1px dashed var(--app-brand-soft);
 }
 
 .audit-flow-no-auth {
@@ -2995,7 +2982,7 @@ onMounted(() => {
   gap: 6px;
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px dashed #e6f2ff;
+  border-top: 1px dashed var(--app-brand-soft);
   color: #909399;
   font-size: 13px;
 }
@@ -3017,7 +3004,7 @@ onMounted(() => {
   gap: 6px;
   margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px dashed #e6f2ff;
+  border-top: 1px dashed var(--app-brand-soft);
   color: #67c23a;
   font-size: 13px;
 }
@@ -3073,7 +3060,7 @@ onMounted(() => {
 
     .uploader-hint {
       font-size: 12px;
-      color: #c0c4cc;
+      color: var(--app-text-secondary);
     }
   }
 
@@ -3128,7 +3115,7 @@ onMounted(() => {
   padding: 12px;
   background: #fafbfc;
   border-radius: 8px;
-  border: 1px solid #e6f2ff;
+  border: 1px solid var(--app-brand-soft);
 }
 
 .paper-uploader {
@@ -3145,15 +3132,15 @@ onMounted(() => {
   padding: 10px 12px;
   background: #fafbfc;
   border-radius: 8px;
-  border: 1px solid #e6f2ff;
+  border: 1px solid var(--app-brand-soft);
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #002fa7;
+  color: var(--el-color-primary);
   font-size: 14px;
 
   a {
-    color: #002fa7;
+    color: var(--el-color-primary);
     text-decoration: none;
     word-break: break-all;
   }
@@ -3189,9 +3176,9 @@ onMounted(() => {
     gap: 8px;
     padding: 10px 14px;
     background: #f0f9ff;
-    border: 1px solid #ccd5ed;
+    border: 1px solid var(--el-color-primary-light-8);
     border-radius: 8px;
-    color: #002fa7;
+    color: var(--el-color-primary);
     font-size: 13px;
     margin-bottom: 16px;
   }
@@ -3202,8 +3189,8 @@ onMounted(() => {
 
   .column-setting-panel {
     height: 468px;
-    border: 1px solid #e6f2ff;
-    border-radius: 12px;
+    border: 1px solid var(--app-brand-soft);
+    border-radius: var(--app-card-radius);
     background: #fafbfc;
     display: flex;
     flex-direction: column;
@@ -3217,12 +3204,12 @@ onMounted(() => {
     padding: 12px 14px;
     font-size: 15px;
     font-weight: 600;
-    color: #2c3e50;
-    border-bottom: 1px solid #e6f2ff;
+    color: var(--app-text-heading);
+    border-bottom: 1px solid var(--app-brand-soft);
     background: #fff;
 
     .el-icon {
-      color: #002fa7;
+      color: var(--el-color-primary);
       font-size: 18px;
     }
 
@@ -3256,18 +3243,18 @@ onMounted(() => {
     padding: 12px 14px;
     margin-bottom: 8px;
     background: #fff;
-    border: 1px solid #e6f2ff;
+    border: 1px solid var(--app-brand-soft);
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;
 
     &:hover {
-      border-color: #8097d3;
+      border-color: var(--el-color-primary-light-5);
       box-shadow: 0 2px 8px rgba(0, 47, 167, 0.08);
     }
 
     &.active {
-      border-color: #002fa7;
+      border-color: var(--el-color-primary);
       background: #f0f9ff;
       box-shadow: 0 2px 8px rgba(0, 47, 167, 0.12);
     }
@@ -3275,7 +3262,7 @@ onMounted(() => {
     .page-item-name {
       font-size: 14px;
       font-weight: 500;
-      color: #2c3e50;
+      color: var(--app-text-heading);
       margin-bottom: 4px;
       padding-right: 20px;
     }
@@ -3290,7 +3277,7 @@ onMounted(() => {
       right: 10px;
       top: 50%;
       transform: translateY(-50%);
-      color: #002fa7;
+      color: var(--el-color-primary);
       font-size: 16px;
     }
   }
@@ -3303,19 +3290,19 @@ onMounted(() => {
 
   .column-card {
     background: #fff;
-    border: 1px solid #e6f2ff;
+    border: 1px solid var(--app-brand-soft);
     border-radius: 8px;
     padding: 12px;
     cursor: pointer;
     transition: all 0.2s;
 
     &:hover {
-      border-color: #8097d3;
+      border-color: var(--el-color-primary-light-5);
       box-shadow: 0 2px 8px rgba(0, 47, 167, 0.08);
     }
 
     &.checked {
-      border-color: #002fa7;
+      border-color: var(--el-color-primary);
       background: #f0f9ff;
       box-shadow: 0 2px 8px rgba(0, 47, 167, 0.12);
     }
@@ -3354,7 +3341,7 @@ onMounted(() => {
       align-items: center;
       gap: 6px;
       font-size: 14px;
-      color: #2c3e50;
+      color: var(--app-text-heading);
       font-weight: 500;
 
       .child-column-icon {
@@ -3381,8 +3368,8 @@ onMounted(() => {
   }
 
   .column-setting-selected {
-    border: 1px solid #e6f2ff;
-    border-radius: 12px;
+    border: 1px solid var(--app-brand-soft);
+    border-radius: var(--app-card-radius);
     padding: 12px 14px;
     background: #fff;
 
@@ -3392,7 +3379,7 @@ onMounted(() => {
       justify-content: space-between;
       font-size: 14px;
       font-weight: 600;
-      color: #2c3e50;
+      color: var(--app-text-heading);
       margin-bottom: 10px;
 
       .column-setting-count {
@@ -3404,7 +3391,7 @@ onMounted(() => {
 
     .column-setting-selected-empty {
       font-size: 13px;
-      color: #c0c4cc;
+      color: var(--app-text-secondary);
       padding: 8px 0;
     }
 

@@ -72,6 +72,7 @@ import * as echarts from 'echarts'
 import type { ECharts } from 'echarts'
 import { Star, Share, View } from '@element-plus/icons-vue'
 import { getArticleAnalyticsTrend } from '@/api/analytics'
+import { BRAND_THEME_COLOR } from '@/stores/app'
 
 const loading = ref(false)
 const chartRef = ref<HTMLDivElement | null>(null)
@@ -105,7 +106,7 @@ const periodText = computed(() => {
 const seriesMeta = [
   { name: '点赞量', color: '#f56c6c', key: 'like' },
   { name: '分享量', color: '#e6a23c', key: 'share' },
-  { name: '浏览量', color: '#002fa7', key: 'visit' }
+  { name: '浏览量', color: BRAND_THEME_COLOR, key: 'visit' }
 ]
 
 const fetchData = async () => {
@@ -158,15 +159,15 @@ const updateChart = () => {
           html += `<div style="display:flex;align-items:center;gap:6px;line-height:22px">
                     <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color}"></span>
                     <span style="color:#606266">${p.seriesName}</span>
-                    <span style="font-weight:600;color:#2c3e50">${Number(p.value).toLocaleString()}</span>
+                    <span style="font-weight:600;color:var(--app-text-heading)">${Number(p.value).toLocaleString()}</span>
                   </div>`
         })
         return html
       },
       backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      borderColor: '#e6f2ff',
+      borderColor: 'var(--app-brand-soft)',
       borderWidth: 1,
-      textStyle: { color: '#2c3e50' },
+      textStyle: { color: 'var(--app-text-heading)' },
       extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 8px;'
     },
     legend: {
@@ -249,8 +250,8 @@ onUnmounted(() => {
   }
 
   .stat-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
+    border-radius: var(--app-card-radius);
+    border: 1px solid var(--app-brand-soft);
 
     :deep(.el-card__body) {
       padding: 20px;
@@ -275,7 +276,7 @@ onUnmounted(() => {
   .stat-value {
     font-size: 22px;
     font-weight: 700;
-    color: #2c3e50;
+    color: var(--app-text-heading);
     line-height: 1.2;
   }
 
@@ -286,15 +287,15 @@ onUnmounted(() => {
   }
 
   .chart-card {
-    border-radius: 12px;
-    border: 1px solid #e6f2ff;
+    border-radius: var(--app-card-radius);
+    border: 1px solid var(--app-brand-soft);
 
     :deep(.el-card__header) {
       padding: 16px 20px;
     }
 
     :deep(.el-card__body) {
-      padding: 24px;
+      padding: 20px;
     }
   }
 
@@ -303,7 +304,7 @@ onUnmounted(() => {
     align-items: center;
     justify-content: space-between;
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--app-text-heading);
     font-size: 16px;
 
     .header-extra {
