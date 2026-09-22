@@ -52,7 +52,8 @@
         </el-tab-pane>
 
         <el-tab-pane label="安全设置" name="security">
-          <el-form :model="securityForm" label-width="120px" class="settings-form">
+          <!-- 「Token 有效期（小时）」较长，宽度需 ≥160px 才不会折行 -->
+          <el-form :model="securityForm" label-width="160px" class="settings-form">
             <el-form-item label="登录验证码">
               <el-switch v-model="securityForm.captchaEnabled" />
               <span class="form-tip">关闭后登录页不再显示验证码输入框</span>
@@ -106,7 +107,8 @@
         </el-tab-pane>
 
         <el-tab-pane label="静态化设置" name="static">
-          <el-form :model="staticForm" label-width="120px" class="settings-form">
+          <!-- 本页签含「静态化程序访问令牌名」等 10 字标签，宽度需 ≥180px 才不会折行 -->
+          <el-form :model="staticForm" label-width="180px" class="settings-form">
             <el-form-item label="静态化输出路径">
               <el-input
                 v-model="staticForm.staticPath"
