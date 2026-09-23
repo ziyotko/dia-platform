@@ -9,14 +9,19 @@
 
 ```
 business/application/
+├── DEPLOY.md         # 本文档（部署 / 升级 / FAQ）
 ├── backend/          # Go 后端（Gin + GORM），module: application
 │   ├── config.yaml   # 唯一配置文件（从进程工作目录读 ./config.yaml，须在 backend 目录下启动）
+│   ├── docs/         # 数据库结构等文档（docs/database.md）
 │   ├── logs/         # 日志目录（默认 logs/application.log）
 │   ├── uploads/      # 上传文件目录（运行时需可写）
 │   └── comp.bat      # Windows 交叉编译脚本（goos=linux，产物 ./application）
 └── frontend/         # 申报人端 + 管理端（Vue3 + TS + Element Plus）
+    ├── docs/         # 用户使用手册（docs/用户使用手册.md）
     └── .env          # 部署子路径 VITE_BASE_PATH 与接口前缀 VITE_API_BASE_URL
 ```
+
+> 文档维护边界：`DEPLOY.md`（部署/升级/FAQ）、`backend/docs/database.md`（表结构、枚举、种子数据、约束口径）、`frontend/docs/用户使用手册.md`（界面操作与业务口径，章节与菜单目录一致）。改状态流转、上传限制、证书/公示口径时**三处都要同步**。
 
 ---
 
