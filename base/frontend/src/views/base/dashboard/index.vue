@@ -178,27 +178,38 @@ const statList = computed(() => {
 })
 
 // 我的待办：所有用户都能看到自己的数据，点击直达对应页面
+// 「我的待办」快捷入口：未分配对应菜单时提示而不是跳到 404
+const goMenu = (path: string) => {
+  const walk = (list: any[]): boolean =>
+    list.some((m) => m.path === path || (m.children?.length ? walk(m.children) : false))
+  if (!walk(userStore.menus || [])) {
+    ElMessage.warning('当前账号未分配该功能菜单，请联系管理员')
+    return
+  }
+  router.push(path)
+}
+
 const myList = computed(() => [
   {
     title: '未读消息',
     value: stats.myUnreadCount,
     icon: 'Bell',
     color: '#8E44AD',
-    go: () => router.push('/message/list')
+    go: () => goMenu('/message/list')
   },
   {
     title: '待我审批',
     value: stats.myTodoCount,
     icon: 'Finished',
     color: '#409EFF',
-    go: () => router.push('/workflow/task')
+    go: () => goMenu('/workflow/task')
   },
   {
     title: '审批中的流程',
     value: isAdmin.value ? stats.runningInstanceCount : stats.myRunningInstanceCount,
     icon: 'Share',
     color: '#F59E0B',
-    go: () => router.push('/workflow/instance')
+    go: () => goMenu('/workflow/instance')
   }
 ])
 

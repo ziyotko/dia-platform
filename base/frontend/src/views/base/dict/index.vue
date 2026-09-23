@@ -152,7 +152,9 @@ const handleReset = () => {
 
 const handleAdd = () => {
   isEdit.value = false
-  Object.assign(form, { code: '', name: '', description: '', status: 1 })
+  // 必须清掉上一次编辑遗留的 id：否则「新增」会带着旧主键 POST /dicts，
+  // GORM 按显式主键 INSERT 直接主键冲突，表现为「保存失败」且只有刷新页面才能恢复
+  Object.assign(form, { id: undefined, code: '', name: '', description: '', status: 1 })
   dialogVisible.value = true
 }
 
@@ -174,8 +176,8 @@ const handleSubmit = async () => {
     ElMessage.success('保存成功')
     dialogVisible.value = false
     fetchData()
-  } catch (error) {
-    ElMessage.error('保存失败')
+  } catch {
+    // 失败原因（如编码重复）已由 request 拦截器弹出，这里不覆盖
   }
 }
 

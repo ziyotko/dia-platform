@@ -7,12 +7,16 @@ import (
 	"base/pkg/db"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type RoleService struct{}
 
 func (s RoleService) Create(r *models.Role) error {
-	return db.DB.Create(r).Error
+	// 必须 Omit 关联：Role.Menus / Role.Perms 都是 many2many，GORM 的 Create 会把请求体里的
+	// menus / permissions 一并 upsert 进 base_menu / base_permission（可凭空造菜单或权限点）。
+	// 菜单与权限统一走 POST /roles/:id/menus 与 /roles/:id/permissions。
+	return db.DB.Omit(clause.Associations).Create(r).Error
 }
 
 func (s RoleService) Update(r *models.Role, tenantID uint64) error {

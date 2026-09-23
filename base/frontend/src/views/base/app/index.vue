@@ -141,10 +141,13 @@ const rules = {
 
 const fetchData = async () => {
   loading.value = true
-  const res: any = await getAppList(query)
-  tableData.value = res.data.list
-  total.value = res.data.total
-  loading.value = false
+  try {
+    const res: any = await getAppList(query)
+    tableData.value = res.data.list || []
+    total.value = res.data.total || 0
+  } finally {
+    loading.value = false
+  }
 }
 
 const handleSearch = () => {

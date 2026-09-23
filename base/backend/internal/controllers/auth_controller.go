@@ -43,10 +43,11 @@ func (ctl *AuthController) Login(c *gin.Context) {
 		CaptchaCode: req.CaptchaCode,
 	})
 
-	// 提取需要的数据，避免在 goroutine 中访问 gin.Context
+	// 提取需要的数据，避免在 goroutine 中访问 gin.Context；
+	// 同步写库：异步 goroutine 在进程退出/重启时会丢失登录日志
 	ip := c.ClientIP()
 	agent := c.Request.UserAgent()
-	go ctl.recordLoginLog(ip, agent, req.Username, user, err)
+	ctl.recordLoginLog(ip, agent, req.Username, user, err)
 
 	if err != nil {
 		response.Fail(c, err.Error())

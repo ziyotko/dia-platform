@@ -4,9 +4,18 @@
       <template #header>
         <div class="card-header">
           <span>租户管理</span>
-          <el-button type="primary" @click="handleAdd">新增租户</el-button>
+          <el-button v-if="isSuperAdmin" type="primary" @click="handleAdd">新增租户</el-button>
         </div>
       </template>
+
+      <el-alert
+        v-if="!isSuperAdmin"
+        title="租户管理为平台级功能，仅平台超级管理员可查看与维护"
+        type="warning"
+        :closable="false"
+        show-icon
+        style="margin-bottom: 16px"
+      />
 
       <el-form :inline="true" class="search-form">
         <el-form-item label="关键字">
@@ -30,8 +39,8 @@
         </el-table-column>
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="isSuperAdmin" link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-if="isSuperAdmin" link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -76,10 +85,15 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTenantList, createTenant, updateTenant, deleteTenant } from '@/api/tenant'
 import type { Tenant } from '@/api/tenant'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+// /tenants 整组接口仅平台超管可用，非超管页面上不应出现必然 403 的写入口
+const isSuperAdmin = computed(() => userStore.userInfo?.tenantId === 0)
 
 const loading = ref(false)
 const tableData = ref<Tenant[]>([])
@@ -105,10 +119,14 @@ const rules = {
 
 const fetchData = async () => {
   loading.value = true
-  const res: any = await getTenantList(query)
-  tableData.value = res.data.list
-  total.value = res.data.total
-  loading.value = false
+  try {
+    const res: any = await getTenantList(query)
+    tableData.value = res.data.list || []
+    total.value = res.data.total || 0
+  } finally {
+    // 必须放 finally：请求失败（如无权限 403）时否则 loading 永远为 true
+    loading.value = false
+  }
 }
 
 const handleSearch = () => {

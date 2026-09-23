@@ -29,7 +29,10 @@ func NewFileService() *FileService {
 	maxSize := int64(config.Cfg.Server.MaxUploadMB) * 1024 * 1024
 	s, err := storage.NewLocalStorage(dir, permmatch.APIPrefix()+"/files", maxSize)
 	if err != nil {
+		// 必须返回零值 FileService：若把 nil 的 *LocalStorage 存进接口字段，
+		// s.storage == nil 判定会失效（带类型的 nil），后续调用会直接 panic。
 		logrus.WithError(err).Warn("初始化本地存储失败，文件上传功能不可用")
+		return &FileService{}
 	}
 	return &FileService{storage: s}
 }
@@ -81,6 +84,9 @@ func (s *FileService) List(tenantID uint64, page, size int) ([]models.UploadedFi
 }
 
 func (s *FileService) Delete(id uint64, tenantID uint64) error {
+	if s.storage == nil {
+		return errors.New("存储未初始化，请联系管理员")
+	}
 	var file models.UploadedFile
 	query := db.DB.Where("id = ?", id)
 	if tenantID > 0 {

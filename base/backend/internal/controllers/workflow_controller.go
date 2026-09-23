@@ -121,8 +121,10 @@ func (ctl *WorkflowController) Options(c *gin.Context) {
 }
 
 // ApproverOptions 节点审批人可选值（本租户的流程角色与用户）。
+// 平台超管可用 tenantId 指定要看哪个租户的候选，避免给租户的流程误选到其它租户的人。
 func (ctl *WorkflowController) ApproverOptions(c *gin.Context) {
-	opts, err := ctl.service.ApproverOptions(c.GetUint64("tenantID"))
+	filterTenantID, _ := strconv.ParseUint(c.Query("tenantId"), 10, 64)
+	opts, err := ctl.service.ApproverOptions(c.GetUint64("tenantID"), filterTenantID)
 	if err != nil {
 		response.Fail(c, err.Error())
 		return

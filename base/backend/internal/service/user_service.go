@@ -4,12 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"base/internal/models"
 	"base/pkg/db"
 	"base/pkg/utils"
 
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type UserService struct{}
@@ -47,7 +50,8 @@ func (s UserService) Create(u *models.User) error {
 	}
 	u.Password = hash
 
-	if err := db.DB.Create(u).Error; err != nil {
+	// Omit 关联：User.Roles 是 many2many，避免请求体里的 roles 被连带写入 base_role / base_user_role
+	if err := db.DB.Omit(clause.Associations).Create(u).Error; err != nil {
 		if isDuplicateEntry(err) {
 			return errors.New("该租户下用户名已存在")
 		}
@@ -108,6 +112,9 @@ func (s UserService) Update(u *models.User, tenantID uint64) error {
 		return err
 	}
 	if u.Password != "" {
+		if err := validatePassword(u.Password); err != nil {
+			return err
+		}
 		hash, err := utils.HashPassword(u.Password)
 		if err != nil {
 			return err
@@ -180,7 +187,9 @@ func (s UserService) List(tenantID, filterTenantID uint64, page, size int, keywo
 		query = query.Where("username LIKE ? OR real_name LIKE ? OR phone LIKE ?", "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
 	}
 	query.Count(&total)
-	err := query.Order("created_at DESC").Offset((page - 1) * size).Limit(size).Find(&list).Error
+	// 必须 Preload 角色：前端列表的「角色」列与「分配角色」弹窗都依赖 roles 字段，
+	// 不返回时回显为空，保存会把该用户已有角色全部清掉。
+	err := query.Preload("Roles").Order("created_at DESC").Offset((page - 1) * size).Limit(size).Find(&list).Error
 	return list, total, err
 }
 
@@ -206,6 +215,9 @@ func (s UserService) AssignRoles(userID uint64, roleIDs []uint64, tenantID uint6
 	return db.DB.Model(&user).Association("Roles").Replace(roles)
 }
 
+// ResetPassword 管理员重置用户密码。
+// 重置成功后让该用户此前签发的 token 全部失效（与用户自己改密保持一致），
+// 否则旧 token 在有效期内仍可继续访问，重置密码等于没生效。
 func (s UserService) ResetPassword(userID uint64, newPwd string, tenantID uint64) error {
 	if newPwd == "" {
 		return errors.New("请填写新密码")
@@ -225,7 +237,13 @@ func (s UserService) ResetPassword(userID uint64, newPwd string, tenantID uint64
 	if err != nil {
 		return err
 	}
-	return db.DB.Model(&user).Update("password", hash).Error
+	if err := db.DB.Model(&user).Update("password", hash).Error; err != nil {
+		return err
+	}
+	if err := (TokenService{}).RevokeUserTokensBefore(user.ID, time.Now()); err != nil {
+		logrus.WithError(err).Warn("重置密码后吊销旧 token 失败")
+	}
+	return nil
 }
 
 func (s UserService) ChangePassword(userID uint64, oldPwd, newPwd string) error {

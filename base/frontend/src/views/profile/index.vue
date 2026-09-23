@@ -61,11 +61,13 @@
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { UserFilled, User, Lock } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { changePassword } from '@/api/auth'
 
+const router = useRouter()
 const userStore = useUserStore()
 const pwdRef = ref<any>(null)
 const pwdForm = reactive({
@@ -97,7 +99,10 @@ const handleChangePwd = async () => {
   if (!valid) return
   await changePassword({ oldPwd: pwdForm.oldPwd, newPwd: pwdForm.newPwd })
   ElMessage.success('密码修改成功，请重新登录')
-  userStore.logout()
+  // 改密成功后服务端已让该用户旧 token 全部失效，此处**不能**再调 logout 接口：
+  // 它会带着已失效的 token 请求，必然 401 → 多一次错误弹窗 + 整页跳转，与下面的路由跳转抢跳。
+  userStore.clearSession()
+  router.push('/login')
 }
 </script>
 

@@ -324,7 +324,12 @@ const handleDelete = async (row: Workflow) => {
 
 const handleNodes = async (row: Workflow) => {
   currentWorkflow.value = row
-  const [detail, options]: any[] = await Promise.all([getWorkflow(row.id), getWorkflowApproverOptions()])
+  // 审批人候选必须按该流程所属租户取：超管默认拿到的候选含全部租户，
+  // 一旦把其它租户的用户配进节点，这个节点就永远无人可审（后端已拦截）
+  const [detail, options]: any[] = await Promise.all([
+    getWorkflow(row.id),
+    getWorkflowApproverOptions(row.tenantId)
+  ])
   approverOptions.value = options.data || { roles: [], users: [] }
   nodes.value = (detail.data?.nodes || []).map((n: WorkflowNode) => ({
     id: n.id,

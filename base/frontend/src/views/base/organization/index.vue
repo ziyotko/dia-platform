@@ -109,11 +109,14 @@ const rules = {
 
 const fetchData = async () => {
   loading.value = true
-  const res: any = await getOrganizationTree()
-  const data = res.data || []
-  tableData.value = data
-  orgOptions.value = [{ id: 0, parentId: 0, code: '', name: '根机构', sort: 0, status: 1 }, ...data]
-  loading.value = false
+  try {
+    const res: any = await getOrganizationTree()
+    const data = res.data || []
+    tableData.value = data
+    orgOptions.value = [{ id: 0, parentId: 0, code: '', name: '根机构', sort: 0, status: 1 }, ...data]
+  } finally {
+    loading.value = false
+  }
 }
 
 const handleAdd = () => {

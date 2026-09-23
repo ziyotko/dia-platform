@@ -69,7 +69,7 @@
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="inbox">消息中心</el-dropdown-item>
-                <el-dropdown-item command="mark-all" divided>全部标为已读</el-dropdown-item>
+                <el-dropdown-item v-if="userStore.can('base:message:read-all')" command="mark-all" divided>全部标为已读</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>

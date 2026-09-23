@@ -14,7 +14,7 @@ import { buildAppEntryUrl } from '@/utils/appEntry'
 const route = useRoute()
 const userStore = useUserStore()
 
-// 与 integration/README.md 约定一致：加载子应用时追加底座会话参数
+// 与 base/DEPLOY.md「五、子应用接入」约定一致：加载子应用时追加底座会话参数
 const url = computed(() =>
   buildAppEntryUrl((route.meta.url as string) || '', {
     token: userStore.token,

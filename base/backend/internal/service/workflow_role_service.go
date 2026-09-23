@@ -2,11 +2,13 @@ package service
 
 import (
 	"errors"
+	"fmt"
 
 	"base/internal/models"
 	"base/pkg/db"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // WorkflowRoleService 流程角色（审批角色）服务。
@@ -25,7 +27,10 @@ func (s WorkflowRoleService) Create(r *models.WorkflowRole) error {
 	if count > 0 {
 		return errors.New("该租户下流程角色编码已存在")
 	}
-	return db.DB.Create(r).Error
+	// 必须 Omit 关联：WorkflowRole.Users 是 many2many，GORM 的 Create 会把请求体里的 users 一并 upsert 进 base_user。
+	// 否则持有 base:workflow-role:create 的用户可以凭空造出一条 tenant_id=0 / is_admin=true 的账号（提权为平台超管）。
+	// 成员统一走 POST /workflow-roles/:id/users。
+	return db.DB.Omit(clause.Associations).Create(r).Error
 }
 
 func (s WorkflowRoleService) Update(r *models.WorkflowRole, tenantID uint64) error {
@@ -61,6 +66,8 @@ func (s WorkflowRoleService) Update(r *models.WorkflowRole, tenantID uint64) err
 }
 
 // Delete 删除流程角色，同时清理成员关联，避免残留脏关联数据。
+// 仍被流程节点引用（approver_type = role 且 approver_id = 本角色）时拒绝删除：
+// 否则该节点会解析不到审批人而静默「自动通过」，等于无声跳过一道审批。
 func (s WorkflowRoleService) Delete(id uint64, tenantID uint64) error {
 	query := db.DB.Where("id = ?", id)
 	if tenantID > 0 {
@@ -69,6 +76,15 @@ func (s WorkflowRoleService) Delete(id uint64, tenantID uint64) error {
 	var role models.WorkflowRole
 	if err := query.First(&role).Error; err != nil {
 		return err
+	}
+	var refs int64
+	if err := db.DB.Model(&models.WorkflowNode{}).
+		Where("approver_type = ? AND approver_id = ?", models.ApproverTypeRole, role.ID).
+		Count(&refs).Error; err != nil {
+		return err
+	}
+	if refs > 0 {
+		return fmt.Errorf("该流程角色仍被 %d 个流程节点引用，请先在「流程定义」中调整节点后再删除", refs)
 	}
 	return db.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("workflow_role_id = ?", role.ID).Delete(&models.WorkflowRoleUser{}).Error; err != nil {

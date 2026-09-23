@@ -28,17 +28,23 @@ func Run() error {
 
 // obsoleteMenuComponents 历史遗留的占位菜单组件路径：这些页面文件已删除，
 // 但旧版本的种子已写入数据库，保留会让用户点击后落到 404，因此启动时幂等清理。
+//
+// 注意：只列出**确实不存在对应组件文件**的路径。
+// 「流程实例 / 我的待办」的组件路径（base/workflow/instance|task/index.vue）现在是正式菜单
+// （见 baseMenuSeeds），一旦写进这里就会在每次启动时把正式菜单删掉再重建，
+// 连带清空角色对这两个菜单的授权，因此绝不能出现在清理列表中。
 var obsoleteMenuComponents = []string{
 	"base/workflow/model/index.vue",
-	"base/workflow/instance/index.vue",
-	"base/workflow/task/index.vue",
 	"base/workflow/designer/index.vue",
 }
 
 // cleanupObsoleteMenus 物理删除废弃菜单，并解除其与角色的菜单关联。
+// 仅针对平台内置菜单（tenant_id = 0），避免误删租户自建的、恰好同名组件的菜单。
 func cleanupObsoleteMenus() error {
 	var ids []uint64
-	if err := db.DB.Model(&models.Menu{}).Where("component IN ?", obsoleteMenuComponents).Pluck("id", &ids).Error; err != nil {
+	if err := db.DB.Model(&models.Menu{}).
+		Where("component IN ? AND tenant_id = ?", obsoleteMenuComponents, models.PlatformTenantID).
+		Pluck("id", &ids).Error; err != nil {
 		return err
 	}
 	if len(ids) == 0 {

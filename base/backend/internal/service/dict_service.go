@@ -7,6 +7,7 @@ import (
 	"base/pkg/db"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type DictService struct{}
@@ -21,7 +22,8 @@ type DictListQuery struct {
 }
 
 func (s DictService) Create(d *models.Dict) error {
-	return db.DB.Create(d).Error
+	// 字典项统一走 POST /dicts/:id/items，避免 Create 连带 upsert 请求体里的 items
+	return db.DB.Omit(clause.Associations).Create(d).Error
 }
 
 func (s DictService) Update(d *models.Dict, tenantID uint64) error {

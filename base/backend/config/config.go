@@ -80,13 +80,15 @@ func Load(path string) (*Config, error) {
 	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, err
 	}
-	cfg.applyDefaults()
+	// 需要区分「未配置」与「显式配 0（关闭）」：后者不能被默认值覆盖
+	cfg.applyDefaults(v.IsSet("server.workflow_remind_interval_seconds"))
 	Cfg = &cfg
 	return &cfg, nil
 }
 
 // applyDefaults 为未配置的项补充默认值（兼容旧版 config.yaml，未新增限流配置时也能正常工作）。
-func (c *Config) applyDefaults() {
+// remindConfigured 表示 workflow_remind_interval_seconds 已在配置文件里显式出现。
+func (c *Config) applyDefaults(remindConfigured bool) {
 	if c.Server.Mode == "" {
 		c.Server.Mode = "release"
 	}
@@ -107,8 +109,9 @@ func (c *Config) applyDefaults() {
 	if c.Server.MaxUploadMB <= 0 {
 		c.Server.MaxUploadMB = 50
 	}
-	// 工作流超时提醒：默认 10 分钟扫一次；显式配置 0 或负数表示关闭
-	if c.Server.WorkflowRemindInterval == 0 {
+	// 工作流超时提醒：未配置时默认 10 分钟扫一次；
+	// 显式配置 0 或负数表示关闭（与 DEPLOY.md / 配置注释保持一致，不要再把 0 改写成默认值）
+	if !remindConfigured {
 		c.Server.WorkflowRemindInterval = 600
 	}
 }

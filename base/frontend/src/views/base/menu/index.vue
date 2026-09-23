@@ -140,10 +140,14 @@ const rules = {
 
 const fetchData = async () => {
   loading.value = true
-  const res: any = await getMenuTree()
-  tableData.value = res.data || []
-  menuOptions.value = [{ id: 0, parentId: 0, appCode: 'base', name: '根目录', path: '', type: 'directory', sort: 0, status: 1, hidden: false }, ...res.data]
-  loading.value = false
+  try {
+    const res: any = await getMenuTree()
+    const data = res.data || []
+    tableData.value = data
+    menuOptions.value = [{ id: 0, parentId: 0, appCode: 'base', name: '根目录', path: '', type: 'directory', sort: 0, status: 1, hidden: false }, ...data]
+  } finally {
+    loading.value = false
+  }
 }
 
 const handleAdd = () => {

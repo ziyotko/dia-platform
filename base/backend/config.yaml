@@ -18,7 +18,7 @@ server:
   # 上传目录（相对或绝对路径）与单文件大小上限（MB）
   upload_dir: ./uploads
   max_upload_mb: 50
-  # 工作流超时提醒的后台扫描间隔（秒），设为 0 关闭
+  # 工作流超时提醒的后台扫描间隔（秒），显式设为 0 或负数表示关闭；不配置时默认 600
   workflow_remind_interval_seconds: 600
 
 mysql:

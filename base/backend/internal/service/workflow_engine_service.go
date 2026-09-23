@@ -130,13 +130,20 @@ func (s WorkflowEngineService) Approve(taskID uint64, comment string, actor Work
 		name := actorDisplayName(tx, actor)
 		now := time.Now()
 
-		if err := tx.Model(&models.WorkflowTask{}).Where("id = ?", task.ID).
+		// 带 status 条件的更新：并发（双击/重试）时只有一个请求能改成功，
+		// 否则两个事务会各自推进一次，导致下一节点重复建待办。
+		res := tx.Model(&models.WorkflowTask{}).
+			Where("id = ? AND status = ?", task.ID, models.WorkflowTaskPending).
 			Updates(map[string]interface{}{
 				"status":     models.WorkflowTaskApproved,
 				"comment":    comment,
 				"handled_at": now,
-			}).Error; err != nil {
-			return err
+			})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return errors.New("该任务已处理")
 		}
 		if err := createWorkflowLog(tx, instance, task.NodeID, task.NodeName, actor.UserID, name, models.WorkflowActionApprove, comment); err != nil {
 			return err
@@ -183,18 +190,24 @@ func (s WorkflowEngineService) Reject(taskID uint64, comment string, actor Workf
 		name := actorDisplayName(tx, actor)
 		now := time.Now()
 
-		if err := tx.Model(&models.WorkflowTask{}).Where("id = ?", task.ID).
+		res := tx.Model(&models.WorkflowTask{}).
+			Where("id = ? AND status = ?", task.ID, models.WorkflowTaskPending).
 			Updates(map[string]interface{}{
 				"status":     models.WorkflowTaskRejected,
 				"comment":    comment,
 				"handled_at": now,
-			}).Error; err != nil {
-			return err
+			})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return errors.New("该任务已处理")
 		}
 		if err := invalidatePendingTasks(tx, instance.ID, task.ID, "流程已驳回", now); err != nil {
 			return err
 		}
-		if err := tx.Model(&models.WorkflowInstance{}).Where("id = ?", instance.ID).
+		if err := tx.Model(&models.WorkflowInstance{}).
+			Where("id = ? AND status = ?", instance.ID, models.WorkflowInstanceRunning).
 			Updates(map[string]interface{}{
 				"status":       models.WorkflowInstanceRejected,
 				"current_sort": -1,
@@ -230,7 +243,8 @@ func (s WorkflowEngineService) Cancel(instanceID uint64, actor WorkflowActor) er
 		if err := invalidatePendingTasks(tx, instance.ID, 0, "流程已撤销", now); err != nil {
 			return err
 		}
-		if err := tx.Model(&models.WorkflowInstance{}).Where("id = ?", instance.ID).
+		if err := tx.Model(&models.WorkflowInstance{}).
+			Where("id = ? AND status = ?", instance.ID, models.WorkflowInstanceRunning).
 			Updates(map[string]interface{}{
 				"status":       models.WorkflowInstanceCanceled,
 				"current_sort": -1,
@@ -452,10 +466,12 @@ func (s WorkflowEngineService) RemindOverdueTasks() (int, error) {
 		content := fmt.Sprintf("你的待办已超过 %d 分钟未处理：%s / %s，请尽快处理。",
 			task.TimeoutMinutes, instanceTitle, task.NodeName)
 
-		// 站内信发送失败（例如审批人已被停用）不影响其它待办的催办
+		// 站内信发送失败（例如审批人已被停用）不影响其它待办的催办，
+		// 但**不计入本轮已提醒**：否则「没收到催办」的记录会被当成已催办，一个超时周期内不再重试。
 		if err := msgSvc.SendToUsers(0, "系统", task.TenantID, []uint64{task.ApproverID},
 			"审批超时提醒", content, "system", "high"); err != nil {
 			logrus.WithError(err).Warnf("工作流超时提醒发送失败: taskID=%d", task.ID)
+			continue
 		}
 
 		now := time.Now()
@@ -476,7 +492,8 @@ func (s WorkflowEngineService) RemindOverdueTasks() (int, error) {
 			Action:       models.WorkflowActionRemind,
 			Comment:      content,
 		}).Error; err != nil {
-			return reminded, err
+			logrus.WithError(err).Warnf("工作流超时提醒写日志失败: taskID=%d", task.ID)
+			continue
 		}
 		reminded++
 	}
@@ -579,7 +596,7 @@ func advanceWorkflow(tx *gorm.DB, instance *models.WorkflowInstance, afterSort i
 	}
 
 	for _, node := range nodes {
-		approvers, err := resolveApprovers(tx, &node, instance.InitiatorID)
+		approvers, err := resolveApprovers(tx, &node, instance.InitiatorID, instance.TenantID)
 		if err != nil {
 			return err
 		}
@@ -618,7 +635,9 @@ func advanceWorkflow(tx *gorm.DB, instance *models.WorkflowInstance, afterSort i
 
 	// 已无后续节点：流程审批完成
 	now := time.Now()
-	if err := tx.Model(&models.WorkflowInstance{}).Where("id = ?", instance.ID).
+	// 带 status 条件：实例若已被并发地撤销/驳回，这里不能再把它改回「已通过」
+	if err := tx.Model(&models.WorkflowInstance{}).
+		Where("id = ? AND status = ?", instance.ID, models.WorkflowInstanceRunning).
 		Updates(map[string]interface{}{
 			"status":       models.WorkflowInstanceApproved,
 			"current_sort": -1,
@@ -637,16 +656,27 @@ func advanceWorkflow(tx *gorm.DB, instance *models.WorkflowInstance, afterSort i
 }
 
 // resolveApprovers 解析节点审批人（仅启用状态用户）。
-func resolveApprovers(tx *gorm.DB, node *models.WorkflowNode, initiatorID uint64) ([]models.User, error) {
+// 实例所在的租户会作为硬条件叠加：跨租户的审批人产生的待办双方都看不到/审不了，
+// 会让节点永久卡死，因此平台级实例（tenant_id = 0）之外的场景一律只认同租户用户。
+func resolveApprovers(tx *gorm.DB, node *models.WorkflowNode, initiatorID, instanceTenantID uint64) ([]models.User, error) {
 	query := tx.Model(&models.User{}).Where("base_user.status = ?", 1)
+	if instanceTenantID > 0 {
+		query = query.Where("base_user.tenant_id = ?", instanceTenantID)
+	}
 	switch node.ApproverType {
 	case models.ApproverTypeUser:
 		query = query.Where("base_user.id = ?", node.ApproverID)
 	case models.ApproverTypeInitiator:
 		query = query.Where("base_user.id = ?", initiatorID)
 	case models.ApproverTypeRole:
+		// 角色必须属于实例租户，避免节点引用其它租户的流程角色
 		query = query.Joins("JOIN base_workflow_role_user ON base_workflow_role_user.user_id = base_user.id").
-			Where("base_workflow_role_user.workflow_role_id = ?", node.ApproverID)
+			Joins("JOIN base_workflow_role ON base_workflow_role.id = base_workflow_role_user.workflow_role_id").
+			Where("base_workflow_role_user.workflow_role_id = ?", node.ApproverID).
+			Where("base_workflow_role.status = ?", 1)
+		if instanceTenantID > 0 {
+			query = query.Where("base_workflow_role.tenant_id = ?", instanceTenantID)
+		}
 	default:
 		return nil, nil
 	}

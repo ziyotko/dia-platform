@@ -7,6 +7,16 @@
           <el-button v-if="can('base:message-template:create')" type="primary" @click="handleAdd">新增模板</el-button>
         </div>
       </template>
+      <el-form :inline="true" class="search-form">
+        <el-form-item label="关键字">
+          <el-input v-model="query.keyword" placeholder="模板编码 / 名称" clearable style="width: 220px" @keyup.enter="handleSearch" />
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleSearch">查询</el-button>
+          <el-button @click="handleReset">重置</el-button>
+        </el-form-item>
+      </el-form>
+
       <el-table :data="tableData" v-loading="loading" border>
         <el-table-column prop="code" label="模板编码" />
         <el-table-column prop="name" label="模板名称" />
@@ -113,16 +123,30 @@ const rules = {
 
 const fetchData = async () => {
   loading.value = true
-  const res: any = await getMessageTemplateList(query)
-  tableData.value = res.data.list
-  total.value = res.data.total
-  loading.value = false
+  try {
+    const res: any = await getMessageTemplateList(query)
+    tableData.value = res.data.list || []
+    total.value = res.data.total || 0
+  } finally {
+    loading.value = false
+  }
 }
 
 const handleAdd = () => {
   isEdit.value = false
   resetForm()
   dialogVisible.value = true
+}
+
+const handleSearch = () => {
+  query.page = 1
+  fetchData()
+}
+
+const handleReset = () => {
+  query.keyword = ''
+  query.page = 1
+  fetchData()
 }
 
 const handleEdit = (row: MessageTemplate) => {

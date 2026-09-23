@@ -7,6 +7,7 @@ import (
 	"base/pkg/db"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // WorkflowService 流程定义（含节点编排）服务。
@@ -46,7 +47,10 @@ func (s WorkflowService) Create(w *models.Workflow) error {
 	if count > 0 {
 		return errors.New("该租户下流程编码已存在")
 	}
-	return db.DB.Create(w).Error
+	// 必须 Omit 关联：Workflow.Nodes 是 HasMany，GORM 的 Create 会连带 upsert 请求体里的 nodes。
+	// 那样既能绕过 SaveNodes 的全部节点校验，也能用「别的流程已有的节点 id」改写其它流程（甚至其它租户）的节点行。
+	// 节点统一走 PUT /workflows/:id/nodes。
+	return db.DB.Omit(clause.Associations).Create(w).Error
 }
 
 func (s WorkflowService) Update(w *models.Workflow, tenantID uint64) error {
@@ -171,14 +175,19 @@ func (s WorkflowService) Options(tenantID uint64) ([]models.Workflow, error) {
 }
 
 // ApproverOptions 节点审批人可选值：本租户的流程角色 + 用户。
-func (s WorkflowService) ApproverOptions(tenantID uint64) (*WorkflowApproverOptions, error) {
+// 平台超管（tenantID == 0）可用 filterTenantID 指定要看哪个租户的候选，避免误选到其它租户的人。
+func (s WorkflowService) ApproverOptions(tenantID, filterTenantID uint64) (*WorkflowApproverOptions, error) {
 	opts := &WorkflowApproverOptions{Roles: []models.WorkflowRole{}, Users: []WorkflowUserOption{}}
 
 	roleQuery := db.DB.Model(&models.WorkflowRole{}).Order("name ASC")
 	userQuery := db.DB.Model(&models.User{}).Order("username ASC")
-	if tenantID > 0 {
-		roleQuery = roleQuery.Where("tenant_id = ?", tenantID)
-		userQuery = userQuery.Where("tenant_id = ?", tenantID)
+	scope := tenantID
+	if scope == 0 {
+		scope = filterTenantID
+	}
+	if scope > 0 {
+		roleQuery = roleQuery.Where("tenant_id = ?", scope)
+		userQuery = userQuery.Where("tenant_id = ?", scope)
 	}
 	if err := roleQuery.Find(&opts.Roles).Error; err != nil {
 		return nil, err
@@ -249,6 +258,9 @@ func (s WorkflowService) SaveNodes(workflowID uint64, nodes []models.WorkflowNod
 			default:
 				return errors.New("节点审批人类型不合法")
 			}
+			if err := validateNodeApprover(tx, wf.TenantID, &node); err != nil {
+				return err
+			}
 			// 审批方式：非 and 一律归一到 or；超时提醒限制在 0~10080 分钟（7 天）
 			if node.ApproveMode != models.ApproveModeAnd {
 				node.ApproveMode = models.ApproveModeOr
@@ -263,6 +275,29 @@ func (s WorkflowService) SaveNodes(workflowID uint64, nodes []models.WorkflowNod
 		}
 		return tx.Create(&cleaned).Error
 	})
+}
+
+// validateNodeApprover 校验节点审批人确实属于该流程所在租户（平台级流程不做租户限制）。
+//
+// 为什么必需：若把租户 B 的用户配到租户 A 的流程节点上，产生的待办 tenant_id = A、approver_id = B 的用户，
+// 该用户在自己的待办里（按自身租户过滤）看不到它，审批时也会被归属校验拒绝，超时提醒同样发不出去——
+// 结果是这个节点永远无人可审、流程永久卡死。
+func validateNodeApprover(tx *gorm.DB, tenantID uint64, node *models.WorkflowNode) error {
+	switch node.ApproverType {
+	case models.ApproverTypeRole:
+		query := tx.Model(&models.WorkflowRole{}).Where("id = ?", node.ApproverID)
+		if tenantID > 0 {
+			query = query.Where("tenant_id = ?", tenantID)
+		}
+		return ensureRecordExists(query, "所选流程角色不存在或不属于该流程所在租户")
+	case models.ApproverTypeUser:
+		query := tx.Model(&models.User{}).Where("id = ? AND status = ?", node.ApproverID, 1)
+		if tenantID > 0 {
+			query = query.Where("tenant_id = ?", tenantID)
+		}
+		return ensureRecordExists(query, "所选审批人不存在、已停用或不属于该流程所在租户")
+	}
+	return nil
 }
 
 // fillApproverNames 填充节点的审批人展示名，避免前端再查一次字典。

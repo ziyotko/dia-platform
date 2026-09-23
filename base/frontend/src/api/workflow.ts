@@ -77,9 +77,9 @@ export function getWorkflowOptions() {
   return request.get('/workflows/options')
 }
 
-/** 节点审批人候选（流程角色 + 用户） */
-export function getWorkflowApproverOptions() {
-  return request.get('/workflows/approver-options')
+/** 节点审批人候选（流程角色 + 用户）。平台超管可传 tenantId 限定只取某租户的候选 */
+export function getWorkflowApproverOptions(tenantId?: number) {
+  return request.get('/workflows/approver-options', { params: tenantId ? { tenantId } : {} })
 }
 
 /* ---------------- 流程实例 ---------------- */

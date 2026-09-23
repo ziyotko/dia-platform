@@ -5,6 +5,8 @@ import (
 
 	"base/internal/models"
 	"base/pkg/db"
+
+	"gorm.io/gorm/clause"
 )
 
 type AppInstanceService struct{}
@@ -28,7 +30,9 @@ func (s AppInstanceService) Create(i *models.AppInstance) error {
 	if count > 0 {
 		return errors.New("该租户已开通此应用，请勿重复开通")
 	}
-	return db.DB.Create(i).Error
+	// 必须 Omit 关联：AppInstance.App 是 belongs-to，GORM 的 Create 会用请求体里的 app 覆盖 base_app 行
+	// （例如把应用的后端地址改成攻击者自己的服务），必须只写实例本身。
+	return db.DB.Omit(clause.Associations).Create(i).Error
 }
 
 // IsEnabled 判断某租户是否已开通并启用了某应用（供子应用代理入口鉴权使用）。

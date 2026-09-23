@@ -111,9 +111,14 @@
           <div v-if="dialogMode === 'draft'" class="form-tip">草稿支持单个接收人或全员广播</div>
         </el-form-item>
         <el-form-item label="接收用户" v-if="sendForm.receiverType === 'user'">
+          <!-- 始终用 multiple：单选模式下 el-select 会把 v-model 写成数字，
+               导致草稿的接收人丢失并退化成全员广播，同时编辑草稿也无法回显 -->
           <el-select
             v-model="sendForm.receiverIds"
-            :multiple="dialogMode === 'send'"
+            multiple
+            :multiple-limit="dialogMode === 'draft' ? 1 : 0"
+            collapse-tags
+            collapse-tags-tooltip
             placeholder="请选择"
             style="width: 100%"
           >
@@ -367,7 +372,10 @@ const handleSubmitDialog = async () => {
   if (!valid) return
 
   const isBroadcast = sendForm.receiverType === 'all'
-  const receiverIds = isBroadcast ? [] : sendForm.receiverIds
+  // 防御性归一：v-model 必须是数组（历史数据或异常状态下可能是单值）
+  const picked = Array.isArray(sendForm.receiverIds) ? sendForm.receiverIds : []
+  sendForm.receiverIds = picked
+  const receiverIds = isBroadcast ? [] : picked
   if (!isBroadcast && receiverIds.length === 0) {
     ElMessage.warning('请选择接收用户')
     return

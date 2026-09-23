@@ -25,7 +25,7 @@
               <el-input v-model="settings.basic.copyright" type="textarea" :rows="3" />
             </el-form-item>
             <el-form-item>
-              <el-button v-if="can('base:setting:save')" type="primary" @click="handleSave">保存</el-button>
+              <el-button v-if="canWrite('base:setting:save')" type="primary" @click="handleSave">保存</el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
@@ -50,7 +50,7 @@
               <div class="form-tip">新增用户与修改密码时服务端校验</div>
             </el-form-item>
             <el-form-item>
-              <el-button v-if="can('base:setting:save')" type="primary" @click="handleSaveSecurity">保存</el-button>
+              <el-button v-if="canWrite('base:setting:save')" type="primary" @click="handleSaveSecurity">保存</el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
@@ -82,7 +82,7 @@
               <el-input v-model="testEmail.to" placeholder="请输入测试邮箱地址" />
             </el-form-item>
             <el-form-item>
-              <el-button v-if="can('base:setting:test-email')" type="success" :loading="sending" @click="handleTestEmail">发送测试邮件</el-button>
+              <el-button v-if="canWrite('base:setting:test-email')" type="success" :loading="sending" @click="handleTestEmail">发送测试邮件</el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
@@ -113,7 +113,7 @@
               <el-input v-model="settings.notify.smsSign" placeholder="如【Base平台】" />
             </el-form-item>
             <el-form-item>
-              <el-button v-if="can('base:setting:save')" type="primary" @click="handleSaveNotify">保存</el-button>
+              <el-button v-if="canWrite('base:setting:save')" type="primary" @click="handleSaveNotify">保存</el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
@@ -133,8 +133,10 @@ import { useUserStore } from '@/stores/user'
 const userStore = useUserStore()
 // 按钮级权限：与后端 base:setting:* 权限点对齐
 const can = (code: string) => userStore.can(code)
-// 系统设置为平台级配置，后端仅允许平台超管访问
+// 系统设置为平台级配置，后端仅允许平台超管访问（/settings 整组挂了 SuperAdminOnly），
+// 因此租户管理员虽然 can() 为 true 也不能看到写按钮，否则点击必然 403
 const isSuperAdmin = computed(() => userStore.userInfo?.tenantId === 0)
+const canWrite = (code: string) => isSuperAdmin.value && can(code)
 
 const activeTab = ref('basic')
 const sending = ref(false)
@@ -210,16 +212,17 @@ const loadSettings = async () => {
     }
   } catch (error) {
     ElMessage.error('加载设置失败')
+    console.error('[base] 加载设置失败', error)
   }
 }
 
 const handleSave = async () => {
+  // 只提交当前两个页签（基础配置 / 邮件配置）的字段：
+  // 安全策略与通知渠道各有独立的保存动作，混在一起会让「保存」的含义变得不确定
   const payload: SettingItem[] = [
     { category: 'basic', key: 'platformName', value: settings.basic.platformName, type: 'string' },
     { category: 'basic', key: 'logo', value: settings.basic.logo, type: 'string' },
     { category: 'basic', key: 'copyright', value: settings.basic.copyright, type: 'string' },
-    { category: 'security', key: 'loginLock', value: String(settings.security.loginLock), type: 'boolean' },
-    { category: 'security', key: 'pwdMinLength', value: String(settings.security.pwdMinLength), type: 'number' },
     { category: 'email', key: 'host', value: settings.email.host, type: 'string' },
     { category: 'email', key: 'port', value: String(settings.email.port), type: 'number' },
     { category: 'email', key: 'username', value: settings.email.username, type: 'string' },
@@ -231,7 +234,8 @@ const handleSave = async () => {
     await saveSettings(payload)
     ElMessage.success('设置已保存')
   } catch (error) {
-    ElMessage.error('保存失败')
+    // 失败原因已由 request 拦截器弹出，这里不覆盖
+    console.error('[base] 保存设置失败', error)
   }
 }
 
@@ -248,7 +252,7 @@ const handleSaveSecurity = async () => {
     await saveSettings(payload)
     ElMessage.success('安全策略已保存')
   } catch (error) {
-    ElMessage.error('保存失败')
+    console.error('[base] 保存安全策略失败', error)
   }
 }
 
@@ -264,7 +268,7 @@ const handleSaveNotify = async () => {
     await saveSettings(payload)
     ElMessage.success('通知渠道已保存')
   } catch (error) {
-    ElMessage.error('保存失败')
+    console.error('[base] 保存通知渠道失败', error)
   }
 }
 
@@ -286,7 +290,8 @@ const handleTestEmail = async () => {
     })
     ElMessage.success('测试邮件已发送')
   } catch (error: any) {
-    ElMessage.error(error?.response?.data?.message || '发送失败')
+    // 统一响应下真实原因在 error.message（错误详情已由拦截器弹出）
+    ElMessage.error(error?.message || '发送失败')
   } finally {
     sending.value = false
   }

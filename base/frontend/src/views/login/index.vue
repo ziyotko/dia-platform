@@ -175,7 +175,9 @@ const handleLogin = async () => {
       ElMessage.error('登录后跳转失败，请刷新页面重试')
     }
   } catch (error: any) {
-    ElMessage.error(error?.response?.data?.message || '登录失败')
+    // 失败详情已由 request 拦截器弹出（统一响应 HTTP 200 + code!=0，错误信息在 error.message 上），
+    // 这里的 response.data.message 恒为 undefined，再弹一次只会把真实原因覆盖成「登录失败」
+    console.error('[base] 登录失败', error)
     loadCaptcha()
   } finally {
     loading.value = false

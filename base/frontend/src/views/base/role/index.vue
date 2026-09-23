@@ -102,7 +102,7 @@
 
     <el-dialog v-model="permDialogVisible" title="分配接口权限" width="600px">
       <el-alert
-        title="决定可以调用哪些接口；未分配任何权限的普通用户仅能浏览（GET）"
+        title="决定可以调用哪些接口；未分配任何权限的普通用户除个人中心等白名单接口外一律被拒绝，只读接口也需显式授权"
         type="info"
         :closable="false"
         show-icon
