@@ -130,6 +130,7 @@ powershell -ExecutionPolicy Bypass -File .\build-backends.ps1 -Only application 
 | `POST /admin/upload` | 20 次/分钟 |
 
 - 另有单 IP 并发请求上限 `server.max_concurrent_ips`（默认 100，**必须 > 0**：配成 0 会让所有请求都返回 429）；上述限制超限均返回 `code=429`「请求过于频繁，请稍后再试」
+- **材料数量配额**：单份申报最多 **20 份**材料（`service.MaxMaterialsPerApplication`，超出返回 `code=500`「材料数量不能超过 20 份」）；单文件大小与扩展名限制见上
 
 ---
 
@@ -234,6 +235,45 @@ server {
 7. **时间按服务器本地时区解析**：批次起止时间等无时区串（`YYYY-MM-DD HH:mm:ss`）改用 `time.Local`（与 member / portal 一致）。**部署机时区必须是 `Asia/Shanghai`**，否则仍不会按北京时间入库。
 8. **前端 401 处理**：按发起请求的角色分别跳 `/login`（申报人）或 `/admin/login`（管理端），且只清理本应用的 `localStorage` 键，不再 `localStorage.clear()`（原先会连带清掉同域部署的 portal / member / base 登录态，管理端还会被跳到申报人登录页）。
 
+### 升级说明（2026-09-23 · 第二批：数据完整性）
+
+9. **评审人权限收敛**：`reviewer` 只保留 `dashboard:view` + `review:score`，去掉 `application:view` / `batch:view`（原先可翻看全部申报详情与他人评分意见）。评审人仍可正常使用「管理看板 / 我的评审 / 个人资料」；评审接口 `GET /admin/reviews`、`GET /admin/reviews/:id` 本身按本人任务自限。若你曾自定义过角色权限，请同步该变更（启动时 `seedRoles()` 会按代码覆盖角色表的 `permissions`）。
+10. **评审人视图脱敏**：评审人拿到的申报只保留项目内容与材料，`totalScore` / `avgScore` / `finalOpinion` / `preliminaryOpinion` 一律置空，避免打分前被当前均分「锚定」。
+11. **状态推进改条件更新**（并发保护）：申报的撤回/提交/初审/终审/公示/撤回结果、评审提交与汇总回写、批次发布/结束/进入评审/编辑、公示公告发布与删除、证书编辑，全部改为 `WHERE ... AND status = ?` 的条件更新并在 `RowsAffected = 0` 时提示「…状态已变更，请刷新后重试」。**重复点击、双人同时操作不再产生重复状态变更与重复通知**（前端会看到上述提示，刷新后重试即可）。
+12. **证书颁发/作废事务化**：颁发证书现在在事务中先用「申报 `published` → `certified`」的条件更新抢占该行（兼作互斥锁），再加证书、回写状态；同一申报**不会因双击/重试产生两张有效证书**。作废证书与「申报退回已公示」同事务，不再出现「证书已作废但申报仍是已发证」。
+13. **评审分配并发保护**：分配评审人的读-判-写改为单事务 + `SELECT ... FOR UPDATE` 行锁，并发保存不再插入重复的 `(application_id, reviewer_id)` 行（也就不会出现同一位专家被算两次平均分）。
+14. **材料数量上限 20 份**（见「二.5」），超出时提示「材料数量不能超过 20 份」。改上限需同时改 `service.MaxMaterialsPerApplication` 与本文件/手册。
+
+### 手工 SQL（可选加固：唯一索引）
+
+代码层已用事务 + 条件更新保证下列约束，索引是「数据库层兼底」。`AutoMigrate` **不会**创建它们（旧库可能已有重复行，贸然建索引会让启动失败），请确认无重复后手工执行：
+
+```sql
+-- 1) 评审分配：同一申报 + 同一位评审人只能一行
+--    先去重（保留最小 id，被删掉的重复行不应有已评分记录，执行前请人工确认）
+SELECT application_id, reviewer_id, COUNT(*) AS cnt, GROUP_CONCAT(id ORDER BY id) AS ids
+  FROM application_review_assignments
+ GROUP BY application_id, reviewer_id HAVING cnt > 1;
+
+-- 仅当上面为 0 行时才执行：
+ALTER TABLE `application_review_assignments`
+  ADD UNIQUE KEY `uk_app_reviewer` (`application_id`, `reviewer_id`);
+
+-- 2) 证书编号：未作废的证书编号唯一（作废后释放编号，因此不能建普通唯一索引）
+--    MySQL 8.0.13+ 的函数索引：
+SELECT cert_no, COUNT(*) AS cnt, GROUP_CONCAT(id ORDER BY id) AS ids
+  FROM application_certificates WHERE status <> 'void'
+ GROUP BY cert_no HAVING cnt > 1;
+
+-- 仅当上面为 0 行时才执行：
+ALTER TABLE `application_certificates`
+  ADD UNIQUE KEY `uk_cert_no_active` ((IF(`status` = 'void', NULL, `cert_no`)));
+```
+
+> 低于 MySQL 8.0.13（不支持函数索引）时，改用生成列变体：
+> `ALTER TABLE application_certificates ADD COLUMN cert_no_active varchar(64) GENERATED ALWAYS AS (IF(status='void', NULL, cert_no)) STORED, ADD UNIQUE KEY uk_cert_no_active (cert_no_active);`
+> 建索引后，撞唯一键的请求会被翻译成「证书编号已存在」/「评审人重复分配，请刷新后重试」。
+
 ### 移除软删除残留（2026-09-22，无手工 SQL 也能跑）
 
 后端已统一为**物理删除（硬删）**：模型不再内嵌 `gorm.DeletedAt`，代码里没有 `Unscoped()` 与
@@ -277,7 +317,7 @@ SELECT CONCAT('ALTER TABLE `', TABLE_NAME, '` DROP INDEX `', INDEX_NAME, '`, DRO
 |------|------|
 | 申报人（前端用户） | 注册/登录、申报项目、上传材料、查询进度、下载证书 |
 | 管理人 `manager` | 维护类别/批次/专家库、在线初审、分配评审、确定结果、发布公示、颁发证书、管理申报人与通知 |
-| 评审人 `reviewer` | 查看分配给自己的评审任务、在线评分并填写评审意见 |
+| 评审人 `reviewer` | 查看分配给自己的评审任务、在线评分并填写评审意见（看不到其他评审人的分数/意见与均分） |
 | 超级管理员 `super_admin` | 全部权限，含账号与角色管理 |
 
 ### 申报状态流转
@@ -312,6 +352,9 @@ draft(草稿) → submitted(待初审) → preliminary_rejected(初审驳回)
 | 上传大文件返回 413 | Nginx `client_max_body_size` 比后端硬限（50MB）还小，请求没到后端就被网关拒绝；调到 ≥60m |
 | 注册接口返回 400「请填写完整信息（含验证码）」 | 未传 `captcha_id` / `captcha_code`（注册已强制验证码，见「二.5」与升级说明） |
 | 页面能打开但接口 404 | `server.api_prefix` 与 `VITE_API_BASE_URL` 不一致，或 Nginx 反代路径写错（`proxy_pass` 带了 URI） |
+| 提示「…状态已变更，请刷新后重试」 | 并发/重复操作：另一个人（或另一个标签页）已把该申报/批次/证书推到下一步，刷新看最新状态即可（这是并发保护，不是故障） |
+| 提示「该申报已颁发证书或状态已变更，请刷新后重试」 | 同一份申报被重复点击了「颁发证书」；刷新后若已发证，则在「证书管理」里查看 |
+| 提示「材料数量不能超过 20 份」 | 单份申报的材料配额（见「二.5」），删除不需要的材料或调高 `MaxMaterialsPerApplication` |
 | 所有用户被限流、日志里 IP 都是同一个 | `server.trusted_proxies` 未填 Nginx 地址，或 Nginx 未转发 `X-Real-IP` / `X-Forwarded-For` |
 | 后台账号在申报人登录页登录失败 | 属预期：两套账号分别存于 `application_admins` / `application_users`，不通用 |
 | 改了后端端口后 dev 前端请求不通 | `frontend/vite.config.ts` 的 proxy target 与 `server.port` 必须一致（当前 8094 / 3003） |

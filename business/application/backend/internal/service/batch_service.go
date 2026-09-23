@@ -87,7 +87,17 @@ func (s *BatchService) Update(id uint64, updates map[string]interface{}) error {
 	if start != nil && end != nil && !end.After(*start) {
 		return errors.New("申报截止时间必须晚于开始时间")
 	}
-	return db.DB.Model(&b).Updates(clean).Error
+	// 条件更新：读-判-写之间批次可能已被发布/结束，否则会绕过上面的字段锁定规则
+	res := db.DB.Model(&models.ProjectBatch{}).
+		Where("id = ? AND status = ?", id, b.Status).
+		Updates(clean)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return errors.New("批次状态已变更，请刷新后重试")
+	}
+	return nil
 }
 
 // mergeTime returns the value a time column will have after applying updates.
@@ -140,7 +150,17 @@ func (s *BatchService) Publish(id uint64) error {
 	if !b.ApplyEnd.After(*b.ApplyStart) {
 		return errors.New("申报截止时间必须晚于开始时间")
 	}
-	return db.DB.Model(&b).Update("status", models.BatchStatusOpen).Error
+	// 条件更新：重复点击 / 并发只能发布一次
+	res := db.DB.Model(&models.ProjectBatch{}).
+		Where("id = ? AND status = ?", id, models.BatchStatusDraft).
+		Update("status", models.BatchStatusOpen)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return errors.New("批次状态已变更，请刷新后重试")
+	}
+	return nil
 }
 
 // Close ends a batch that is either accepting applications or under review.
@@ -152,7 +172,16 @@ func (s *BatchService) Close(id uint64) error {
 	if b.Status != models.BatchStatusOpen && b.Status != models.BatchStatusReviewing {
 		return errors.New("仅申报中或评审中的批次可结束")
 	}
-	return db.DB.Model(&b).Update("status", models.BatchStatusClosed).Error
+	res := db.DB.Model(&models.ProjectBatch{}).
+		Where("id = ? AND status IN ?", id, []string{models.BatchStatusOpen, models.BatchStatusReviewing}).
+		Update("status", models.BatchStatusClosed)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return errors.New("批次状态已变更，请刷新后重试")
+	}
+	return nil
 }
 
 // StartReview moves an open batch into the review stage.
@@ -164,7 +193,16 @@ func (s *BatchService) StartReview(id uint64) error {
 	if b.Status != models.BatchStatusOpen {
 		return errors.New("仅申报中的批次可进入评审阶段")
 	}
-	return db.DB.Model(&b).Update("status", models.BatchStatusReviewing).Error
+	res := db.DB.Model(&models.ProjectBatch{}).
+		Where("id = ? AND status = ?", id, models.BatchStatusOpen).
+		Update("status", models.BatchStatusReviewing)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return errors.New("批次状态已变更，请刷新后重试")
+	}
+	return nil
 }
 
 func (s *BatchService) GetByID(id uint64) (*models.ProjectBatch, error) {

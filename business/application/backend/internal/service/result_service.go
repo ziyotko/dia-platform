@@ -52,7 +52,24 @@ func (s *ResultService) UpdateAnnouncement(id uint64, updates map[string]interfa
 		}
 		clean["batch_id"] = batchID
 	}
-	return db.DB.Model(&a).Updates(clean).Error
+	// 条件更新：读-判-写之间可能已被别人发布
+	res := db.DB.Model(&models.Announcement{}).
+		Where("id = ? AND status <> ?", id, models.AnnouncementStatusPublished).
+		Updates(clean)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		// MySQL 只统计真正改动的行：确认一下是不是已被发布
+		var after models.Announcement
+		if err := db.DB.First(&after, id).Error; err != nil {
+			return errors.New("公示不存在")
+		}
+		if after.Status == models.AnnouncementStatusPublished {
+			return errors.New("已发布的公示不可编辑")
+		}
+	}
+	return nil
 }
 
 func (s *ResultService) DeleteAnnouncement(id uint64) error {
@@ -63,7 +80,16 @@ func (s *ResultService) DeleteAnnouncement(id uint64) error {
 	if a.Status == models.AnnouncementStatusPublished {
 		return errors.New("已发布的公示不可删除")
 	}
-	return db.DB.Delete(&a).Error
+	// 条件删除：读-判-写之间可能已被别人发布
+	res := db.DB.Where("id = ? AND status <> ?", id, models.AnnouncementStatusPublished).
+		Delete(&models.Announcement{})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return errors.New("已发布的公示不可删除")
+	}
+	return nil
 }
 
 // PublishAnnouncement publishes a draft announcement. A published announcement
@@ -80,10 +106,20 @@ func (s *ResultService) PublishAnnouncement(id uint64) error {
 		return errors.New("请填写公示标题")
 	}
 	now := time.Now()
-	return db.DB.Model(&a).Updates(map[string]interface{}{
-		"status":       models.AnnouncementStatusPublished,
-		"published_at": now,
-	}).Error
+	// 条件更新：重复点击 / 并发只能发布一次（公告发布后不可再改，重复发布会覆盖发布时间）
+	res := db.DB.Model(&models.Announcement{}).
+		Where("id = ? AND status <> ?", id, models.AnnouncementStatusPublished).
+		Updates(map[string]interface{}{
+			"status":       models.AnnouncementStatusPublished,
+			"published_at": now,
+		})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return errors.New("该公示已发布")
+	}
+	return nil
 }
 
 // checkBatch reports an error when the referenced batch does not exist.
@@ -120,6 +156,11 @@ func (s *ResultService) ListAnnouncements(page, size int, keyword string, onlyPu
 // IssueCertificate issues a certificate for an approved application.
 // Only applications whose result has already been published (已公示) qualify, so
 // the documented flow passed → published → certified is always respected.
+//
+// The whole operation runs in one transaction whose first step is a conditional
+// update of the application status: that update doubles as the mutex, so a
+// double click / retry can never produce two active certificates for the same
+// application or two certificates sharing one number.
 func (s *ResultService) IssueCertificate(c *models.Certificate) error {
 	var app models.Application
 	if err := db.DB.First(&app, c.ApplicationID).Error; err != nil {
@@ -128,27 +169,12 @@ func (s *ResultService) IssueCertificate(c *models.Certificate) error {
 	if app.Status != models.AppStatusPublished {
 		return errors.New("仅已公示且通过的申报可颁发证书")
 	}
-	var count int64
-	db.DB.Model(&models.Certificate{}).
-		Where("application_id = ? AND status <> ?", c.ApplicationID, models.CertStatusVoid).Count(&count)
-	if count > 0 {
-		return errors.New("该申报已颁发证书")
-	}
 	if c.Title == "" {
 		return errors.New("请填写证书名称")
 	}
 	if c.CertNo == "" {
 		// Generate a stable, readable number: CAAM-<year>-<application id>.
 		c.CertNo = fmt.Sprintf("CAAM-%s-%06d", time.Now().Format("2006"), c.ApplicationID)
-	}
-	var dup int64
-	// A voided certificate no longer holds its number, otherwise the generated
-	// "CAAM-<year>-<application id>" would make re-issuing after a void
-	// impossible for the rest of the year.
-	db.DB.Model(&models.Certificate{}).
-		Where("cert_no = ? AND status <> ?", c.CertNo, models.CertStatusVoid).Count(&dup)
-	if dup > 0 {
-		return errors.New("证书编号已存在")
 	}
 	c.UserID = app.UserID
 	c.BatchID = app.BatchID
@@ -163,10 +189,47 @@ func (s *ResultService) IssueCertificate(c *models.Certificate) error {
 	}
 	now := time.Now()
 	c.IssuedAt = &now
-	if err := db.DB.Create(c).Error; err != nil {
-		return err
-	}
-	if err := db.DB.Model(&app).Update("status", models.AppStatusCertified).Error; err != nil {
+
+	err := db.DB.Transaction(func(tx *gorm.DB) error {
+		res := tx.Model(&models.Application{}).
+			Where("id = ? AND status = ?", app.ID, models.AppStatusPublished).
+			Update("status", models.AppStatusCertified)
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return errors.New("该申报已颁发证书或状态已变更，请刷新后重试")
+		}
+		var count int64
+		if err := tx.Model(&models.Certificate{}).
+			Where("application_id = ? AND status <> ?", app.ID, models.CertStatusVoid).
+			Count(&count).Error; err != nil {
+			return err
+		}
+		if count > 0 {
+			return errors.New("该申报已颁发证书")
+		}
+		// A voided certificate no longer holds its number, otherwise the generated
+		// "CAAM-<year>-<application id>" would make re-issuing after a void
+		// impossible for the rest of the year.
+		var dup int64
+		if err := tx.Model(&models.Certificate{}).
+			Where("cert_no = ? AND status <> ?", c.CertNo, models.CertStatusVoid).
+			Count(&dup).Error; err != nil {
+			return err
+		}
+		if dup > 0 {
+			return errors.New("证书编号已存在")
+		}
+		if err := tx.Create(c).Error; err != nil {
+			if isDuplicateKeyErr(err) {
+				return errors.New("证书编号已存在")
+			}
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		return err
 	}
 	notifyUser(app.UserID, "证书已颁发", "您的项目《"+app.Title+"》证书已颁发，可在「我的证书」中下载。", NotifyTypeCertificate)
@@ -185,6 +248,7 @@ func (s *ResultService) UpdateCertificate(id uint64, updates map[string]interfac
 	if cert.Status == models.CertStatusVoid {
 		return errors.New("证书已作废，不可编辑")
 	}
+	deleteAfter := ""
 	if raw, ok := clean["cert_no"]; ok {
 		no, _ := raw.(string)
 		if no == "" {
@@ -203,10 +267,34 @@ func (s *ResultService) UpdateCertificate(id uint64, updates map[string]interfac
 	if raw, ok := clean["file_url"]; ok {
 		newURL, _ := raw.(string)
 		if cert.FileURL != "" && newURL != cert.FileURL {
-			storage.RemoveByURL(cert.FileURL)
+			deleteAfter = cert.FileURL
 		}
 	}
-	return db.DB.Model(&cert).Updates(clean).Error
+	// 条件更新：证书可能正在被另一个人作废（作废后不允许编辑）。
+	res := db.DB.Model(&models.Certificate{}).
+		Where("id = ? AND status <> ?", id, models.CertStatusVoid).
+		Updates(clean)
+	if res.Error != nil {
+		// 若已按文档建了 uk_cert_no_active 唯一索引，并发改号会撞唯一键
+		if isDuplicateKeyErr(res.Error) {
+			return errors.New("证书编号已存在")
+		}
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		// MySQL 只统计真正改动的行：可能只是内容没变，也可能已被作废
+		var after models.Certificate
+		if err := db.DB.First(&after, id).Error; err != nil {
+			return errors.New("证书不存在")
+		}
+		if after.Status == models.CertStatusVoid {
+			return errors.New("证书已作废，不可编辑")
+		}
+	}
+	if deleteAfter != "" {
+		storage.RemoveByURL(deleteAfter)
+	}
+	return nil
 }
 
 // VoidCertificate invalidates an issued certificate. The application returns to
@@ -221,17 +309,29 @@ func (s *ResultService) VoidCertificate(id uint64, reason string) error {
 		return errors.New("该证书已作废")
 	}
 	now := time.Now()
-	if err := db.DB.Model(&cert).Updates(map[string]interface{}{
-		"status":      models.CertStatusVoid,
-		"voided_at":   now,
-		"void_reason": reason,
-	}).Error; err != nil {
+	// 作废证书与把申报退回「已公示」必须同生同死：否则会出现「证书已作废、申报仍
+	// 显示已发证」（或反之）的不一致状态。
+	err := db.DB.Transaction(func(tx *gorm.DB) error {
+		res := tx.Model(&models.Certificate{}).
+			Where("id = ? AND status <> ?", id, models.CertStatusVoid).
+			Updates(map[string]interface{}{
+				"status":      models.CertStatusVoid,
+				"voided_at":   now,
+				"void_reason": reason,
+			})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return errors.New("该证书已作废")
+		}
+		// 只把仍处于「已发证」的申报退回「已公示」，避免覆盖掉其他状态流转
+		return tx.Model(&models.Application{}).
+			Where("id = ? AND status = ?", cert.ApplicationID, models.AppStatusCertified).
+			Update("status", models.AppStatusPublished).Error
+	})
+	if err != nil {
 		return err
-	}
-
-	var app models.Application
-	if err := db.DB.First(&app, cert.ApplicationID).Error; err == nil && app.Status == models.AppStatusCertified {
-		db.DB.Model(&app).Update("status", models.AppStatusPublished)
 	}
 	notifyUser(cert.UserID, "证书已作废", "您的项目《"+cert.Title+"》的证书已作废，如需重新颁发请联系管理方。", NotifyTypeCertificate)
 	return nil

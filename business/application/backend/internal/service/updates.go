@@ -6,6 +6,16 @@ import (
 	"unicode"
 )
 
+// isDuplicateKeyErr 判断是否为唯一键冲突（MySQL 1062）。
+// 项目未开启 GORM 的 TranslateError，只能按错误文本判断。
+func isDuplicateKeyErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "1062") || strings.Contains(msg, "duplicate entry")
+}
+
 // snakeKey converts a camelCase / PascalCase key (e.g. "projectBrief") into the
 // snake_case column name used by the models ("project_brief"). Keys that are
 // already snake_case are returned unchanged.

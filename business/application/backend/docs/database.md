@@ -28,6 +28,10 @@
 - **不建外键约束**：`pkg/db/db.go` 显式设置了 `DisableForeignKeyConstraintWhenMigrating: true`，模型里的 `gorm:"foreignKey:..."` **只用于 GORM 预加载（Preload），数据库层没有 FOREIGN KEY**。因此引用完整性由服务层保证，直接写 SQL 时不会报 1451/1452 类外键错误，但可能造出孤儿数据。
 - **不入库的展示字段**：部分模型带 `gorm:"-"` 的瞬时字段（如 `Application.ReviewCount`/`ScoredCount`/`Certificate`、`Expert.ReviewCount`/`ScoredCount`、`ProjectBatch.CanApply`），由服务层查询时填充，**数据库中不存在对应列**，不要据此写 SQL。
 - **唯一索引**：`application_users.username`、`application_admins.username`、`application_roles.code`、`application_experts.username`、`application_system_configs.key`。
+- **未加唯一索引但服务层保证唯一**：
+  - `application_certificates.cert_no`：颁发/编辑时查重，且**已作废的证书不占用编号**（同一年内作废后可重发）。并发双写由事务 +「申报 `published`→`certified` 条件更新」兼作互斥锁保护。
+  - `application_review_assignments (application_id, reviewer_id)`：分配评审人在单事务内先对该申报行 `SELECT ... FOR UPDATE` 再读写，避免并发插入重复行（否则同一位专家会被算两次平均分）。
+- **可选手工唯一索引**：`uk_app_reviewer (application_id, reviewer_id)` 与 `uk_cert_no_active ((IF(status='void',NULL,cert_no)))`——`AutoMigrate` **不会**建（旧库可能已有重复行），SQL 与去重预检见 `business/application/DEPLOY.md`「手工 SQL（可选加固）」。
 - **未加唯一索引但服务层校验唯一**：`application_certificates.cert_no`（`ResultService.IssueCertificate` / `UpdateCertificate` 内比对，且**已作废的证书不占用编号**，以便同一年内作废后重新颁发）。
 
 ---
@@ -388,7 +392,13 @@ draft(草稿) ──提交──► submitted(待初审)
 | 公示 | 仅 `passed` / `rejected` 可公示；通过者改状态为 `published`，未通过者仅写 `published_at`（保留 `rejected` 口径） |
 | 撤回结果 | 已公示 → 撤回公示（`published` 退回 `passed` 并清空 `published_at`）；未公示 → 退回 `reviewed` 并清空 `final_opinion`；`certified` 拒绝，需先作废证书 |
 | 颁发证书 | 仅 `published` 可颁发；颁发后申报 → `certified`；同一申报只能有一张非作废证书 |
-| 作废证书 | 证书 → `void` 并写 `voided_at`/`void_reason`；申报 `certified` → `published` |
+| 作废证书 | 证书 → `void` 并写 `voided_at`/`void_reason`；申报 `certified` → `published`（同一事务） |
+
+> **并发保护（2026-09-23）**：上表所有状态推进都是「先读后写」，现已全部改为 `WHERE ... AND status = ?`
+> 的条件更新：`RowsAffected = 0` 时返回「…状态已变更，请刷新后重试」，因此双人同时操作 / 重复点击
+> 不会产生重复状态变更、重复通知或重复记录（证书颁发、评审分配与作废证书还额外包在事务里）。
+> 评审人看到的申报会抹掉 `total_score` / `avg_score` / `final_opinion` / `preliminary_opinion`（避免打分前被均分锚定），
+> `reviewer` 角色也只有 `dashboard:view` + `review:score`，不再拥有 `application:view` / `batch:view`。
 
 ---
 
@@ -402,7 +412,7 @@ draft(草稿) ──提交──► submitted(待初审)
 | --- | --- | --- |
 | `super_admin` | 超级管理员 | 拥有全部权限（含账号管理） |
 | `manager` | 管理人 | 批次、类别、初审、评审分配、结果公示、证书、通知、申报人与专家库管理 |
-| `reviewer` | 评审人 | 仅 管理看板 / 我的评审 / 个人资料 |
+| `reviewer` | 评审人 | 仅 管理看板 / 我的评审 / 个人资料（权限码只有 `dashboard:view` + `review:score`；看不到其他申报与其他评审人的分数/意见） |
 
 > 角色的 `permissions` 每次启动都会被 `seedRoles()` 覆盖为 `middleware/auth.go` 中同名角色的权限码列表；界面上不提供权限编辑（**角色表不是权限真源**）。
 

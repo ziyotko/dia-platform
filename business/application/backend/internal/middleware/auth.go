@@ -239,8 +239,10 @@ func GetRolePermissions() map[string][]string {
 		},
 		"reviewer": {
 			"dashboard:view",
-			"batch:view",
-			"application:view",
+			// 评审人只做「我的评审」：/admin/reviews* 由 AdminAuth 保护并按 reviewer_id
+			// 自限（MyAssignments 按本人过滤、GetAssignment 校验归属），不需要
+			// application:view / batch:view —— 否则评审人可翻看全部申报与他人评分意见，
+			// 既泄露申报人资料，又破坏评审独立性（与 database.md 的声明一致）。
 			"review:score",
 		},
 	}

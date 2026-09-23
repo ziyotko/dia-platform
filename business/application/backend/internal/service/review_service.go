@@ -18,6 +18,21 @@ func (s *ReviewService) ListReviewers() ([]models.Admin, error) {
 	return list, err
 }
 
+// sanitizeForReviewer 抹掉评审人在打分前不该看到的汇总信息：由他人评分算出的
+// 总分/平均分，以及管理人填写的初审/终审意见。留着它们会让评审人“锚定”当前
+// 均分，破坏评审独立性（项目名称/内容/材料仍完整返回，不影响独立判断）。
+func sanitizeForReviewer(a *models.ReviewAssignment) {
+	if a == nil || a.Application == nil {
+		return
+	}
+	app := a.Application
+	app.TotalScore = 0
+	app.AvgScore = 0
+	app.FinalOpinion = ""
+	app.PreliminaryOpinion = ""
+	app.Reviews = nil
+}
+
 // MyAssignments lists review tasks assigned to a reviewer
 func (s *ReviewService) MyAssignments(reviewerID uint64, page, size int, status string) ([]models.ReviewAssignment, int64, error) {
 	var list []models.ReviewAssignment
@@ -33,6 +48,9 @@ func (s *ReviewService) MyAssignments(reviewerID uint64, page, size int, status 
 		}).
 		Order("created_at DESC").
 		Offset((page - 1) * size).Limit(size).Find(&list).Error
+	for i := range list {
+		sanitizeForReviewer(&list[i])
+	}
 	return list, total, err
 }
 
@@ -47,6 +65,7 @@ func (s *ReviewService) GetAssignment(id, reviewerID uint64) (*models.ReviewAssi
 	if a.ReviewerID != reviewerID {
 		return nil, errors.New("无权查看该任务")
 	}
+	sanitizeForReviewer(&a)
 	return &a, nil
 }
 
