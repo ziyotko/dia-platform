@@ -30,10 +30,11 @@
         <el-table-column prop="status" label="状态" min-width="120">
           <template #default="{row}"><el-tag :type="statusTag(row.status)">{{ statusLabel(row.status) }}</el-tag></template>
         </el-table-column>
-        <el-table-column label="操作" min-width="420">
+        <el-table-column label="操作" min-width="500">
           <template #default="{row}">
             <el-button text size="small" type="primary" @click.stop="openOrgs(row)">所有会籍</el-button>
             <el-button text size="small" type="warning" :disabled="row.status !== 'active'" @click.stop="openLevelDialog(row)">变更等级</el-button>
+            <el-button text size="small" :disabled="row.status !== 'active' && row.status !== 'expired'" @click.stop="openStatusDialog(row)">状态变更</el-button>
             <el-button text size="small" type="primary" @click.stop="openHistory(row)">会籍历史</el-button>
             <el-button text size="small" type="info" @click.stop="resetPassword(row)">重置密码</el-button>
             <el-button text size="small" type="danger" :disabled="row.status !== 'registering'" @click.stop="delMember(row)">删除</el-button>
@@ -127,6 +128,29 @@
       <template #footer>
         <el-button @click="levelDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="savingLevel" :disabled="!levelOptions.length || !selectedLevel" @click="confirmChangeLevel">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 会籍状态变更弹窗（到期 / 恢复会籍） -->
+    <el-dialog v-model="statusDialogVisible" title="会籍状态变更" width="460px" class="member-status-dialog" :close-on-click-modal="false" append-to-body>
+      <div class="level-hint">仅支持「正式会员 ⇄ 已过期」的会籍变更；注册中 / 待审核 / 待缴费 / 已拒绝由入会审批与缴费流程自动维护。</div>
+      <el-form label-width="90px">
+        <el-form-item label="会员"><span>{{ statusTarget ? displayName(statusTarget) : '' }}</span></el-form-item>
+        <el-form-item label="当前状态">
+          <el-tag :type="statusTag(statusTarget?.status)">{{ statusLabel(statusTarget?.status) }}</el-tag>
+        </el-form-item>
+        <el-form-item label="目标状态" required>
+          <el-radio-group v-model="statusTargetValue">
+            <el-radio value="active">正式会员</el-radio>
+            <el-radio value="expired">已过期</el-radio>
+          </el-radio-group>
+          <div v-if="statusTargetValue === 'expired'" class="level-empty">置为已过期会同时作废该会员名下的生效证书，并写入一条「会员到期」会籍记录。</div>
+          <div v-else class="level-empty">恢复会籍不会自动恢复证书（会员缴费后可自行续证），并写入一条「恢复会籍」会籍记录。</div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="statusDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="savingStatus" :disabled="!statusTargetValue" @click="confirmStatusChange">确定</el-button>
       </template>
     </el-dialog>
 
@@ -301,6 +325,12 @@ const levelLoading = ref(false)
 const selectedLevel = ref<number | null>(null)
 const levelReason = ref('')
 const savingLevel = ref(false)
+
+// 会籍状态变更（到期 / 恢复会籍）
+const statusDialogVisible = ref(false)
+const statusTarget = ref<any>(null)
+const statusTargetValue = ref<string>('')
+const savingStatus = ref(false)
 
 const historyVisible = ref(false)
 const historyTarget = ref<any>(null)
@@ -665,6 +695,42 @@ async function confirmChangeLevel() {
     levelDialogVisible.value = false
     fetchData()
   } catch {} finally { savingLevel.value = false }
+}
+
+async function openStatusDialog(row: any) {
+  if (row.status !== 'active' && row.status !== 'expired') {
+    ElMessage.warning('仅「正式会员」与「已过期」支持会籍状态变更')
+    return
+  }
+  statusTarget.value = row
+  // 默认给出相反状态，减少误操作（仍会二次确认）
+  statusTargetValue.value = row.status === 'active' ? 'expired' : 'active'
+  statusDialogVisible.value = true
+}
+
+async function confirmStatusChange() {
+  if (!statusTarget.value || !statusTargetValue.value) return
+  if (statusTargetValue.value === statusTarget.value.status) {
+    ElMessage.warning('目标状态与当前状态相同')
+    return
+  }
+  const actionLabel = statusTargetValue.value === 'expired' ? '置为已过期' : '恢复会籍'
+  try {
+    await ElMessageBox.confirm(`确认将该会员${actionLabel}？`, '提示', {
+      type: 'warning',
+      confirmButtonText: '确定',
+      cancelButtonText: '取消'
+    })
+  } catch {
+    return
+  }
+  savingStatus.value = true
+  try {
+    await adminApi.updateMemberStatus(statusTarget.value.id, statusTargetValue.value)
+    ElMessage.success('状态已更新')
+    statusDialogVisible.value = false
+    fetchData()
+  } catch {} finally { savingStatus.value = false }
 }
 
 async function openHistory(row: any) {

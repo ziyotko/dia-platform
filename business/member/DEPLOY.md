@@ -128,11 +128,13 @@ powershell -ExecutionPolicy Bypass -File .\build-backends.ps1 -Only member -Vet
 | `POST /auth/register` | 10 次/分钟 |
 | `POST /auth/check-exists` | 30 次/分钟 |
 | `POST /auth/login` | 10 次/分钟 |
-| `POST /upload` | 20 次/分钟 |
+| `POST /upload`（**需登录**） | 20 次/分钟 |
+| `POST /upload-public`（匿名，注册页专用） | 20 次/分钟 |
 | `GET /charter`（章程 PDF 下载） | 30 次/分钟 |
 | 单 IP 并发请求 | `server.max_concurrent_ips`（默认 100），超限返回 `code=429`「请求过于频繁，请稍后再试」 |
 
-上传体积上限：会员中心 `POST /upload` 与票据 PDF 均 10MB，章程 PDF 20MB。
+上传体积上限：`POST /upload` / `POST /upload-public` 与票据 PDF 均 10MB，章程 PDF 20MB。
+`/upload` 需要登录且子目录走白名单；`/upload-public` 为**注册流程专用**（服务端固定 `dir=certs`、扩展名仅 jpg/jpeg/png/pdf），其余上传一律走 `/upload`。
 
 ---
 
@@ -237,6 +239,8 @@ server {
 - **操作日志**：`params` 写库前对口令类字段脱敏为 `***`；截断改为按**字符**（原先按字节切中文会产生非法 UTF-8，审计记录会静默写库失败）。
 - **上传白名单**：新增 `.zip` / `.rar`（入会申请页一直提示可打包上传，此前会被 400 拒绝）；zip/rar 与危险扩展名一样强制以附件下载。
 - **前端**：修复公告「置顶」开关不生效（字段名与后端不一致）；后台会费统计卡改为后端聚合（不再按当前页计算）；会费页切换筛选自动回到第 1 页；编辑费用时正确回填等级名；「系统管理」隐藏 `charter_file`；退出登录/注册不再 `localStorage.clear()`（避免清掉同域 portal/application 的登录态）。
+- **上传鉴权（行为变化）**：`POST /upload` 改为**需要登录**（匿名调用返回 401）；新增匿名接口 `POST /upload-public` 供**注册页**上传组织机构证（服务端固定 `dir=certs`、扩展名仅 jpg/jpeg/png/pdf，限流 20 次/分钟）。前端已同步（`register/index.vue` 改调 `/upload-public`），**自定义客户端/脚本如仍在调 `/upload` 上传，需先登录并带 Token**。
+- **会员会籍状态变更（新增入口 + 收紧）**：后台「会员管理」新增「状态变更」按钮（仅 `正式会员` ↔ `已过期`），弹窗内二次确认；`PUT /admin/members/:id/status` 由「允许 6 种状态任意互转」收紧为**只接受 `active` / `expired`**，其余值返回「仅支持将状态变更为「正式会员」或「已过期」」。置为已过期会作废生效证书（与原有逻辑一致）。
 
 ### 手工 SQL（可选加固）
 

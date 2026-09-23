@@ -75,9 +75,9 @@ func Register(r *gin.Engine) {
 		// Member levels (public list for dropdowns)
 		public.GET("/member-levels", levelCtrl.List)
 
-		// Public upload (for registration certificate upload)
-		// 无鉴权且会落盘，必须限流：20 次/分钟/IP，防脚本刷盘（正常用户一次流程最多上传 2-3 个文件）
-		public.POST("/upload", middleware.RateLimitMiddleware(20, time.Minute), authCtrl.UploadFile)
+		// 注册流程专用上传（匿名）：仅允许组织机构证，
+		// 服务端强制子目录 certs + 图片/PDF 白名单，限流 20 次/分钟/IP
+		public.POST("/upload-public", middleware.RateLimitMiddleware(20, time.Minute), authCtrl.UploadPublicFile)
 	}
 
 	// === Member routes (auth required) ===
@@ -88,6 +88,10 @@ func Register(r *gin.Engine) {
 		member.GET("/member/profile", authCtrl.GetProfile)
 		member.PUT("/member/profile", authCtrl.UpdateProfile)
 		member.PUT("/member/change-password", authCtrl.ChangePassword)
+
+		// 通用上传（需登录）：会员中心（证照/头像/回执/封面/发票模板等）均走这里，
+		// 扩展名与子目录走白名单；匿名上传只有注册页的 /upload-public
+		member.POST("/upload", middleware.RateLimitMiddleware(20, time.Minute), authCtrl.UploadFile)
 
 		// Dashboard
 		member.GET("/member/dashboard", dashCtrl.GetMemberDashboard)

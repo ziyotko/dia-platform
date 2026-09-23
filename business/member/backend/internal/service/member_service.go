@@ -152,16 +152,11 @@ func (s *MemberService) ListMembers(page, size int, keyword, status, memberType 
 // 会籍有效性的变化（到期 / 恢复）会写入会籍变更记录，其余状态流转（
 // 报名中/待审核/待缴费/驳回）尚无会籍，不写记录。
 func (s *MemberService) UpdateMemberStatus(id uint64, status string, operator string) error {
-	validStatuses := map[string]bool{
-		models.MemberStatusRegistering:   true,
-		models.MemberStatusPendingReview: true,
-		models.MemberStatusPendingPay:    true,
-		models.MemberStatusActive:        true,
-		models.MemberStatusRejected:      true,
-		models.MemberStatusExpired:       true,
-	}
-	if !validStatuses[status] {
-		return errors.New("无效的状态值")
+	// 只开放「正式会员 ⇄ 已过期」这对会籍变更：
+	// 注册中/待审核/待缴费/已拒绝由入会审批与缴费流程自动维护，
+	// 允许任意互转会造出「已拒绝会员仍持有生效证书」「恢复会籍但无证书」等矛盾状态。
+	if status != models.MemberStatusActive && status != models.MemberStatusExpired {
+		return errors.New("仅支持将状态变更为「正式会员」或「已过期」")
 	}
 
 	var m models.Member

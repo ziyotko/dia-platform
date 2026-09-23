@@ -465,7 +465,8 @@ async function handleCertChange(uploadFile: any) {
     const formData = new FormData()
     formData.append('file', uploadFile.raw)
     formData.append('dir', 'certs')
-    const res = await authApi.upload(formData)
+    // 注册页未登录，必须走匿名上传接口（服务端固定 dir=certs、仅图片/PDF）
+    const res = await authApi.uploadPublic(formData)
     certFileUrl.value = res.data.url
     certFileName.value = uploadFile.raw.name
     uploadProgress.value = 100

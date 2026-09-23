@@ -11,5 +11,9 @@ export const authApi = {
   getSiteInfo: () => request.get('/site-info'),
   upload: (formData: FormData) => request.post('/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  // 注册流程专用（匿名）：服务端固定 dir=certs、仅允许图片与 PDF
+  uploadPublic: (formData: FormData) => request.post('/upload-public', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
   })
 }

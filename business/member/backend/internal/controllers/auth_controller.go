@@ -190,10 +190,27 @@ var allowedUploadDirs = map[string]bool{
 	"certs": true, "covers": true, "templates": true,
 }
 
+// 注册流程（匿名）允许上传的扩展名：仅图片与 PDF（组织机构证），
+// 公开接口不接受压缩包/文档，避免被当作免费文件托管。
+var publicUploadExts = map[string]bool{
+	".jpg": true, ".jpeg": true, ".png": true, ".pdf": true,
+}
+
 const maxUploadSize = 10 << 20 // 10MB
 
-// UploadFile handles file upload
+// UploadFile 通用上传（需登录，见 routes.go 的 member 组）：扩展名与子目录均走白名单。
 func (ctrl *AuthController) UploadFile(c *gin.Context) {
+	ctrl.saveUpload(c, allowedUploadExts, "")
+}
+
+// UploadPublicFile 注册流程专用上传（匿名，路由 `/upload-public`）：
+// 服务端强制子目录为 certs、扩展名限定为图片/PDF，客户端传的 dir 会被忽略。
+func (ctrl *AuthController) UploadPublicFile(c *gin.Context) {
+	ctrl.saveUpload(c, publicUploadExts, "certs")
+}
+
+// saveUpload 上传并落盘的公共实现；forcedDir 非空时忽略请求体里的 dir。
+func (ctrl *AuthController) saveUpload(c *gin.Context, exts map[string]bool, forcedDir string) {
 	file, err := c.FormFile("file")
 	if err != nil {
 		response.BadRequest(c, "请选择文件")
@@ -208,13 +225,16 @@ func (ctrl *AuthController) UploadFile(c *gin.Context) {
 
 	// 扩展名白名单
 	ext := strings.ToLower(filepath.Ext(file.Filename))
-	if !allowedUploadExts[ext] {
+	if !exts[ext] {
 		response.BadRequest(c, "不支持的文件类型")
 		return
 	}
 
 	// 子目录白名单，阻断路径穿越
-	subDir := c.DefaultPostForm("dir", "files")
+	subDir := forcedDir
+	if subDir == "" {
+		subDir = c.DefaultPostForm("dir", "files")
+	}
 	if !allowedUploadDirs[subDir] {
 		response.BadRequest(c, "非法上传目录")
 		return
