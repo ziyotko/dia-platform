@@ -43,6 +43,20 @@ func (s *FeeService) GetMyFees(memberID uint64, year int, status string) ([]mode
 
 // PayFee submits payment info (receipt + date) and sets status to pending
 func (s *FeeService) PayFee(memberID, feeID uint64, receiptFile, paidDate string) error {
+	receiptFile = strings.TrimSpace(receiptFile)
+	paidDate = strings.TrimSpace(paidDate)
+	// 回执与日期必填且日期格式固定：原先原样透传，可写入空回执或 paid_date="abc"，
+	// 且 receipt_file 可为任意字符串（前端 fileUrl 对 http(s) 直通）
+	if receiptFile == "" {
+		return errors.New("请上传缴费回执单")
+	}
+	if paidDate == "" {
+		return errors.New("请选择缴费日期")
+	}
+	if _, err := time.Parse("2006-01-02", paidDate); err != nil {
+		return errors.New("缴费日期格式不正确")
+	}
+
 	var fee models.FeeRecord
 	if err := db.DB.Where("id = ? AND member_id = ?", feeID, memberID).First(&fee).Error; err != nil {
 		return errors.New("费用记录不存在")

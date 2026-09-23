@@ -4,6 +4,7 @@ import (
 	"errors"
 	"member/internal/models"
 	"member/pkg/db"
+	"strings"
 	"time"
 )
 
@@ -11,10 +12,26 @@ type MessageService struct{}
 
 // CreateMessage creates a member message
 func (s *MessageService) CreateMessage(memberID uint64, req CreateMessageRequest) (*models.MemberMessage, error) {
+	title := strings.TrimSpace(req.Title)
+	content := strings.TrimSpace(req.Content)
+	// 长度前置校验：title 列是 varchar(255)，超长会直接返回 MySQL 1406 原文给前端
+	if title == "" {
+		return nil, errors.New("请填写留言标题")
+	}
+	if len([]rune(title)) > 200 {
+		return nil, errors.New("留言标题不能超过 200 字")
+	}
+	if content == "" {
+		return nil, errors.New("请填写留言内容")
+	}
+	if len([]rune(content)) > 5000 {
+		return nil, errors.New("留言内容不能超过 5000 字")
+	}
+
 	msg := models.MemberMessage{
 		MemberID: memberID,
-		Title:    req.Title,
-		Content:  req.Content,
+		Title:    title,
+		Content:  content,
 		Status:   models.MessageStatusUnread,
 	}
 	if err := db.DB.Create(&msg).Error; err != nil {

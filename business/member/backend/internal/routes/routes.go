@@ -10,6 +10,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// publicReadLimit 公开只读接口的固定窗口限流（次/分钟/IP）。
+// 仅作防脚本刷量的兜底：正常浏览（首屏 site-info + 公告/等级/机构树/章程）远低于该值。
+// 注意：部署在反向代理后必须正确配置 server.trusted_proxies，否则所有用户会共用一个 IP 桶。
+const publicReadLimit = 300
+
 func Register(r *gin.Engine) {
 	// 与 portal 一致：API 前缀由 config.yaml 的 server.api_prefix 决定（缺失时回退到默认值），
 	// 便于部署时只改配置，无需改代码。
@@ -44,40 +49,46 @@ func Register(r *gin.Engine) {
 	{
 		// Auth
 		// 验证码接口独立限流：30 次/分钟（对齐 portal 的 captcha_rate_limit），防刷验证码
-		public.GET("/captcha", middleware.RateLimitMiddleware(30, time.Minute), authCtrl.GetCaptcha)
+		public.GET("/captcha", middleware.RateLimitMiddleware("captcha", 30, time.Minute), authCtrl.GetCaptcha)
 		// 注册限流：10 次/分钟，防刷账号
-		public.POST("/auth/register", middleware.RateLimitMiddleware(10, time.Minute), authCtrl.Register)
+		public.POST("/auth/register", middleware.RateLimitMiddleware("register", 10, time.Minute), authCtrl.Register)
 		// check-exists 枚举接口限流：30 次/分钟，防止探测已注册账号
-		public.POST("/auth/check-exists", middleware.RateLimitMiddleware(30, time.Minute), authCtrl.CheckExists)
+		public.POST("/auth/check-exists", middleware.RateLimitMiddleware("check-exists", 30, time.Minute), authCtrl.CheckExists)
 		// 登录限流：10 次/分钟，防暴力破解
-		public.POST("/auth/login", middleware.RateLimitMiddleware(10, time.Minute), authCtrl.Login)
+		public.POST("/auth/login", middleware.RateLimitMiddleware("login", 10, time.Minute), authCtrl.Login)
 
-		// Site info
-		public.GET("/site-info", authCtrl.GetSiteInfo)
+		// Site info / 模板下载 / 章程正文 / 公告 / 机构树 / 会员等级：
+		// 均为无需认证的只读接口，统一挂公开只读限流（共用一个 scope，总预算 publicReadLimit 次/分钟/IP）
+		public.GET("/site-info", middleware.RateLimitMiddleware("public", publicReadLimit, time.Minute), authCtrl.GetSiteInfo)
 
 		// Download application template
-		public.GET("/application-template", authCtrl.DownloadApplicationTemplate)
+		public.GET("/application-template", middleware.RateLimitMiddleware("public", publicReadLimit, time.Minute), authCtrl.DownloadApplicationTemplate)
 
 		// Download charter document（优先返回后台上传的 PDF，回退到 uploads/charter/ 下的历史文件）
 		// 公开接口且单文件可达 20MB：按真实客户端 IP 限流 30 次/分钟，避免被脚本刷带宽
-		public.GET("/charter", middleware.RateLimitMiddleware(30, time.Minute), charterCtrl.DownloadCharter)
+		public.GET("/charter", middleware.RateLimitMiddleware("charter", 30, time.Minute), charterCtrl.DownloadCharter)
 
 		// 协会章程正文 + PDF 附件信息（富文本，后台「协会章程」维护）
-		public.GET("/charter-content", charterCtrl.GetCharter)
+		public.GET("/charter-content", middleware.RateLimitMiddleware("public", publicReadLimit, time.Minute), charterCtrl.GetCharter)
 
 		// Announcements (public)
-		public.GET("/announcements", announceCtrl.GetPublishedAnnouncements)
-		public.GET("/announcements/:id", announceCtrl.GetAnnouncement)
+		public.GET("/announcements", middleware.RateLimitMiddleware("public", publicReadLimit, time.Minute), announceCtrl.GetPublishedAnnouncements)
+		public.GET("/announcements/:id", middleware.RateLimitMiddleware("public", publicReadLimit, time.Minute), announceCtrl.GetAnnouncement)
 
 		// Organizations (public tree for registration)
-		public.GET("/organizations/tree", orgCtrl.GetTree)
+		public.GET("/organizations/tree", middleware.RateLimitMiddleware("public", publicReadLimit, time.Minute), orgCtrl.GetTree)
 
 		// Member levels (public list for dropdowns)
-		public.GET("/member-levels", levelCtrl.List)
+		public.GET("/member-levels", middleware.RateLimitMiddleware("public", publicReadLimit, time.Minute), levelCtrl.List)
+
+		// 已发布文章（公开内容，与公告同口径；原先挂在需登录的 member 组，
+		// 导致公开页面无法展示、且与 /announcements 的组归属不一致）
+		public.GET("/published-articles", middleware.RateLimitMiddleware("public", publicReadLimit, time.Minute), articleCtrl.ListArticles)
+		public.GET("/published-articles/:id", middleware.RateLimitMiddleware("public", publicReadLimit, time.Minute), articleCtrl.GetPublishedArticle)
 
 		// 注册流程专用上传（匿名）：仅允许组织机构证，
 		// 服务端强制子目录 certs + 图片/PDF 白名单，限流 20 次/分钟/IP
-		public.POST("/upload-public", middleware.RateLimitMiddleware(20, time.Minute), authCtrl.UploadPublicFile)
+		public.POST("/upload-public", middleware.RateLimitMiddleware("upload-public", 20, time.Minute), authCtrl.UploadPublicFile)
 	}
 
 	// === Member routes (auth required) ===
@@ -91,7 +102,7 @@ func Register(r *gin.Engine) {
 
 		// 通用上传（需登录）：会员中心（证照/头像/回执/封面/发票模板等）均走这里，
 		// 扩展名与子目录走白名单；匿名上传只有注册页的 /upload-public
-		member.POST("/upload", middleware.RateLimitMiddleware(20, time.Minute), authCtrl.UploadFile)
+		member.POST("/upload", middleware.RateLimitMiddleware("upload", 20, time.Minute), authCtrl.UploadFile)
 
 		// Dashboard
 		member.GET("/member/dashboard", dashCtrl.GetMemberDashboard)
@@ -129,10 +140,6 @@ func Register(r *gin.Engine) {
 		member.DELETE("/articles/:id", articleCtrl.DeleteArticle)
 		member.GET("/articles", articleCtrl.GetMyArticles)
 		member.GET("/articles/:id", articleCtrl.GetArticle)
-
-		// Articles (public published)
-		member.GET("/published-articles", articleCtrl.ListArticles)
-		member.GET("/published-articles/:id", articleCtrl.GetPublishedArticle)
 	}
 
 	// === Admin routes (auth + admin role) ===
@@ -171,12 +178,13 @@ func Register(r *gin.Engine) {
 		admin.POST("/admin/fees/:id/issue-invoice", feeCtrl.IssueInvoice)
 
 		// Certificate management
-		admin.POST("/admin/certificates", certCtrl.CreateCertificate)
+		// 注：原先还暴露了 POST /admin/certificates 与 PUT /admin/certificates/:id，
+		// 但两者无任何前端调用，且 CreateCertificate 不校验会员、不作废旧生效证书，
+		// 会破坏「同时只有一张生效证书」的不变量，故已下线（发证统一走审批/缴费/续证或本页生成）。
 		admin.GET("/admin/certificates", certCtrl.ListCertificates)
 		admin.POST("/admin/certificates/:id/generate", certCtrl.RegenerateCertificate)
 		// 批量补生成历史存量中 file_path 为空的证书 PDF（静态路径，避免与 :id 同级冲突）
 		admin.POST("/admin/certificates-regenerate-missing", certCtrl.RegenerateMissingCertificates)
-		admin.PUT("/admin/certificates/:id", certCtrl.UpdateCertificate)
 		// Certificate template management
 		admin.GET("/admin/certificate-templates", certTplCtrl.List)
 		admin.GET("/admin/certificate-templates/:id", certTplCtrl.Get)

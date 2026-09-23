@@ -6,6 +6,8 @@ import (
 	"member/pkg/db"
 	"member/pkg/utils"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type AnnouncementService struct{}
@@ -32,14 +34,18 @@ func (s *AnnouncementService) GetPublishedAnnouncements(page, size int, keyword,
 	return list, total, nil
 }
 
-// GetAnnouncement returns an announcement by ID
+// GetAnnouncement returns a **published** announcement by ID (public).
+// 必须过滤发布状态：详情接口原先只按主键查询，匿名用户枚举 id
+// 即可读到未发布/定时发布的公告正文（列表接口已做过滤），且会白刷浏览量。
 func (s *AnnouncementService) GetAnnouncement(id uint64) (*models.Announcement, error) {
 	var a models.Announcement
-	if err := db.DB.First(&a, id).Error; err != nil {
+	if err := db.DB.Where("id = ? AND published_at IS NOT NULL AND published_at <= ?", id, time.Now()).
+		First(&a).Error; err != nil {
 		return nil, errors.New("公告不存在")
 	}
-	// Increment view count
-	db.DB.Model(&a).UpdateColumn("view_count", a.ViewCount+1)
+	// 浏览量原子自增（原「读-加一-写」在并发下会丢更新）
+	db.DB.Model(&models.Announcement{}).Where("id = ?", a.ID).
+		UpdateColumn("view_count", gorm.Expr("view_count + 1"))
 	return &a, nil
 }
 

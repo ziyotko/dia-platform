@@ -261,7 +261,8 @@ onMounted(async () => {
 function levelName(id: any) {
   if (id === null || id === undefined || id === '' || id === 0 || id === '0') return ''
   const lvl = levels.value.find((l: any) => String(l.id) === String(id))
-  return lvl ? lvl.name : ''
+  // 历史数据可能存的是等级名称（而非 ID）：与后端 resolveMemberLevel 同口径，查不到就原样展示
+  return lvl ? lvl.name : String(id)
 }
 
 async function saveProfile() {

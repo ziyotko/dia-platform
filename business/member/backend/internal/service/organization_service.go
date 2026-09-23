@@ -84,16 +84,45 @@ func (s *OrganizationService) CreateOrganization(req CreateOrgRequest) (*models.
 
 // UpdateOrganization updates an org (admin)
 func (s *OrganizationService) UpdateOrganization(id uint64, req UpdateOrgRequest) error {
-	// 只允许一个顶级机构：禁止把下级机构提升为顶级机构
-	if req.ParentID != nil && *req.ParentID == 0 {
-		var org models.Organization
-		if err := db.DB.First(&org, id).Error; err != nil {
-			return errors.New("组织不存在")
+	var org models.Organization
+	if err := db.DB.First(&org, id).Error; err != nil {
+		return errors.New("组织不存在")
+	}
+
+	// 上级机构校验（原先只拦「下级提升为顶级」，允许把自己/自己的下级改为父级，
+	// 导致 buildTree 从根递归时该机构从机构树中消失）。
+	if req.ParentID != nil {
+		newParent := *req.ParentID
+		if newParent == id {
+			return errors.New("上级机构不能是自己")
 		}
-		if org.ParentID != 0 {
-			return errors.New("只允许一个顶级机构，无法将下级机构提升为顶级机构")
+		if newParent == 0 {
+			if org.ParentID != 0 {
+				return errors.New("只允许一个顶级机构，无法将下级机构提升为顶级机构")
+			}
+		} else {
+			var parent models.Organization
+			if err := db.DB.First(&parent, newParent).Error; err != nil {
+				return errors.New("上级机构不存在")
+			}
+			// 机构层级固定两层：上级机构必须本身是顶级机构
+			if parent.ParentID != 0 {
+				return errors.New("机构层级最多两层，上级机构必须是顶级机构")
+			}
+			// 不能把自己的下级设为上级（成环）
+			if org.ParentID == 0 {
+				var childCount int64
+				if err := db.DB.Model(&models.Organization{}).
+					Where("parent_id = ? AND id = ?", id, newParent).Count(&childCount).Error; err != nil {
+					return err
+				}
+				if childCount > 0 {
+					return errors.New("不能把自己的下级机构设为上级机构")
+				}
+			}
 		}
 	}
+
 	// 局部更新：只写请求里显式传入的字段，避免「只改简介」把名称、联系方式、排序等一并清空。
 	updates := map[string]interface{}{}
 	if req.Name != nil {

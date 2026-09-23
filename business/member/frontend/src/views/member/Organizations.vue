@@ -99,8 +99,9 @@
           <p class="intro-text">{{ selectedOrg.description }}</p>
         </div>
 
-        <!-- 会员级别选择 -->
-        <div v-if="selectedOrg && !selectedOrg.disabled && filteredLevels.length" class="level-section">
+        <!-- 会员级别选择（外层用 availableLevels 判断：无可选级别时也要显示下方提示，
+             原先外层要求 filteredLevels.length，内层提示恒不可见） -->
+        <div v-if="selectedOrg && !selectedOrg.disabled && availableLevels.length" class="level-section">
           <div class="level-section-title">选择会员级别</div>
           <el-radio-group v-model="selectedLevelId" class="level-radio-group">
             <el-radio

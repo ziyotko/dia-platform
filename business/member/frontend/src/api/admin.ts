@@ -34,15 +34,15 @@ export const adminApi = {
   issueInvoice: (id: number, data: FormData) => request.post(`/admin/fees/${id}/issue-invoice`, data, { headers: { 'Content-Type': 'multipart/form-data' } }),
 
   // Certificates
-  createCertificate: (data: any) => request.post('/admin/certificates', data),
+  // 注：createCertificate/updateCertificate 已随后端路由下线（无前端调用，
+  // 且会破坏「同时只有一张生效证书」的不变量），需要发证请用「重新生成」
   getCertificates: (params?: any) => request.get('/admin/certificates', { params }),
   regenerateCertificate: (id: number) => request.post(`/admin/certificates/${id}/generate`),
   // 批量补生成 file_path 为空的存量证书 PDF
   regenerateMissingCertificates: (limit = 200) => request.post(`/admin/certificates-regenerate-missing`, null, { params: { limit } }),
-  updateCertificate: (id: number, data: any) => request.put(`/admin/certificates/${id}`, data),
+  // 注：updateCertificate 同 createCertificate，已无调用方
   // Certificate Templates
   getCertTemplates: () => request.get('/admin/certificate-templates'),
-  getCertTemplate: (id: number) => request.get(`/admin/certificate-templates/${id}`),
   createCertTemplate: (data: any) => request.post('/admin/certificate-templates', data),
   updateCertTemplate: (id: number, data: any) => request.put(`/admin/certificate-templates/${id}`, data),
   deleteCertTemplate: (id: number) => request.delete(`/admin/certificate-templates/${id}`),

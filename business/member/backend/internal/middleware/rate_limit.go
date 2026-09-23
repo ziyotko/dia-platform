@@ -57,8 +57,16 @@ func allowLocalRateLimit(key string, limit int, window time.Duration) bool {
 // RateLimitMiddleware 基于 Redis 的固定窗口限流，按客户端真实 IP 计数（与 portal 的 middleware/rate_limit.go 保持一致）。
 // 用于验证码等公开接口，防止被脚本刷量/防暴力破解。
 //
-// 窗口 key 以 IP + 当前时间窗口段生成，便于多实例共享计数；Redis 不可用时退化为进程内限流（fail-closed）。
-func RateLimitMiddleware(limit int, window time.Duration) gin.HandlerFunc {
+// scope 用于区分不同用途的限流器：key 必须同时包含 scope 与 limit，
+// 否则窗口相同（如 captcha 30/min 与 charter 30/min）或限额相同的两个限流器
+// 会共用同一个计数器，互相吃额度。
+//
+// 窗口 key 以 scope + limit + IP + 当前时间窗口段生成，便于多实例共享计数；
+// Redis 不可用时退化为进程内限流（fail-closed）。
+func RateLimitMiddleware(scope string, limit int, window time.Duration) gin.HandlerFunc {
+	if scope == "" {
+		scope = "default"
+	}
 	if limit <= 0 {
 		limit = 60
 	}
@@ -68,12 +76,12 @@ func RateLimitMiddleware(limit int, window time.Duration) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ip := c.ClientIP()
 		windowSec := int64(window.Seconds())
-		key := fmt.Sprintf("ratelimit:%s:%d", ip, time.Now().Unix()/windowSec)
+		key := fmt.Sprintf("ratelimit:%s:%d:%s:%d", scope, limit, ip, time.Now().Unix()/windowSec)
 
 		count, err := redis.AntiReplayClient.Incr(redis.Ctx, key).Result()
 		if err != nil {
 			// Redis 不可用：退化为进程内限流兜底（fail-closed），避免限流组件故障时被无限刷量
-			if !allowLocalRateLimit("ratelimit:"+ip, limit, window) {
+			if !allowLocalRateLimit(fmt.Sprintf("ratelimit:%s:%d:%s", scope, limit, ip), limit, window) {
 				response.Error(c, http.StatusTooManyRequests, "请求过于频繁，请稍后再试")
 				c.Abort()
 				return

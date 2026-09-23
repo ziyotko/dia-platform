@@ -3,7 +3,9 @@ import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 
 const request = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/member/api',
+  // fallback 必须与 .env 的 VITE_API_BASE_URL、vite.config.ts 的默认值、后端 api_prefix 一致，
+  // 否则 .env 未注入时（如直接在 shell 里 build）全部请求 404
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/business_member/api',
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' }
 })

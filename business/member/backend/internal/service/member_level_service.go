@@ -5,6 +5,7 @@ import (
 	"member/internal/models"
 	"member/pkg/db"
 	"strconv"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -34,13 +35,26 @@ func (s *MemberLevelService) Get(id uint64) (*models.MemberLevel, error) {
 
 // Create creates a new member level
 func (s *MemberLevelService) Create(req MemberLevelRequest) (*models.MemberLevel, error) {
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		return nil, errors.New("等级名称不能为空")
+	}
+	// 等级名称唯一：重名会让「按名称反查等级」的历史数据与前端展示产生歧义
+	var dup int64
+	if err := db.DB.Model(&models.MemberLevel{}).Where("name = ?", name).Count(&dup).Error; err != nil {
+		return nil, err
+	}
+	if dup > 0 {
+		return nil, errors.New("该等级名称已存在")
+	}
+
 	// Auto-assign next level number
 	var max models.MemberLevel
 	db.DB.Order("level DESC").First(&max)
 	nextLevel := max.Level + 1
 
 	l := models.MemberLevel{
-		Name:        req.Name,
+		Name:        name,
 		Level:       nextLevel,
 		Description: req.Description,
 	}
@@ -52,8 +66,23 @@ func (s *MemberLevelService) Create(req MemberLevelRequest) (*models.MemberLevel
 
 // Update updates a member level
 func (s *MemberLevelService) Update(id uint64, req MemberLevelRequest) error {
+	var l models.MemberLevel
+	if err := db.DB.First(&l, id).Error; err != nil {
+		return errors.New("会员等级不存在")
+	}
+	name := strings.TrimSpace(req.Name)
+	if name == "" {
+		return errors.New("等级名称不能为空")
+	}
+	var dup int64
+	if err := db.DB.Model(&models.MemberLevel{}).Where("name = ? AND id <> ?", name, id).Count(&dup).Error; err != nil {
+		return err
+	}
+	if dup > 0 {
+		return errors.New("该等级名称已存在")
+	}
 	return db.DB.Model(&models.MemberLevel{}).Where("id = ?", id).Updates(map[string]interface{}{
-		"name":        req.Name,
+		"name":        name,
 		"description": req.Description,
 	}).Error
 }
@@ -118,8 +147,14 @@ func (s *MemberLevelService) MoveUp(id uint64) error {
 	}
 
 	tx := db.DB.Begin()
-	tx.Model(&current).Update("level", above.Level)
-	tx.Model(&above).Update("level", current.Level)
+	if err := tx.Model(&current).Update("level", above.Level).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	if err := tx.Model(&above).Update("level", current.Level).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
 	return tx.Commit().Error
 }
 
@@ -136,8 +171,14 @@ func (s *MemberLevelService) MoveDown(id uint64) error {
 	}
 
 	tx := db.DB.Begin()
-	tx.Model(&current).Update("level", below.Level)
-	tx.Model(&below).Update("level", current.Level)
+	if err := tx.Model(&current).Update("level", below.Level).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+	if err := tx.Model(&below).Update("level", current.Level).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
 	return tx.Commit().Error
 }
 

@@ -131,7 +131,11 @@ powershell -ExecutionPolicy Bypass -File .\build-backends.ps1 -Only member -Vet
 | `POST /upload`（**需登录**） | 20 次/分钟 |
 | `POST /upload-public`（匿名，注册页专用） | 20 次/分钟 |
 | `GET /charter`（章程 PDF 下载） | 30 次/分钟 |
+| `GET /site-info`、`/charter-content`、`/announcements`、`/announcements/:id`、`/organizations/tree`、`/member-levels`、`/application-template`、`/published-articles`（公开只读，共用 `public` scope） | 300 次/分钟 |
 | 单 IP 并发请求 | `server.max_concurrent_ips`（默认 100），超限返回 `code=429`「请求过于频繁，请稍后再试」 |
+
+限流 key 为 `ratelimit:{scope}:{limit}:{ip}:{窗口段}`（Redis `anti_replay_db`）：**scope 区分用途**，
+否则窗口时长相同（如 captcha 30/min 与 charter 30/min）或限额相同的两个限流器会共用同一个计数器、互相吃额度。
 
 上传体积上限：`POST /upload` / `POST /upload-public` 与票据 PDF 均 10MB，章程 PDF 20MB。
 `/upload` 需要登录且子目录走白名单；`/upload-public` 为**注册流程专用**（服务端固定 `dir=certs`、扩展名仅 jpg/jpeg/png/pdf），其余上传一律走 `/upload`。
@@ -241,6 +245,10 @@ server {
 - **前端**：修复公告「置顶」开关不生效（字段名与后端不一致）；后台会费统计卡改为后端聚合（不再按当前页计算）；会费页切换筛选自动回到第 1 页；编辑费用时正确回填等级名；「系统管理」隐藏 `charter_file`；退出登录/注册不再 `localStorage.clear()`（避免清掉同域 portal/application 的登录态）。
 - **上传鉴权（行为变化）**：`POST /upload` 改为**需要登录**（匿名调用返回 401）；新增匿名接口 `POST /upload-public` 供**注册页**上传组织机构证（服务端固定 `dir=certs`、扩展名仅 jpg/jpeg/png/pdf，限流 20 次/分钟）。前端已同步（`register/index.vue` 改调 `/upload-public`），**自定义客户端/脚本如仍在调 `/upload` 上传，需先登录并带 Token**。
 - **会员会籍状态变更（新增入口 + 收紧）**：后台「会员管理」新增「状态变更」按钮（仅 `正式会员` ↔ `已过期`），弹窗内二次确认；`PUT /admin/members/:id/status` 由「允许 6 种状态任意互转」收紧为**只接受 `active` / `expired`**，其余值返回「仅支持将状态变更为「正式会员」或「已过期」」。置为已过期会作废生效证书（与原有逻辑一致）。
+- **限流 key 加 scope**：key 由 `ratelimit:{ip}:{窗口段}` 改为 `ratelimit:{scope}:{limit}:{ip}:{窗口段}`（原先窗口或限额相同的两个限流器会共用计数器、互相吃额度）；同时给全部公开只读接口（site-info/公告/机构树/会员等级/章程正文/模板下载/已发布文章）补上 300 次/分钟/IP 的兜底限流。
+- **接口契约变更**：① `/published-articles` 与 `/published-articles/:id` 由 member 组移到 **public 组**（与 `/announcements` 同口径）；② 公告详情**只返回已发布公告**（原先可枚举 id 读到未发布正文）；③ `POST /admin/certificates` 与 `PUT /admin/certificates/:id` **已下线**（无前端调用，且会破坏「同时只有一张生效证书」不变量）。
+- **校验收紧**：① 上传新增**文件头校验**（jpg/png/gif/webp/bmp/pdf/zip/rar 的真实类型必须与扩展名一致，否则 400）；② 注册接口校验 `member_type` 白名单与手机/邮箱格式（原先可注册出非法类型）；③ 机构上级校验（不能是自己、必须是顶级机构、不能是自己的下级）；④ 缴费接口要求回执非空 + 缴费日期为 `YYYY-MM-DD`；⑤ 会员等级名称唯一、会费标准年度 `2000~当年+10` 且金额非负、会费标准被会费记录引用时不可删除、留言标题/内容长度前置校验（避免 MySQL 1406 原文直接吐给前端）。
+- **其他**：登录失败计数改为**原子自增**（原先并发下会丢更新、可绕过 5 次锁定，且整行 `Save` 会覆盖并发写入的字段）；前端统一 API 前缀 fallback（避免 `.env` 未注入时全站 404）、修复 favicon 404 与错误的站点标题、补三处保存防重复提交。
 
 ### 手工 SQL（可选加固）
 

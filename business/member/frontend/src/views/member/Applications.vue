@@ -200,7 +200,7 @@ watch(showCreate, async (val) => {
   }
 })
 
-const uploadUrl = computed(() => `${import.meta.env.VITE_API_BASE_URL || '/member/api'}/upload`)
+const uploadUrl = computed(() => `${import.meta.env.VITE_API_BASE_URL || '/business_member/api'}/upload`)
 const uploadHeaders = computed(() => ({ Authorization: `Bearer ${userStore.token}` }))
 
 const hasPending = computed(() => applications.value.some((a: any) => a.status !== 'rejected'))
@@ -308,12 +308,12 @@ function closeDialog() {
 }
 
 function downloadTemplate() {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || '/member/api'
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || '/business_member/api'
   window.open(`${baseUrl}/application-template`, '_blank')
 }
 
 function downloadCharter() {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || '/member/api'
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || '/business_member/api'
   window.open(`${baseUrl}/charter`, '_blank')
 }
 

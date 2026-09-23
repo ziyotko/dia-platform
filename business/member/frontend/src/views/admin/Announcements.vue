@@ -67,14 +67,19 @@ async function fetchData() {
 }
 function openCreate() { editingId.value = null; Object.assign(annForm, { title: '', content: '', type: 'notice', is_pinned: false }); showDialog.value = true }
 function editAnn(row: any) { editingId.value = row.id; Object.assign(annForm, { title: row.title, content: row.content, type: row.type, is_pinned: !!row.is_pinned }); showDialog.value = true }
+// 防重复提交（双击会发出两条公告）
+const savingAnn = ref(false)
+
 async function saveAnn() {
+  if (savingAnn.value) return
   if (!annForm.title) { ElMessage.warning('请输入标题'); return }
+  savingAnn.value = true
   try {
     const data = { ...annForm, publish_now: true }
     if (editingId.value) { await adminApi.updateAnnouncement(editingId.value, data) }
     else { await adminApi.createAnnouncement(data) }
     ElMessage.success('保存成功'); showDialog.value = false; fetchData()
-  } catch {}
+  } catch {} finally { savingAnn.value = false }
 }
 async function delAnn(row: any) {
   try { await ElMessageBox.confirm('确认删除？','警告',{type:'warning'}); await adminApi.deleteAnnouncement(row.id); ElMessage.success('已删除'); fetchData() } catch {}

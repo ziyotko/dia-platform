@@ -6,8 +6,9 @@ export default defineConfig(({ mode }) => {
   // 与 portal 一致：部署子路径与 API 前缀统一从 .env 读取（VITE_BASE_PATH / VITE_API_BASE_URL），
   // 保证 build 产物的资源路径与 request.ts 的 baseURL 同源同值。
   const env = loadEnv(mode, process.cwd(), 'VITE_')
-  const basePath = env.VITE_BASE_PATH || '/member/'
-  const apiBase = env.VITE_API_BASE_URL || '/member/api'
+  // fallback 与 .env / request.ts / 后端 api_prefix 保持一致（不要写 /member/、/member/api）
+  const basePath = env.VITE_BASE_PATH || '/business_member/'
+  const apiBase = env.VITE_API_BASE_URL || '/business_member/api'
   // 上传目录挂在同一个部署子路径下（后端 server.upload_dir_prefix = VITE_BASE_PATH 去尾斜杠）
   const uploadsBase = `${basePath.replace(/\/+$/, '')}/uploads`
 

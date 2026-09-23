@@ -2,9 +2,11 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <!-- 用 BASE_URL 拼子路径：子路径部署下 /vite.svg 会打到站点根（404） -->
+    <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>中国环保机械行业协会会员系统</title>
+    <!-- 静态兜底标题：站点名称由 GET /site-info 返回后由 App.vue 覆盖 -->
+    <title>协会会员系统</title>
   </head>
   <body>
     <div id="app"></div>

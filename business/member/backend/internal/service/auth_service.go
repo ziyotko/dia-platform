@@ -8,11 +8,18 @@ import (
 	"member/pkg/captcha"
 	"member/pkg/db"
 	mjwt "member/pkg/jwt"
+	"member/pkg/utils"
 	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+)
+
+// 登录失败锁定策略：连续失败 maxLoginFailCount 次后锁定 loginLockDuration
+const (
+	maxLoginFailCount = 5
+	loginLockDuration = 30 * time.Minute
 )
 
 type AuthService struct{}
@@ -22,6 +29,25 @@ func (s *AuthService) Register(req RegisterRequest) (*LoginResponse, error) {
 	// Verify captcha
 	if !captcha.Verify(req.CaptchaID, req.CaptchaCode) {
 		return nil, errors.New("验证码错误")
+	}
+
+	// 会员类型白名单 + 手机/邮箱规范化与格式校验（与后台「新增会员」同口径）：
+	// 原先不校验 member_type，可注册出 member_type='x' 的会员，
+	// 导致后台筛选/详情分支/类型标签全部落到异常分支。
+	req.MemberType = strings.TrimSpace(req.MemberType)
+	if req.MemberType == "" {
+		req.MemberType = models.MemberTypeUnit
+	}
+	if req.MemberType != models.MemberTypeUnit && req.MemberType != models.MemberTypePersonal {
+		return nil, errors.New("会员类型不正确")
+	}
+	req.Mobile = strings.TrimSpace(req.Mobile)
+	req.Email = strings.TrimSpace(req.Email)
+	if req.Mobile != "" && !utils.IsValidMobile(req.Mobile) {
+		return nil, errors.New("请输入合法的手机号")
+	}
+	if req.Email != "" && !utils.IsValidEmail(req.Email) {
+		return nil, errors.New("邮箱格式不正确")
 	}
 
 	// Check if username already exists
@@ -193,20 +219,27 @@ func (s *AuthService) Login(req LoginRequest) (*LoginResponse, error) {
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(member.Password), []byte(req.Password)); err != nil {
-		member.LoginFailCount++
-		if member.LoginFailCount >= 5 {
-			t := time.Now().Add(30 * time.Minute)
-			member.LockedUntil = &models.LocalTime{Time: t}
+		// 原子自增后回读判断：原先 `member.LoginFailCount++` 后整行 Save，
+		// 并发爆破会丢更新（绕过 5 次锁定），且整行保存会覆盖其它并发写入的字段。
+		if err := db.DB.Model(&models.Member{}).Where("id = ?", member.ID).
+			UpdateColumn("login_fail_count", gorm.Expr("login_fail_count + 1")).Error; err != nil {
+			return nil, errors.New("用户名或密码错误")
 		}
-		db.DB.Save(&member)
+		var fresh models.Member
+		if err := db.DB.Select("login_fail_count").First(&fresh, member.ID).Error; err == nil &&
+			fresh.LoginFailCount >= maxLoginFailCount {
+			lockUntil := &models.LocalTime{Time: time.Now().Add(loginLockDuration)}
+			db.DB.Model(&models.Member{}).Where("id = ?", member.ID).Update("locked_until", lockUntil)
+		}
 		return nil, errors.New("用户名或密码错误")
 	}
 
-	// Reset fail count on success
-	if member.LoginFailCount > 0 {
-		member.LoginFailCount = 0
-		member.LockedUntil = nil
-		db.DB.Save(&member)
+	// Reset fail count on success（只更新这两列，不整行保存）
+	if member.LoginFailCount > 0 || member.LockedUntil != nil {
+		db.DB.Model(&models.Member{}).Where("id = ?", member.ID).Updates(map[string]any{
+			"login_fail_count": 0,
+			"locked_until":     nil,
+		})
 	}
 
 	// Generate JWT

@@ -1,6 +1,11 @@
 package controllers
 
 import (
+	"errors"
+	"fmt"
+	"io"
+	"mime/multipart"
+	"net/http"
 	"path/filepath"
 	"strings"
 
@@ -190,6 +195,50 @@ var allowedUploadDirs = map[string]bool{
 	"certs": true, "covers": true, "templates": true,
 }
 
+// 上传白名单里可以可靠呕探真实类型的扩展名 → 期望的 DetectContentType 前缀。
+// 其它类型（doc/xls/txt 等）不做呕探，避免误杀。
+var expectedContentTypes = map[string][]string{
+	".jpg":  {"image/jpeg"},
+	".jpeg": {"image/jpeg"},
+	".png":  {"image/png"},
+	".gif":  {"image/gif"},
+	".webp": {"image/webp"},
+	".bmp":  {"image/bmp", "image/x-ms-bmp"},
+	".pdf":  {"application/pdf"},
+	".zip":  {"application/zip", "application/x-zip"},
+	".rar":  {"application/x-rar-compressed", "application/vnd.rar", "application/octet-stream"},
+}
+
+// verifyFileContent 读取文件头判断真实类型，防止把 html/js 等伪装成图片上传：
+// 静态目录虽已对危险扩展名强制附件 + nosniff，但“扩展名与内容不符”仍应以拒绝为主。
+func verifyFileContent(file *multipart.FileHeader, ext string) error {
+	expected, ok := expectedContentTypes[ext]
+	if !ok {
+		return nil
+	}
+	f, err := file.Open()
+	if err != nil {
+		return errors.New("文件读取失败")
+	}
+	defer f.Close()
+
+	buf := make([]byte, 512)
+	n, err := f.Read(buf)
+	if err != nil && err != io.EOF {
+		return errors.New("文件读取失败")
+	}
+	if n == 0 {
+		return errors.New("文件内容为空")
+	}
+	detected := http.DetectContentType(buf[:n])
+	for _, want := range expected {
+		if strings.HasPrefix(detected, want) {
+			return nil
+		}
+	}
+	return fmt.Errorf("文件内容与扩展名不符（识别为 %s）", detected)
+}
+
 // 注册流程（匿名）允许上传的扩展名：仅图片与 PDF（组织机构证），
 // 公开接口不接受压缩包/文档，避免被当作免费文件托管。
 var publicUploadExts = map[string]bool{
@@ -227,6 +276,12 @@ func (ctrl *AuthController) saveUpload(c *gin.Context, exts map[string]bool, for
 	ext := strings.ToLower(filepath.Ext(file.Filename))
 	if !exts[ext] {
 		response.BadRequest(c, "不支持的文件类型")
+		return
+	}
+
+	// 文件头校验：扩展名说是什么就必须是什么（图片/PDF/压缩包）
+	if err := verifyFileContent(file, ext); err != nil {
+		response.BadRequest(c, err.Error())
 		return
 	}
 

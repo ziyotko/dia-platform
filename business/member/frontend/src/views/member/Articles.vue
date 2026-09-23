@@ -218,8 +218,13 @@ function viewArticle(row: any) {
   showPreview.value = true
 }
 
+// 防重复提交（双击/回车连打会创建两条文章）
+const savingArticle = ref(false)
+
 async function saveArticle(submit: boolean) {
+  if (savingArticle.value) return
   if (!articleForm.title) { ElMessage.warning('请输入标题'); return }
+  savingArticle.value = true
   try {
     const data = {
       title: articleForm.title,
@@ -238,7 +243,7 @@ async function saveArticle(submit: boolean) {
     }
     showDialog.value = false
     fetchData()
-  } catch {}
+  } catch {} finally { savingArticle.value = false }
 }
 
 async function deleteArticle(row: any) {

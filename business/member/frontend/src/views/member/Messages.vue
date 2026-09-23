@@ -118,15 +118,20 @@ async function fetchData() {
   } catch {} finally { loading.value = false }
 }
 
+// 防重复提交（双击会创建两条留言）
+const savingMsg = ref(false)
+
 async function createMsg() {
+  if (savingMsg.value) return
   if (!msgForm.title || !msgForm.content) { ElMessage.warning('请填写完整'); return }
+  savingMsg.value = true
   try {
     await messageApi.createMessage(msgForm)
     ElMessage.success('留言成功')
     showCreate.value = false
     msgForm.title = ''; msgForm.content = ''
     fetchData()
-  } catch {}
+  } catch {} finally { savingMsg.value = false }
 }
 
 async function viewDetail(row: any) {
