@@ -245,27 +245,11 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 				now.Year(), levelID, feeAmount, app.MemberID)
 		}
 
-		// 证书样式（含最低等级回退）由 certTemplateIDForLevel 统一处理
-		certTplID := certTemplateIDForLevel(levelID)
-
-		cert := models.Certificate{
-			MemberID:       app.MemberID,
-			CertNo:         generateCertNo(app.MemberID),
-			IssuedAt:       &models.LocalTime{Time: now},
-			ExpireAt:       &models.LocalTime{Time: time.Date(now.Year(), 12, 31, 23, 59, 59, 0, now.Location())},
-			Status:         models.CertStatusActive,
-			LevelID:        levelID,
-			LevelName:      levelName,
-			CertTemplateID: certTplID,
-		}
-		// 与 CreateCertificateForMember 保持一致：同一会员同时只保留一张生效证书
-		if err := tx.Model(&models.Certificate{}).
-			Where("member_id = ? AND status = ?", app.MemberID, models.CertStatusActive).
-			Update("status", models.CertStatusExpired).Error; err != nil {
-			tx.Rollback()
-			return err
-		}
-		if err := tx.Create(&cert).Error; err != nil {
+		// 证书样式（含最低等级回退）与「同一会员同时只保留一张生效证书」统一由
+		// createCertificateRow 处理（与 CreateCertificateForMember / CreateMember 同口径）；
+		// 证书与外层事务同进同出，PDF 在事务提交后补生成。
+		cert, err := createCertificateRow(tx, app.MemberID, levelID, levelName)
+		if err != nil {
 			tx.Rollback()
 			return err
 		}

@@ -7,7 +7,11 @@ const (
 	FeeStatusPaid    = "paid"    // 已缴费
 )
 
-// FeeRecord represents annual membership fee record
+// FeeRecord represents annual membership fee record.
+//
+// 不变量：同一会员同一年度至多一条记录。该约束由 `uk_member_year(member_id, year)` 唯一索引保证，
+// 启动时由 `db.EnsureUniqueMemberFeeIndex()` 幂等创建（**故意**不在此处声明 uniqueIndex：
+// AutoMigrate 在既有表上补建唯一索引遇到历史重复数据会直接报错退出）。
 type FeeRecord struct {
 	BaseModel
 	MemberID      uint64     `gorm:"index;not null" json:"member_id"`

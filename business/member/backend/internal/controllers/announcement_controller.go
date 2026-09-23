@@ -21,7 +21,7 @@ func (ctrl *AnnouncementController) GetPublishedAnnouncements(c *gin.Context) {
 
 	list, total, err := ctrl.announceService.GetPublishedAnnouncements(page, size, keyword, aType)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, gin.H{
@@ -36,7 +36,7 @@ func (ctrl *AnnouncementController) GetAnnouncement(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	ann, err := ctrl.announceService.GetAnnouncement(id)
 	if err != nil {
-		response.NotFound(c, err.Error())
+		response.NotFoundFrom(c, err)
 		return
 	}
 	response.Success(c, ann)
@@ -52,7 +52,7 @@ func (ctrl *AnnouncementController) CreateAnnouncement(c *gin.Context) {
 	}
 	ann, err := ctrl.announceService.CreateAnnouncement(req)
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "创建成功", ann)
@@ -66,7 +66,7 @@ func (ctrl *AnnouncementController) UpdateAnnouncement(c *gin.Context) {
 		return
 	}
 	if err := ctrl.announceService.UpdateAnnouncement(id, req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "更新成功", nil)
@@ -75,7 +75,7 @@ func (ctrl *AnnouncementController) UpdateAnnouncement(c *gin.Context) {
 func (ctrl *AnnouncementController) DeleteAnnouncement(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	if err := ctrl.announceService.DeleteAnnouncement(id); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "删除成功", nil)
@@ -87,7 +87,7 @@ func (ctrl *AnnouncementController) ListAllAnnouncements(c *gin.Context) {
 
 	list, total, err := ctrl.announceService.ListAllAnnouncements(page, size)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, gin.H{

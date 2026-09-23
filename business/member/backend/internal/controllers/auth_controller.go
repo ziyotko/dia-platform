@@ -45,7 +45,7 @@ func (ctrl *AuthController) CheckExists(c *gin.Context) {
 	}
 	exists, err := ctrl.authService.CheckExists(req.Field, req.Value)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, gin.H{"exists": exists})
@@ -64,7 +64,7 @@ func (ctrl *AuthController) Register(c *gin.Context) {
 
 	result, err := ctrl.authService.Register(req)
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "注册成功", result)
@@ -80,7 +80,7 @@ func (ctrl *AuthController) Login(c *gin.Context) {
 
 	result, err := ctrl.authService.Login(req)
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.Success(c, result)
@@ -91,7 +91,7 @@ func (ctrl *AuthController) GetProfile(c *gin.Context) {
 	memberID := middleware.GetMemberID(c)
 	member, err := ctrl.authService.GetProfile(memberID)
 	if err != nil {
-		response.NotFound(c, err.Error())
+		response.NotFoundFrom(c, err)
 		return
 	}
 	response.Success(c, member)
@@ -106,7 +106,7 @@ func (ctrl *AuthController) UpdateProfile(c *gin.Context) {
 		return
 	}
 	if err := ctrl.authService.UpdateProfile(memberID, req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "修改成功", nil)
@@ -121,7 +121,7 @@ func (ctrl *AuthController) ChangePassword(c *gin.Context) {
 		return
 	}
 	if err := ctrl.authService.ChangePassword(memberID, req.OldPassword, req.NewPassword); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "密码修改成功", nil)
@@ -281,7 +281,7 @@ func (ctrl *AuthController) saveUpload(c *gin.Context, exts map[string]bool, for
 
 	// 文件头校验：扩展名说是什么就必须是什么（图片/PDF/压缩包）
 	if err := verifyFileContent(file, ext); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 

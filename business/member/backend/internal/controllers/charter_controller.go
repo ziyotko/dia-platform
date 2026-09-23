@@ -29,7 +29,7 @@ type CharterController struct {
 func (ctrl *CharterController) GetCharter(c *gin.Context) {
 	content, err := ctrl.charterService.GetCharter()
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, gin.H{
@@ -48,7 +48,7 @@ func (ctrl *CharterController) SaveCharter(c *gin.Context) {
 		return
 	}
 	if err := ctrl.charterService.SaveCharter(req.Content); err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "保存成功", nil)
@@ -95,7 +95,7 @@ func (ctrl *CharterController) UploadCharterFile(c *gin.Context) {
 		UploadedAt: time.Now().Format(time.RFC3339),
 	}
 	if err := ctrl.charterService.SaveCharterFile(meta); err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	if old != nil && old.Path != "" && old.Path != meta.Path {
@@ -108,11 +108,11 @@ func (ctrl *CharterController) UploadCharterFile(c *gin.Context) {
 func (ctrl *CharterController) DeleteCharterFile(c *gin.Context) {
 	meta, err := ctrl.charterService.GetCharterFile()
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	if err := ctrl.charterService.ClearCharterFile(); err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	if meta != nil && meta.Path != "" {

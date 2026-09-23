@@ -19,7 +19,7 @@ func (ctrl *OperationLogController) List(c *gin.Context) {
 
 	list, total, err := ctrl.logService.List(page, size, keyword)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, gin.H{

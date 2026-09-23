@@ -421,11 +421,24 @@ func memberDisplayName(m *models.Member) string {
 // year 为变更年份，传 0 时取当前自然年。
 func writeMembershipChange(m *models.Member, year int, orgID uint64, orgName string,
 	oldID uint64, oldName string, newID uint64, newName string, reason, operator string) error {
+	return writeMembershipChangeTx(db.DB, m, year, orgID, orgName, oldID, oldName, newID, newName, reason, operator)
+}
+
+// writeMembershipChangeTx 同 writeMembershipChange，但可指定连接/事务（tx）。
+func writeMembershipChangeTx(q *gorm.DB, m *models.Member, year int, orgID uint64, orgName string,
+	oldID uint64, oldName string, newID uint64, newName string, reason, operator string) error {
 	if m == nil || m.ID == 0 {
 		return nil
 	}
 	if year == 0 {
 		year = time.Now().Year()
+	}
+	// 调用方只传了部分字段（如仅 ID/用户名）时，用库里的会员补齐展示字段
+	if m.Username == "" || memberDisplayName(m) == "-" {
+		var full models.Member
+		if err := q.Select("id", "username", "name", "company_name", "member_type").First(&full, m.ID).Error; err == nil {
+			m = &full
+		}
 	}
 	change := models.MemberLevelChange{
 		MemberID:     m.ID,
@@ -442,7 +455,7 @@ func writeMembershipChange(m *models.Member, year int, orgID uint64, orgName str
 		Reason:       reason,
 		Operator:     operator,
 	}
-	return db.DB.Create(&change).Error
+	return q.Create(&change).Error
 }
 
 // membershipChangeExists 判断某会员某年是否已有指定原因的会籍记录（幂等写入用）。
@@ -787,78 +800,110 @@ func (s *MemberService) CreateMember(req CreateMemberRequest, operator string) (
 		Name:          req.Name,
 		IDCard:        req.IDCard,
 	}
-	if err := db.DB.Create(&member).Error; err != nil {
-		return nil, err
-	}
+	// 所有写入放在同一事务中：会员、机构加入关系、首年费用记录、证书、会籍记录要么全成、要么全不成。
+	// 证书 PDF 渲染 + 落盘较慢且属文件 IO，放在事务提交后执行，失败不影响会员创建。
+	var cert *models.Certificate
+	err = db.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&member).Error; err != nil {
+			return err
+		}
 
-	// 总会通过缴费表记录（免缴、已缴费），不再写入 member_user_orgs；
-	// 分会/代表机构直接写入 member_user_orgs。
-	joined := make(map[uint64]bool)
-	if req.RootOrgID == 0 {
-		// 向后兼容：未指定总会时自动加入所有根组织
-		var roots []models.Organization
-		if err := db.DB.Where("parent_id = ?", 0).Find(&roots).Error; err == nil {
+		// 总会通过缴费表记录（免缴、已缴费），不再写入 member_user_orgs；
+		// 分会/代表机构直接写入 member_user_orgs。
+		joined := make(map[uint64]bool)
+		if req.RootOrgID == 0 {
+			// 向后兼容：未指定总会时自动加入所有根组织
+			var roots []models.Organization
+			if err := tx.Where("parent_id = ?", 0).Find(&roots).Error; err != nil {
+				return err
+			}
 			for _, root := range roots {
 				if root.ID == 0 || joined[root.ID] {
 					continue
 				}
-				db.DB.Create(&models.MemberOrganization{MemberID: member.ID, OrgID: root.ID, LevelID: req.LevelID})
+				if err := tx.Create(&models.MemberOrganization{MemberID: member.ID, OrgID: root.ID, LevelID: req.LevelID}).Error; err != nil {
+					return err
+				}
 				joined[root.ID] = true
 			}
 		}
-	}
-	for _, orgID := range req.OrgIDs {
-		if orgID == 0 || joined[orgID] {
-			continue
-		}
-		var org models.Organization
-		if err := db.DB.First(&org, orgID).Error; err != nil {
-			continue
-		}
-		db.DB.Create(&models.MemberOrganization{MemberID: member.ID, OrgID: orgID, LevelID: req.LevelID})
-		joined[orgID] = true
-	}
-
-	// 将加入总会的信息写入缴费表（免缴、已缴费）
-	rootOrgName := ""
-	if req.RootOrgID > 0 && req.LevelID > 0 {
-		var rootOrg models.Organization
-		if err := db.DB.Where("id = ? AND parent_id = ?", req.RootOrgID, 0).First(&rootOrg).Error; err == nil {
-			rootOrgName = rootOrg.Name
-			now := time.Now()
-			// 会费金额 = 该总会所选会员等级对应年度的会费标准
-			var amount float64
-			var fs models.MemberFeeStandard
-			if err := db.DB.Where("level_id = ? AND year = ?", req.LevelID, now.Year()).First(&fs).Error; err == nil {
-				amount = fs.Amount
+		for _, orgID := range req.OrgIDs {
+			if orgID == 0 || joined[orgID] {
+				continue
 			}
-			fee := models.FeeRecord{
-				MemberID:  member.ID,
-				Year:      now.Year(),
-				Amount:    amount,
-				Status:    models.FeeStatusPaid,
-				PaidAt:    &models.LocalTime{Time: now},
-				Remark:    "免缴",
-				OrgID:     rootOrg.ID,
-				OrgName:   rootOrg.Name,
-				LevelID:   req.LevelID,
-				LevelName: levelName,
+			var org models.Organization
+			if err := tx.First(&org, orgID).Error; err != nil {
+				// 机构可能已被删除：跳过并告警（保持历史行为，不因此中断新增会员）
+				utils.LogWarn("新增会员时跳过不可用的机构（member_id=%d, org_id=%d）：%v", member.ID, orgID, err)
+				continue
 			}
-			db.DB.Create(&fee)
+			if err := tx.Create(&models.MemberOrganization{MemberID: member.ID, OrgID: orgID, LevelID: req.LevelID}).Error; err != nil {
+				return err
+			}
+			joined[orgID] = true
 		}
+
+		// 将加入总会的信息写入缴费表（免缴、已缴费）
+		rootOrgName := ""
+		if req.RootOrgID > 0 && req.LevelID > 0 {
+			var rootOrg models.Organization
+			err := tx.Where("id = ? AND parent_id = ?", req.RootOrgID, 0).First(&rootOrg).Error
+			if err == nil {
+				rootOrgName = rootOrg.Name
+				now := time.Now()
+				// 会费金额 = 该总会所选会员等级对应年度的会费标准
+				var amount float64
+				var fs models.MemberFeeStandard
+				if err := tx.Where("level_id = ? AND year = ?", req.LevelID, now.Year()).First(&fs).Error; err == nil {
+					amount = fs.Amount
+				}
+				fee := models.FeeRecord{
+					MemberID:  member.ID,
+					Year:      now.Year(),
+					Amount:    amount,
+					Status:    models.FeeStatusPaid,
+					PaidAt:    &models.LocalTime{Time: now},
+					Remark:    "免缴",
+					OrgID:     rootOrg.ID,
+					OrgName:   rootOrg.Name,
+					LevelID:   req.LevelID,
+					LevelName: levelName,
+				}
+				if err := tx.Create(&fee).Error; err != nil {
+					return err
+				}
+			} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return err
+			}
+		}
+
+		// 生成会员证书记录（PDF 由事务提交后补生成）
+		if req.LevelID > 0 {
+			c, err := createCertificateRow(tx, member.ID, req.LevelID, levelName)
+			if err != nil {
+				return err
+			}
+			cert = c
+		}
+
+		// 插入会籍变更记录（按所选总会新增入会）
+		if req.LevelID > 0 {
+			if err := writeMembershipChangeTx(tx, &member, time.Now().Year(), req.RootOrgID, rootOrgName,
+				0, "", req.LevelID, levelName, models.ReasonMemberCreate, operator); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	// 生成会员证书（含等级、样式与 PDF 文件）
-	if req.LevelID > 0 {
-		if _, err := (&CertificateService{}).CreateCertificateForMember(member.ID, req.LevelID, levelName); err != nil {
-			utils.LogWarn("新增会员生成证书失败（member_id=%d）：%v", member.ID, err)
+	// 事务提交后再渲染证书 PDF；失败不回滚会员创建，管理员可在「证书管理」补生成
+	if cert != nil {
+		if err := (&CertificateService{}).GenerateFileForCertificate(cert); err != nil {
+			utils.LogWarn("新增会员生成证书 PDF 失败（member_id=%d, cert_id=%d）：%v", member.ID, cert.ID, err)
 		}
-	}
-
-	// 插入会籍变更记录（按所选总会新增入会）
-	if req.LevelID > 0 {
-		_ = writeMembershipChange(&member, time.Now().Year(), req.RootOrgID, rootOrgName,
-			0, "", req.LevelID, levelName, models.ReasonMemberCreate, operator)
 	}
 
 	return &member, nil

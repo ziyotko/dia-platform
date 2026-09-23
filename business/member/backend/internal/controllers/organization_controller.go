@@ -15,7 +15,7 @@ type OrganizationController struct {
 func (ctrl *OrganizationController) GetTree(c *gin.Context) {
 	tree, err := ctrl.orgService.GetOrganizationTree()
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, tree)
@@ -25,7 +25,7 @@ func (ctrl *OrganizationController) GetOrganization(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	org, err := ctrl.orgService.GetOrganization(id)
 	if err != nil {
-		response.NotFound(c, err.Error())
+		response.NotFoundFrom(c, err)
 		return
 	}
 	response.Success(c, org)
@@ -39,7 +39,7 @@ func (ctrl *OrganizationController) CreateOrganization(c *gin.Context) {
 	}
 	org, err := ctrl.orgService.CreateOrganization(req)
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "创建成功", org)
@@ -53,7 +53,7 @@ func (ctrl *OrganizationController) UpdateOrganization(c *gin.Context) {
 		return
 	}
 	if err := ctrl.orgService.UpdateOrganization(id, req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "更新成功", nil)
@@ -62,7 +62,7 @@ func (ctrl *OrganizationController) UpdateOrganization(c *gin.Context) {
 func (ctrl *OrganizationController) DeleteOrganization(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	if err := ctrl.orgService.DeleteOrganization(id); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "删除成功", nil)
@@ -74,7 +74,7 @@ func (ctrl *OrganizationController) GetOrgLevels(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	levels, err := ctrl.orgLevelService.GetOrgLevels(id)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, levels)
@@ -90,7 +90,7 @@ func (ctrl *OrganizationController) SetOrgLevels(c *gin.Context) {
 		return
 	}
 	if err := ctrl.orgLevelService.SetOrgLevels(id, req.LevelIDs); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "关联等级已更新", nil)
@@ -106,7 +106,7 @@ func (ctrl *MemberOrgController) GetMyOrgs(c *gin.Context) {
 	memberID := getMemberID(c)
 	orgs, err := ctrl.memberOrgService.GetMyOrgs(memberID)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, orgs)
@@ -123,7 +123,7 @@ func (ctrl *MemberOrgController) JoinOrg(c *gin.Context) {
 		return
 	}
 	if err := ctrl.memberOrgService.JoinOrg(memberID, req.OrgID, req.LevelID); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "加入成功", nil)
@@ -133,7 +133,7 @@ func (ctrl *MemberOrgController) LeaveOrg(c *gin.Context) {
 	memberID := getMemberID(c)
 	id := parseUint(c.Param("id"))
 	if err := ctrl.memberOrgService.LeaveOrgByID(memberID, id); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "退出成功", nil)

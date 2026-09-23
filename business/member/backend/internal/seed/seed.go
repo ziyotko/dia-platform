@@ -4,10 +4,15 @@ import (
 	"member/internal/models"
 	"member/internal/service"
 	"member/pkg/db"
+	"member/pkg/utils"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
+
+// defaultFeeAmount 种子会费标准的占位金额：全新库若没有会费标准，会员端无法缴费、
+// 管理员新增会员也会写入金额为 0 的费用记录，因此先建一条占位值，由管理员在后台改成实际标准。
+const defaultFeeAmount = 2000.00
 
 func Run() {
 	// Create default admin account
@@ -24,6 +29,11 @@ func Run() {
 
 	// Create default member levels
 	createMemberLevels()
+
+	// 机构关联等级 + 当年会费标准（缺失时补默认值）：
+	// 「入会审批 / 管理员新增会员 / 会费确认」都要求这两种配置存在，否则主流程走不通。
+	associateDefaultOrgLevels()
+	createDefaultFeeStandards()
 }
 
 func createAdmin() {
@@ -136,4 +146,64 @@ func createMemberLevels() {
 		{Name: "理事长单位", Level: 3, Description: "理事长会员单位"},
 	}
 	db.DB.Create(&levels)
+}
+
+// associateDefaultOrgLevels 为「尚未配置任何关联等级」的机构补齐等级关联（机构 × 全部等级）。
+// 入会审批、管理员新增会员、会员加入机构都要求机构已配置等级；全新库若不带默认值，
+// 管理员必须先手工配置才能走通主流程。这里按机构逐个判断，只处理空配置的机构，
+// 不会覆盖/删减管理员已配置的等级范围。
+func associateDefaultOrgLevels() {
+	var levels []models.MemberLevel
+	if err := db.DB.Order("level ASC").Find(&levels).Error; err != nil || len(levels) == 0 {
+		return
+	}
+	var orgs []models.Organization
+	if err := db.DB.Order("id ASC").Find(&orgs).Error; err != nil || len(orgs) == 0 {
+		return
+	}
+
+	filled := 0
+	for _, org := range orgs {
+		var count int64
+		db.DB.Model(&models.MemberOrgLevel{}).Where("org_id = ?", org.ID).Count(&count)
+		if count > 0 {
+			continue
+		}
+		for _, l := range levels {
+			if err := db.DB.Create(&models.MemberOrgLevel{OrgID: org.ID, LevelID: l.ID}).Error; err != nil {
+				utils.LogWarn("种子数据：为机构 %d 关联等级 %d 失败：%v", org.ID, l.ID, err)
+			}
+		}
+		filled++
+	}
+	if filled > 0 {
+		utils.LogWarn("种子数据：已为 %d 个未配置等级的机构关联全部 %d 个会员等级，请在后台「组织机构」按实际情况调整", filled, len(levels))
+	}
+}
+
+// createDefaultFeeStandards 为每个会员等级补齐「当年」会费标准（金额为占位值 defaultFeeAmount）。
+// 只补齐缺失的（等级 + 当年）组合，不会覆盖管理员已配置的金额。
+func createDefaultFeeStandards() {
+	var levels []models.MemberLevel
+	if err := db.DB.Order("level ASC").Find(&levels).Error; err != nil || len(levels) == 0 {
+		return
+	}
+
+	year := time.Now().Year()
+	created := 0
+	for _, l := range levels {
+		var count int64
+		db.DB.Model(&models.MemberFeeStandard{}).Where("level_id = ? AND year = ?", l.ID, year).Count(&count)
+		if count > 0 {
+			continue
+		}
+		if err := db.DB.Create(&models.MemberFeeStandard{LevelID: l.ID, Year: year, Amount: defaultFeeAmount}).Error; err != nil {
+			utils.LogWarn("种子数据：创建等级 %d 的 %d 年度会费标准失败：%v", l.ID, year, err)
+			continue
+		}
+		created++
+	}
+	if created > 0 {
+		utils.LogWarn("种子数据：已创建 %d 年度 %d 条会费标准（占位金额 %.0f 元），请在后台「会费标准」中改为实际标准", year, created, defaultFeeAmount)
+	}
 }

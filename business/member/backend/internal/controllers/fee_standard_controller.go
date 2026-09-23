@@ -15,7 +15,7 @@ type FeeStandardController struct {
 func (ctrl *FeeStandardController) ListAll(c *gin.Context) {
 	list, err := ctrl.feeStdService.ListAll()
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, list)
@@ -26,7 +26,7 @@ func (ctrl *FeeStandardController) ListByLevel(c *gin.Context) {
 	levelID := parseUint(c.Param("levelId"))
 	list, err := ctrl.feeStdService.ListByLevel(levelID)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, list)
@@ -45,7 +45,7 @@ func (ctrl *FeeStandardController) Upsert(c *gin.Context) {
 	}
 	fs, err := ctrl.feeStdService.Upsert(req.LevelID, req.Year, req.Amount)
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "保存成功", fs)
@@ -59,7 +59,7 @@ func (ctrl *FeeStandardController) BatchUpsert(c *gin.Context) {
 		return
 	}
 	if err := ctrl.feeStdService.BatchUpsert(req.LevelID, req.Items); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "批量保存成功", nil)
@@ -69,7 +69,7 @@ func (ctrl *FeeStandardController) BatchUpsert(c *gin.Context) {
 func (ctrl *FeeStandardController) Delete(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	if err := ctrl.feeStdService.Delete(id); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "删除成功", nil)

@@ -22,7 +22,7 @@ func (ctrl *FeeController) GetMyFees(c *gin.Context) {
 
 	fees, err := ctrl.feeService.GetMyFees(memberID, year, status)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, fees)
@@ -42,7 +42,7 @@ func (ctrl *FeeController) PayFee(c *gin.Context) {
 	}
 
 	if err := ctrl.feeService.PayFee(memberID, feeID, req.ReceiptFile, req.PaidDate); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "缴费信息已提交，等待管理员确认", nil)
@@ -60,7 +60,7 @@ func (ctrl *FeeController) ConfirmFee(c *gin.Context) {
 		return
 	}
 	if err := ctrl.feeService.ConfirmFee(id, req.Amount, req.Remark, middleware.GetUsername(c)); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "已确认缴费", nil)
@@ -74,7 +74,7 @@ func (ctrl *FeeController) CreateFee(c *gin.Context) {
 	}
 	fee, err := ctrl.feeService.CreateFeeRecord(req)
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "创建成功", fee)
@@ -91,7 +91,7 @@ func (ctrl *FeeController) ApplyInvoice(c *gin.Context) {
 	}
 
 	if err := ctrl.feeService.ApplyInvoice(memberID, feeID, req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "开票申请已提交", nil)
@@ -102,7 +102,7 @@ func (ctrl *FeeController) GetMemberFeeInfo(c *gin.Context) {
 	memberID := parseUint(c.Param("id"))
 	orgID, levelID, orgName, levelName, err := ctrl.feeService.GetMemberFeeInfo(memberID)
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.Success(c, gin.H{
@@ -121,7 +121,7 @@ func (ctrl *FeeController) UpdateFee(c *gin.Context) {
 		return
 	}
 	if err := ctrl.feeService.UpdateFeeRecord(id, req, middleware.GetUsername(c)); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "更新成功", nil)
@@ -130,7 +130,7 @@ func (ctrl *FeeController) UpdateFee(c *gin.Context) {
 func (ctrl *FeeController) DeleteFee(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	if err := ctrl.feeService.DeleteFeeRecord(id); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "删除成功", nil)
@@ -173,7 +173,7 @@ func (ctrl *FeeController) IssueInvoice(c *gin.Context) {
 	}
 
 	if err := ctrl.feeService.IssueInvoice(id, invoiceNo, invoiceFile); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "已开票", nil)
@@ -193,7 +193,7 @@ func (ctrl *FeeController) ListAllFees(c *gin.Context) {
 
 	fees, total, err := ctrl.feeService.ListAllFees(page, size, year, status, memberID, memberType)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	// 统计卡片数据：按年份/会员类型过滤的状态分布与金额合计。
@@ -201,7 +201,7 @@ func (ctrl *FeeController) ListAllFees(c *gin.Context) {
 	// 也不受分页影响（原实现由前端按"当前页"计算，翻页数字会跳变）。
 	summary, err := ctrl.feeService.GetFeeListSummary(year, memberType)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, gin.H{

@@ -55,6 +55,9 @@ func main() {
 		utils.Logger.Fatalf("AutoMigrate failed: %v", err)
 	}
 
+	// 补建 member_fee_records 的 (member_id, year) 唯一索引（幂等：必要时先清理历史重复行，失败不阻断启动）
+	db.EnsureUniqueMemberFeeIndex()
+
 	// Seed default data
 	seed.Run()
 

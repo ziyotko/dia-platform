@@ -15,7 +15,7 @@ type SystemConfigController struct {
 func (ctrl *SystemConfigController) List(c *gin.Context) {
 	list, err := ctrl.systemConfigService.List()
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, list)
@@ -30,7 +30,7 @@ func (ctrl *SystemConfigController) Create(c *gin.Context) {
 	}
 	cfg, err := ctrl.systemConfigService.Create(req)
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "创建成功", cfg)
@@ -45,7 +45,7 @@ func (ctrl *SystemConfigController) Update(c *gin.Context) {
 		return
 	}
 	if err := ctrl.systemConfigService.Update(id, req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "保存成功", nil)
@@ -55,7 +55,7 @@ func (ctrl *SystemConfigController) Update(c *gin.Context) {
 func (ctrl *SystemConfigController) Delete(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	if err := ctrl.systemConfigService.Delete(id); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "删除成功", nil)

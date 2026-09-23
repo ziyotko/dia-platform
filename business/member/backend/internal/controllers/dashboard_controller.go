@@ -16,7 +16,7 @@ func (ctrl *DashboardController) GetMemberDashboard(c *gin.Context) {
 	memberID := middleware.GetMemberID(c)
 	dash, err := ctrl.dashService.GetMemberDashboard(memberID)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, dash)

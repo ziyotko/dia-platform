@@ -15,7 +15,7 @@ type CertificateTemplateController struct {
 func (ctrl *CertificateTemplateController) List(c *gin.Context) {
 	list, err := ctrl.tplService.List()
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, list)
@@ -26,7 +26,7 @@ func (ctrl *CertificateTemplateController) Get(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	tpl, err := ctrl.tplService.Get(id)
 	if err != nil {
-		response.NotFound(c, err.Error())
+		response.NotFoundFrom(c, err)
 		return
 	}
 	response.Success(c, tpl)
@@ -36,12 +36,12 @@ func (ctrl *CertificateTemplateController) Get(c *gin.Context) {
 func (ctrl *CertificateTemplateController) Create(c *gin.Context) {
 	var req service.CertTemplateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "参数错误："+err.Error())
+		response.BadRequest(c, "参数错误")
 		return
 	}
 	tpl, err := ctrl.tplService.Create(req)
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "创建成功", tpl)
@@ -52,11 +52,11 @@ func (ctrl *CertificateTemplateController) Update(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	var req service.UpdateCertTemplateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "参数错误："+err.Error())
+		response.BadRequest(c, "参数错误")
 		return
 	}
 	if err := ctrl.tplService.Update(id, req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "更新成功", nil)
@@ -66,7 +66,7 @@ func (ctrl *CertificateTemplateController) Update(c *gin.Context) {
 func (ctrl *CertificateTemplateController) Delete(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	if err := ctrl.tplService.Delete(id); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "删除成功", nil)

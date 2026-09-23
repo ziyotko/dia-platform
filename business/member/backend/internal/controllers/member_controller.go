@@ -28,7 +28,7 @@ func (ctrl *MemberController) ListMembers(c *gin.Context) {
 
 	members, total, err := ctrl.memberService.ListMembers(page, size, keyword, status, memberType)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, gin.H{
@@ -44,7 +44,7 @@ func (ctrl *MemberController) GetMember(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	member, err := ctrl.memberService.GetMember(id)
 	if err != nil {
-		response.NotFound(c, err.Error())
+		response.NotFoundFrom(c, err)
 		return
 	}
 	response.Success(c, member)
@@ -61,7 +61,7 @@ func (ctrl *MemberController) UpdateMemberStatus(c *gin.Context) {
 		return
 	}
 	if err := ctrl.memberService.UpdateMemberStatus(id, req.Status, middleware.GetUsername(c)); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "状态更新成功", nil)
@@ -83,7 +83,7 @@ func (ctrl *MemberController) UpdateMemberLevel(c *gin.Context) {
 		return
 	}
 	if err := ctrl.memberService.UpdateMemberLevel(id, req.LevelID, middleware.GetUsername(c), req.Reason); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "等级更新成功", nil)
@@ -93,7 +93,7 @@ func (ctrl *MemberController) UpdateMemberLevel(c *gin.Context) {
 func (ctrl *MemberController) ResetMemberPassword(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	if err := ctrl.memberService.ResetMemberPassword(id); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "密码已重置为默认密码", nil)
@@ -108,7 +108,7 @@ func (ctrl *MemberController) CreateMember(c *gin.Context) {
 	}
 	member, err := ctrl.memberService.CreateMember(req, middleware.GetUsername(c))
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "新增会员成功", member)
@@ -119,7 +119,7 @@ func (ctrl *MemberController) CreateMember(c *gin.Context) {
 func (ctrl *MemberController) CheckMemberExists(c *gin.Context) {
 	exists, err := ctrl.memberService.CheckFieldExists(c.Query("field"), c.Query("value"))
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.Success(c, gin.H{"exists": exists})
@@ -133,7 +133,7 @@ func (ctrl *MemberController) GetMemberLevelChanges(c *gin.Context) {
 
 	list, total, err := ctrl.memberService.GetMemberLevelChanges(id, page, size)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, gin.H{
@@ -154,7 +154,7 @@ func (ctrl *MemberController) ListLevelChanges(c *gin.Context) {
 
 	list, total, err := ctrl.memberService.ListLevelChanges(page, size, keyword, memberType, year)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, gin.H{
@@ -169,7 +169,7 @@ func (ctrl *MemberController) ListLevelChanges(c *gin.Context) {
 func (ctrl *MemberController) ListLevelChangeYears(c *gin.Context) {
 	years, err := ctrl.memberService.ListLevelChangeYears()
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, years)
@@ -183,7 +183,7 @@ func (ctrl *MemberController) ExportLevelChanges(c *gin.Context) {
 
 	csv, err := ctrl.memberService.ExportLevelChanges(keyword, memberType, year)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 
@@ -201,7 +201,7 @@ func (ctrl *MemberController) ListProfileChanges(c *gin.Context) {
 
 	list, total, err := ctrl.memberService.ListProfileChanges(page, size, keyword)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, gin.H{
@@ -217,7 +217,7 @@ func (ctrl *MemberController) GetMemberLevelOptions(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	levels, err := ctrl.memberService.GetMemberAvailableLevels(id)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, levels)
@@ -228,7 +228,7 @@ func (ctrl *MemberController) GetMemberJoinedOrgs(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	info, err := ctrl.memberService.GetMemberJoinedOrgs(id)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, info)
@@ -238,7 +238,7 @@ func (ctrl *MemberController) GetMemberJoinedOrgs(c *gin.Context) {
 func (ctrl *MemberController) DeleteMember(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	if err := ctrl.memberService.DeleteMember(id); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "删除成功", nil)

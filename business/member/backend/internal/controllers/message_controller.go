@@ -21,7 +21,7 @@ func (ctrl *MessageController) CreateMessage(c *gin.Context) {
 	}
 	msg, err := ctrl.msgService.CreateMessage(memberID, req)
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "留言成功", msg)
@@ -34,7 +34,7 @@ func (ctrl *MessageController) GetMyMessages(c *gin.Context) {
 
 	msgs, total, err := ctrl.msgService.GetMyMessages(memberID, page, size)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, gin.H{
@@ -50,7 +50,7 @@ func (ctrl *MessageController) GetMessage(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	msg, err := ctrl.msgService.GetMessage(id, memberID)
 	if err != nil {
-		response.NotFound(c, err.Error())
+		response.NotFoundFrom(c, err)
 		return
 	}
 	response.Success(c, msg)
@@ -63,7 +63,7 @@ func (ctrl *MessageController) ListAllMessages(c *gin.Context) {
 
 	msgs, total, err := ctrl.msgService.ListAllMessages(page, size, status)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, gin.H{
@@ -84,7 +84,7 @@ func (ctrl *MessageController) ReplyMessage(c *gin.Context) {
 		return
 	}
 	if err := ctrl.msgService.ReplyMessage(id, req.Reply); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "回复成功", nil)
@@ -93,7 +93,7 @@ func (ctrl *MessageController) ReplyMessage(c *gin.Context) {
 func (ctrl *MessageController) DeleteMessage(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	if err := ctrl.msgService.DeleteMessage(id); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "删除成功", nil)

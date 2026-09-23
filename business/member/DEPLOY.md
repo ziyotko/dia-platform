@@ -101,8 +101,8 @@ powershell -ExecutionPolicy Bypass -File .\build-backends.ps1 -Only member -Vet
 ./member
 ```
 
-- 启动流程：读 `./config.yaml` → 注入环境变量（缺失直接退出） → 连 MySQL（**不建库**） → 连 Redis 两个库（Ping 失败直接退出） → 初始化 IP 并发限制器 → `AutoMigrate` 建表（会员/申请/证书/会费/机构/公告/文章/系统配置/会员等级/变更记录/操作日志等） → 写入种子数据 → 监听端口
-- 种子数据（幂等，仅当对应表为空时写入）：管理员账号、默认机构（总会 + 分会）、文章分类、系统配置（站点名称/银行账户/联系方式/备案号等 10 项）、示例公告、4 个默认会员等级（会员单位/理事单位/副理事长单位/理事长单位）
+- 启动流程：读 `./config.yaml` → 注入环境变量（缺失直接退出） → 连 MySQL（**不建库**） → 连 Redis 两个库（Ping 失败直接退出） → 初始化 IP 并发限制器 → `AutoMigrate` 建表（会员/申请/证书/会费/机构/公告/文章/系统配置/会员等级/变更记录/操作日志等） → 补建 `member_fee_records(member_id, year)` 唯一索引（幂等，必要时先清理历史重复行） → 写入种子数据 → 监听端口
+- 种子数据（幂等，均只在「缺失」时写入，不会覆盖已有配置）：管理员账号、默认机构（总会 + 分会 + 代表处）、文章分类、系统配置（站点名称/银行账户/联系方式/备案号等 10 项）、示例公告、4 个默认会员等级（会员单位/理事单位/副理事长单位/理事长单位）、**机构的关联等级**（为未配置等级的机构关联全部等级）、**当年的会费标准**（每个等级一条，金额为占位值 **2000 元**，需在后台「会费标准」改成实际金额）。
 - 默认管理员：用户名 `admin`，初始密码 **`Abcd@1234`**，**上线后立即修改**；后台重置他人密码也重置为该默认密码
 - 静态资源上传目录：`./uploads`（后端以 `/business_member/uploads` 提供，危险扩展名强制以附件下载）
 - 日志输出：`logs/member.log`（单文件 100MB、保留 30 个备份、180 天）
@@ -251,9 +251,22 @@ server {
 - **其他**：登录失败计数改为**原子自增**（原先并发下会丢更新、可绕过 5 次锁定，且整行 `Save` 会覆盖并发写入的字段）；前端统一 API 前缀 fallback（避免 `.env` 未注入时全站 404）、修复 favicon 404 与错误的站点标题、补三处保存防重复提交。
 - **公告发布即时可见**：公开列表与详情对 `published_at` 的比较留 **1 秒容差**。原因：`member_announcements.published_at` 是 `datetime`（无小数秒），MySQL 写入会四舍五入，原先用 `NOW()` 比较时，管理员刚发布（亚秒级）的公告在前台可能磍约 1 秒看不见。
 
-### 手工 SQL（可选加固）
+### 升级说明（2026-09-23 第二批，无需手工 SQL）
 
-`member_fee_records` 的 `(member_id, year)` 唯一索引需**手工创建**（`AutoMigrate` 不建索引）。不建也能跑（服务层已在事务内加行锁判断重复），建索引是并发双击的数据库级兜底。
+- **管理员新增会员改为单事务**：`member_users` / `member_user_orgs` / 首年 `member_fee_records`（免缴）/ `member_certificates` / `member_level_changes` 要么全成、要么全不成（原先逐步写入，中途失败会留半成品）。证书 PDF 渲染在**事务提交后**执行，失败仅记日志（`member_certificates.file_path` 为空，可在「证书管理 → 重新生成 / 补生成缺失证书」补）。
+- **会员端续证收紧（行为变化）**：`POST /certificates/renew` 现在要求「正式会员 + 当年已缴费 + **不存在有效证书**（或有效证书的 PDF 未生成）」，否则返回「当前已有生效证书，无需重复续证」。原先后端允许无限次重发证书；若需强制换发，用后台「证书管理」的「重新生成」。
+- **证书写入统一**：新增会员 / 审批通过 / 自助续证共用同一个写入函数（内部 `createCertificateRow`，可传事务），保证「同一会员同时只有一张 `active` 证书」。
+- **接口错误文案脱敏（行为变化）**：控制器不再直接回传 `err.Error()`。业务错误（中文提示）原样返回；数据库/IO/网络等底层错误统一替换为「服务器内部错误」/「操作失败，请稍后重试」/「记录不存在」，原文写入后端日志。**排障时请查后端日志，前端已看不到原始错误。**
+- **删除/操作不存在的记录不再静默成功**：公告、留言、系统配置、文章分类、文章（会员端 + 管理端）删除不存在的 id 会返回「公告/留言/配置项/分类/文章 不存在」。
+- **拒绝入会申请必须填写理由**：`PUT /admin/applications/:id/review` 中 `approved=false` 且理由为空时返回「请填写拒绝理由」（前端弹窗也做了必填校验）。
+- **后台首页统计口径**：`GET /admin/member-stats` 新增 `pending_handle`（= 注册中 + 待审核，**不含**待缴费），前端统计卡与状态饼图改用它；原 `pending`（含待缴费）保留以兼容旧前端。
+- **前端（无接口变化）**：三个后台页共用的「会员详情弹窗」抽为组件 `src/components/MemberDetailDialog.vue`；`fileUrl` 统一走 `@/utils/fileUrl`（支持历史反斜杠路径；原先 7 个页面各自实现，缺少归一化分支）。
+
+### 手工 SQL（一般不需要，仅排障/审计用）
+
+> 以下三项中 ① ② 已被程序自动化：启动时 `db.EnsureUniqueMemberFeeIndex()` 会幂等地清理重复行并创建 `uk_member_year`。只有在启动日志显示创建失败（如数据库账号无 ALTER 权限），或希望手工核对后才执行时，才需要下面的语句。
+
+**① `member_fee_records(member_id, year)` 唯一索引**（并发双击的数据库级兜底；不建也能跑，服务层有事务 + 行锁查重）
 
 ```sql
 USE caam_member;   -- 必须先切库：DELETE ... JOIN 未选库会报 1046 No database selected
@@ -277,6 +290,26 @@ ALTER TABLE member_fee_records ADD UNIQUE INDEX uk_member_year (member_id, year)
 ```
 
 核查：`SHOW INDEX FROM member_fee_records WHERE Key_name = 'uk_member_year';`
+
+**② 遗留表 `member_password_resets`**（自助找回密码功能已整体下线，代码不再引用该表；`AutoMigrate` 不会删表，留着不影响运行，仅占空间）：
+
+```sql
+USE caam_member;
+DROP TABLE IF EXISTS member_password_resets;
+```
+
+**③（可选）`member_user_orgs(member_id, org_id)` 唯一索引**：避免同一会员重复加入同一机构（服务层已有「已加入该组织」拦截）。执行前先按下面语句确认无重复行，有则先清理：
+
+```sql
+USE caam_member;
+SELECT member_id, org_id, COUNT(*) c FROM member_user_orgs GROUP BY member_id, org_id HAVING c > 1;
+
+DELETE u FROM member_user_orgs u JOIN (
+  SELECT MIN(id) AS keep_id, member_id, org_id FROM member_user_orgs GROUP BY member_id, org_id HAVING COUNT(*) > 1
+) d ON d.member_id = u.member_id AND d.org_id = u.org_id WHERE u.id > d.keep_id;
+
+ALTER TABLE member_user_orgs ADD UNIQUE INDEX uk_member_org (member_id, org_id);
+```
 
 ---
 

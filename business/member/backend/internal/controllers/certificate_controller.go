@@ -20,7 +20,7 @@ func (ctrl *CertificateController) GetMyCertificates(c *gin.Context) {
 	memberID := middleware.GetMemberID(c)
 	certs, err := ctrl.certService.GetMyCertificates(memberID)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, certs)
@@ -31,7 +31,7 @@ func (ctrl *CertificateController) GetCertificate(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	cert, err := ctrl.certService.GetCertificate(id, memberID)
 	if err != nil {
-		response.NotFound(c, err.Error())
+		response.NotFoundFrom(c, err)
 		return
 	}
 	response.Success(c, cert)
@@ -45,7 +45,7 @@ func (ctrl *CertificateController) CreateCertificate(c *gin.Context) {
 	}
 	cert, err := ctrl.certService.CreateCertificate(req)
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "创建成功", cert)
@@ -60,7 +60,7 @@ func (ctrl *CertificateController) ListCertificates(c *gin.Context) {
 
 	list, total, err := ctrl.certService.ListCertificates(page, size, keyword, status)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, gin.H{
@@ -80,7 +80,7 @@ func (ctrl *CertificateController) RegenerateCertificate(c *gin.Context) {
 		return
 	}
 	if err := ctrl.certService.GenerateFileForCertificate(&cert); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "证书文件已生成", cert)
@@ -91,7 +91,7 @@ func (ctrl *CertificateController) RegenerateMissingCertificates(c *gin.Context)
 	limit := parseIntDefault(c.Query("limit"), 200)
 	ok, failed, failures, err := ctrl.certService.RegenerateMissingCertificates(limit)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, fmt.Sprintf("已生成 %d 张，失败 %d 张", ok, failed),
@@ -109,7 +109,7 @@ func (ctrl *CertificateController) UpdateCertificate(c *gin.Context) {
 		return
 	}
 	if err := ctrl.certService.UpdateCertificate(id, req.FilePath, req.Status); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "更新成功", nil)
@@ -120,7 +120,7 @@ func (ctrl *CertificateController) RenewCertificate(c *gin.Context) {
 	memberID := middleware.GetMemberID(c)
 	cert, err := ctrl.certService.RenewMyCertificate(memberID)
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "证书已重新生成", cert)

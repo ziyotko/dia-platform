@@ -11,6 +11,8 @@ import (
 	"member/pkg/certpdf"
 	"member/pkg/db"
 	"member/pkg/utils"
+
+	"gorm.io/gorm"
 )
 
 type CertificateService struct{}
@@ -87,11 +89,28 @@ func (s *CertificateService) CreateCertificateForMember(memberID, levelID uint64
 		levelName = memberLevelNameByID(levelID)
 	}
 
+	cert, err := createCertificateRow(db.DB, memberID, levelID, levelName)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.GenerateFileForCertificate(cert); err != nil {
+		// PDF 生成失败不阻断发证：证书记录仍可用，管理员可在「证书管理」重新生成
+		utils.LogWarn("生成证书 PDF 失败（cert_id=%d）：%v", cert.ID, err)
+	}
+	return cert, nil
+}
+
+// createCertificateRow 在给定连接/事务中作废旧生效证书并写入新证书行（不生成 PDF）。
+// 会员证书的 DB 写入统一走这里，保证「同一会员同时只有一张生效证书」。
+// q 可以是 db.DB（独立发证），也可以是事务对象（新增会员/审批通过时与其它写入同事务）。
+func createCertificateRow(q *gorm.DB, memberID, levelID uint64, levelName string) (*models.Certificate, error) {
 	now := time.Now()
-	// 同一会员同时只有一张生效证书
-	db.DB.Model(&models.Certificate{}).
+	if err := q.Model(&models.Certificate{}).
 		Where("member_id = ? AND status = ?", memberID, models.CertStatusActive).
-		Update("status", models.CertStatusExpired)
+		Update("status", models.CertStatusExpired).Error; err != nil {
+		return nil, err
+	}
 
 	cert := models.Certificate{
 		MemberID:       memberID,
@@ -101,15 +120,10 @@ func (s *CertificateService) CreateCertificateForMember(memberID, levelID uint64
 		Status:         models.CertStatusActive,
 		LevelID:        levelID,
 		LevelName:      levelName,
-		CertTemplateID: certTemplateIDForLevel(levelID),
+		CertTemplateID: certTemplateIDForLevel(q, levelID),
 	}
-	if err := db.DB.Create(&cert).Error; err != nil {
+	if err := q.Create(&cert).Error; err != nil {
 		return nil, err
-	}
-
-	if err := s.GenerateFileForCertificate(&cert); err != nil {
-		// PDF 生成失败不阻断发证：证书记录仍可用，管理员可在「证书管理」重新生成
-		utils.LogWarn("生成证书 PDF 失败（cert_id=%d）：%v", cert.ID, err)
 	}
 	return &cert, nil
 }
@@ -249,14 +263,15 @@ func certificateIssuerName() string {
 }
 
 // certTemplateIDForLevel 取该等级配置的证书样式，未配置时回退到最低等级样式。
-func certTemplateIDForLevel(levelID uint64) uint64 {
+// q 与写入方保持一致（事务内外均可）。
+func certTemplateIDForLevel(q *gorm.DB, levelID uint64) uint64 {
 	var tpl models.MemberCertificateTemplate
 	if levelID > 0 {
-		if err := db.DB.Where("level_id = ?", levelID).First(&tpl).Error; err == nil {
+		if err := q.Where("level_id = ?", levelID).First(&tpl).Error; err == nil {
 			return tpl.ID
 		}
 	}
-	db.DB.Joins("JOIN member_levels ml ON ml.id = member_certificate_templates.level_id").
+	q.Joins("JOIN member_levels ml ON ml.id = member_certificate_templates.level_id").
 		Order("ml.level ASC").
 		First(&tpl)
 	return tpl.ID
@@ -298,6 +313,16 @@ func (s *CertificateService) RenewMyCertificate(memberID uint64) (*models.Certif
 	}
 	if paidCount == 0 {
 		return nil, errors.New("当年尚未缴费，暂不能续证")
+	}
+
+	// 频次限制：已有生效且文件正常时不允许重复续证（前端也只在无生效证书时展示入口）。
+	// 例外：生效证书的 PDF 未生成（生成失败）时允许重试，避免会员拿不到文件。
+	var activeCert models.Certificate
+	if err := db.DB.Where("member_id = ? AND status = ?", memberID, models.CertStatusActive).
+		Order("id DESC").First(&activeCert).Error; err == nil {
+		if strings.TrimSpace(activeCert.FilePath) != "" {
+			return nil, errors.New("当前已有生效证书，无需重复续证")
+		}
 	}
 
 	// 重新发证：作废原生效证书 + 生成带等级/样式的证书与 PDF（由 CreateCertificateForMember 完成）

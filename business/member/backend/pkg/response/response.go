@@ -3,6 +3,8 @@ package response
 import (
 	"net/http"
 
+	"member/pkg/utils"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -61,4 +63,20 @@ func NotFound(c *gin.Context, message string) {
 
 func ServerError(c *gin.Context, message string) {
 	Error(c, 500, message)
+}
+
+// ServerErrorFrom 处理服务端错误：业务错误（中文提示）原样返回；
+// 数据库/IO 等底层错误统一脱敏为「服务器内部错误」并写入服务端日志。
+func ServerErrorFrom(c *gin.Context, err error) {
+	ServerError(c, utils.SafeErrMessage(err, "服务器内部错误"))
+}
+
+// BadRequestFrom 处理参数/业务校验错误：业务错误原样返回，底层错误统一脱敏。
+func BadRequestFrom(c *gin.Context, err error) {
+	BadRequest(c, utils.SafeErrMessage(err, "操作失败，请稍后重试"))
+}
+
+// NotFoundFrom 处理「记录不存在」类错误：业务错误原样返回，底层错误统一脱敏。
+func NotFoundFrom(c *gin.Context, err error) {
+	NotFound(c, utils.SafeErrMessage(err, "记录不存在"))
 }

@@ -18,7 +18,7 @@ type ArticleController struct {
 func (ctrl *ArticleController) ListCategories(c *gin.Context) {
 	cats, err := ctrl.catService.ListCategories()
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, cats)
@@ -35,7 +35,7 @@ func (ctrl *ArticleController) CreateCategory(c *gin.Context) {
 	}
 	cat, err := ctrl.catService.CreateCategory(req.Name, req.Sort)
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "创建成功", cat)
@@ -52,7 +52,7 @@ func (ctrl *ArticleController) UpdateCategory(c *gin.Context) {
 		return
 	}
 	if err := ctrl.catService.UpdateCategory(id, req.Name, req.Sort); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "更新成功", nil)
@@ -61,7 +61,7 @@ func (ctrl *ArticleController) UpdateCategory(c *gin.Context) {
 func (ctrl *ArticleController) DeleteCategory(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	if err := ctrl.catService.DeleteCategory(id); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "删除成功", nil)
@@ -78,7 +78,7 @@ func (ctrl *ArticleController) CreateArticle(c *gin.Context) {
 	}
 	article, err := ctrl.articleService.CreateArticle(memberID, req)
 	if err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "创建成功", article)
@@ -93,7 +93,7 @@ func (ctrl *ArticleController) UpdateArticle(c *gin.Context) {
 		return
 	}
 	if err := ctrl.articleService.UpdateArticle(memberID, articleID, req); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "更新成功", nil)
@@ -103,7 +103,7 @@ func (ctrl *ArticleController) DeleteArticle(c *gin.Context) {
 	memberID := middleware.GetMemberID(c)
 	articleID := parseUint(c.Param("id"))
 	if err := ctrl.articleService.DeleteArticle(memberID, articleID); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "删除成功", nil)
@@ -114,7 +114,7 @@ func (ctrl *ArticleController) GetArticle(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	article, err := ctrl.articleService.GetArticle(id, memberID)
 	if err != nil {
-		response.NotFound(c, err.Error())
+		response.NotFoundFrom(c, err)
 		return
 	}
 	response.Success(c, article)
@@ -133,7 +133,7 @@ func (ctrl *ArticleController) GetMyArticles(c *gin.Context) {
 
 	articles, total, err := ctrl.articleService.GetMyArticles(memberID, page, size, status, categoryID)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, gin.H{
@@ -158,7 +158,7 @@ func (ctrl *ArticleController) ListArticles(c *gin.Context) {
 
 	articles, total, err := ctrl.articleService.ListArticles(page, size, categoryID, keyword)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, gin.H{
@@ -173,7 +173,7 @@ func (ctrl *ArticleController) GetPublishedArticle(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	article, err := ctrl.articleService.GetPublishedArticle(id)
 	if err != nil {
-		response.NotFound(c, err.Error())
+		response.NotFoundFrom(c, err)
 		return
 	}
 	response.Success(c, article)
@@ -192,7 +192,7 @@ func (ctrl *ArticleController) ReviewArticle(c *gin.Context) {
 		return
 	}
 	if err := ctrl.articleService.ReviewArticle(id, req.Approved, req.Comment); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "审核完成", nil)
@@ -205,7 +205,7 @@ func (ctrl *ArticleController) ListAllArticles(c *gin.Context) {
 
 	articles, total, err := ctrl.articleService.ListAllArticles(page, size, status)
 	if err != nil {
-		response.ServerError(c, err.Error())
+		response.ServerErrorFrom(c, err)
 		return
 	}
 	response.Success(c, gin.H{
@@ -219,7 +219,7 @@ func (ctrl *ArticleController) ListAllArticles(c *gin.Context) {
 func (ctrl *ArticleController) AdminDeleteArticle(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	if err := ctrl.articleService.AdminDeleteArticle(id); err != nil {
-		response.BadRequest(c, err.Error())
+		response.BadRequestFrom(c, err)
 		return
 	}
 	response.SuccessWithMessage(c, "删除成功", nil)
