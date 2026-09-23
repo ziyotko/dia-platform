@@ -259,7 +259,7 @@
 > **确认字段口径（2026-09-23 统一）**：首次置为 `paid` 时统一写入 `paid_at` 与 `confirmed_at`；`paid_amount` 由请求显式提供（`ConfirmFee` 的 `amount`）或保持原值（免缴记录为 0，会员端不可开票）。
 > 已缴费记录**不可回退**为其他状态（会籍记录、证书、会员状态无法回滚）。
 > **副作用只触发一次**：仅「首次由 `unpaid`/`pending` 变为 `paid`」时才激活会员、同步等级/证书、写会籍变更记录。
-> `(member_id, year)` 上的唯一索引 `uk_member_year` 为**可选加固项**，需按 `business/member/DEPLOY.md` 的手工 SQL 创建（`AutoMigrate` 不建索引）。未创建时，并发重复由 service 层在事务内加行锁后判断（后台新增费用会提示「该会员本年度费用记录已存在」）；已创建时，重复插入会被转成同一条友好提示。
+> `(member_id, year)` 上的唯一索引 `uk_member_year` 由程序在**启动时幂等创建**（`pkg/db/indexes.go` 的 `EnsureUniqueMemberFeeIndex()`：索引不存在时先清理历史重复行、再建索引，失败仅记日志不阻断启动）。未创建（如数据库账号无 ALTER 权限）时，并发重复由 service 层在事务内加行锁后判断（后台新增费用会提示「该会员本年度费用记录已存在」）；已创建时，重复插入会被转成同一条友好提示。手工 SQL 见 `DEPLOY.md`「手工 SQL」。
 
 #### `member_certificates` 证书表
 
@@ -613,16 +613,17 @@ erDiagram
    - 删除各表 `deleted_at IS NOT NULL` 的历史软删行（否则这些数据会重新出现在列表/公开树中）；
    - 再 `ALTER TABLE ... DROP COLUMN deleted_at`（旧库残留列）。
    - 图片/证书/发票等**历史路径**（如 `/uploads\files\...` 反斜杠形式）需按需归一化为带前缀的正斜杠路径。
+   - 遗留表 `member_password_resets`（自助找回密码功能已下线，代码不再引用、也不在 AutoMigrate 列表内）：可执行 `DROP TABLE IF EXISTS member_password_resets;` 清理，语句见 `DEPLOY.md`「手工 SQL ②」。
 2. **无外键约束**：所有引用关系（`member_id`、`org_id`、`level_id`、`category_id`、`fee_standard_id` 等）都没有数据库级外键，删除被引用数据时会由 service 层拦截（机构被会员/申请/费用引用时不可删除等），**直接改库时需自行保证一致性**。
 3. **唯一约束**：`member_fee_records(member_id, year)` 的 `uk_member_year` 由程序在启动时幂等创建（`pkg/db/indexes.go` 的 `EnsureUniqueMemberFeeIndex()`：先清理历史重复行、再建索引，失败仅记日志），手工 SQL 见 `DEPLOY.md`「手工 SQL」。`member_user_orgs(member_id, org_id)` 为**可选加固**（服务层已有「已加入该组织」拦截），语句同样在 `DEPLOY.md`。模型里**故意不声明** `uniqueIndex`：AutoMigrate 在既有表上补建唯一索引遇重复数据会直接报错退出。
 4. **首次部署的业务前置配置**：
    1. 机构「关联等级」与当年「会费标准」由种子数据自动补齐（会费金额为占位 **2000 元**），**上线前必须在后台核对/修改为实际等级范围与金额**；
    2. 在「证书管理 → 证书样式」为每个等级上传 PDF 模板（可选，未配置时使用默认版式）。
-   缺少第 1 步时，**审批通过会被直接拒绝**并提示「机构尚未配置会员等级…」（旧版本会生成 `level_id = 0` 的费用记录，导致会员端无法缴费）；缺少第 2 步时会费标准缺失，按默认金额 2000 元/年创建并记 Warn 日志。
+   缺少上述配置时：机构无关联等级 → **审批通过会被直接拒绝**并提示「机构尚未配置会员等级…」（旧版本会生成 `level_id = 0` 的费用记录，导致会员端无法缴费）；会费标准缺失 → 按默认金额 2000 元/年创建并记 Warn 日志。
 5. **`member_users.member_level` 存的是等级 ID 字符串**（如 `"1"`），历史数据可能存等级名称；代码侧 `resolveMemberLevel` 兼容两种取值，新增数据请统一写 ID。
 6. **证书 `expire_at` 不参与任何自动判断**：系统**没有**定时任务，会员「已过期」状态与证书过期均需管理员手工处理；后台「会员管理 → 状态变更」可在「正式会员 ⇄ 已过期」之间切换（`PUT /admin/members/:id/status` 仅接受 `active`/`expired`），置为已过期会同步作废该会员的生效证书。
 7. **操作日志的两点口径**：
-   - `params` 记录**完整请求体**（JSON），"新增会员"提交的明文密码会随请求体落库，**属于已知风险**，建议后续做键名脱敏；
+   - `params` 记录**完整请求体**（JSON），但写库前会**按键名脱敏**（`password`/`old_password`/`new_password`/`token`/`secret` 等置为 `***`；非 JSON 体走正则脱敏），且按**字符**（非字节）截断到 2000 字，避免切碎中文导致写库失败；
    - `status` 判定依赖 HTTP 状态码，而本系统响应恒为 HTTP 200（业务码在 body），因此 `status` 目前**恒为 1（成功）**。
 8. **`member_system_configs.value` 为 `text`（约 64KB 上限）**：`charter_content`（章程正文）存于此列，正文已在前端禁止插入图片/视频，正常不会超限；若后续允许插图需改 `longtext`。
 9. **上传文件落盘位置**与数据库列对应关系：
