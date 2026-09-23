@@ -66,7 +66,9 @@ onMounted(fetchData)
 
 // 协会章程是富文本正文（HTML），有专门的「协会章程」页面用富文本编辑器维护，
 // 不在本页以纯文本形式展示，避免误改 HTML 结构。
-const HIDDEN_KEYS = ['charter_content']
+// charter_file 是章程 PDF 附件的元信息（JSON），也只能由「协会章程」页面上传/移除，
+// 在本页当纯文本编辑会直接把附件卡片弄坏。
+const HIDDEN_KEYS = ['charter_content', 'charter_file']
 
 async function fetchData() {
   loading.value = true

@@ -15,6 +15,8 @@ var dangerousExts = map[string]bool{
 	".js": true, ".mjs": true, ".xml": true, ".xhtml": true,
 	".swf": true, ".php": true, ".jsp": true, ".asp": true,
 	".aspx": true, ".hta": true,
+	// 压缩包一律按附件下载（上传白名单已放行 zip/rar 用于多页扫描件）
+	".zip": true, ".rar": true,
 }
 
 // SecureUploads 为上传静态资源（<upload_dir_prefix>/uploads）添加安全响应头：

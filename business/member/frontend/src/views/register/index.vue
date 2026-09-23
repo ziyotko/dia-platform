@@ -528,9 +528,10 @@ async function handleSubmit() {
 
     const res = await authApi.register(registerData)
 
-    // 先清空本地缓存登录信息
-    localStorage.clear()
-    sessionStorage.clear()
+    // 先清掉本应用旧的登录信息（只删自己的键：同域下还有 portal/application/base，
+    // 用 localStorage.clear() 会把其它系统的登录态一起清掉）
+    localStorage.removeItem('member-token')
+    sessionStorage.removeItem('member-token')
 
     // 再自动登录系统
     const { token } = res.data

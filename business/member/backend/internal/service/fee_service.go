@@ -15,6 +15,16 @@ import (
 
 type FeeService struct{}
 
+// isDuplicateKeyErr 判断是否为唯一键冲突（MySQL 1062）。
+// 项目未开启 GORM 的 TranslateError，只能按错误文本判断。
+func isDuplicateKeyErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "1062") || strings.Contains(msg, "duplicate entry")
+}
+
 // GetMyFees returns the member's fee records
 func (s *FeeService) GetMyFees(memberID uint64, year int, status string) ([]models.FeeRecord, error) {
 	var fees []models.FeeRecord
@@ -142,7 +152,15 @@ func (s *FeeService) CreateFeeRecord(req CreateFeeRequest) (*models.FeeRecord, e
 			LevelID:   req.LevelID,
 			LevelName: req.LevelName,
 		}
-		return tx.Create(&fee).Error
+		if err := tx.Create(&fee).Error; err != nil {
+			// 唯一索引 uk_member_year（见 DEPLOY.md 手工 SQL）兜底：
+			// 并发双击时上面的行锁判断可能同时通过，把数据库报错转成可读提示
+			if isDuplicateKeyErr(err) {
+				return errors.New("该会员本年度费用记录已存在")
+			}
+			return err
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, err

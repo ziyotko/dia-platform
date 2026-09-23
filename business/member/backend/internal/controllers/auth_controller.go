@@ -178,6 +178,9 @@ var allowedUploadExts = map[string]bool{
 	".jpg": true, ".jpeg": true, ".png": true, ".gif": true,
 	".webp": true, ".bmp": true, ".pdf": true,
 	".doc": true, ".docx": true, ".xls": true, ".xlsx": true, ".txt": true,
+	// 入会申请页明确提示「多页扫描件可打包为 ZIP/RAR」，这里必须同步放行，
+	// 否则按页面指引上传压缩包会直接 400（前端 accept 也只列了这些）
+	".zip": true, ".rar": true,
 }
 
 // 允许的上传子目录白名单，防止路径穿越

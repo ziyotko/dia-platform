@@ -57,15 +57,15 @@
     <!-- Filter Bar -->
     <el-card shadow="never" class="filter-card">
       <div class="filter-bar">
-        <el-select v-model="filterYear" placeholder="选择年度" clearable style="width:140px" @change="fetchData">
+        <el-select v-model="filterYear" placeholder="选择年度" clearable style="width:140px" @change="onFilterChange">
           <el-option v-for="y in yearOptions" :key="y" :label="y+'年'" :value="y" />
         </el-select>
-        <el-select v-model="filterStatus" placeholder="缴费状态" clearable style="width:140px" @change="fetchData">
+        <el-select v-model="filterStatus" placeholder="缴费状态" clearable style="width:140px" @change="onFilterChange">
           <el-option label="已缴费" value="paid" />
           <el-option label="待确认" value="pending" />
           <el-option label="未缴费" value="unpaid" />
         </el-select>
-        <el-select v-model="filterType" placeholder="会员类型" clearable style="width:140px" @change="fetchData">
+        <el-select v-model="filterType" placeholder="会员类型" clearable style="width:140px" @change="onFilterChange">
           <el-option label="单位会员" value="unit" />
           <el-option label="个人会员" value="personal" />
         </el-select>
@@ -396,6 +396,11 @@ onMounted(() => {
   // 往前 3 年 + 当年 + 往后 9 年，共 13 个年度可选
   yearOptions.value = Array.from({ length: 13 }, (_, i) => y + 3 - i)
 })
+function onFilterChange() {
+  // 切筛选必须回到第 1 页，否则停在第 3 页时后端按 offset 查询会得到空列表
+  page.value = 1
+  fetchData()
+}
 async function fetchData() {
   loading.value = true
   try {
@@ -473,15 +478,18 @@ function editFee(row: any) {
   editForm.orgId = row.org_id
   editForm.orgName = row.org_name || ''
   editForm.levelId = row.level_id || null
+  // 必须回填 levelName：editForm 是模块级 reactive，跨行复用时不回填会
+  // 把上一行的等级名提交到本行（并同步进证书等级名）
+  editForm.levelName = row.level_name || ''
   editForm.year = row.year
   editForm.amount = row.amount
   editForm.status = row.status
   editForm.remark = row.remark || ''
   showEdit.value = true
   // 异步加载该会员所属组织的所有级别
-  fetchEditLevels(row.org_id, row.level_id)
+  fetchEditLevels(row.org_id, row.level_id, row.level_name)
 }
-async function fetchEditLevels(orgId: number, currentLevelId: number) {
+async function fetchEditLevels(orgId: number, currentLevelId: number, currentLevelName: string) {
   editLevelOptions.value = []
   if (!orgId) return
   editLevelLoading.value = true
@@ -489,8 +497,13 @@ async function fetchEditLevels(orgId: number, currentLevelId: number) {
     const r = await adminApi.getOrgLevels(orgId)
     // 接口返回 MemberOrgLevel[]，每个元素有 level 嵌套对象
     const items: any[] = r.data || []
-    editLevelOptions.value = items.map((item: any) => item.level || item).filter(Boolean)
-    // 若当前级别不在列表中，仍保留显示
+    const levels = items.map((item: any) => item.level || item).filter(Boolean)
+    // 历史数据的 level_id 可能不在该机构已关联的等级里：补一条选项，
+    // 避免下拉显示裸 ID、保存时把 level_name 清空
+    if (currentLevelId && !levels.some((l: any) => Number(l.id) === Number(currentLevelId))) {
+      levels.push({ id: currentLevelId, name: currentLevelName || `等级 ID ${currentLevelId}` })
+    }
+    editLevelOptions.value = levels
   } catch {} finally { editLevelLoading.value = false }
 }
 async function onEditLevelChange(levelId: number) {

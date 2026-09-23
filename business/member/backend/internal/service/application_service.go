@@ -6,6 +6,8 @@ import (
 	"member/pkg/db"
 	"member/pkg/utils"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type ApplicationService struct{}
@@ -132,20 +134,6 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 		return errors.New("该申请不在待审核状态")
 	}
 
-	// 业务规则：不允许二次入会 —— 同一会员只能有一条已通过的入会申请。
-	// 在审批入口再校验一次，即使有人绕过创建端的限制也无法重复入会。
-	if approved {
-		var otherApproved int64
-		if err := db.DB.Model(&models.Application{}).
-			Where("member_id = ? AND status = ? AND id <> ?", app.MemberID, models.AppStatusApproved, app.ID).
-			Count(&otherApproved).Error; err != nil {
-			return err
-		}
-		if otherApproved > 0 {
-			return errors.New("该会员已有已通过的入会申请，不允许重复通过（二次入会）")
-		}
-	}
-
 	newStatus := models.AppStatusRejected
 	newMemberStatus := models.MemberStatusRejected
 	if approved {
@@ -157,14 +145,39 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 	// 审批通过时创建的证书 ID，用于事务提交后补生成 PDF（事务外执行）
 	var newCertID uint64
 
-	// Update application
-	if err := tx.Model(&app).Updates(map[string]interface{}{
-		"status":         newStatus,
-		"review_comment": comment,
-		"reviewer_id":    reviewerID,
-	}).Error; err != nil {
+	// 业务规则：不允许二次入会 —— 同一会员只能有一条已通过的入会申请。
+	// 校验放在事务内，与下面的“条件更新”一起保证并发安全。
+	if approved {
+		var otherApproved int64
+		if err := tx.Model(&models.Application{}).
+			Where("member_id = ? AND status = ? AND id <> ?", app.MemberID, models.AppStatusApproved, app.ID).
+			Count(&otherApproved).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+		if otherApproved > 0 {
+			tx.Rollback()
+			return errors.New("该会员已有已通过的入会申请，不允许重复通过（二次入会）")
+		}
+	}
+
+	// 条件更新：只更新仍处于「待审核」的记录。
+	// 两个管理员同时点「通过」时，后提交者 RowsAffected=0 直接报错退出，
+	// 避免重复生成证书 / 费用记录（原先按主键更新，两次都会成功）。
+	res := tx.Model(&models.Application{}).
+		Where("id = ? AND status = ?", app.ID, models.AppStatusPendingReview).
+		Updates(map[string]interface{}{
+			"status":         newStatus,
+			"review_comment": comment,
+			"reviewer_id":    reviewerID,
+		})
+	if res.Error != nil {
 		tx.Rollback()
-		return err
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		tx.Rollback()
+		return errors.New("该申请已被处理，请刷新后重试")
 	}
 
 	// Update member status — 正式会员不因新的入会申请审批而改变状态
@@ -189,32 +202,40 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 
 		// 定位申请机构及其所属总会
 		var appliedOrg models.Organization
-		if err := db.DB.First(&appliedOrg, app.OrgID).Error; err != nil {
+		if err := tx.First(&appliedOrg, app.OrgID).Error; err != nil {
 			// 机构不存在时按申请机构本身处理（兼容历史数据）
 			appliedOrg.ID = app.OrgID
 		}
 		rootOrg := resolveOrgRoot(appliedOrg)
 
-		// Look up the minimum member level for the 总会 and get its fee standard for current year;
-		// 分会/代表机构沿用总会等级，总会未配置等级时回退到申请机构自身的配置。
+		// 会员等级取机构「关联等级」中最小的一项；分会/代表机构沿用总会等级，
+		// 总会未配置时回退到申请机构自身的配置。
 		orgLevel, lvlErr := findMinOrgLevel(rootOrg.ID)
 		if lvlErr != nil && appliedOrg.ID != rootOrg.ID {
 			orgLevel, lvlErr = findMinOrgLevel(appliedOrg.ID)
 		}
+		// 未配置等级必须直接报错：否则会生成 level_id=0 的费用记录，
+		// 会员端「缴费」会被拒绝（且提示“请先联系管理员修改会员级别”指向错误方向）。
+		if lvlErr != nil {
+			tx.Rollback()
+			return errors.New("机构尚未配置会员等级，请先在后台「组织机构」中为总会（或该申请机构）关联会员等级，再审核通过")
+		}
+		levelID := orgLevel.LevelID
+		levelName := orgLevel.Level.Name
 
-		var feeAmount float64 = 2000.00 // fallback default
-		var feeStandardID, levelID uint64
-		var levelName string
-		if lvlErr == nil {
-			// Found the minimum level for the 总会
-			levelID = orgLevel.LevelID
-			levelName = orgLevel.Level.Name
-
-			var std models.MemberFeeStandard
-			if err := db.DB.Where("level_id = ? AND year = ?", levelID, now.Year()).First(&std).Error; err == nil {
-				feeAmount = std.Amount
-				feeStandardID = std.ID
-			}
+		// 会费标准取「等级 + 当年」；未配置时暂用兜底金额并记 Warn，便于排查
+		var feeAmount float64 = 2000.00
+		var feeStandardID uint64
+		var std models.MemberFeeStandard
+		if err := tx.Where("level_id = ? AND year = ?", levelID, now.Year()).First(&std).Error; err == nil {
+			feeAmount = std.Amount
+			feeStandardID = std.ID
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+			tx.Rollback()
+			return err
+		} else {
+			utils.LogWarn("审核通过时未找到 %d 年度等级 %d 的会费标准，暂按 %.2f 元创建费用记录（member_id=%d）",
+				now.Year(), levelID, feeAmount, app.MemberID)
 		}
 
 		// 证书样式（含最低等级回退）由 certTemplateIDForLevel 统一处理
@@ -243,21 +264,34 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 		}
 		newCertID = cert.ID
 
-		// 首年会费记录：机构为总会，会费标准按总会等级
-		fee := models.FeeRecord{
-			MemberID:      app.MemberID,
-			Year:          now.Year(),
-			Amount:        feeAmount,
-			Status:        models.FeeStatusUnpaid,
-			FeeStandardID: feeStandardID,
-			LevelID:       levelID,
-			LevelName:     levelName,
-			OrgID:         rootOrg.ID,
-			OrgName:       rootOrg.Name,
-		}
-		if err := tx.Create(&fee).Error; err != nil {
+		// 首年会费记录：机构为总会，会费标准按总会等级。
+		// 幂等保护：若该会员当年已有费用记录（例如管理员提前手工建过），不重复创建，
+		// 否则会与 member_fee_records 的唯一索引 uk_member_year 冲突。
+		var existFee int64
+		if err := tx.Model(&models.FeeRecord{}).
+			Where("member_id = ? AND year = ?", app.MemberID, now.Year()).
+			Count(&existFee).Error; err != nil {
 			tx.Rollback()
 			return err
+		}
+		if existFee == 0 {
+			fee := models.FeeRecord{
+				MemberID:      app.MemberID,
+				Year:          now.Year(),
+				Amount:        feeAmount,
+				Status:        models.FeeStatusUnpaid,
+				FeeStandardID: feeStandardID,
+				LevelID:       levelID,
+				LevelName:     levelName,
+				OrgID:         rootOrg.ID,
+				OrgName:       rootOrg.Name,
+			}
+			if err := tx.Create(&fee).Error; err != nil {
+				tx.Rollback()
+				return err
+			}
+		} else {
+			utils.LogWarn("审核通过时该会员 %d 年度已有费用记录，跳过创建（member_id=%d）", now.Year(), app.MemberID)
 		}
 
 		// 申请的是分支机构/代表机构时，写入 member_user_orgs（总会不写入该表）

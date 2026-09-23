@@ -32,8 +32,10 @@ export const useUserStore = defineStore('user', () => {
     token.value = ''
     userInfo.value = null
     menus.value = []
-    localStorage.clear()
-    sessionStorage.clear()
+    // 只清本应用自己的键：member/portal/application/base 同域子路径部署，
+    // localStorage.clear() 会连带把其它系统的登录态一起清掉
+    localStorage.removeItem('member-token')
+    sessionStorage.removeItem('member-token')
     // 跳登录页必须带上部署子路径（BASE_URL = vite base），否则子路径部署下会跳到不存在的 /login
     window.location.href = `${import.meta.env.BASE_URL || '/'}login`
   }

@@ -228,6 +228,43 @@ server {
 - 更换 `MEMBER_JWT_SECRET` 会使所有已签发 Token 立即失效（在线用户需重新登录）
 - 备份建议：`mysqldump` 数据库 + `backend/uploads` 目录（含证书 PDF、证书模板、章程 PDF、票据、文章配图）+ `backend/config.yaml`（不含密码明文）
 
+### 升级说明（2026-09-23，无需手工 SQL）
+
+- **入会审批**：改为**事务内条件更新**（`WHERE id=? AND status='pending_review'`），并发重复点「通过」时后提交者报「该申请已被处理，请刷新后重试」；「已有已通过申请」校验移入事务。
+- **入会审批缺等级直接报错**：总会（或申请机构）未配置「关联等级」时不再生成 `level_id=0` 的费用记录，而是返回「机构尚未配置会员等级，请先在后台「组织机构」中…关联会员等级，再审核通过」。**升级后请先确认总会的关联等级已配置**，否则审批会被拒（历史上会产生无法缴费的坑）。
+- **入会审批同年费用记录幂等**：该会员当年已有费用记录时跳过创建并记 Warn（避免与下面的唯一索引冲突）。
+- **会费确认口径统一**：首次置为「已缴费」时统一写入 `paid_at` 与 `confirmed_at`；「确认缴费」现在也允许对**未缴费**记录使用（线下收款登记实收金额、填 0 即免缴），`paid_amount` 支持请求显式传入。
+- **操作日志**：`params` 写库前对口令类字段脱敏为 `***`；截断改为按**字符**（原先按字节切中文会产生非法 UTF-8，审计记录会静默写库失败）。
+- **上传白名单**：新增 `.zip` / `.rar`（入会申请页一直提示可打包上传，此前会被 400 拒绝）；zip/rar 与危险扩展名一样强制以附件下载。
+- **前端**：修复公告「置顶」开关不生效（字段名与后端不一致）；后台会费统计卡改为后端聚合（不再按当前页计算）；会费页切换筛选自动回到第 1 页；编辑费用时正确回填等级名；「系统管理」隐藏 `charter_file`；退出登录/注册不再 `localStorage.clear()`（避免清掉同域 portal/application 的登录态）。
+
+### 手工 SQL（可选加固）
+
+`member_fee_records` 的 `(member_id, year)` 唯一索引需**手工创建**（`AutoMigrate` 不建索引）。不建也能跑（服务层已在事务内加行锁判断重复），建索引是并发双击的数据库级兜底。
+
+```sql
+USE caam_member;   -- 必须先切库：DELETE ... JOIN 未选库会报 1046 No database selected
+
+-- 1) 预检：是否存在同一会员同年度的重复记录
+SELECT COUNT(*) AS dup_groups, IFNULL(SUM(c-1), 0) AS extra_rows FROM (
+  SELECT member_id, year, COUNT(*) c
+  FROM member_fee_records GROUP BY member_id, year HAVING c > 1
+) t;
+
+-- 2) 有重复时先清理（每组保留 id 最小的一条）
+DELETE f FROM member_fee_records f
+JOIN (
+  SELECT MIN(id) AS keep_id, member_id, year
+  FROM member_fee_records GROUP BY member_id, year HAVING COUNT(*) > 1
+) d ON d.member_id = f.member_id AND d.year = f.year
+WHERE f.id > d.keep_id;
+
+-- 3) 创建唯一索引（若已存在会报 1061，可忽略）
+ALTER TABLE member_fee_records ADD UNIQUE INDEX uk_member_year (member_id, year);
+```
+
+核查：`SHOW INDEX FROM member_fee_records WHERE Key_name = 'uk_member_year';`
+
 ---
 
 ## 七、常见问题（FAQ）
