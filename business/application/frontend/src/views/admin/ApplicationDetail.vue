@@ -95,6 +95,16 @@
           </template>
           <template v-if="app.status === 'under_review' || app.status === 'reviewed'">
             <el-button type="primary" @click="openAssign">分配评审</el-button>
+            <!-- 误点「初审通过」后的退回入口：无人评分时才可用（演示后端同样校验） -->
+            <el-button
+              v-if="app.status === 'under_review'"
+              type="warning"
+              plain
+              :disabled="scoredReviews.length > 0"
+              @click="revokePreliminary"
+            >
+              撤回初审
+            </el-button>
           </template>
           <template v-if="canDecide">
             <el-button type="success" @click="finalize(true)">确定通过</el-button>
@@ -176,7 +186,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminApi } from '@/api/admin'
-import { applicationStatusMap, applicationStatusType, reviewStatusMap, fileUrl, fmt } from '@/utils/constants'
+import { applicationStatusMap, applicationStatusType, reviewStatusMap, fmt } from '@/utils/constants'
+import { openFile } from '@/utils/file'
 
 const route = useRoute()
 const router = useRouter()
@@ -280,7 +291,18 @@ async function publishResult() {
   fetch()
 }
 
-// 撤回评审结果 / 撤回公示，让已确定的结果可以重新处理
+// 撤回初审 / 撤回评审结果 / 撤回公示，让已确定的结论可以重新处理
+async function revokePreliminary() {
+  await ElMessageBox.confirm(
+    '撤回后该申报回到「待初审」，已分配的未评分评审人会被清空；已有评分时无法撤回。确认撤回？',
+    '提示',
+    { type: 'warning' },
+  )
+  await adminApi.revokePreliminary(id)
+  ElMessage.success('已撤回初审，该申报回到「待初审」')
+  fetch()
+}
+
 async function revoke() {
   const isPublished = !!app.value.publishedAt
   await ElMessageBox.confirm(
@@ -330,11 +352,11 @@ async function submitCertify() {
 }
 
 function downloadCert() {
-  window.open(fileUrl(app.value.certificate?.fileUrl), '_blank')
+  openFile(app.value.certificate?.fileUrl, 'admin', app.value.certificate?.certNo || 'certificate')
 }
 
 function download(row: any) {
-  window.open(fileUrl(row.fileUrl), '_blank')
+  openFile(row.fileUrl, 'admin', row.name || 'material')
 }
 
 onMounted(fetch)

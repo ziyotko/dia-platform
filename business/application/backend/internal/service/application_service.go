@@ -414,6 +414,49 @@ func (s *ApplicationService) PreliminaryReview(id uint64, pass bool, opinion str
 	return nil
 }
 
+// RevokePreliminary sends an application that already entered the review stage
+// back to 待初审（可由接口操作，不必改库）。
+//
+// 只有还没人评分时才允许：否则那些分数会从平均分里惄惄消失（与「移除已评分的
+// 评审人」同一个道理）。事务内一并清掉尚未评分的评审任务，避免重新初审后
+// 专家还看得到过期任务。
+func (s *ApplicationService) RevokePreliminary(id uint64) error {
+	var app models.Application
+	if err := db.DB.First(&app, id).Error; err != nil {
+		return errors.New("申报记录不存在")
+	}
+	if app.Status != models.AppStatusUnderReview {
+		return errors.New("仅待评审的申报可撤回初审")
+	}
+	var scored int64
+	db.DB.Model(&models.ReviewAssignment{}).
+		Where("application_id = ? AND status = ?", id, models.ReviewStatusScored).Count(&scored)
+	if scored > 0 {
+		return errors.New("已有专家完成评分，无法撤回初审")
+	}
+
+	err := db.DB.Transaction(func(tx *gorm.DB) error {
+		res := tx.Model(&models.Application{}).
+			Where("id = ? AND status = ?", id, models.AppStatusUnderReview).
+			Updates(map[string]interface{}{
+				"status":              models.AppStatusSubmitted,
+				"preliminary_opinion": "",
+			})
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return errors.New("申报状态已变更，请刷新后重试")
+		}
+		return tx.Where("application_id = ?", id).Delete(&models.ReviewAssignment{}).Error
+	})
+	if err != nil {
+		return err
+	}
+	notifyUser(app.UserID, "初审结果已撤回", "您的项目《"+app.Title+"》的初审结果已被撤回，等待重新初审。", NotifyTypeReview)
+	return nil
+}
+
 // AssignReviewers assigns reviewers to an application. Existing assignments are
 // preserved (scores are never discarded); only reviewers removed from the list
 // that have not scored yet are dropped.

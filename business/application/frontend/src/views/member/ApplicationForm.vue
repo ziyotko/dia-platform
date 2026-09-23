@@ -81,7 +81,7 @@ async function save() {
 }
 
 onMounted(async () => {
-  const [b, c] = await Promise.all([memberApi.getBatches({ page: 1, pageSize: 100 }), memberApi.getCategories()])
+  const [b, c] = await Promise.all([memberApi.getBatches({ page: 1, pageSize: 200 }), memberApi.getCategories()])
   // 只能选当前仍在申报期内的批次（列表中同时存在评审中/已结束的批次）
   batches.value = (b.data.list || []).filter((item: any) => item.canApply)
   categories.value = c.data

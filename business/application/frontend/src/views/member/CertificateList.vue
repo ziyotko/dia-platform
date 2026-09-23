@@ -27,7 +27,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { memberApi } from '@/api/member'
-import { certStatusMap, certStatusType, fileUrl, fmt } from '@/utils/constants'
+import { certStatusMap, certStatusType, fmt } from '@/utils/constants'
+import { openFile } from '@/utils/file'
 
 const list = ref<any[]>([])
 const loading = ref(false)
@@ -43,7 +44,7 @@ async function fetch() {
 }
 
 function download(row: any) {
-  window.open(fileUrl(row.fileUrl), '_blank')
+  openFile(row.fileUrl, 'member', row.certNo || 'certificate')
 }
 
 onMounted(fetch)

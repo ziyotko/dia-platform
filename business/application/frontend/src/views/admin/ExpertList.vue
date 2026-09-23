@@ -3,7 +3,7 @@
     <div class="page-toolbar">
       <div style="display:flex;gap:12px;flex-wrap:wrap">
         <el-input v-model="keyword" placeholder="搜索姓名/账号/领域/单位" clearable style="width:240px" @keyup.enter="fetch" @clear="fetch" />
-        <el-select v-model="status" placeholder="全部状态" clearable style="width:140px" @change="fetch">
+        <el-select v-model="status" placeholder="全部状态" clearable style="width:140px" @change="onFilterChange">
           <el-option label="启用" value="enabled" />
           <el-option label="停用" value="disabled" />
         </el-select>
@@ -89,6 +89,8 @@ async function fetch() {
 }
 
 function onPage(p: number) { page.value = p; fetch() }
+// 切换筛选条件回到第 1 页，否则在第 2 页切筛选会看到空列表
+function onFilterChange() { page.value = 1; fetch() }
 
 function openDialog(row?: any) {
   Object.assign(form, row ? { ...row, password: '' } : { id: 0, name: '', username: '', password: '', specialty: '', title: '', organization: '', phone: '', email: '', bio: '' })

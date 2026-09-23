@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="项目申报评审系统">
+  <defs>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#001b5e" />
+      <stop offset="0.55" stop-color="#002fa7" />
+      <stop offset="1" stop-color="#2050cf" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#brand)" />
+  <!-- 文档 + 对勾：申报评审（与会员系统 favicon 同色系，便于同域部署时区分） -->
+  <path d="M20 14h16l10 10v26a2 2 0 0 1-2 2H20a2 2 0 0 1-2-2V16a2 2 0 0 1 2-2z" fill="#ffffff" opacity="0.92" />
+  <path d="M36 14l10 10H36z" fill="#c7d6ff" />
+  <path d="M24.5 37.5l5 5 10-11" fill="none" stroke="#002fa7" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

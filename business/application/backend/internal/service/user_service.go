@@ -168,6 +168,13 @@ func validRole(code string) bool {
 
 func (s *UserService) UpdateAdmin(id uint64, updates map[string]interface{}) error {
 	clean := pickUpdates(updates, "real_name", "phone", "email", "role_code", "status", "password")
+	if len(clean) == 0 {
+		return nil
+	}
+	var target models.Admin
+	if err := db.DB.First(&target, id).Error; err != nil {
+		return errors.New("账号不存在")
+	}
 	if raw, ok := clean["role_code"]; ok {
 		role, _ := raw.(string)
 		if !validRole(role) {
@@ -176,11 +183,15 @@ func (s *UserService) UpdateAdmin(id uint64, updates map[string]interface{}) err
 		// 从专家库新建的评审人不能改回评审人角色以外的用途，反之也不允许在
 		// 账号管理里新造一个评审人（见 CreateAdmin）。已有的评审人账号仍可编辑
 		// 资料，因为它的角色没有变化。
-		if role == models.RoleReviewer {
-			var target models.Admin
-			if err := db.DB.First(&target, id).Error; err == nil && target.RoleCode != models.RoleReviewer {
-				return errors.New("评审人账号请通过「专家库」新增")
-			}
+		if role == models.RoleReviewer && target.RoleCode != models.RoleReviewer {
+			return errors.New("评审人账号请通过「专家库」新增")
+		}
+	}
+	// 最后一个超管保护：不能把唯一一个启用中的超管降级/停用，否则系统会永久
+	// 失去「账号管理」入口（没人能再改角色权限，只能改库）。
+	if target.RoleCode == models.RoleSuperAdmin && target.Status == 1 && losingSuperAdmin(clean) {
+		if countOtherEnabledSuperAdmins(id) == 0 {
+			return errors.New("系统必须保留至少一个启用中的超级管理员")
 		}
 	}
 	if pwd, ok := clean["password"].(string); ok && pwd != "" {
@@ -195,7 +206,37 @@ func (s *UserService) UpdateAdmin(id uint64, updates map[string]interface{}) err
 	return db.DB.Model(&models.Admin{}).Where("id = ?", id).Updates(clean).Error
 }
 
+// countOtherEnabledSuperAdmins 统计除 excludeID 之外仍启用中的超级管理员数量。
+func countOtherEnabledSuperAdmins(excludeID uint64) int64 {
+	var count int64
+	db.DB.Model(&models.Admin{}).
+		Where("role_code = ? AND status = 1 AND id <> ?", models.RoleSuperAdmin, excludeID).
+		Count(&count)
+	return count
+}
+
+// losingSuperAdmin 判断这次更新是否会让该账号不再是「启用中的超级管理员」。
+func losingSuperAdmin(clean map[string]interface{}) bool {
+	if raw, ok := clean["role_code"]; ok {
+		role, _ := raw.(string)
+		if role != models.RoleSuperAdmin {
+			return true
+		}
+	}
+	if raw, ok := clean["status"]; ok && toInt(raw) != 1 {
+		return true
+	}
+	return false
+}
+
 func (s *UserService) DeleteAdmin(id uint64) error {
+	var target models.Admin
+	if err := db.DB.First(&target, id).Error; err != nil {
+		return errors.New("账号不存在")
+	}
+	if target.RoleCode == models.RoleSuperAdmin && target.Status == 1 && countOtherEnabledSuperAdmins(id) == 0 {
+		return errors.New("系统必须保留至少一个启用中的超级管理员")
+	}
 	var count int64
 	db.DB.Model(&models.ReviewAssignment{}).Where("reviewer_id = ?", id).Count(&count)
 	if count > 0 {

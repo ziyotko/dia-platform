@@ -119,7 +119,8 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { memberApi } from '@/api/member'
-import { applicationStatusMap, applicationStatusType, reviewStatusMap, fileUrl, fmt } from '@/utils/constants'
+import { applicationStatusMap, applicationStatusType, reviewStatusMap, fmt } from '@/utils/constants'
+import { openFile } from '@/utils/file'
 
 const route = useRoute()
 const id = Number(route.params.id)
@@ -211,7 +212,7 @@ async function withdraw() {
 }
 
 function download(row: any) {
-  window.open(fileUrl(row.fileUrl), '_blank')
+  openFile(row.fileUrl, 'member', row.name || 'material')
 }
 
 onMounted(async () => {

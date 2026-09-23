@@ -2,7 +2,7 @@ server:
   port: 8094
   mode: debug
   api_prefix: /business_application/api
-  # 上传文件挂载前缀：实际挂在 <upload_dir_prefix>/uploads（与前端 VITE_BASE_PATH 去尾斜杠一致）
+  # fileUrl 前缀：仅用于把数据库中带前缀的历史 URL 归一化回 uploads/ 路径（不再静态托管，见 DEPLOY.md「二.5」）
   upload_dir_prefix: /business_application
   max_concurrent_ips: 100
   # 可信反向代理 IP 列表（用于正确获取客户端真实 IP；限流/审计均按真实 IP 计数）

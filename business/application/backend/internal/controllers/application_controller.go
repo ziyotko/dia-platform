@@ -178,6 +178,17 @@ func (ctrl *ApplicationController) PreliminaryReview(c *gin.Context) {
 	response.OkWithMessage(c, "初审完成", nil)
 }
 
+// RevokePreliminary 撤回初审：把误通过的申报退回「待初审」重新处理。
+func (ctrl *ApplicationController) RevokePreliminary(c *gin.Context) {
+	id := parseUint(c.Param("id"))
+	if err := ctrl.service.RevokePreliminary(id); err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+	recordAudit(c, "初审管理", "撤回初审", "id="+c.Param("id"))
+	response.OkWithMessage(c, "已撤回初审，该申报回到「待初审」", nil)
+}
+
 type AssignReq struct {
 	ReviewerIDs []uint64 `json:"reviewerIds"`
 }

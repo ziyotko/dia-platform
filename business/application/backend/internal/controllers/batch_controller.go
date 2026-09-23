@@ -83,6 +83,17 @@ func (ctrl *BatchController) StartReview(c *gin.Context) {
 	response.OkWithMessage(c, "已进入评审阶段", nil)
 }
 
+// Reopen 重开申报：把评审中/已结束的批次退回「申报中」继续收申报。
+func (ctrl *BatchController) Reopen(c *gin.Context) {
+	id := parseUint(c.Param("id"))
+	if err := ctrl.service.Reopen(id); err != nil {
+		response.Fail(c, err.Error())
+		return
+	}
+	recordAudit(c, "批次管理", "重开申报", "id="+c.Param("id"))
+	response.OkWithMessage(c, "已重开申报", nil)
+}
+
 func (ctrl *BatchController) GetByID(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	batch, err := ctrl.service.GetByID(id)

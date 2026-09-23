@@ -22,6 +22,7 @@ func Register(r *gin.Engine) {
 	// === Controllers ===
 	authCtrl := &controllers.AuthController{}
 	uploadCtrl := &controllers.UploadController{}
+	fileCtrl := &controllers.FileController{}
 	categoryCtrl := &controllers.CategoryController{}
 	batchCtrl := &controllers.BatchController{}
 	appCtrl := &controllers.ApplicationController{}
@@ -81,6 +82,9 @@ func Register(r *gin.Engine) {
 
 		// Upload (材料上传)
 		member.POST("/upload", middleware.RateLimitMiddleware("upload", 20, time.Minute), uploadCtrl.Upload)
+
+		// 文件下载（鉴权）：上传目录不再对外静态托管，预览/下载都走这里
+		member.GET("/files", middleware.RateLimitMiddleware("file", 120, time.Minute), fileCtrl.MemberFile)
 	}
 
 	// === Admin routes (管理人/评审人, JWT + permission required) ===
@@ -100,6 +104,9 @@ func Register(r *gin.Engine) {
 		// 避免只读角色（评审人）把服务器当图床循环写盘。
 		admin.POST("/upload", middleware.RateLimitMiddleware("admin-upload", 20, time.Minute), middleware.PermissionGuardAny("application:preliminary", "certificate:manage"), uploadCtrl.Upload)
 
+		// 文件下载（鉴权）：管理人可读全部，评审人仅限分配给自己的申报材料
+		admin.GET("/files", middleware.RateLimitMiddleware("file-admin", 120, time.Minute), fileCtrl.AdminFile)
+
 		// Categories (项目类别)
 		admin.GET("/categories", middleware.PermissionGuard("category:view"), categoryCtrl.List)
 		admin.POST("/categories", middleware.PermissionGuard("category:create"), categoryCtrl.Create)
@@ -115,11 +122,15 @@ func Register(r *gin.Engine) {
 		admin.POST("/batches/:id/publish", middleware.PermissionGuard("batch:publish"), batchCtrl.Publish)
 		admin.POST("/batches/:id/close", middleware.PermissionGuard("batch:publish"), batchCtrl.Close)
 		admin.POST("/batches/:id/start-review", middleware.PermissionGuard("batch:publish"), batchCtrl.StartReview)
+		// 重开申报：评审中/已结束 → 申报中（截止时间已在将来且无公示记录）
+		admin.POST("/batches/:id/reopen", middleware.PermissionGuard("batch:publish"), batchCtrl.Reopen)
 
 		// Applications (项目申报管理 / 初审)
 		admin.GET("/applications", middleware.PermissionGuard("application:view"), appCtrl.List)
 		admin.GET("/applications/:id", middleware.PermissionGuard("application:view"), appCtrl.GetByID)
 		admin.POST("/applications/:id/preliminary", middleware.PermissionGuard("application:preliminary"), appCtrl.PreliminaryReview)
+		// 撤回初审：把误通过的申报退回「待初审」（无人评分时才允许）
+		admin.POST("/applications/:id/revoke-preliminary", middleware.PermissionGuard("application:preliminary"), appCtrl.RevokePreliminary)
 		admin.POST("/applications/:id/assign", middleware.PermissionGuard("review:assign"), appCtrl.AssignReviewers)
 		admin.POST("/applications/:id/finalize", middleware.PermissionGuard("result:manage"), appCtrl.Finalize)
 		admin.POST("/applications/:id/publish", middleware.PermissionGuard("result:publish"), appCtrl.PublishResult)
@@ -175,5 +186,7 @@ func Register(r *gin.Engine) {
 
 		// Audit logs
 		admin.GET("/audit-logs", middleware.PermissionGuard("audit:view"), auditCtrl.List)
+		// CSV 导出（同一套筛选条件，最多 10000 条）
+		admin.GET("/audit-logs/export", middleware.PermissionGuard("audit:view"), auditCtrl.Export)
 	}
 }

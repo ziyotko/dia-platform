@@ -13,6 +13,13 @@ import (
 // uploadRoot 是上传目录名（磁盘上的目录），外部访问前缀 = server.upload_dir_prefix + "/uploads"（见 main.go 的 r.Static）。
 const uploadRoot = "uploads"
 
+// LocalPath maps a stored file URL to a path on disk, reporting whether the URL is
+// one of ours. Used by the authenticated download endpoints: uploads are no
+// longer served as public static files, so every read is checked first.
+func LocalPath(fileURL string) (string, bool) {
+	return resolve(fileURL)
+}
+
 // RemoveByURL deletes the file a stored file URL points at. Best effort: an
 // already missing file (or a URL we do not manage) is not an error, so callers
 // never have to branch on it.

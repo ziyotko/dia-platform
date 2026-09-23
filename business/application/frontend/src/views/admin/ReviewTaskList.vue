@@ -99,7 +99,7 @@ function onPage(p: number) { page.value = p; fetch() }
 onMounted(async () => {
   fetch()
   const [b, r] = await Promise.all([
-    adminApi.getBatches({ page: 1, pageSize: 100 }),
+    adminApi.getBatches({ page: 1, pageSize: 200 }),
     adminApi.getReviewers(),
   ])
   batches.value = b.data.list

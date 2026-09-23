@@ -40,7 +40,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { adminApi } from '@/api/admin'
-import { fileUrl } from '@/utils/constants'
+import { openFile } from '@/utils/file'
 
 const route = useRoute()
 const id = Number(route.params.id)
@@ -74,7 +74,7 @@ async function submit() {
 }
 
 function download(row: any) {
-  window.open(fileUrl(row.fileUrl), '_blank')
+  openFile(row.fileUrl, 'admin', row.name || 'material')
 }
 
 onMounted(fetch)

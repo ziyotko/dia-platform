@@ -61,10 +61,19 @@ func main() {
 	gin.SetMode(config.Cfg.Server.Mode)
 	r := gin.New()
 	r.Use(middleware.CORS(), middleware.Logger(), middleware.IPLimit(), gin.Recovery())
-	r.Static(config.Cfg.Server.UploadDirPrefix+"/uploads", "./uploads")
 	r.MaxMultipartMemory = 64 << 20 // 64MB
-	// 限定可信代理，保证 c.ClientIP() 取到的是真实客户端 IP（限流按真实 IP 计数）
-	r.SetTrustedProxies(config.Cfg.Server.TrustedProxies)
+	// 上传目录不再静态托管（原先 r.Static(upload_dir_prefix+"/uploads", "./uploads") 等于"知道 URL 就能下载"）：
+	// 现在只能通过带鉴权的 GET /member/files、GET /admin/files 读取。
+	// 若 Nginx 里还配了 /uploads/ 直接指向磁盘，需一并删除（见 DEPLOY.md 四、Nginx 示例）。
+	// 限定可信代理，保证 c.ClientIP() 取到的是真实客户端 IP（限流按真实 IP 计数）。
+	// SetTrustedProxies 会校验条目（IP 或 CIDR），写错时回退为「不信任任何代理」，
+	// 否则 gin 会 panic；此时 ClientIP() 取到的是代理 IP，所有人都共用一个限流桶。
+	if err := r.SetTrustedProxies(config.Cfg.Server.TrustedProxies); err != nil {
+		utils.Logger.Warn("server.trusted_proxies 配置无效，已回退为不信任任何代理（限流将按代理 IP 计数）：" + err.Error())
+		_ = r.SetTrustedProxies(nil)
+	} else if gin.Mode() == gin.ReleaseMode && len(config.Cfg.Server.TrustedProxies) == 0 {
+		utils.Logger.Warn("server.trusted_proxies 为空：经反向代理部署时限流/审计拿到的是代理 IP，请填写 Nginx 地址")
+	}
 
 	// 10. Register routes
 	routes.Register(r)

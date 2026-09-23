@@ -69,7 +69,8 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminApi } from '@/api/admin'
-import { certStatusMap, certStatusType, fileUrl } from '@/utils/constants'
+import { certStatusMap, certStatusType } from '@/utils/constants'
+import { openFile } from '@/utils/file'
 
 const list = ref<any[]>([])
 const passedApps = ref<any[]>([])
@@ -97,7 +98,7 @@ function onPage(p: number) { page.value = p; fetch() }
 
 async function openDialog() {
   Object.assign(form, { id: 0, applicationId: '', certNo: '', title: '', holder: '', fileUrl: '' })
-  const res = await adminApi.getApplications({ page: 1, pageSize: 100, status: 'published' })
+  const res = await adminApi.getApplications({ page: 1, pageSize: 200, status: 'published' })
   passedApps.value = res.data.list
   dialogVisible.value = true
 }
@@ -136,7 +137,7 @@ async function voidCert(row: any) {
 }
 
 function download(row: any) {
-  window.open(fileUrl(row.fileUrl), '_blank')
+  openFile(row.fileUrl, 'admin', row.certNo || 'certificate')
 }
 
 // Reuses the shared upload endpoint so a certificate file is picked from disk

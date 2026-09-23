@@ -3,7 +3,7 @@
     <div class="page-toolbar">
       <div style="display:flex;gap:12px">
         <el-input v-model="keyword" placeholder="搜索批次名称" clearable style="width:220px" @keyup.enter="fetch" @clear="fetch" />
-        <el-select v-model="status" placeholder="全部状态" clearable style="width:140px" @change="fetch">
+        <el-select v-model="status" placeholder="全部状态" clearable style="width:140px" @change="onFilterChange">
           <el-option v-for="(label, key) in batchStatusMap" :key="key" :label="label" :value="key" />
         </el-select>
         <el-button type="primary" @click="fetch">查询</el-button>
@@ -28,9 +28,11 @@
       <el-table-column label="操作" width="300" fixed="right">
         <template #default="{ row }">
           <el-button size="small" @click="openDialog(row)">编辑</el-button>
-          <el-button v-if="row.status === 'draft'" size="small" type="success" @click="publish(row)">发布</el-button>
-          <el-button v-if="row.status === 'open'" size="small" type="warning" @click="startReview(row)">开始评审</el-button>
-          <el-button v-if="row.status === 'open' || row.status === 'reviewing'" size="small" type="info" @click="close(row)">结束</el-button>
+          <el-button v-if="row.status === 'draft'" size="small" type="success" :loading="acting" @click="publish(row)">发布</el-button>
+          <el-button v-if="row.status === 'open'" size="small" type="warning" :loading="acting" @click="startReview(row)">开始评审</el-button>
+          <el-button v-if="row.status === 'open' || row.status === 'reviewing'" size="small" type="info" :loading="acting" @click="close(row)">结束</el-button>
+          <!-- 重开申报：用于「结束太早/自动结束」的批次；需截止时间已延长到将来且无公示记录 -->
+          <el-button v-if="row.status === 'reviewing' || row.status === 'closed'" size="small" type="primary" plain :loading="acting" @click="reopen(row)">重开申报</el-button>
           <el-button size="small" type="danger" @click="remove(row)">删除</el-button>
         </template>
       </el-table-column>
@@ -47,18 +49,18 @@
       <el-form :model="form" label-width="100px">
         <el-form-item label="批次名称"><el-input v-model="form.title" /></el-form-item>
         <el-form-item label="项目类别">
-          <el-select v-model="form.categoryId" style="width:100%" :disabled="locked">
+          <el-select v-model="form.categoryId" style="width:100%" :disabled="categoryLocked">
             <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="申报开始">
-          <el-date-picker v-model="form.applyStart" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" :disabled="locked" />
+          <el-date-picker v-model="form.applyStart" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" :disabled="startLocked" />
         </el-form-item>
         <el-form-item label="申报截止">
-          <el-date-picker v-model="form.applyEnd" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" :disabled="locked" />
+          <el-date-picker v-model="form.applyEnd" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" />
         </el-form-item>
-        <div v-if="locked" style="color:#909399;font-size:12px;margin:-8px 0 12px 100px">
-          批次已发布，项目类别和申报时间不可修改
+        <div v-if="categoryLocked" style="color:#909399;font-size:12px;margin:-8px 0 12px 100px">
+          批次已发布，项目类别不可修改；{{ startLocked ? '申报开始时间不可修改，' : '' }}已进入评审/结束时申报截止时间只能改到将来（用于延长申报期）
         </div>
         <el-form-item label="评审截止">
           <el-date-picker v-model="form.reviewDeadline" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" />
@@ -72,7 +74,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="save">保存</el-button>
+        <el-button type="primary" :loading="saving" @click="save">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -92,12 +94,15 @@ const pageSize = 10
 const keyword = ref('')
 const status = ref('')
 const loading = ref(false)
+const saving = ref(false)
+const acting = ref(false)
 const dialogVisible = ref(false)
 const form = reactive<any>({ id: 0, title: '', categoryId: '', applyStart: '', applyEnd: '', reviewDeadline: '', requirements: '', description: '' })
 
-// The backend freezes category + application window once a batch is published;
-// the same fields are locked here so the form never sends a rejected change.
-const locked = computed(() => !!form.id && form.status !== 'draft')
+// 项目类别一旦发布就永远锁定（每份申报都要与它一致）；申报开始时间在「申报中」以后锁定。
+// 申报截止时间在所有已发布状态下都可编辑：后端只接受「改到将来」（即在延长申报期）。
+const categoryLocked = computed(() => !!form.id && form.status !== 'draft')
+const startLocked = computed(() => !!form.id && form.status !== 'draft' && form.status !== 'open')
 
 async function fetch() {
   loading.value = true
@@ -111,6 +116,8 @@ async function fetch() {
 }
 
 function onPage(p: number) { page.value = p; fetch() }
+// 切换筛选条件时必须回到第 1 页：否则在第 2 页切筛选会看到空列表
+function onFilterChange() { page.value = 1; fetch() }
 
 // Converts an API datetime (ISO) into the value-format expected by the picker.
 function toFormDate(v?: string) {
@@ -133,24 +140,27 @@ function openDialog(row?: any) {
 
 async function save() {
   if (!form.title) return ElMessage.warning('请填写批次名称')
-  if (!locked.value && !form.categoryId) return ElMessage.warning('请选择项目类别')
+  if (categoryLocked.value === false && !form.categoryId) return ElMessage.warning('请选择项目类别')
   const payload: any = {
     title: form.title,
     reviewDeadline: form.reviewDeadline || null,
     requirements: form.requirements,
     description: form.description,
+    // 截止时间总是回传：批次已进入评审/结束时就靠它延长申报期（原样回传不会触发修改）
+    applyEnd: form.applyEnd || null,
   }
-  // Only a draft batch may change its category / application window.
-  if (!locked.value) {
-    payload.categoryId = Number(form.categoryId)
-    payload.applyStart = form.applyStart || null
-    payload.applyEnd = form.applyEnd || null
+  if (!categoryLocked.value) payload.categoryId = Number(form.categoryId)
+  if (!startLocked.value) payload.applyStart = form.applyStart || null
+  saving.value = true
+  try {
+    if (form.id) await adminApi.updateBatch(form.id, payload)
+    else await adminApi.createBatch(payload)
+    ElMessage.success('保存成功')
+    dialogVisible.value = false
+    fetch()
+  } finally {
+    saving.value = false
   }
-  if (form.id) await adminApi.updateBatch(form.id, payload)
-  else await adminApi.createBatch(payload)
-  ElMessage.success('保存成功')
-  dialogVisible.value = false
-  fetch()
 }
 
 // A batch can only be published with a complete application window; the backend
@@ -159,12 +169,55 @@ async function publish(row: any) {
   if (!row.applyStart || !row.applyEnd) {
     return ElMessage.warning('请先设置申报开始和截止时间')
   }
-  await adminApi.publishBatch(row.id)
-  ElMessage.success('已发布')
-  fetch()
+  acting.value = true
+  try {
+    await adminApi.publishBatch(row.id)
+    ElMessage.success('已发布')
+    fetch()
+  } finally {
+    acting.value = false
+  }
 }
-async function startReview(row: any) { await adminApi.startReview(row.id); ElMessage.success('已进入评审阶段'); fetch() }
-async function close(row: any) { await adminApi.closeBatch(row.id); ElMessage.success('已结束'); fetch() }
+
+async function startReview(row: any) {
+  acting.value = true
+  try {
+    await adminApi.startReview(row.id)
+    ElMessage.success('已进入评审阶段')
+    fetch()
+  } finally {
+    acting.value = false
+  }
+}
+
+async function close(row: any) {
+  acting.value = true
+  try {
+    await adminApi.closeBatch(row.id)
+    ElMessage.success('已结束')
+    fetch()
+  } finally {
+    acting.value = false
+  }
+}
+
+// 重开申报：把「结束太早/自动结束」的批次退回申报中继续收申报。
+// 后端要求截止时间已在将来且该批次还没有公示/发证记录，这里先给同样的提示。
+async function reopen(row: any) {
+  await ElMessageBox.confirm(
+    '重开申报后，申报人可再次提交。要求：申报截止时间已延长到将来，且该批次还没有公示/发证记录。确认重开？',
+    '提示',
+    { type: 'warning' },
+  )
+  acting.value = true
+  try {
+    await adminApi.reopenBatch(row.id)
+    ElMessage.success('已重开申报')
+    fetch()
+  } finally {
+    acting.value = false
+  }
+}
 
 async function remove(row: any) {
   await ElMessageBox.confirm('确认删除该批次？', '提示', { type: 'warning' })

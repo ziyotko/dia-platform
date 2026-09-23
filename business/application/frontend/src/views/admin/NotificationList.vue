@@ -51,7 +51,7 @@ async function send() {
 }
 
 onMounted(async () => {
-  const res = await adminApi.getUsers({ page: 1, pageSize: 100 })
+  const res = await adminApi.getUsers({ page: 1, pageSize: 200 })
   users.value = res.data.list
 })
 </script>

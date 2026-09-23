@@ -58,14 +58,28 @@ func (s *BatchService) Update(id uint64, updates map[string]interface{}) error {
 	if err := db.DB.First(&b, id).Error; err != nil {
 		return errors.New("批次不存在")
 	}
-	// A published batch has already frozen the round it defines: its category is
-	// the one every application must match ("项目类别须与申报批次一致") and its
-	// window is what already accepted the submissions. Only a draft may change
-	// them, otherwise existing applications would silently become inconsistent.
+	// 批次一旦发布，它定义的「这一轮」就固定了：项目类别是所有申报必须匹配的那个
+	// （「项目类别须与申报批次一致」），申报期则是已经接受过提交的区间。
+	//
+	// 锁定规则（按状态）：
+	//   draft            全部可改；
+	//   open             除 category_id 外可改——延长/缩短申报期是常见需求，不影响已提交的申报；
+	//   reviewing/closed 只允许把 apply_end 往将来改（「延长申报期」），配合 Reopen 重开申报。
+	// 只对**真正变化**的字段判断：编辑弹窗会回传整份表单，原样回传的字段不算修改。
+	dropUnchanged(b, clean)
 	if b.Status != models.BatchStatusDraft {
-		for _, field := range []string{"category_id", "apply_start", "apply_end"} {
-			if _, ok := clean[field]; ok {
-				return errors.New("批次已发布，不能修改项目类别和申报时间")
+		if _, ok := clean["category_id"]; ok {
+			return errors.New("批次已发布，不能修改项目类别")
+		}
+		if b.Status != models.BatchStatusOpen {
+			if _, ok := clean["apply_start"]; ok {
+				return errors.New("批次已进入评审/结束，不能修改申报开始时间")
+			}
+			if _, ok := clean["apply_end"]; ok {
+				end := mergeTime(b.ApplyEnd, clean, "apply_end")
+				if end == nil || !end.After(time.Now()) {
+					return errors.New("批次已进入评审/结束，申报截止时间只能延长到将来")
+				}
 			}
 		}
 	}
@@ -98,6 +112,33 @@ func (s *BatchService) Update(id uint64, updates map[string]interface{}) error {
 		return errors.New("批次状态已变更，请刷新后重试")
 	}
 	return nil
+}
+
+// dropUnchanged removes update keys whose value already equals the stored one:
+// 编辑弹窗会回传整份表单，只有真正变化的字段才应该触发锁定规则与写入。
+func dropUnchanged(b models.ProjectBatch, updates map[string]interface{}) {
+	if raw, ok := updates["category_id"]; ok && toUint64(raw) == b.CategoryID {
+		delete(updates, "category_id")
+	}
+	if raw, ok := updates["apply_start"]; ok && sameTime(raw, b.ApplyStart) {
+		delete(updates, "apply_start")
+	}
+	if raw, ok := updates["apply_end"]; ok && sameTime(raw, b.ApplyEnd) {
+		delete(updates, "apply_end")
+	}
+}
+
+// sameTime 比较更新值与库中值：nil 与 nil 视为相同，time.Time 按时刻比较。
+func sameTime(raw interface{}, current *time.Time) bool {
+	if raw == nil {
+		return current == nil
+	}
+	t, ok := raw.(time.Time)
+	if !ok {
+		// 解析失败（normalizeTimeFields 不认识的格式）当作“有变化”，交给后续校验报错
+		return false
+	}
+	return current != nil && t.Equal(*current)
 }
 
 // mergeTime returns the value a time column will have after applying updates.
@@ -175,6 +216,46 @@ func (s *BatchService) Close(id uint64) error {
 	res := db.DB.Model(&models.ProjectBatch{}).
 		Where("id = ? AND status IN ?", id, []string{models.BatchStatusOpen, models.BatchStatusReviewing}).
 		Update("status", models.BatchStatusClosed)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return errors.New("批次状态已变更，请刷新后重试")
+	}
+	return nil
+}
+
+// Reopen puts a batch that already moved on (评审中/已结束) back into 申报中, so a
+// round that was closed too early can still collect applications.
+//
+// 前置条件：申报截止时间必须已经在将来（否则重开后 IsOpen 依旧为 false，等于什么都没发生），
+// 且该批次还没有任何「已公示/已发证」的申报——那些结果已经对外可见，不能让新申报把
+// 公示口径改掉。自动结束（AutoCloseExpired）的批次因此需要先「编辑 → 延长截止时间」。
+func (s *BatchService) Reopen(id uint64) error {
+	var b models.ProjectBatch
+	if err := db.DB.First(&b, id).Error; err != nil {
+		return errors.New("批次不存在")
+	}
+	if b.Status != models.BatchStatusReviewing && b.Status != models.BatchStatusClosed {
+		return errors.New("仅评审中或已结束的批次可重开申报")
+	}
+	if b.ApplyEnd == nil {
+		return errors.New("请先设置申报截止时间")
+	}
+	if !b.ApplyEnd.After(time.Now()) {
+		return errors.New("申报截止时间已过，请先在「编辑」里把它延长到将来")
+	}
+	var published int64
+	db.DB.Model(&models.Application{}).
+		Where("batch_id = ? AND (published_at IS NOT NULL OR status IN ?)", id,
+			[]string{models.AppStatusPublished, models.AppStatusCertified}).
+		Count(&published)
+	if published > 0 {
+		return errors.New("该批次已有公示/发证记录，不能重开申报")
+	}
+	res := db.DB.Model(&models.ProjectBatch{}).
+		Where("id = ? AND status IN ?", id, []string{models.BatchStatusReviewing, models.BatchStatusClosed}).
+		Update("status", models.BatchStatusOpen)
 	if res.Error != nil {
 		return res.Error
 	}

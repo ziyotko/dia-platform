@@ -3,7 +3,7 @@
     <div class="page-toolbar">
       <div style="display:flex;gap:12px">
         <el-input v-model="keyword" placeholder="搜索项目名称" clearable style="width:220px" @keyup.enter="fetch" @clear="fetch" />
-        <el-select v-model="status" placeholder="全部状态" clearable style="width:160px" @change="fetch">
+        <el-select v-model="status" placeholder="全部状态" clearable style="width:160px" @change="onFilterChange">
           <el-option v-for="(label, key) in applicationStatusMap" :key="key" :label="label" :value="key" />
         </el-select>
         <el-button type="primary" @click="fetch">查询</el-button>
@@ -72,6 +72,8 @@ async function fetch() {
 }
 
 function onPage(p: number) { page.value = p; fetch() }
+// 切换筛选条件回到第 1 页，否则在第 2 页切筛选会看到空列表
+function onFilterChange() { page.value = 1; fetch() }
 
 // Drafts and preliminary-rejected applications can still be modified.
 function canEdit(row: any) {

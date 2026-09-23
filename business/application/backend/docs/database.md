@@ -356,7 +356,7 @@ erDiagram
 | `application_applications.status` | `draft` / `submitted` / `preliminary_rejected` / `under_review` / `reviewed` / `passed` / `rejected` / `published` / `certified` | 草稿 / 待初审 / 初审驳回 / 待评审 / 评审完成 / 已通过 / 未通过 / 已公示 / 已发证 |
 | `application_review_assignments.status` | `pending` / `scored` | 待评审 / 已评分 |
 | `application_announcements.status` | `draft` / `published` | 草稿 / 已发布 |
-| `application_certificates.status` | `draft` / `issued` / `void` | 未颁发 / 已颁发 / 已作废 |
+| `application_certificates.status` | `draft` / `issued` / `void` | 未颁发（保留位，当前流程直接产生 `issued`） / 已颁发 / 已作废 |
 | `application_notifications.type` | `application` / `review` / `result` / `certificate` / `system` | 申报相关 / 评审相关 / 结果相关 / 证书相关 / 系统通知（工作流自动消息用前四类，管理端手工发送用 `system`） |
 
 **申报状态流转（`ApplicationService`）**
@@ -365,7 +365,7 @@ erDiagram
 draft(草稿) ──提交──► submitted(待初审)
    ▲                    │
    │ 撤回               ├─初审通过─► under_review(待评审) ──全部评分完成──► reviewed(评审完成)
-   └────────────────────┤                    ▲退款（新增待评评审人）              │
+   └────────────────────┤                    ▲回到待评审（新增未评分评审人）      │
         （仅 submitted 可撤回）  ├─初审驳回─► preliminary_rejected(初审驳回)      │
                                      │（改完在申报期内可重新提交）              │
                                      │                            确定结果 ────┤
@@ -387,6 +387,7 @@ draft(草稿) ──提交──► submitted(待初审)
 | 提交前置 | 批次可申报（`status = open` 且当前时间落在申报窗口内）**且**至少有一条材料 |
 | 类别一致 | 申报的 `category_id` 必须等于批次的 `category_id` |
 | 初审 | 仅 `submitted` 可初审；通过 → `under_review`，驳回 → `preliminary_rejected`，均写 `preliminary_opinion` |
+| 撤回初审 | 仅 `under_review` 且**无人评分**时可退回 `submitted`（清空 `preliminary_opinion`，并删除尚未评分的评审任务）；有人评分时报「已有专家完成评分，无法撤回初审」 |
 | 分配评审 | 仅 `under_review` / `reviewed` 可分配；已评分评审人不可移除；批次评审截止后不可新增 |
 | 确定结果 | 仅 `reviewed`，或 `under_review` 且无 `pending` 任务时可确定；有 `pending` 时报「还有 N 位评审人未评分，无法确定结果」 |
 | 公示 | 仅 `passed` / `rejected` 可公示；通过者改状态为 `published`，未通过者仅写 `published_at`（保留 `rejected` 口径） |
@@ -400,6 +401,19 @@ draft(草稿) ──提交──► submitted(待初审)
 > 评审人看到的申报会抹掉 `total_score` / `avg_score` / `final_opinion` / `preliminary_opinion`（避免打分前被均分锚定），
 > `reviewer` 角色也只有 `dashboard:view` + `review:score`，不再拥有 `application:view` / `batch:view`。
 
+**批次状态附加规则**
+
+| 规则 | 说明 |
+| --- | --- |
+| 项目类别锁定 | 批次一旦不是 `draft`，`category_id` 就不可再改（每份申报必须与它一致） |
+| 申报期 | `open` 时可改 `apply_start`/`apply_end`；`reviewing`/`closed` 时**只能把 `apply_end` 改到将来**（延长申报期） |
+| 重开申报 | `reviewing`/`closed` → `open`（`POST /admin/batches/:id/reopen`）；要求 `apply_end` 已在将来，且该批次**没有** `published_at IS NOT NULL` 或 `published`/`certified` 的申报 |
+| 自动结束 | 后台任务每 10 分钟把 `apply_end < now` 的 `open` 批次置为 `reviewing`（条件更新，日志可见） |
+
+> 上传文件不再静态托管：`application_materials.file_url` / `application_certificates.file_url` 只是标识，
+> 下载必须走 `GET /member/files`、`GET /admin/files`（服务层做归属校验）。审计日志可通过
+> `GET /admin/audit-logs/export` 导出 CSV（最多 10000 条）。
+
 ---
 
 ## 六、初始化数据（种子数据）
@@ -412,7 +426,7 @@ draft(草稿) ──提交──► submitted(待初审)
 | --- | --- | --- |
 | `super_admin` | 超级管理员 | 拥有全部权限（含账号管理） |
 | `manager` | 管理人 | 批次、类别、初审、评审分配、结果公示、证书、通知、申报人与专家库管理 |
-| `reviewer` | 评审人 | 仅 管理看板 / 我的评审 / 个人资料（权限码只有 `dashboard:view` + `review:score`；看不到其他申报与其他评审人的分数/意见） |
+| `reviewer` | 评审人 | 仅 管理看板 / 我的评审 / 个人资料（权限码只有 `dashboard:view` + `review:score`；看不到其他申报与其他评审人的分数/意见；只能下载自己任务内申报的材料） |
 
 > 角色的 `permissions` 每次启动都会被 `seedRoles()` 覆盖为 `middleware/auth.go` 中同名角色的权限码列表；界面上不提供权限编辑（**角色表不是权限真源**）。
 

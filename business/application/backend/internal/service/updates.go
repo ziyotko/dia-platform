@@ -6,6 +6,22 @@ import (
 	"unicode"
 )
 
+// toInt converts a JSON-decoded numeric value into an int (used for the 0/1 status
+// columns, where encoding/json gives us float64).
+func toInt(v interface{}) int {
+	switch n := v.(type) {
+	case float64:
+		return int(n)
+	case int:
+		return n
+	case int64:
+		return int(n)
+	case uint64:
+		return int(n)
+	}
+	return 0
+}
+
 // isDuplicateKeyErr 判断是否为唯一键冲突（MySQL 1062）。
 // 项目未开启 GORM 的 TranslateError，只能按错误文本判断。
 func isDuplicateKeyErr(err error) bool {

@@ -46,7 +46,7 @@ business/application/
 - `server.port`: 监听端口，默认 `8094`（监听地址在代码中固定为 `0.0.0.0`）；改端口后需同步 Nginx 与 `frontend/vite.config.ts` 的 dev 代理目标
 - `server.mode`: **当前仓库值为 `debug`，生产必须改为 `release`**（无环境变量可覆盖，需改配置文件）
 - `server.api_prefix`: `/business_application/api`（必须与前端 `VITE_API_BASE_URL` 一致；留空回退 `/application/api`）
-- `server.upload_dir_prefix`: `/business_application`（上传挂载 = `<该值>/uploads`，需与 `VITE_BASE_PATH` 去尾斜杠一致）
+- `server.upload_dir_prefix`: `/business_application`（历史 `fileUrl` 的前缀，用于把数据库里的 URL 归一化回 `uploads/` 路径；需与 `VITE_BASE_PATH` 去尾斜杠一致）
 - `server.max_concurrent_ips`: 单个 IP 的并发请求上限（默认 100），超限返回 `code=429`
 - `server.trusted_proxies`: **可信反向代理地址，生产必须填 Nginx 的 IP**（`c.ClientIP()` 取真实 IP 的依据；默认仅 `127.0.0.1`）
 - `mysql`: host / port / user / `password`（**只填占位值 `APPLICATION_DB_PASSWORD`**）/ db_name / charset(`utf8mb4`) / max_open / max_idle
@@ -108,7 +108,7 @@ powershell -ExecutionPolicy Bypass -File .\build-backends.ps1 -Only application 
 - 种子数据（幂等）：角色 `super_admin` / `manager` / `reviewer`（权限 upsert）、后台管理员账号、系统配置
 - 默认后台账号：`admin` / `manager` / `reviewer`，初始密码 **`1qaz@WSX`**，**上线后立即修改**
 - **两套账号互不通用**：后台账号在 `application_admins`（`POST /admin/login`，前端 `/business_application/admin/login`）；申报人账号在 `application_users`（自助注册 `POST /member/register`，`POST /member/login`）。后台 `admin` 在申报人登录页登录必然失败，属预期行为
-- 静态资源上传目录：`./uploads`（后端以 `/business_application/uploads` 提供）
+- 上传目录：`./uploads`（**不再静态托管**，只能通过带鉴权的 `GET /member/files`、`GET /admin/files` 读取，见「二.5」）
 - 日志输出：`logs/application.log`（单文件 100MB、保留 30 个备份、180 天）
 - 健康检查（公开接口，无需 Token）：`GET /business_application/api/captcha` 返回 `{"code":0,...}` 即正常
 - 响应约定：**HTTP 状态恒为 200**，业务结果看 `code`：`0` 成功、`400` 参数错误、`401` 未登录/登录已过期、`403` 无操作权限、`404` 资源不存在、`429` 请求过于频繁、`500` 服务端错误
@@ -128,9 +128,20 @@ powershell -ExecutionPolicy Bypass -File .\build-backends.ps1 -Only application 
 | `POST /admin/login` | 10 次/分钟 |
 | `POST /member/upload` | 20 次/分钟 |
 | `POST /admin/upload` | 20 次/分钟 |
+| `GET /member/files`、`GET /admin/files`（文件下载） | 120 次/分钟 |
 
 - 另有单 IP 并发请求上限 `server.max_concurrent_ips`（默认 100，**必须 > 0**：配成 0 会让所有请求都返回 429）；上述限制超限均返回 `code=429`「请求过于频繁，请稍后再试」
 - **材料数量配额**：单份申报最多 **20 份**材料（`service.MaxMaterialsPerApplication`，超出返回 `code=500`「材料数量不能超过 20 份」）；单文件大小与扩展名限制见上
+
+### 上传文件的下载（鉴权，2026-09-23 第三批改动）
+
+上传目录**不再对外静态托管**：原先 `main.go` 的 `r.Static(<upload_dir_prefix>/uploads, ./uploads)` 等于「知道 URL 就能下载」，而 URL 一旦外泄就永久可读。现在：
+
+- 申报人：`GET /member/files?url=<fileUrl>`（带申报人 JWT），只能读**自己申报的材料**与**自己证书的附件**；
+- 管理端：`GET /admin/files?url=<fileUrl>`（带管理端 JWT），管理人/超管可读任意文件，**评审人只能读分配给自己的申报的材料**；
+- 越权返回 `code=403`「无操作权限」，路径不在 `uploads/` 内返回 `code=404`；`.zip/.rar` 以附件形式下发，其余内联预览；响应带 `X-Content-Type-Options: nosniff`。
+- 前端已改为「带 token 的 blob 请求 + objectURL」打开文件（`utils/file.ts`），原来的 `window.open(fileUrl)` 不再使用。
+- **Nginx 若还配了 `/uploads/` 直接指向磁盘目录，必须删除**：否则绕过上述鉴权（见「四、Nginx 反向代理示例」）。
 
 ---
 
@@ -193,11 +204,8 @@ server {
         proxy_send_timeout 120s;
     }
 
-    # 上传文件
-    location /business_application/uploads/ {
-        proxy_pass http://127.0.0.1:8094;
-        # 也可改为 root /var/www/xxxxx-application-backend/uploads; 直接由 Nginx 托管（少一次反代）
-    }
+    # 上传文件：**不要**用 location 直接指向磁盘目录（会绕过鉴权），
+    # 也不要再单独配一个 location：文件现在由 API 下发（GET /business_application/api/member|admin/files）
 }
 ```
 
@@ -243,6 +251,15 @@ server {
 12. **证书颁发/作废事务化**：颁发证书现在在事务中先用「申报 `published` → `certified`」的条件更新抢占该行（兼作互斥锁），再加证书、回写状态；同一申报**不会因双击/重试产生两张有效证书**。作废证书与「申报退回已公示」同事务，不再出现「证书已作废但申报仍是已发证」。
 13. **评审分配并发保护**：分配评审人的读-判-写改为单事务 + `SELECT ... FOR UPDATE` 行锁，并发保存不再插入重复的 `(application_id, reviewer_id)` 行（也就不会出现同一位专家被算两次平均分）。
 14. **材料数量上限 20 份**（见「二.5」），超出时提示「材料数量不能超过 20 份」。改上限需同时改 `service.MaxMaterialsPerApplication` 与本文件/手册。
+
+### 升级说明（2026-09-23 · 第三批：上线前收尾）
+
+15. **上传文件不再公开**：`/uploads` 静态托管已移除，文件只能通过 `GET /member/files`、`GET /admin/files`（带 token）读取，详见「二.5」。**必须同时删除 Nginx 里直接指向 `uploads` 目录的 location**，否则鉴权形同虚设。历史 `fileUrl` 无需迁移（仍作为标识传给接口）。
+16. **撤回初审**：新增 `POST /admin/applications/:id/revoke-preliminary`（权限 `application:preliminary`），把误通过的申报从「待评审」退回「待初审」；**仅在无人评分时可用**，会一并清空未评分的评审人。
+17. **批次申报期可调整 / 可重开**：`PUT /admin/batches/:id` 现在允许「申报中」批次改申报起止时间；「已进入评审/已结束」的批次只能把**申报截止时间改到将来**（即延长申报期），项目类别始终锁定。新增 `POST /admin/batches/:id/reopen`（权限 `batch:publish`）把评审中/已结束的批次退回「申报中」，要求截止时间已在将来且**该批次无已公示/已发证记录**。
+18. **最后一个超管保护**：`PUT /admin/admins/:id`、`DELETE /admin/admins/:id` 不再允许把系统里唯一一个「启用中的超级管理员」降级/停用/删除，否则报「系统必须保留至少一个启用中的超级管理员」。
+19. **审计日志可读可导出**：系统日志页新增「详情」列与「导出 CSV」按钮（`GET /admin/audit-logs/export`，权限 `audit:view`，最多 10000 条，UTF-8 BOM 便于 Excel 打开）；模块下拉已补齐「专家库/专家评审/系统日志」。
+20. **运维兜底**：`server.max_concurrent_ips` ≤ 0 时自动回退为 100 并打印告警（原先配 0 会让全站请求都 429）；`server.trusted_proxies` 写错时回退为「不信任任何代理」并告警；单 IP 并发计数归零后会自动从内存表移除。
 
 ### 手工 SQL（可选加固：唯一索引）
 
@@ -323,19 +340,34 @@ SELECT CONCAT('ALTER TABLE `', TABLE_NAME, '` DROP INDEX `', INDEX_NAME, '`, DRO
 ### 申报状态流转
 
 ```
-draft(草稿) → submitted(待初审) → preliminary_rejected(初审驳回)
-                              ↘ under_review(待评审) → reviewed(评审完成)
-                                                          → passed(通过) / rejected(不通过)
-                                                          → published(已公示) → certified(已发证)
+draft(草稿) ⇄ submitted(待初审) ⇄ under_review(待评审) → reviewed(评审完成)
+                              ↘ preliminary_rejected(初审驳回)      ↘ passed(通过) / rejected(不通过)
+                                                                     ↘ published(已公示) → certified(已发证)
 ```
+
+- `submitted → draft`：申报人「撤回」（仅待初审可撤）；
+- `under_review → submitted`：管理人「撤回初审」（`POST /admin/applications/:id/revoke-preliminary`，仅无人评分时）；
+- `reviewed/under_review → passed/rejected`：确定结果；`published → passed`、`passed/rejected → reviewed`：撤回公示 / 撤回评审结果；
+- `certified → published`：作废证书。
+
+### 批次状态流转
+
+```
+draft(草稿) ──发布──► open(申报中) ──开始评审──► reviewing(评审中) ──结束──► closed(已结束)
+                         ▲                        │                    │
+                         └──── 重开申报（无公示记录且截止时间在将来） ───┘
+```
+
+- `open` 期间可改申报起止时间（延长/缩短）；`reviewing`/`closed` 只能把申报截止时间改到将来（延长申报期），项目类别一旦发布就不可改；
+- 申报期到点后后台任务每 10 分钟自动把 `open` 批次转为 `reviewing`（日志中可见 `UPDATE ... SET status='reviewing'`）。
 
 ### API 前缀与分组
 
 `/business_application/api`（由 `server.api_prefix` 决定）
 
 - 公开接口：`/captcha`、`/member/register`（需验证码）、`/member/login`（需验证码）、`/admin/login`（需验证码）
-- 申报人接口：`/member/*`（需申报人 JWT）
-- 管理接口：`/admin/*`（需管理端 JWT + 细粒度权限校验；`GET /admin/dashboard` 需 `dashboard:view`，`POST /admin/upload` 需 `application:preliminary` 或 `certificate:manage`）
+- 申报人接口：`/member/*`（需申报人 JWT；`GET /member/files` 下载自己的材料/证书附件）
+- 管理接口：`/admin/*`（需管理端 JWT + 细粒度权限校验；`GET /admin/dashboard` 需 `dashboard:view`，`POST /admin/upload` 需 `application:preliminary` 或 `certificate:manage`，`GET /admin/files` 下载文件（管理人全部/评审人仅本人任务），`GET /admin/audit-logs/export` 导出 CSV）
 
 ---
 
@@ -355,6 +387,8 @@ draft(草稿) → submitted(待初审) → preliminary_rejected(初审驳回)
 | 提示「…状态已变更，请刷新后重试」 | 并发/重复操作：另一个人（或另一个标签页）已把该申报/批次/证书推到下一步，刷新看最新状态即可（这是并发保护，不是故障） |
 | 提示「该申报已颁发证书或状态已变更，请刷新后重试」 | 同一份申报被重复点击了「颁发证书」；刷新后若已发证，则在「证书管理」里查看 |
 | 提示「材料数量不能超过 20 份」 | 单份申报的材料配额（见「二.5」），删除不需要的材料或调高 `MaxMaterialsPerApplication` |
+| 下载材料/证书提示「无操作权限」 | 文件不属于当前账号：申报人只能看自己的材料与证书；评审人只能看分配给自己的申报材料（见「二.5」） |
+| 下载材料/证书提示「文件不存在」或 404 | `url` 不在 `uploads/` 下（历史/外部地址），或磁盘上的文件已被删除 |
 | 所有用户被限流、日志里 IP 都是同一个 | `server.trusted_proxies` 未填 Nginx 地址，或 Nginx 未转发 `X-Real-IP` / `X-Forwarded-For` |
 | 后台账号在申报人登录页登录失败 | 属预期：两套账号分别存于 `application_admins` / `application_users`，不通用 |
 | 改了后端端口后 dev 前端请求不通 | `frontend/vite.config.ts` 的 proxy target 与 `server.port` 必须一致（当前 8094 / 3003） |

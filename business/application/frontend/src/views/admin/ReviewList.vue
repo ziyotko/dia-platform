@@ -3,7 +3,7 @@
     <!-- Reviewer view: my review tasks -->
     <template v-if="isReviewer">
       <div class="page-toolbar">
-        <el-select v-model="status" placeholder="全部状态" clearable style="width:150px" @change="fetch">
+        <el-select v-model="status" placeholder="全部状态" clearable style="width:150px" @change="onFilterChange">
           <el-option label="待评审" value="pending" />
           <el-option label="已评分" value="scored" />
         </el-select>
@@ -30,7 +30,7 @@
     <!-- Manager view: applications in review -->
     <template v-else>
       <div class="page-toolbar">
-        <el-select v-model="status" placeholder="全部状态" clearable style="width:160px" @change="fetch">
+        <el-select v-model="status" placeholder="全部状态" clearable style="width:160px" @change="onFilterChange">
           <el-option label="待评审" value="under_review" />
           <el-option label="评审完成" value="reviewed" />
         </el-select>
@@ -102,6 +102,8 @@ async function fetch() {
 }
 
 function onPage(p: number) { page.value = p; fetch() }
+// 切换筛选条件回到第 1 页，否则在第 2 页切筛选会看到空列表
+function onFilterChange() { page.value = 1; fetch() }
 
 onMounted(fetch)
 </script>

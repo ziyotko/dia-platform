@@ -28,11 +28,15 @@ export const adminApi = {
   publishBatch: (id: number) => request.post(`/admin/batches/${id}/publish`),
   closeBatch: (id: number) => request.post(`/admin/batches/${id}/close`),
   startReview: (id: number) => request.post(`/admin/batches/${id}/start-review`),
+  // 重开申报：评审中/已结束 → 申报中
+  reopenBatch: (id: number) => request.post(`/admin/batches/${id}/reopen`),
 
   // Applications (项目申报管理 / 初审)
   getApplications: (params?: any) => request.get('/admin/applications', { params }),
   getApplication: (id: number) => request.get(`/admin/applications/${id}`),
   preliminaryReview: (id: number, data: any) => request.post(`/admin/applications/${id}/preliminary`, data),
+  // 撤回初审：把误通过的申报退回「待初审」（无人评分时才允许）
+  revokePreliminary: (id: number) => request.post(`/admin/applications/${id}/revoke-preliminary`),
   assignReviewers: (id: number, data: any) => request.post(`/admin/applications/${id}/assign`, data),
   finalize: (id: number, data: any) => request.post(`/admin/applications/${id}/finalize`, data),
   publishResult: (id: number) => request.post(`/admin/applications/${id}/publish`),
@@ -89,3 +93,4 @@ export const adminApi = {
   // Audit logs
   getAuditLogs: (params?: any) => request.get('/admin/audit-logs', { params }),
 }
+
