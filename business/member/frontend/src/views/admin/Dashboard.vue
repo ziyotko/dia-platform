@@ -276,7 +276,7 @@ function updateCharts() {
     typeChart?.setOption(typeChartOption(), true)
     statusChart?.setOption(statusChartOption([
       { label: '正式会员', value: stats.value[1].value, color: '#22c55e' },
-      { label: '待处理', value: stats.value[3].value - stats.value[4].value > 0 ? stats.value[3].value - stats.value[4].value : stats.value[3].value, color: '#f59e0b' },
+      { label: '待处理', value: stats.value[3].value, color: '#f59e0b' },
       { label: '待缴费', value: stats.value[4].value, color: '#f97316' },
       { label: '已拒绝', value: stats.value[5].value, color: '#ef4444' }
     ]), true)
@@ -337,13 +337,13 @@ async function fetchData() {
     const d = statsRes.data
     const total = d.total || 0
     const active = d.active || 0
-    const pending = d.pending || 0
+    const pendingHandle = d.pending_handle ?? 0
     const rejected = d.rejected || 0
 
     stats.value[0].value = total
     stats.value[1].value = active
     stats.value[2].value = d.today_new || 0
-    stats.value[3].value = pending
+    stats.value[3].value = pendingHandle
     stats.value[4].value = d.pending_payment || 0
     stats.value[5].value = rejected
 

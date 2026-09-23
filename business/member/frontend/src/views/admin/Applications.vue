@@ -66,6 +66,7 @@
 import { ref, onMounted } from 'vue'
 import { adminApi } from '@/api/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { fileUrl } from '@/utils/fileUrl'
 
 const list = ref<any[]>([]); const loading = ref(true)
 const page = ref(1); const size = ref(10); const total = ref(0)
@@ -99,15 +100,6 @@ function viewMember(row: any) {
   showMemberDetail.value = true
 }
 
-function fileUrl(path: string) {
-  if (!path) return ''
-  if (/^https?:\/\//i.test(path)) return path
-  // 兼容 `uploads/...`（相对）、`/uploads/...`（旧绝对）与带部署前缀的绝对路径，统一指向当前部署子路径
-  const base = import.meta.env.BASE_URL || '/'
-  const clean = path.replace(/^\.?\//, '')
-  return clean.startsWith('uploads/') ? `${base}${clean}` : `/${clean}`
-}
-
 async function review(row: any, approved: boolean) {
   try {
     const title = approved ? '通过申请' : '拒绝申请'
@@ -116,9 +108,10 @@ async function review(row: any, approved: boolean) {
       inputType: 'textarea',
       inputPlaceholder: approved ? '可选，输入审核意见...' : '请输入拒绝理由...',
       confirmButtonText: '确定',
-      cancelButtonText: '取消'
+      cancelButtonText: '取消',
+      inputValidator: (v: string) => (!approved && !(v && v.trim()) ? '请填写拒绝理由' : true)
     })
-    await adminApi.reviewApplication(row.id, { approved, comment: comment || '' })
+    await adminApi.reviewApplication(row.id, { approved, comment: (comment || '').trim() })
     ElMessage.success(approved ? '已通过' : '已拒绝')
     fetchData()
   } catch {}

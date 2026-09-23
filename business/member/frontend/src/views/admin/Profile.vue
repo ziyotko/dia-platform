@@ -62,6 +62,7 @@ import { authApi } from '@/api/auth'
 import { useUserStore } from '@/stores/user'
 import { ElMessage } from 'element-plus'
 import { Upload, UserFilled } from '@element-plus/icons-vue'
+import { fileUrl } from '@/utils/fileUrl'
 
 const userStore = useUserStore()
 const form = reactive<any>({})
@@ -76,15 +77,6 @@ const showPwdDialog = ref(false)
 const changingPwd = ref(false)
 const pwdFormRef = ref()
 const pwdForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
-
-function fileUrl(path?: string) {
-  if (!path) return ''
-  if (/^https?:\/\//i.test(path)) return path
-  // 兼容 `uploads/...`（相对）、`/uploads/...`（旧绝对）与带部署前缀的绝对路径，统一指向当前部署子路径
-  const base = import.meta.env.BASE_URL || '/'
-  const clean = path.replace(/^\.?\//, '')
-  return clean.startsWith('uploads/') ? `${base}${clean}` : `/${clean}`
-}
 
 function debounce<A extends any[]>(fn: (...args: A) => void, delay = 400) {
   let timer: ReturnType<typeof setTimeout> | null = null

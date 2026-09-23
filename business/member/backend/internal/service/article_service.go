@@ -60,12 +60,26 @@ func (s *ArticleService) UpdateArticle(memberID, articleID uint64, req UpdateArt
 
 // DeleteArticle deletes an article
 func (s *ArticleService) DeleteArticle(memberID, articleID uint64) error {
-	return db.DB.Where("id = ? AND member_id = ?", articleID, memberID).Delete(&models.Article{}).Error
+	res := db.DB.Where("id = ? AND member_id = ?", articleID, memberID).Delete(&models.Article{})
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return errors.New("文章不存在或无权删除")
+	}
+	return nil
 }
 
 // AdminDeleteArticle deletes any article (admin)
 func (s *ArticleService) AdminDeleteArticle(id uint64) error {
-	return db.DB.Delete(&models.Article{}, id).Error
+	res := db.DB.Delete(&models.Article{}, id)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return errors.New("文章不存在")
+	}
+	return nil
 }
 
 // GetArticle returns an article by ID (owner only)

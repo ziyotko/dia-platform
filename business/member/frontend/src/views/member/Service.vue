@@ -1,8 +1,8 @@
 <template>
-  <div class="service-page" v-loading="loading">
+  <div class="service-page">
     <el-tabs v-model="activeTab">
       <el-tab-pane label="公告动态" name="announcements">
-        <el-card>
+        <el-card v-loading="annLoading">
           <div class="announce-item" v-for="a in announcements" :key="a.id" @click="$router.push(`/announcements/${a.id}`)">
             <div>
               <el-tag v-if="a.is_pinned" size="small" type="danger">置顶</el-tag>
@@ -20,7 +20,7 @@
         </el-card>
       </el-tab-pane>
       <el-tab-pane label="会员文章" name="articles">
-        <el-card>
+        <el-card v-loading="artLoading">
           <div class="announce-item" v-for="a in pubArticles" :key="a.id" @click="openArticle(a)">
             <div>
               <el-tag size="small">{{ a.category?.name }}</el-tag>
@@ -68,7 +68,8 @@ import { sanitizeHtml } from '@/utils/sanitizeHtml'
 const activeTab = ref('announcements')
 const announcements = ref<any[]>([])
 const pubArticles = ref<any[]>([])
-const loading = ref(true)
+const annLoading = ref(true)
+const artLoading = ref(true)
 
 // 文章详情
 const showArticle = ref(false)
@@ -118,21 +119,21 @@ function downloadCharterPdf() {
 }
 
 async function fetchAnnouncements() {
-  loading.value = true
+  annLoading.value = true
   try {
     const res = await announcementApi.getPublished({ page: annPage.value, size: annSize.value })
     announcements.value = res.data?.list || []
     annTotal.value = res.data?.total || 0
-  } catch {} finally { loading.value = false }
+  } catch {} finally { annLoading.value = false }
 }
 
 async function fetchArticles() {
-  loading.value = true
+  artLoading.value = true
   try {
     const res = await articleApi.listPublished({ page: artPage.value, size: artSize.value })
     pubArticles.value = res.data?.list || []
     artTotal.value = res.data?.total || 0
-  } catch {} finally { loading.value = false }
+  } catch {} finally { artLoading.value = false }
 }
 
 async function openArticle(row: any) {

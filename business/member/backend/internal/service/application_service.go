@@ -5,6 +5,7 @@ import (
 	"member/internal/models"
 	"member/pkg/db"
 	"member/pkg/utils"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -126,6 +127,12 @@ func (s *ApplicationService) GetApplication(id, memberID uint64) (*models.Applic
 
 // ReviewApplication reviews an application (admin)
 func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved bool, comment string) error {
+	// 拒绝必须写明理由（前端不做硬校验时也能兜住），便于会员知道如何修正资料。
+	comment = strings.TrimSpace(comment)
+	if !approved && comment == "" {
+		return errors.New("请填写拒绝理由")
+	}
+
 	var app models.Application
 	if err := db.DB.First(&app, id).Error; err != nil {
 		return errors.New("申请不存在")

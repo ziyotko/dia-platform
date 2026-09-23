@@ -88,7 +88,14 @@ func (s *AnnouncementService) UpdateAnnouncement(id uint64, req UpdateAnnounceme
 
 // DeleteAnnouncement deletes an announcement (admin)
 func (s *AnnouncementService) DeleteAnnouncement(id uint64) error {
-	return db.DB.Delete(&models.Announcement{}, id).Error
+	var item models.Announcement
+	if err := db.DB.First(&item, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("公告不存在")
+		}
+		return err
+	}
+	return db.DB.Delete(&item).Error
 }
 
 // ListAllAnnouncements lists all announcements (admin)

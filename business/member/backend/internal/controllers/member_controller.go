@@ -247,6 +247,7 @@ func (ctrl *MemberController) DeleteMember(c *gin.Context) {
 // GetMemberStats returns member statistics (admin)
 func (ctrl *MemberController) GetMemberStats(c *gin.Context) {
 	var total, active, pending, rejected, pendingPayment, todayNew int64
+	var pendingHandle int64
 	var pendingApplications, pendingFees, pendingMessages, pendingArticles int64
 
 	now := time.Now()
@@ -258,6 +259,8 @@ func (ctrl *MemberController) GetMemberStats(c *gin.Context) {
 	db.DB.Model(&models.Member{}).Where("is_admin = ? AND status IN ?", false, []string{"pending_review", "pending_payment", "registering"}).Count(&pending)
 	db.DB.Model(&models.Member{}).Where("is_admin = ? AND status = ?", false, "rejected").Count(&rejected)
 	db.DB.Model(&models.Member{}).Where("is_admin = ? AND status = ?", false, "pending_payment").Count(&pendingPayment)
+	// 「待处理」= 注册中 + 待审核（不含待缴费，待缴费另有单独卡片，避免重复计数）
+	db.DB.Model(&models.Member{}).Where("is_admin = ? AND status IN ?", false, []string{"registering", "pending_review"}).Count(&pendingHandle)
 	db.DB.Model(&models.Member{}).Where("is_admin = ? AND created_at >= ?", false, todayStart).Count(&todayNew)
 
 	// 待办事项统计
@@ -270,6 +273,7 @@ func (ctrl *MemberController) GetMemberStats(c *gin.Context) {
 		"total":                total,
 		"active":               active,
 		"pending":              pending,
+		"pending_handle":       pendingHandle,
 		"rejected":             rejected,
 		"pending_payment":      pendingPayment,
 		"today_new":            todayNew,

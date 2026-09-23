@@ -39,11 +39,17 @@ func (s *ArticleCategoryService) UpdateCategory(id uint64, name string, sort int
 
 // DeleteCategory deletes a category (admin)
 func (s *ArticleCategoryService) DeleteCategory(id uint64) error {
+	var cat models.ArticleCategory
+	if err := db.DB.First(&cat, id).Error; err != nil {
+		return errors.New("分类不存在")
+	}
 	// Check if articles use this category
 	var count int64
-	db.DB.Model(&models.Article{}).Where("category_id = ?", id).Count(&count)
+	if err := db.DB.Model(&models.Article{}).Where("category_id = ?", id).Count(&count).Error; err != nil {
+		return err
+	}
 	if count > 0 {
 		return errors.New("该分类下有文章，无法删除")
 	}
-	return db.DB.Delete(&models.ArticleCategory{}, id).Error
+	return db.DB.Delete(&cat).Error
 }

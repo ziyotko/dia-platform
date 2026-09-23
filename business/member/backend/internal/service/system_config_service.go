@@ -93,7 +93,14 @@ func (s *SystemConfigService) Update(id uint64, req UpdateSystemConfigRequest) e
 
 // Delete removes a system config
 func (s *SystemConfigService) Delete(id uint64) error {
-	return db.DB.Delete(&models.SystemConfig{}, id).Error
+	res := db.DB.Delete(&models.SystemConfig{}, id)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return errors.New("配置项不存在")
+	}
+	return nil
 }
 
 // SystemConfigRequest is the create payload for system configs

@@ -105,7 +105,14 @@ func (s *MessageService) ReplyMessage(id uint64, reply string) error {
 
 // DeleteMessage deletes a message (admin)
 func (s *MessageService) DeleteMessage(id uint64) error {
-	return db.DB.Delete(&models.MemberMessage{}, id).Error
+	res := db.DB.Delete(&models.MemberMessage{}, id)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return errors.New("留言不存在")
+	}
+	return nil
 }
 
 type CreateMessageRequest struct {

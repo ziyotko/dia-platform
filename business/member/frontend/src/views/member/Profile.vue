@@ -94,6 +94,7 @@ import { authApi } from '@/api/auth'
 import { orgApi } from '@/api/index'
 import { ElMessage } from 'element-plus'
 import { Download, Upload } from '@element-plus/icons-vue'
+import { fileUrl } from '@/utils/fileUrl'
 
 const form = reactive<any>({})
 const original = reactive<any>({})
@@ -311,15 +312,6 @@ async function handleCertUpload(event: Event) {
     uploading.value = false
     input.value = ''
   }
-}
-
-function fileUrl(path: string) {
-  if (!path) return ''
-  if (/^https?:\/\//i.test(path)) return path
-  // 兼容 `uploads/...`（相对）、`/uploads/...`（旧绝对）与带部署前缀的绝对路径，统一指向当前部署子路径
-  const base = import.meta.env.BASE_URL || '/'
-  const clean = path.replace(/^\.?\//, '')
-  return clean.startsWith('uploads/') ? `${base}${clean}` : `/${clean}`
 }
 
 async function changePwd() {

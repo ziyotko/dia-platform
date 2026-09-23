@@ -307,6 +307,7 @@ import { adminApi } from '@/api/admin'
 import { orgApi } from '@/api/index'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Right } from '@element-plus/icons-vue'
+import { fileUrl } from '@/utils/fileUrl'
 
 const list = ref<any[]>([])
 const levels = ref<any[]>([])
@@ -526,14 +527,6 @@ function displayName(m: any) {
 }
 function initial(m: any) { return ((displayName(m) || '?').trim()[0] || '?').toUpperCase() }
 function fmt(d: string) { return d ? d.replace('T', ' ').slice(0, 16) : '-' }
-function fileUrl(path?: string) {
-  if (!path) return ''
-  if (/^https?:\/\//i.test(path)) return path
-  // 兼容 `uploads/...`（相对）、`/uploads/...`（旧绝对）与带部署前缀的绝对路径，统一指向当前部署子路径
-  const base = import.meta.env.BASE_URL || '/'
-  const clean = path.replace(/^\.?\//, '')
-  return clean.startsWith('uploads/') ? `${base}${clean}` : `/${clean}`
-}
 function tableRowClassName() { return 'members-row' }
 
 onMounted(() => { fetchData(); fetchLevels() })

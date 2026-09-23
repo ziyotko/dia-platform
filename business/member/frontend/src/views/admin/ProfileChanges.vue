@@ -107,6 +107,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { adminApi } from '@/api/admin'
+import { fileUrl } from '@/utils/fileUrl'
 
 const list = ref<any[]>([])
 const loading = ref(true)
@@ -138,14 +139,6 @@ function levelName(id: any) {
   return lvl ? lvl.name : String(id)
 }
 function fmt(d: string) { return d ? d.replace('T', ' ').slice(0, 16) : '-' }
-function fileUrl(path?: string) {
-  if (!path) return ''
-  if (/^https?:\/\//i.test(path)) return path
-  // 兼容 `uploads/...`（相对）、`/uploads/...`（旧绝对）与带部署前缀的绝对路径，统一指向当前部署子路径
-  const base = import.meta.env.BASE_URL || '/'
-  const clean = path.replace(/^\.?\//, '')
-  return clean.startsWith('uploads/') ? `${base}${clean}` : `/${clean}`
-}
 function tableRowClassName() { return 'profile-changes-row' }
 
 onMounted(() => { fetchData(); fetchLevels() })
