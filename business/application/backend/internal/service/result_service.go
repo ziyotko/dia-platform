@@ -237,11 +237,31 @@ func (s *ResultService) VoidCertificate(id uint64, reason string) error {
 	return nil
 }
 
+// PublishedResultBatch 是结果公示里附带的批次信息（只取展示需要的字段）。
+type PublishedResultBatch struct {
+	ID    uint64 `json:"id"`
+	Title string `json:"title"`
+}
+
+// PublishedResult 是给申报人看的「逐条结果公示」视图。
+// 这里必须显式白名单字段：该接口任意已登录申报人都能访问，若直接返回
+// models.Application 并 Preload("User")，会把全体申报人的身份证号、手机号、
+// 邮箱一起下发（详见上线前复查报告 P0）。
+type PublishedResult struct {
+	ID           uint64                `json:"id"`
+	Title        string                `json:"title"`
+	Status       string                `json:"status"`
+	BatchID      uint64                `json:"batchId"`
+	Batch        *PublishedResultBatch `json:"batch,omitempty"`
+	UserRealName string                `json:"userRealName"`
+	PublishedAt  *time.Time            `json:"publishedAt"`
+}
+
 // ListPublishedResults returns the per-application results that have been made
 // public (逐条结果公示). It is the structured counterpart of the free-text
 // Announcement and is what the applicant-facing 结果公示 page shows next to it.
-func (s *ResultService) ListPublishedResults(page, size int, batchID uint64, keyword string) ([]models.Application, int64, error) {
-	var list []models.Application
+func (s *ResultService) ListPublishedResults(page, size int, batchID uint64, keyword string) ([]PublishedResult, int64, error) {
+	var rows []models.Application
 	var total int64
 	query := db.DB.Model(&models.Application{}).Where("published_at IS NOT NULL")
 	if batchID > 0 {
@@ -251,10 +271,33 @@ func (s *ResultService) ListPublishedResults(page, size int, batchID uint64, key
 		query = query.Where("title LIKE ?", "%"+keyword+"%")
 	}
 	query.Count(&total)
-	err := query.Preload("Batch").Preload("Category").Preload("User").
+	// 只取展示需要的列，且预加载也只取必要字段：申报人联系方式/身份证号绝不进入该响应。
+	err := query.Select("id", "title", "status", "batch_id", "published_at").
+		Preload("Batch", func(tx *gorm.DB) *gorm.DB { return tx.Select("id", "title") }).
+		Preload("User", func(tx *gorm.DB) *gorm.DB { return tx.Select("id", "real_name") }).
 		Order("published_at DESC").
-		Offset((page - 1) * size).Limit(size).Find(&list).Error
-	return list, total, err
+		Offset((page - 1) * size).Limit(size).Find(&rows).Error
+	if err != nil {
+		return nil, 0, err
+	}
+	list := make([]PublishedResult, 0, len(rows))
+	for _, a := range rows {
+		item := PublishedResult{
+			ID:          a.ID,
+			Title:       a.Title,
+			Status:      a.Status,
+			BatchID:     a.BatchID,
+			PublishedAt: a.PublishedAt,
+		}
+		if a.Batch != nil {
+			item.Batch = &PublishedResultBatch{ID: a.Batch.ID, Title: a.Batch.Title}
+		}
+		if a.User != nil {
+			item.UserRealName = a.User.RealName
+		}
+		list = append(list, item)
+	}
+	return list, total, nil
 }
 
 // BuildAnnouncementContent renders the already-published results of a batch as

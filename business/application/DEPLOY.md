@@ -117,8 +117,19 @@ powershell -ExecutionPolicy Bypass -File .\build-backends.ps1 -Only application 
 
 - 上传扩展名白名单：`.pdf .doc .docx .xls .xlsx .ppt .pptx .txt .zip .rar .jpg .jpeg .png .gif`
 - 落盘路径 `uploads/YYYYMMDD/<uuid>.<ext>`，接口返回带部署前缀的 `fileUrl`
-- **后端未限制单个文件大小**（`MaxMultipartMemory=64MB` 只是内存缓冲阈值，超出会落临时文件），实际体积上限取决于 Nginx `client_max_body_size`，请按申报材料实际大小设置
-- 限流：`GET /captcha` 30 次/分钟（Redis db 3 固定窗口，Redis 异常时退化为进程内限流 fail-closed）；单 IP 并发请求上限 `server.max_concurrent_ips`（默认 100），两者超限均返回 `code=429`「请求过于频繁，请稍后再试」
+- **后端硬限单个文件 ≤ 50MB**（`controllers/upload_controller.go`，超出返回 `code=400`「文件大小不能超过 50MB」）。Nginx `client_max_body_size` 需 ≥ 60m，留出 multipart 开销；配得比 50m 小会先在网关返回 413，看不到后端的业务提示
+- 限流（Redis db 3 固定窗口，按真实客户端 IP 计数；不同接口使用不同 `scope`，额度互不影响；Redis 异常时退化为进程内限流 fail-closed）：
+
+| 接口 | 额度 |
+| --- | --- |
+| `GET /captcha` | 30 次/分钟 |
+| `POST /member/register` | 10 次/分钟 |
+| `POST /member/login` | 10 次/分钟 |
+| `POST /admin/login` | 10 次/分钟 |
+| `POST /member/upload` | 20 次/分钟 |
+| `POST /admin/upload` | 20 次/分钟 |
+
+- 另有单 IP 并发请求上限 `server.max_concurrent_ips`（默认 100，**必须 > 0**：配成 0 会让所有请求都返回 429）；上述限制超限均返回 `code=429`「请求过于频繁，请稍后再试」
 
 ---
 
@@ -145,7 +156,7 @@ powershell -ExecutionPolicy Bypass -File .\build-frontends.ps1 -Only business_ap
 - `.env`：`VITE_BASE_PATH=/business_application/`、`VITE_API_BASE_URL=/business_application/api`（当前仓库值）
 - 若部署路径变化，改 `VITE_BASE_PATH` 后重新构建；同时同步 `backend/config.yaml` 的 `server.api_prefix`（`/xxxx/api`）与 `server.upload_dir_prefix`（`/xxxx`）
 - dev 端口 `3003`；dev 代理键由 `.env` 推导（`[apiBase]` 与 `[basePath]/uploads`），**代理目标写死在 `frontend/vite.config.ts`**（当前 `http://127.0.0.1:8094`），改后端端口必须同步改这里
-- 申报人端与管理端是**同一个工程**：申报人页面走 `PublicLayout`，管理端页面在 `/admin/*` 路由下并有独立登录页；两套 Token 分别存 `localStorage` 的 `application-member-token` / `application-admin-token`（`utils/request.ts` 按请求路径自动选择），返回 `code=401` 时前端自动跳登录页
+- 申报人端与管理端是**同一个工程**：申报人页面走 `PublicLayout`，管理端页面在 `/admin/*` 路由下并有独立登录页；两套 Token 分别存 `localStorage` 的 `application-member-token` / `application-admin-token`（`utils/request.ts` 按请求路径自动选择），返回 `code=401` 时按请求角色跳对应登录页（申报人 `/login`、管理端 `/admin/login`）并只清理本应用的键
 - 依赖：Vue 3.4 / TypeScript 5.4 / Element Plus 2.6 / Pinia 2.1 / Vue Router 4.3 / ECharts 6 / Vite 5.2
 
 ### 3. 部署
@@ -175,8 +186,8 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        # 后端未限制上传大小，网关按申报材料实际大小设置（示例 100MB）
-        client_max_body_size 100m;
+        # 后端硬限单文件 50MB，网关留出 multipart 开销即可（建议 ≥60m）
+        client_max_body_size 60m;
         proxy_read_timeout 120s;
         proxy_send_timeout 120s;
     }
@@ -209,6 +220,19 @@ server {
 - 前端：替换 Nginx 目录下 `dist` 内容；改版本时建议保留旧目录以便快速回退
 - 更换 `APPLICATION_JWT_SECRET` 会使两套 Token 立即失效（在线用户需重新登录）
 - 备份建议：`mysqldump` 数据库 + `backend/uploads` 目录（申报材料、证书附件）+ `backend/config.yaml`（不含密码明文）
+
+### 升级说明（2026-09-23，上线前安全加固）
+
+本次涉及登录态与前端字段名，**先部署后端 → 再部署前端**，顺序反了会出现「注册 400 / 管理端 403」的短暂不一致。
+
+1. **Token 立即失效**：JWT 现在带 `aud`（申报人 / 管理端两套互不通用）、校验签发者并锁定 HS256。旧版本签发的 Token 全部失效，所有在线用户需重新登录（等同「更换 JWT 密钥」的表现，无需改配置）。
+2. **管理端鉴权收紧**：`/admin/*` 每次请求回查账号是否仍存在且启用，角色码为空直接 `401`；`GET /admin/dashboard` 需 `dashboard:view`，`POST /admin/upload` 需 `application:preliminary` 或 `certificate:manage`（评审人无上传权限，属预期）。
+3. **注册强制验证码**：`POST /member/register` 新增必填 `captcha_id` + `captcha_code`（前端注册页已同步；旧前端或脚本调用会返回 `code=400`「请填写完整信息（含验证码）」）。
+4. **新增限流**：注册 / 登录 / 上传见「二.5」表格；联调压测若遇 `429`，属限流生效，换 IP 或等待窗口结束即可。
+5. **结果公示字段变化**：`GET /member/results` 返回条目改为白名单 `{id, title, status, batchId, batch{id,title}, userRealName, publishedAt}`，不再返回 `user` 对象（原先会把全体申报人的身份证号、手机号、邮箱一起下发）。自定义前端若读过 `user.realName`，请改用 `userRealName`。
+6. **申报创建字段白名单**：`POST /member/applications` 只接受 `batchId / categoryId / title / projectBrief / content`，请求体里的 `status`、`publishedAt`、`totalScore`、`finalOpinion`、`id` 一律忽略（原先把整个模型绑定进请求体，可把伪造条目直接塞进结果公示）。
+7. **时间按服务器本地时区解析**：批次起止时间等无时区串（`YYYY-MM-DD HH:mm:ss`）改用 `time.Local`（与 member / portal 一致）。**部署机时区必须是 `Asia/Shanghai`**，否则仍不会按北京时间入库。
+8. **前端 401 处理**：按发起请求的角色分别跳 `/login`（申报人）或 `/admin/login`（管理端），且只清理本应用的 `localStorage` 键，不再 `localStorage.clear()`（原先会连带清掉同域部署的 portal / member / base 登录态，管理端还会被跳到申报人登录页）。
 
 ### 移除软删除残留（2026-09-22，无手工 SQL 也能跑）
 
@@ -269,9 +293,9 @@ draft(草稿) → submitted(待初审) → preliminary_rejected(初审驳回)
 
 `/business_application/api`（由 `server.api_prefix` 决定）
 
-- 公开接口：`/captcha`、`/member/register`、`/member/login`、`/admin/login`
+- 公开接口：`/captcha`、`/member/register`（需验证码）、`/member/login`（需验证码）、`/admin/login`（需验证码）
 - 申报人接口：`/member/*`（需申报人 JWT）
-- 管理接口：`/admin/*`（需管理端 JWT + 细粒度权限校验）
+- 管理接口：`/admin/*`（需管理端 JWT + 细粒度权限校验；`GET /admin/dashboard` 需 `dashboard:view`，`POST /admin/upload` 需 `application:preliminary` 或 `certificate:manage`）
 
 ---
 
@@ -283,9 +307,10 @@ draft(草稿) → submitted(待初审) → preliminary_rejected(初审驳回)
 | 启动 panic `Failed to connect Redis (captcha / anti-replay)` | Redis 未启动，或 `redis.addr` / `captcha_db` / `anti_replay_db` 配置错误；本服务**强依赖 Redis** |
 | 启动即退出并打印未设置数据库密码/JWT 密钥 | 未注入 `APPLICATION_DB_PASSWORD` / `APPLICATION_JWT_SECRET`，或仍是占位值 |
 | 日志出现 `[GIN-debug] [WARNING] Running in "debug" mode` | `server.mode` 仍为 `debug`，生产环境改为 `release` |
-| 接口返回 `code=429`「请求过于频繁，请稍后再试」 | 命中验证码 30 次/分钟限流，或单 IP 并发超过 `max_concurrent_ips` |
+| 接口返回 `code=429`「请求过于频繁，请稍后再试」 | 命中接口限流（见「二.5」：验证码 30/分、注册/登录 10/分、上传 20/分），或单 IP 并发超过 `max_concurrent_ips` |
 | 上传返回「不支持的文件类型」 | 扩展名不在白名单（见「二.5」） |
-| 上传大文件返回 413 | Nginx `client_max_body_size` 过小（后端本身未限制大小） |
+| 上传大文件返回 413 | Nginx `client_max_body_size` 比后端硬限（50MB）还小，请求没到后端就被网关拒绝；调到 ≥60m |
+| 注册接口返回 400「请填写完整信息（含验证码）」 | 未传 `captcha_id` / `captcha_code`（注册已强制验证码，见「二.5」与升级说明） |
 | 页面能打开但接口 404 | `server.api_prefix` 与 `VITE_API_BASE_URL` 不一致，或 Nginx 反代路径写错（`proxy_pass` 带了 URI） |
 | 所有用户被限流、日志里 IP 都是同一个 | `server.trusted_proxies` 未填 Nginx 地址，或 Nginx 未转发 `X-Real-IP` / `X-Forwarded-For` |
 | 后台账号在申报人登录页登录失败 | 属预期：两套账号分别存于 `application_admins` / `application_users`，不通用 |

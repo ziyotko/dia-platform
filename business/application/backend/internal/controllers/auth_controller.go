@@ -51,7 +51,7 @@ func (ctrl *AuthController) UserLogin(c *gin.Context) {
 func (ctrl *AuthController) UserRegister(c *gin.Context) {
 	var req service.UserRegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "请填写完整信息")
+		response.BadRequest(c, "请填写完整信息（含验证码）")
 		return
 	}
 	if err := ctrl.authService.UserRegister(req); err != nil {

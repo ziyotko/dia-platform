@@ -34,11 +34,12 @@ func Register(r *gin.Engine) {
 	auditCtrl := &controllers.AuditController{}
 
 	// === Public routes ===
-	// 验证码接口独立限流：30 次/分钟（对齐 portal 的 captcha_rate_limit），防刷验证码；按真实客户端 IP
-	api.GET("/captcha", middleware.RateLimitMiddleware(30, time.Minute), authCtrl.GetCaptcha)
-	api.POST("/member/register", authCtrl.UserRegister)
-	api.POST("/member/login", authCtrl.UserLogin)
-	api.POST("/admin/login", authCtrl.AdminLogin)
+	// 公开接口按用途分别限流（scope 不同 → 计数器互不干扰）：captcha 防刷图，
+	// register/login 防批量注册与密码撞库，计数均按真实客户端 IP。
+	api.GET("/captcha", middleware.RateLimitMiddleware("captcha", 30, time.Minute), authCtrl.GetCaptcha)
+	api.POST("/member/register", middleware.RateLimitMiddleware("register", 10, time.Minute), authCtrl.UserRegister)
+	api.POST("/member/login", middleware.RateLimitMiddleware("login", 10, time.Minute), authCtrl.UserLogin)
+	api.POST("/admin/login", middleware.RateLimitMiddleware("admin-login", 10, time.Minute), authCtrl.AdminLogin)
 
 	// === Applicant routes (申报人, JWT required) ===
 	member := api.Group("/member")
@@ -79,7 +80,7 @@ func Register(r *gin.Engine) {
 		member.GET("/dashboard", dashboardCtrl.UserStats)
 
 		// Upload (材料上传)
-		member.POST("/upload", uploadCtrl.Upload)
+		member.POST("/upload", middleware.RateLimitMiddleware("upload", 20, time.Minute), uploadCtrl.Upload)
 	}
 
 	// === Admin routes (管理人/评审人, JWT + permission required) ===
@@ -92,10 +93,12 @@ func Register(r *gin.Engine) {
 		admin.PUT("/change-password", authCtrl.ChangeAdminPassword)
 
 		// Dashboard
-		admin.GET("/dashboard", dashboardCtrl.AdminStats)
+		// 看板会返回全站统计，必须带权限校验（之前只有 AdminAuth，任意有效 token 都能读）
+		admin.GET("/dashboard", middleware.PermissionGuard("dashboard:view"), dashboardCtrl.AdminStats)
 
-		// Upload
-		admin.POST("/upload", uploadCtrl.Upload)
+		// Upload（申报材料 / 证书附件共用）：管理员侧所有角色都能到，但需具备相应业务权限，
+		// 避免只读角色（评审人）把服务器当图床循环写盘。
+		admin.POST("/upload", middleware.RateLimitMiddleware("admin-upload", 20, time.Minute), middleware.PermissionGuardAny("application:preliminary", "certificate:manage"), uploadCtrl.Upload)
 
 		// Categories (项目类别)
 		admin.GET("/categories", middleware.PermissionGuard("category:view"), categoryCtrl.List)

@@ -26,9 +26,16 @@ request.interceptors.response.use(
     if (res.code !== 0 && res.code !== 200) {
       ElMessage.error(res.message || '请求失败')
       if (res.code === 401) {
-        localStorage.clear()
+        // 按发起请求的角色清理与跳转：管理端 token 过期必须回管理端登录页，
+        // 且只能删除本应用的键——localStorage.clear() 会把同域部署的 portal/member/base 登录态一起清掉。
+        const url = response.config?.url || ''
+        const isAdmin = url.includes('/admin/')
+        const keys = isAdmin
+          ? ['application-admin-token', 'application-admin-role']
+          : ['application-member-token']
+        keys.forEach((key) => localStorage.removeItem(key))
         // 跳登录页必须带上部署子路径（BASE_URL = vite base），否则子路径部署下会跳到不存在的 /login
-        window.location.href = `${import.meta.env.BASE_URL || '/'}login`
+        window.location.href = `${import.meta.env.BASE_URL || '/'}${isAdmin ? 'admin/login' : 'login'}`
       }
       return Promise.reject(new Error(res.message))
     }

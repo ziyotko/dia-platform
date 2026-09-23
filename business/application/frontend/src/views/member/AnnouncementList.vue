@@ -28,7 +28,7 @@
       <el-table :data="results" v-loading="loading">
         <el-table-column prop="title" label="项目名称" min-width="220" />
         <el-table-column label="申报人" width="120">
-          <template #default="{ row }">{{ row.user?.realName || '-' }}</template>
+          <template #default="{ row }">{{ row.userRealName || '-' }}</template>
         </el-table-column>
         <el-table-column label="所属批次" min-width="160">
           <template #default="{ row }">{{ row.batch?.title || '-' }}</template>

@@ -3,6 +3,8 @@ package middleware
 import (
 	"strings"
 
+	"application/internal/models"
+	"application/pkg/db"
 	"application/pkg/jwt"
 	"application/pkg/response"
 
@@ -32,6 +34,14 @@ func UserAuth() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+		// 回查账号：token 有效期内账号可能已被删除或禁用，只验签名会让它们继续用到过期。
+		// 按主键查一列，开销可忽略。
+		var user models.User
+		if err := db.DB.Select("id", "status").First(&user, claims.UserID).Error; err != nil || user.Status != 1 {
+			response.Unauthorized(c)
+			c.Abort()
+			return
+		}
 		c.Set(CtxUserID, claims.UserID)
 		c.Set(CtxUsername, claims.Username)
 		c.Next()
@@ -49,6 +59,21 @@ func AdminAuth() gin.HandlerFunc {
 		}
 		claims, err := jwt.ParseAdminToken(token)
 		if err != nil {
+			response.Unauthorized(c)
+			c.Abort()
+			return
+		}
+		// 角色码缺失时不能放行：PermissionGuard 会因查不到角色而 403，但未挂权限校验的
+		// 管理接口（看板、上传等）会直接读到一个空角色。历史遗留的「只有 user_id 的 token」
+		// 也会在这里被拦住。
+		if claims.RoleCode == "" {
+			response.Unauthorized(c)
+			c.Abort()
+			return
+		}
+		// 回查账号：角色变更/禁用/删除后，旧 token 不应继续生效。
+		var admin models.Admin
+		if err := db.DB.Select("id", "status").First(&admin, claims.AdminID).Error; err != nil || admin.Status != 1 {
 			response.Unauthorized(c)
 			c.Abort()
 			return
@@ -101,6 +126,36 @@ func PermissionGuard(perm string) gin.HandlerFunc {
 			if p == perm {
 				c.Next()
 				return
+			}
+		}
+		response.Forbidden(c)
+		c.Abort()
+	}
+}
+
+// PermissionGuardAny 允许命中其中任意一个权限即放行。
+// 用于多个角色通过各自不同权限到达的同一个接口（例如通用上传接口）。
+func PermissionGuardAny(perms ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		roleCode, exists := c.Get(CtxRoleCode)
+		if !exists {
+			response.Forbidden(c)
+			c.Abort()
+			return
+		}
+		roleStr, _ := roleCode.(string)
+		rolePerms, ok := GetRolePermissions()[roleStr]
+		if !ok {
+			response.Forbidden(c)
+			c.Abort()
+			return
+		}
+		for _, p := range rolePerms {
+			for _, want := range perms {
+				if p == want {
+					c.Next()
+					return
+				}
 			}
 		}
 		response.Forbidden(c)

@@ -105,8 +105,19 @@ func normalizeTimeFields(updates map[string]interface{}, fields ...string) {
 			updates[f] = nil
 			continue
 		}
-		for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05", "2006-01-02 15:04:05", "2006-01-02"} {
+		for _, layout := range []string{time.RFC3339, "2006-01-02T15:04:05"} {
 			if t, err := time.Parse(layout, s); err == nil {
+				updates[f] = t
+				break
+			}
+		}
+		if _, ok := updates[f].(time.Time); ok {
+			continue
+		}
+		// 无时区串（前端 el-date-picker 发出的 "2006-01-02 15:04:05"）必须按服务器本地时区解析：
+		// time.Parse 会当成 UTC，使申报起止时间整体偏移 8 小时，且批次发布后不可改。
+		for _, layout := range []string{"2006-01-02 15:04:05", "2006-01-02"} {
+			if t, err := time.ParseInLocation(layout, s, time.Local); err == nil {
 				updates[f] = t
 				break
 			}

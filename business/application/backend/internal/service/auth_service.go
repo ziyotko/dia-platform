@@ -48,17 +48,23 @@ func (s *AuthService) UserLogin(username, password, captchaID, captchaCode strin
 }
 
 type UserRegisterRequest struct {
-	Username     string `json:"username"`
-	Password     string `json:"password"`
-	RealName     string `json:"realName"`
+	Username     string `json:"username" binding:"required"`
+	Password     string `json:"password" binding:"required"`
+	RealName     string `json:"realName" binding:"required"`
 	Phone        string `json:"phone"`
 	Email        string `json:"email"`
 	IDCard       string `json:"idCard"`
 	Organization string `json:"organization"`
 	Position     string `json:"position"`
+	// 注册同样要验证码：否则匿名脚本可以无限量建号（注册无需登录，是公开接口）
+	CaptchaID   string `json:"captcha_id" binding:"required"`
+	CaptchaCode string `json:"captcha_code" binding:"required"`
 }
 
 func (s *AuthService) UserRegister(req UserRegisterRequest) error {
+	if !captcha.Verify(req.CaptchaID, req.CaptchaCode) {
+		return errors.New("验证码错误")
+	}
 	if req.Username == "" || req.Password == "" || req.RealName == "" {
 		return errors.New("请填写完整信息")
 	}

@@ -17,12 +17,29 @@ type ApplicationController struct {
 
 func (ctrl *ApplicationController) Create(c *gin.Context) {
 	userID := middleware.GetUserID(c)
-	var app models.Application
-	if err := c.ShouldBindJSON(&app); err != nil {
+	// 只接收申报人可填写的字段。直接绑定 models.Application 会让请求体注入
+	// status / published_at / submitted_at / total_score / final_opinion / id 等内部字段，
+	// 从而把伪造条目直接塞进「结果公示」（该公示列表是全体申报人可见的）。
+	// 与 UpdateDraft 的白名单思路保持一致。
+	var req struct {
+		BatchID      uint64 `json:"batchId"`
+		CategoryID   uint64 `json:"categoryId"`
+		Title        string `json:"title"`
+		ProjectBrief string `json:"projectBrief"`
+		Content      string `json:"content"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "参数错误")
 		return
 	}
-	app.UserID = userID
+	app := models.Application{
+		BatchID:      req.BatchID,
+		CategoryID:   req.CategoryID,
+		Title:        req.Title,
+		ProjectBrief: req.ProjectBrief,
+		Content:      req.Content,
+		UserID:       userID,
+	}
 	if err := ctrl.service.Create(&app); err != nil {
 		response.Fail(c, err.Error())
 		return

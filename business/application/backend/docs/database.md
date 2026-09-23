@@ -337,7 +337,7 @@ erDiagram
 - 申报记录是业务中枢：向上挂在 `application_project_batches` + `application_project_categories` + `application_users`，向下派生材料、评审任务、证书。
 - 评审人即 `application_admins`（`role_code = reviewer`），专家档案 `application_experts.admin_id` 与之 1:1。
 - 类别与批次：批次锁定唯一类别（`project_batches.category_id`），申报的 `category_id` 必须与之相同。
-- 结果公示有两套并行的呈现：**自由文本** `application_announcements`（按批次）+ **逐条结果**（直接取自 `application_applications` 中 `published_at IS NOT NULL` 的行，无独立表）。
+- 结果公示有两套并行的呈现：**自由文本** `application_announcements`（按批次）+ **逐条结果**（直接取自 `application_applications` 中 `published_at IS NOT NULL` 的行，无独立表）。申报人端的逐条公示接口（`GET /member/results`）**只返回白名单字段**（项目名称 / 状态 / 批次标题 / 申报人姓名 / 公示时间），不关联整行 `application_users`，避免把全体申报人的身份证号、手机号、邮箱下发。
 - 所有引用均为逻辑引用（无数据库外键），删除父级时由服务层判定是否允许（见各表「删除拦截」）。
 
 ---
