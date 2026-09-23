@@ -255,7 +255,8 @@
 | invoice_file | varchar(255) | 是 | `''` | - | 发票 PDF URL |
 | invoice_issued_at | datetime | 是 | - | - | 开票时间 |
 
-> **状态流转**：`unpaid` → （会员提交回执）`pending` → （管理员确认）`paid`；管理员也可对 `unpaid` 记录直接「免缴确认」置为 `paid`。
+> **状态流转**：`unpaid` → （会员提交回执）`pending` → （管理员确认）`paid`；管理员也可对 `unpaid` 记录直接「确认缴费」（登记实收金额，填 0 即免缴）或「免缴确认」（仅置为已缴费，不记实缴金额）。
+> **确认字段口径（2026-09-23 统一）**：首次置为 `paid` 时统一写入 `paid_at` 与 `confirmed_at`；`paid_amount` 由请求显式提供（`ConfirmFee` 的 `amount`）或保持原值（免缴记录为 0，会员端不可开票）。
 > 已缴费记录**不可回退**为其他状态（会籍记录、证书、会员状态无法回滚）。
 > **副作用只触发一次**：仅「首次由 `unpaid`/`pending` 变为 `paid`」时才激活会员、同步等级/证书、写会籍变更记录。
 > 本表**没有** `(member_id, year)` 唯一索引，重复由 service 层在事务内加行锁后判断（后台新增费用时会提示「该会员本年度费用记录已存在」）。
@@ -341,7 +342,7 @@
 | published_at | datetime | 是 | - | - | 发布时间，为空表示未发布 |
 | created_by | varchar(64) | 是 | - | - | 创建人 |
 
-> 前台列表只返回 `published_at IS NOT NULL AND published_at <= NOW()` 的公告；**详情接口当前未做该过滤**（见 §七）。
+> 前台列表只返回 `published_at IS NOT NULL AND published_at <= NOW()` 的公告；**详情接口当前未做该过滤**（属已知待修项：可直接枚举 id 读取未发布公告）。
 
 ---
 

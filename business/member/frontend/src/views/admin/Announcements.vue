@@ -26,7 +26,7 @@
             <Editor v-model="annForm.content" :defaultConfig="editorConfig" @onCreated="handleCreated" />
           </div>
         </el-form-item>
-        <el-form-item label="置顶"><el-switch v-model="annForm.isPinned" /></el-form-item>
+        <el-form-item label="置顶"><el-switch v-model="annForm.is_pinned" /></el-form-item>
       </el-form>
       <template #footer><el-button @click="showDialog=false">取消</el-button><el-button type="primary" @click="saveAnn">发布</el-button></template>
     </el-dialog>
@@ -42,7 +42,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 
 const list = ref<any[]>([]); const loading = ref(true); const showDialog = ref(false); const editingId = ref<number|null>(null)
 const page = ref(1); const size = ref(10); const total = ref(0)
-const annForm = reactive({ title: '', content: '', type: 'notice', isPinned: false })
+const annForm = reactive({ title: '', content: '', type: 'notice', is_pinned: false })
 
 /* ---- wangEditor ---- */
 const editorRef = shallowRef()
@@ -65,8 +65,8 @@ async function fetchData() {
   loading.value = true
   try { const r = await adminApi.getAnnouncements({ page: page.value, size: size.value }); list.value = r.data?.list || []; total.value = r.data?.total || 0 } catch {} finally { loading.value = false }
 }
-function openCreate() { editingId.value = null; Object.assign(annForm, { title: '', content: '', type: 'notice', isPinned: false }); showDialog.value = true }
-function editAnn(row: any) { editingId.value = row.id; Object.assign(annForm, { title: row.title, content: row.content, type: row.type, isPinned: row.is_pinned }); showDialog.value = true }
+function openCreate() { editingId.value = null; Object.assign(annForm, { title: '', content: '', type: 'notice', is_pinned: false }); showDialog.value = true }
+function editAnn(row: any) { editingId.value = row.id; Object.assign(annForm, { title: row.title, content: row.content, type: row.type, is_pinned: !!row.is_pinned }); showDialog.value = true }
 async function saveAnn() {
   if (!annForm.title) { ElMessage.warning('请输入标题'); return }
   try {

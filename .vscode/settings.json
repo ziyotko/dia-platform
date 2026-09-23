@@ -59,6 +59,10 @@
         "/^cmd /c \"cd /d D:\\\\Projects\\\\dia-platform\\\\business\\\\portal\\\\frontend && npx vue-tsc --noEmit\"$/": {
             "approve": true,
             "matchCommandLine": true
+        },
+        "/^cmd /c \"cd /d d:\\\\Projects\\\\dia-platform\\\\business\\\\member\\\\backend && go build \\./\\.\\.\\. 2>&1 && echo BUILD_OK && go vet \\./\\.\\.\\. 2>&1 && echo VET_OK\"$/": {
+            "approve": true,
+            "matchCommandLine": true
         }
     }
 }

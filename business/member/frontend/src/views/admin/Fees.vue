@@ -14,42 +14,42 @@
         <div class="stat-icon"><el-icon :size="28"><List /></el-icon></div>
         <div class="stat-body">
           <span class="stat-label">总记录数</span>
-          <span class="stat-value">{{ total }}</span>
+          <span class="stat-value">{{ summary.total }}</span>
         </div>
       </div>
       <div class="stat-card stat-card--paid">
         <div class="stat-icon"><el-icon :size="28"><CircleCheckFilled /></el-icon></div>
         <div class="stat-body">
           <span class="stat-label">已缴费</span>
-          <span class="stat-value">{{ paidCount }}</span>
+          <span class="stat-value">{{ summary.paid }}</span>
         </div>
       </div>
       <div class="stat-card stat-card--unpaid">
         <div class="stat-icon"><el-icon :size="28"><WarningFilled /></el-icon></div>
         <div class="stat-body">
           <span class="stat-label">未缴费</span>
-          <span class="stat-value">{{ unpaidCount }}</span>
+          <span class="stat-value">{{ summary.unpaid }}</span>
         </div>
       </div>
       <div class="stat-card stat-card--pending">
         <div class="stat-icon"><el-icon :size="28"><Clock /></el-icon></div>
         <div class="stat-body">
           <span class="stat-label">待确认</span>
-          <span class="stat-value">{{ pendingCount }}</span>
+          <span class="stat-value">{{ summary.pending }}</span>
         </div>
       </div>
       <div class="stat-card stat-card--amount">
         <div class="stat-icon"><el-icon :size="28"><Money /></el-icon></div>
         <div class="stat-body">
           <span class="stat-label">总金额</span>
-          <span class="stat-value">¥{{ totalAmount.toFixed(2) }}</span>
+          <span class="stat-value">¥{{ summary.total_amount.toFixed(2) }}</span>
         </div>
       </div>
       <div class="stat-card stat-card--paid-amount">
         <div class="stat-icon"><el-icon :size="28"><CircleCheckFilled /></el-icon></div>
         <div class="stat-body">
           <span class="stat-label">实缴总金额</span>
-          <span class="stat-value">¥{{ paidAmount.toFixed(2) }}</span>
+          <span class="stat-value">¥{{ summary.paid_amount.toFixed(2) }}</span>
         </div>
       </div>
     </div>
@@ -150,6 +150,13 @@
               <el-button v-if="row.status==='unpaid'" text size="small" :icon="Edit" @click="editFee(row)">编辑</el-button>
               <el-button v-if="row.receipt_file" text size="small" type="primary" :icon="Download" @click="viewReceipt(row)">缴费回执</el-button>
               <el-button v-if="row.status==='pending'" text size="small" type="success" :icon="CircleCheck" @click="confirmPay(row)">确认缴费</el-button>
+              <el-tooltip
+                v-if="row.status==='unpaid'"
+                content="线下已收款（可登记实收金额并支持会员开票）；免缴请用右侧「免缴确认」"
+                placement="top"
+              >
+                <el-button text size="small" type="success" :icon="CircleCheck" @click="confirmPay(row)">确认缴费</el-button>
+              </el-tooltip>
               <el-tooltip
                 v-if="row.status==='unpaid' && !hasLevel(row)"
                 content="会员级别为空，请先修改会员级别"
@@ -341,7 +348,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { adminApi } from '@/api/admin'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete, CircleCheck, CircleCheckFilled, WarningFilled, Coin, List, Money, Check, Clock, Download, Upload, User } from '@element-plus/icons-vue'
@@ -379,11 +386,9 @@ const filterYear = ref<number | null>(null)
 const filterStatus = ref<string | null>(null)
 const filterType = ref<string | null>(null)
 
-const paidCount = computed(() => list.value.filter(r => r.status === 'paid').length)
-const pendingCount = computed(() => list.value.filter(r => r.status === 'pending').length)
-const unpaidCount = computed(() => list.value.filter(r => r.status === 'unpaid').length)
-const totalAmount = computed(() => list.value.reduce((s, r) => s + (r.amount || 0), 0))
-const paidAmount = computed(() => list.value.filter(r => r.status === 'paid').reduce((s, r) => s + ((r.paid_amount || 0)), 0))
+// 统计卡片数据来自后端聚合（GET /admin/fees 的 summary）：
+// 按年份/会员类型过滤，不受状态筛选与分页影响（原实现按"当前页"计算，翻页数字会跳变）
+const summary = ref({ total: 0, paid: 0, unpaid: 0, pending: 0, total_amount: 0, paid_amount: 0 })
 
 onMounted(() => {
   fetchData()
@@ -401,6 +406,7 @@ async function fetchData() {
     const r = await adminApi.getFees(params)
     list.value = r.data?.list || []
     total.value = r.data?.total || 0
+    summary.value = r.data?.summary || { total: 0, paid: 0, unpaid: 0, pending: 0, total_amount: 0, paid_amount: 0 }
   } catch {} finally { loading.value = false }
 }
 async function searchMember(query: string) {
@@ -526,7 +532,7 @@ async function markPaid(row: any) {
     return
   }
   try {
-    const { value } = await ElMessageBox.prompt(`确定将会费（¥${row.amount?.toFixed(2)} - ${row.year}年）标记为已缴费？`, '确认缴费', {
+    const { value } = await ElMessageBox.prompt(`确定将会费（¥${row.amount?.toFixed(2)} - ${row.year}年）标记为免缴（已缴费）？`, '免缴确认', {
       type: 'warning',
       confirmButtonText: '确认',
       cancelButtonText: '取消',
@@ -534,7 +540,7 @@ async function markPaid(row: any) {
       inputValidator: (v: string) => { if (!v) return '备注不能为空'; return true }
     })
     await adminApi.updateFee(row.id, { status: 'paid', remark: value })
-    ElMessage.success('已标记为已缴费')
+    ElMessage.success('已标记为已缴费（免缴，不计实缴金额）')
     fetchData()
   } catch {}
 }

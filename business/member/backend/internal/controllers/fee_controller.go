@@ -196,10 +196,19 @@ func (ctrl *FeeController) ListAllFees(c *gin.Context) {
 		response.ServerError(c, err.Error())
 		return
 	}
+	// 统计卡片数据：按年份/会员类型过滤的状态分布与金额合计。
+	// 刻意不叠加 status 筛选（卡片本身就是状态拆分，叠加后未缴费/待确认会恒为 0），
+	// 也不受分页影响（原实现由前端按"当前页"计算，翻页数字会跳变）。
+	summary, err := ctrl.feeService.GetFeeListSummary(year, memberType)
+	if err != nil {
+		response.ServerError(c, err.Error())
+		return
+	}
 	response.Success(c, gin.H{
-		"list":  fees,
-		"total": total,
-		"page":  page,
-		"size":  size,
+		"list":    fees,
+		"total":   total,
+		"page":    page,
+		"size":    size,
+		"summary": summary,
 	})
 }

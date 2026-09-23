@@ -55,14 +55,19 @@ func (s *FeeService) PayFee(memberID, feeID uint64, receiptFile, paidDate string
 	return nil
 }
 
-// ConfirmFee confirms a pending fee (admin)
+// ConfirmFee confirms a fee record (admin)
 func (s *FeeService) ConfirmFee(id uint64, amount float64, remark *string, operator string) error {
 	var fee models.FeeRecord
 	if err := db.DB.First(&fee, id).Error; err != nil {
 		return errors.New("费用记录不存在")
 	}
-	if fee.Status != models.FeeStatusPending {
-		return errors.New("只有待确认的费用才能确认缴费")
+	// 未缴费记录也允许直接确认：用于「免缴」（金额填 0）或线下收款登记（填写实收金额）。
+	// 已知已缴费记录会被拦下（已缴费不可回退/重复确认）。
+	if fee.Status != models.FeeStatusPending && fee.Status != models.FeeStatusUnpaid {
+		return errors.New("只有未缴费或待确认的费用才能确认缴费")
+	}
+	if amount < 0 {
+		return errors.New("缴费金额不能为负数")
 	}
 
 	now := time.Now()
@@ -174,6 +179,9 @@ func (s *FeeService) UpdateFeeRecord(id uint64, req UpdateFeeRequest, operator s
 	if req.Amount != nil {
 		updates["amount"] = *req.Amount
 	}
+	if req.PaidAmount != nil {
+		updates["paid_amount"] = *req.PaidAmount
+	}
 	if req.Remark != nil {
 		updates["remark"] = *req.Remark
 	}
@@ -182,6 +190,16 @@ func (s *FeeService) UpdateFeeRecord(id uint64, req UpdateFeeRequest, operator s
 	}
 	if req.LevelName != nil {
 		updates["level_name"] = *req.LevelName
+	}
+	// 首次置为已缴费：与 ConfirmFee 保持一致的确认语义。
+	// 原先只写了 paid_at，导致经「免缴确认 / 编辑」变成已缴费的记录
+	// 「确认时间」列恒为空，且实缴金额恒为 0（会员端无法申请开票）。
+	// 这里统一补写 confirmed_at；paid_amount 以请求显式提供为准（未提供时保持原值，
+	// 免缴记录的 0 是预期语义：不可开票）。
+	if paidNow {
+		now := time.Now()
+		updates["paid_at"] = &models.LocalTime{Time: now}
+		updates["confirmed_at"] = &models.LocalTime{Time: now}
 	}
 	if len(updates) == 0 {
 		return nil
@@ -271,6 +289,61 @@ func (s *FeeService) ListAllFees(page, size int, year int, status string, member
 	return fees, total, nil
 }
 
+// FeeListSummary 会费列表的统计（按年度 / 会员类型过滤，不按状态过滤）。
+// 供后台会费列表的统计卡片使用：卡片本身就是状态维度的拆分，
+// 若再叠加状态筛选会导致未缴费/待确认恒为 0，故与列表筛选解耦。
+// 注意：与 dashboard_service.go 的 FeeSummary（会员首页用）不是同一个结构。
+type FeeListSummary struct {
+	Total       int64   `json:"total"`        // 记录总数
+	Paid        int64   `json:"paid"`         // 已缴费条数
+	Unpaid      int64   `json:"unpaid"`       // 未缴费条数
+	Pending     int64   `json:"pending"`      // 待确认条数
+	TotalAmount float64 `json:"total_amount"` // 应收合计
+	PaidAmount  float64 `json:"paid_amount"`  // 实缴合计
+}
+
+// feeListSummaryRow 状态分组统计的扫描目标。
+type feeListSummaryRow struct {
+	Status     string  `gorm:"column:status"`
+	Cnt        int64   `gorm:"column:cnt"`
+	Amount     float64 `gorm:"column:amount"`
+	PaidAmount float64 `gorm:"column:paid_amount"`
+}
+
+// GetFeeListSummary 返回会费记录的状态分布与金额合计（同一筛选条件下不翻页）。
+func (s *FeeService) GetFeeListSummary(year int, memberType string) (*FeeListSummary, error) {
+	var rows []feeListSummaryRow
+	query := db.DB.Model(&models.FeeRecord{})
+	if year > 0 {
+		query = query.Where("year = ?", year)
+	}
+	if memberType != "" {
+		query = query.Where("member_id IN (SELECT id FROM member_users WHERE member_type = ?)", memberType)
+	}
+	if err := query.
+		Select("status, COUNT(*) AS cnt, COALESCE(SUM(amount), 0) AS amount, COALESCE(SUM(paid_amount), 0) AS paid_amount").
+		Group("status").
+		Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+
+	summary := &FeeListSummary{}
+	for _, row := range rows {
+		summary.Total += row.Cnt
+		summary.TotalAmount += row.Amount
+		summary.PaidAmount += row.PaidAmount
+		switch row.Status {
+		case models.FeeStatusPaid:
+			summary.Paid = row.Cnt
+		case models.FeeStatusPending:
+			summary.Pending = row.Cnt
+		case models.FeeStatusUnpaid:
+			summary.Unpaid = row.Cnt
+		}
+	}
+	return summary, nil
+}
+
 type CreateFeeRequest struct {
 	MemberID  uint64  `json:"member_id" binding:"required"`
 	Year      int     `json:"year" binding:"required"`
@@ -286,12 +359,13 @@ type CreateFeeRequest struct {
 // 字段使用指针，以区分“未提供”（nil）与“清空”（指向零值），
 // 否则编辑时无法把备注、票据号等清空。
 type UpdateFeeRequest struct {
-	Status    *string  `json:"status"`
-	InvoiceNo *string  `json:"invoice_no"`
-	Amount    *float64 `json:"amount"`
-	Remark    *string  `json:"remark"`
-	LevelID   *uint64  `json:"level_id"`
-	LevelName *string  `json:"level_name"`
+	Status     *string  `json:"status"`
+	InvoiceNo  *string  `json:"invoice_no"`
+	Amount     *float64 `json:"amount"`      // 应收金额
+	PaidAmount *float64 `json:"paid_amount"` // 实缴金额（首次置为已缴费时写入；不传则保持原值）
+	Remark     *string  `json:"remark"`
+	LevelID    *uint64  `json:"level_id"`
+	LevelName  *string  `json:"level_name"`
 }
 
 // ApplyInvoice submits an invoice application for a paid fee record (member)
