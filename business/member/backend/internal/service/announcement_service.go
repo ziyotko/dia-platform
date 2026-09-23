@@ -17,7 +17,9 @@ func (s *AnnouncementService) GetPublishedAnnouncements(page, size int, keyword,
 	var list []models.Announcement
 	var total int64
 
-	query := db.DB.Model(&models.Announcement{}).Where("published_at IS NOT NULL AND published_at <= ?", time.Now())
+	// 容差 1 秒：published_at 列是 datetime（无小数秒），MySQL 写入时会四舍五入，
+	// 若直接用 NOW() 比较，刚发布（亚秒级）的公告会因 stored > now 而磍不可见。
+	query := db.DB.Model(&models.Announcement{}).Where("published_at IS NOT NULL AND published_at <= ?", time.Now().Add(time.Second))
 	if keyword != "" {
 		query = query.Where("title LIKE ? OR content LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
 	}
@@ -39,7 +41,8 @@ func (s *AnnouncementService) GetPublishedAnnouncements(page, size int, keyword,
 // 即可读到未发布/定时发布的公告正文（列表接口已做过滤），且会白刷浏览量。
 func (s *AnnouncementService) GetAnnouncement(id uint64) (*models.Announcement, error) {
 	var a models.Announcement
-	if err := db.DB.Where("id = ? AND published_at IS NOT NULL AND published_at <= ?", id, time.Now()).
+	// 同样留 1 秒容差（原因见 GetPublishedAnnouncements）
+	if err := db.DB.Where("id = ? AND published_at IS NOT NULL AND published_at <= ?", id, time.Now().Add(time.Second)).
 		First(&a).Error; err != nil {
 		return nil, errors.New("公告不存在")
 	}
