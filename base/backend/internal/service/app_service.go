@@ -18,6 +18,9 @@ func (s AppService) Create(a *models.App) error {
 	if a.Code == "" {
 		return errors.New("请填写应用编码")
 	}
+	if err := validateAppFields(a); err != nil {
+		return err
+	}
 
 	var count int64
 	if err := db.DB.Model(&models.App{}).Where("code = ?", a.Code).Count(&count).Error; err != nil {
@@ -37,6 +40,9 @@ func (s AppService) Create(a *models.App) error {
 }
 
 func (s AppService) Update(a *models.App) error {
+	if err := validateAppFields(a); err != nil {
+		return err
+	}
 	if err := ensureRecordExists(db.DB.Model(&models.App{}).Where("id = ?", a.ID), "应用不存在"); err != nil {
 		return err
 	}
@@ -96,4 +102,18 @@ func (s AppService) ListAllActive() ([]models.App, error) {
 	var list []models.App
 	err := db.DB.Where("status = ?", 1).Order("sort ASC").Find(&list).Error
 	return list, err
+}
+
+// validateAppFields 校验应用各字段长度（对应 base_app 的定长列）。
+func validateAppFields(a *models.App) error {
+	return validateLengths(
+		fieldLen{"应用编码", a.Code, 64},
+		fieldLen{"应用名称", a.Name, 128},
+		fieldLen{"图标", a.Icon, 256},
+		fieldLen{"接入类型", a.Type, 32},
+		fieldLen{"前端入口地址", a.FrontendURL, 512},
+		fieldLen{"后端入口地址", a.BackendURL, 512},
+		fieldLen{"API 前缀", a.ApiPrefix, 128},
+		fieldLen{"描述", a.Description, 512},
+	)
 }

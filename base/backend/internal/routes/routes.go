@@ -41,6 +41,16 @@ func Register(r *gin.Engine) {
 			srv.CaptchaRateLimit,
 			time.Duration(srv.CaptchaRateWindowSecs)*time.Second,
 		), (&controllers.AuthController{}).Captcha)
+		// 令牌换发：不能依赖已过期的 access token，因此公开 + 按 IP 限流（refresh token 在请求体里）
+		auth.POST("/refresh", middleware.RateLimitMiddleware(
+			srv.RefreshRateLimit,
+			time.Duration(srv.RefreshRateWindowSecs)*time.Second,
+		), (&controllers.AuthController{}).Refresh)
+		// 子应用一次性票据兑换：子应用（未登录底座）持票换会话，公开 + 按 IP 限流
+		auth.POST("/app-ticket/exchange", middleware.RateLimitMiddleware(
+			srv.RefreshRateLimit,
+			time.Duration(srv.RefreshRateWindowSecs)*time.Second,
+		), (&controllers.AuthController{}).ExchangeAppTicket)
 	}
 
 	// 公开站点信息（登录页读取验证码开关等）：与验证码接口同量级，按相同限流参数保护
@@ -61,6 +71,8 @@ func Register(r *gin.Engine) {
 		authorized.GET("/auth/permissions", (&controllers.AuthController{}).Permissions)
 		authorized.POST("/auth/change-password", (&controllers.AuthController{}).ChangePassword)
 		authorized.POST("/auth/logout", (&controllers.AuthController{}).Logout)
+		// 子应用一次性接入票据：任何登录用户都可为自己签发
+		authorized.POST("/auth/app-ticket", (&controllers.AuthController{}).AppTicket)
 
 		authorized.GET("/dashboard/stats", (&controllers.DashboardController{}).Stats)
 

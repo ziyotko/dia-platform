@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"base/internal/models"
@@ -61,9 +62,13 @@ type WorkflowInstanceDetail struct {
 
 // Start 发起流程：创建实例并推进到第一个有审批人的节点。
 func (s WorkflowEngineService) Start(req StartRequest, actor WorkflowActor) (*models.WorkflowInstance, error) {
-	if req.Title == "" {
+	if strings.TrimSpace(req.Title) == "" {
 		return nil, errors.New("请填写标题")
 	}
+	// 定长列兜底截断（超长会报 MySQL 1406 → 500）
+	req.Title = clipText(req.Title, 256)
+	req.BusinessType = clipText(req.BusinessType, 64)
+	req.BusinessID = clipText(req.BusinessID, 64)
 
 	instance := &models.WorkflowInstance{}
 	err := db.DB.Transaction(func(tx *gorm.DB) error {
@@ -340,10 +345,16 @@ func (s WorkflowEngineService) Transfer(taskID uint64, req TransferRequest, acto
 			return err
 		}
 		name := actorDisplayName(tx, actor)
+		// 转办后该待办重新计时：否则超时提醒仍按原 created_at 计算，新审批人可能刚接手就被催办。
+		// 同时把 created_at 推到当前时刻，让它在「我的待办」里也排到最前。
+		now := time.Now()
 		if err := tx.Model(&models.WorkflowTask{}).Where("id = ?", task.ID).
 			Updates(map[string]interface{}{
 				"approver_id":   target.ID,
 				"approver_name": displayUserName(*target),
+				"created_at":    now,
+				"reminded_at":   nil,
+				"remind_count":  0,
 			}).Error; err != nil {
 			return err
 		}
@@ -710,7 +721,8 @@ func loadWorkflowTask(tx *gorm.DB, taskID uint64) (*models.WorkflowTask, *models
 
 func ensureApprovable(task *models.WorkflowTask, instance *models.WorkflowInstance, actor WorkflowActor) error {
 	if task.ApproverID != actor.UserID {
-		return errors.New("该审批任务不属于你")
+		// 与「任务不存在」用同一句提示：否则可以用 id 探测他人任务是否存在
+		return errors.New("审批任务不存在")
 	}
 	if !models.IsPlatformTenant(actor.TenantID) && instance.TenantID != actor.TenantID {
 		return errors.New("审批任务不存在")
@@ -725,6 +737,7 @@ func ensureApprovable(task *models.WorkflowTask, instance *models.WorkflowInstan
 }
 
 // invalidatePendingTasks 将实例下未处理的待办置为已失效（excludeTaskID 为本次已处理的节点任务）。
+// 注意：失效不等于「已处理」，因此**不写 handled_at**（否则详情页的「处理时间」会显示一个假时间）。
 func invalidatePendingTasks(tx *gorm.DB, instanceID, excludeTaskID uint64, comment string, now time.Time) error {
 	query := tx.Model(&models.WorkflowTask{}).
 		Where("instance_id = ? AND status = ?", instanceID, models.WorkflowTaskPending)
@@ -732,9 +745,8 @@ func invalidatePendingTasks(tx *gorm.DB, instanceID, excludeTaskID uint64, comme
 		query = query.Where("id <> ?", excludeTaskID)
 	}
 	return query.Updates(map[string]interface{}{
-		"status":     models.WorkflowTaskInvalid,
-		"comment":    comment,
-		"handled_at": now,
+		"status":  models.WorkflowTaskInvalid,
+		"comment": comment,
 	}).Error
 }
 

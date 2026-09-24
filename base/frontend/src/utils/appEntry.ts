@@ -1,24 +1,31 @@
 /**
- * 子应用入口 URL 组装。
+ * 子应用入口 URL 组装（一次性票据版）。
  *
- * 与 base/DEPLOY.md「五、子应用接入」的约定保持一致：无论从菜单（iframe 容器）还是「我的应用」卡片进入，
- * 都要带上底座会话参数，子应用才能用 base_token 调 /business_base/api/auth/info 校验用户身份。
+ * 与 base/DEPLOY.md「五、子应用接入」的约定保持一致：不再把 access token（`base_token`）放进 URL，
+ * 而是现场签一张 60 秒、一次性消费的票据（`base_ticket`）：
+ *   - 避免长期凭证进入浏览器历史 / Referer / 网关访问日志；
+ *   - 子应用启动时 POST /business_base/api/auth/app-ticket/exchange 用票据换回 token 与用户信息。
+ * 签票失败时返回带 `base_ticket_error` 的地址，子应用可据此提示「请重新从底座进入」，而不是静默无会话。
  */
-export interface BaseSession {
-  token?: string
-  userId?: number | string
-  username?: string
-  tenantId?: number
-}
+import { createAppTicket } from '@/api/auth'
 
-/** 在入口地址后追加底座会话参数（已有 query 时用 & 追加） */
-export function buildAppEntryUrl(base: string, session: BaseSession): string {
+export async function buildAppEntryUrl(base: string): Promise<string> {
   if (!base) return ''
-  const params = new URLSearchParams({
-    base_token: session.token || '',
-    user_id: String(session.userId ?? ''),
-    username: session.username || '',
-    tenant_id: String(session.tenantId ?? 0)
-  })
-  return base + (base.includes('?') ? '&' : '?') + params.toString()
+  let ticket = ''
+  let failed = false
+  try {
+    const res: any = await createAppTicket()
+    ticket = res?.data?.ticket || ''
+  } catch (error) {
+    console.error('[base] 签发子应用接入票据失败', error)
+    failed = true
+  }
+  const params = new URLSearchParams()
+  if (ticket) {
+    params.set('base_ticket', ticket)
+  } else if (failed) {
+    params.set('base_ticket_error', '1')
+  }
+  const query = params.toString()
+  return query ? base + (base.includes('?') ? '&' : '?') + query : base
 }

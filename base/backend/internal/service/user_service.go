@@ -99,6 +99,15 @@ func validateOrganization(orgID, tenantID uint64) error {
 }
 
 func (s UserService) Update(u *models.User, tenantID uint64) error {
+	// 校验字段长度（对应 base_user 的定长列，超长会由 MySQL 报 1406 → 500）
+	if err := validateLengths(
+		fieldLen{"真实姓名", u.RealName, 64},
+		fieldLen{"手机号", u.Phone, 32},
+		fieldLen{"邮箱", u.Email, 128},
+		fieldLen{"头像地址", u.Avatar, 512},
+	); err != nil {
+		return err
+	}
 	updates := map[string]interface{}{
 		"real_name":       u.RealName,
 		"phone":           u.Phone,
@@ -127,19 +136,30 @@ func (s UserService) Update(u *models.User, tenantID uint64) error {
 		query = query.Where("tenant_id = ?", tenantID)
 		check = check.Where("tenant_id = ?", tenantID)
 	}
-	if err := ensureRecordExists(check, "用户不存在或不属于当前租户"); err != nil {
+	// 先取当前状态：用于判断本次是否把账号从「启用」改成「禁用」（需吊销其已签发的 token）
+	var current models.User
+	if err := check.First(&current).Error; err != nil {
+		return errors.New("用户不存在或不属于当前租户")
+	}
+	if err := query.Updates(updates).Error; err != nil {
 		return err
 	}
-	return query.Updates(updates).Error
+	// 禁用账号必须立即生效：JWT 是无状态的，不吊销的话被禁用的账号在 token 过期前仍能正常访问接口
+	if current.Status == 1 && u.Status == 0 {
+		if err := (TokenService{}).RevokeUserTokensBefore(u.ID, time.Now()); err != nil {
+			logrus.WithError(err).Warn("禁用用户后吊销旧 token 失败")
+		}
+	}
+	return nil
 }
 
 // Delete 删除用户：不能删除自己；平台内置 admin 账号受保护；
-// 同时清理角色与流程角色关联，避免残留脏关联数据。
+// 同时清理角色与流程角色关联，避免残留脏关联数据；删除后立即吊销其 token。
 func (s UserService) Delete(id, operatorID uint64, tenantID uint64) error {
 	if id == operatorID {
 		return errors.New("不能删除当前登录用户")
 	}
-	return db.DB.Transaction(func(tx *gorm.DB) error {
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
 		var user models.User
 		query := tx.Where("id = ?", id)
 		if tenantID > 0 {
@@ -158,7 +178,14 @@ func (s UserService) Delete(id, operatorID uint64, tenantID uint64) error {
 			return err
 		}
 		return tx.Delete(&user).Error
-	})
+	}); err != nil {
+		return err
+	}
+	// 账号已不存在：让其已签发的 token 立即失效，否则在有效期内仍能访问白名单接口（如仪表盘统计）
+	if err := (TokenService{}).RevokeUserTokensBefore(id, time.Now()); err != nil {
+		logrus.WithError(err).Warn("删除用户后吊销旧 token 失败")
+	}
+	return nil
 }
 
 func (s UserService) GetByID(id uint64, tenantID uint64) (*models.User, error) {

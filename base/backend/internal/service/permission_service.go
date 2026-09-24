@@ -15,10 +15,28 @@ import (
 type PermissionService struct{}
 
 func (s PermissionService) Create(p *models.Permission) error {
+	if err := validatePermissionFields(p); err != nil {
+		return err
+	}
 	return db.DB.Create(p).Error
 }
 
+// validatePermissionFields 校验权限点字段长度（对应 base_permission 的定长列）。
+func validatePermissionFields(p *models.Permission) error {
+	return validateLengths(
+		fieldLen{"应用编码", p.AppCode, 64},
+		fieldLen{"权限编码", p.Code, 128},
+		fieldLen{"权限名称", p.Name, 128},
+		fieldLen{"类型", p.Type, 32},
+		fieldLen{"路径", p.Path, 256},
+		fieldLen{"HTTP 方法", p.Method, 16},
+	)
+}
+
 func (s PermissionService) Update(p *models.Permission) error {
+	if err := validatePermissionFields(p); err != nil {
+		return err
+	}
 	if err := ensureRecordExists(db.DB.Model(&models.Permission{}).Where("id = ?", p.ID), "权限不存在"); err != nil {
 		return err
 	}

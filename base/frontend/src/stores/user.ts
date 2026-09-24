@@ -6,6 +6,7 @@ import router from '@/router'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref(localStorage.getItem('base-token') || '')
+  const refreshToken = ref(localStorage.getItem('base-refresh-token') || '')
   const userInfo = ref<any>(null)
   const menus = ref<Menu[]>([])
   const permissions = ref<string[]>([])
@@ -18,11 +19,35 @@ export const useUserStore = defineStore('user', () => {
     localStorage.setItem('base-token', val)
   }
 
+  /** 同时保存 access + refresh（登录与续期都走这里） */
+  function setTokens(access: string, refresh: string) {
+    setToken(access)
+    refreshToken.value = refresh
+    if (refresh) {
+      localStorage.setItem('base-refresh-token', refresh)
+    } else {
+      localStorage.removeItem('base-refresh-token')
+    }
+  }
+
   async function login(data: authApi.LoginReq) {
     const res: any = await authApi.login(data)
-    setToken(res.data.token)
+    setTokens(res.data.token, res.data.refresh_token)
     userInfo.value = res.data.user
     return res
+  }
+
+  /**
+   * 用 refresh token 续期（轮换：服务端会作废旧 refresh token）。
+   * 供请求拦截器在 401 时调用；失败抛出异常，由调用方决定是否清会话。
+   */
+  async function refreshSession() {
+    if (!refreshToken.value) {
+      throw new Error('no refresh token')
+    }
+    const res: any = await authApi.refreshSession(refreshToken.value)
+    setTokens(res.data.token, res.data.refresh_token)
+    return res.data.token as string
   }
 
   async function fetchUserInfo() {
@@ -62,29 +87,34 @@ export const useUserStore = defineStore('user', () => {
   /** 仅清空本地会话，不做跳转（供路由守卫使用） */
   function clearSession() {
     token.value = ''
+    refreshToken.value = ''
     userInfo.value = null
     menus.value = []
     permissions.value = []
     hasFetchedMenus.value = false
     localStorage.removeItem('base-token')
+    localStorage.removeItem('base-refresh-token')
   }
 
   function logout() {
-    // 尽力通知服务端吊销 token（失败也不阻断前端登出）
-    authApi.logout(token.value).catch(() => undefined)
+    // 尽力通知服务端吊销 token（access + refresh），失败也不阻断前端登出
+    authApi.logout(token.value, refreshToken.value).catch(() => undefined)
     clearSession()
     router.push('/login')
   }
 
   return {
     token,
+    refreshToken,
     userInfo,
     menus,
     permissions,
     hasFetchedMenus,
     isLoggedIn,
     setToken,
+    setTokens,
     login,
+    refreshSession,
     fetchUserInfo,
     fetchUserMenusAndGenerateRoutes,
     fetchPermissions,

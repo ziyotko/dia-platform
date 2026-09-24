@@ -115,6 +115,7 @@
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useSiteStore } from '@/stores/site'
 import type { Menu } from '@/api/menu'
 import SubMenu from './components/SubMenu.vue'
 import Breadcrumb from '@/components/Breadcrumb.vue'
@@ -125,6 +126,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const siteStore = useSiteStore()
 const unreadCount = ref(0)
 const popupMenu = ref<Menu | null>(null)
 let showTimer: number | null = null
@@ -258,6 +260,8 @@ const cachedViewNames = computed(() => {
 })
 
 onMounted(() => {
+  // 站点信息（平台名称等）用于浏览器标题；登录页已拉过则不重复请求
+  if (!siteStore.loaded) siteStore.fetchSiteInfo()
   fetchUnread()
   timer = window.setInterval(fetchUnread, 30000)
   window.addEventListener('base:unread-changed', fetchUnread)

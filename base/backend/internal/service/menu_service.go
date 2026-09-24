@@ -13,10 +13,30 @@ import (
 type MenuService struct{}
 
 func (s MenuService) Create(m *models.Menu) error {
+	if err := validateMenuFields(m); err != nil {
+		return err
+	}
 	return db.DB.Create(m).Error
 }
 
+// validateMenuFields 校验菜单字段长度（对应 base_menu 的定长列）。
+func validateMenuFields(m *models.Menu) error {
+	return validateLengths(
+		fieldLen{"应用编码", m.AppCode, 64},
+		fieldLen{"菜单名称", m.Name, 128},
+		fieldLen{"图标", m.Icon, 64},
+		fieldLen{"路由路径", m.Path, 256},
+		fieldLen{"组件路径", m.Component, 256},
+		fieldLen{"类型", m.Type, 32},
+		fieldLen{"权限标识", m.Permission, 128},
+		fieldLen{"打开方式", m.Target, 32},
+	)
+}
+
 func (s MenuService) Update(m *models.Menu, tenantID uint64) error {
+	if err := validateMenuFields(m); err != nil {
+		return err
+	}
 	check := db.DB.Model(&models.Menu{}).Where("id = ?", m.ID)
 	db := db.DB.Model(m)
 	if tenantID > 0 {

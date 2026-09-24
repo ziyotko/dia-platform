@@ -38,6 +38,9 @@ type WorkflowApproverOptions struct {
 }
 
 func (s WorkflowService) Create(w *models.Workflow) error {
+	if err := validateWorkflowFields(w); err != nil {
+		return err
+	}
 	var count int64
 	if err := db.DB.Model(&models.Workflow{}).
 		Where("tenant_id = ? AND code = ?", w.TenantID, w.Code).
@@ -54,6 +57,9 @@ func (s WorkflowService) Create(w *models.Workflow) error {
 }
 
 func (s WorkflowService) Update(w *models.Workflow, tenantID uint64) error {
+	if err := validateWorkflowFields(w); err != nil {
+		return err
+	}
 	query := db.DB.Model(&models.Workflow{}).Where("id = ?", w.ID)
 	if tenantID > 0 {
 		query = query.Where("tenant_id = ?", tenantID)
@@ -161,6 +167,15 @@ func (s WorkflowService) List(q WorkflowListQuery) ([]models.Workflow, int64, er
 	return list, total, nil
 }
 
+// validateWorkflowFields 校验流程定义字段长度（对应 base_workflow 的定长列）。
+func validateWorkflowFields(w *models.Workflow) error {
+	return validateLengths(
+		fieldLen{"流程编码", w.Code, 64},
+		fieldLen{"流程名称", w.Name, 128},
+		fieldLen{"流程说明", w.Description, 512},
+	)
+}
+
 // Options 启用中的流程定义选项（供「发起流程」选择，不分页、仅返回必要字段）。
 func (s WorkflowService) Options(tenantID uint64) ([]models.Workflow, error) {
 	var list []models.Workflow
@@ -243,6 +258,12 @@ func (s WorkflowService) SaveNodes(workflowID uint64, nodes []models.WorkflowNod
 			node.Sort = i + 1
 			if node.Name == "" {
 				return errors.New("节点名称不能为空")
+			}
+			if err := validateLengths(
+				fieldLen{"节点名称", node.Name, 128},
+				fieldLen{"节点说明", node.Description, 512},
+			); err != nil {
+				return err
 			}
 			switch node.ApproverType {
 			case models.ApproverTypeRole:

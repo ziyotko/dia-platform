@@ -26,10 +26,27 @@ func RenderMessageTemplate(text string, vars map[string]string) string {
 type MessageTemplateService struct{}
 
 func (s MessageTemplateService) Create(t *models.MessageTemplate) error {
+	if err := validateTemplateFields(t); err != nil {
+		return err
+	}
 	return db.DB.Create(t).Error
 }
 
+// validateTemplateFields 校验消息模板字段长度（对应 base_message_template 的定长列）。
+func validateTemplateFields(t *models.MessageTemplate) error {
+	return validateLengths(
+		fieldLen{"模板编码", t.Code, 64},
+		fieldLen{"模板名称", t.Name, 128},
+		fieldLen{"渠道", t.Channel, 32},
+		fieldLen{"主题", t.Subject, 256},
+		fieldLen{"描述", t.Description, 512},
+	)
+}
+
 func (s MessageTemplateService) Update(t *models.MessageTemplate, tenantID uint64) error {
+	if err := validateTemplateFields(t); err != nil {
+		return err
+	}
 	check := db.DB.Model(&models.MessageTemplate{}).Where("id = ?", t.ID)
 	db := db.DB.Model(t).Where("id = ?", t.ID)
 	if tenantID > 0 {

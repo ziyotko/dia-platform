@@ -23,6 +23,7 @@ var permissionWhitelist = map[string][]string{
 	"/auth/permissions":      {"GET"},
 	"/auth/change-password":  {"POST"},
 	"/auth/logout":           {"POST"},
+	"/auth/app-ticket":       {"POST"},
 	"/dashboard/stats":       {"GET"},
 	"/app-instances/my":      {"GET"},
 	"/messages/unread-count": {"GET"},

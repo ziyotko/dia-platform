@@ -18,17 +18,45 @@ export interface UserInfo {
   avatar?: string
 }
 
+export interface LoginResp {
+  token: string
+  refresh_token: string
+  expires_in: number
+}
+
 export function login(data: LoginReq) {
-  return request.post('/auth/login', data)
+  return request.post<LoginResp>('/auth/login', data)
+}
+
+/** 用 refresh token 换发新的 access + refresh（轮换：旧 refresh 立即失效） */
+export function refreshSession(refreshToken: string) {
+  return request.post<LoginResp>('/auth/refresh', { refresh_token: refreshToken })
+}
+
+/** 为自己签发子应用一次性接入票据（60 秒有效、只用一次） */
+export function createAppTicket() {
+  return request.post<{ ticket: string; expires_in: number }>('/auth/app-ticket')
+}
+
+/** 子应用侧：用一次性票据换回底座会话（子应用调用） */
+export function exchangeAppTicket(ticket: string) {
+  return request.post('/auth/app-ticket/exchange', { ticket })
 }
 
 export function getCaptcha() {
   return request.get<{ captcha_id: string; captcha_img: string }>('/auth/captcha')
 }
 
-/** 公开站点信息（无需登录）：登录页据此决定是否展示验证码 */
+/** 公开站点信息（无需登录）：登录页据此决定是否展示验证码，并展示平台名称/Logo/版权 */
+export interface SiteInfo {
+  captchaEnabled: boolean
+  platformName?: string
+  logo?: string
+  copyright?: string
+}
+
 export function getSiteInfo() {
-  return request.get<{ captchaEnabled: boolean }>('/site-info')
+  return request.get<SiteInfo>('/site-info')
 }
 
 export function getUserInfo() {
@@ -47,9 +75,9 @@ export function changePassword(data: { oldPwd: string; newPwd: string }) {
   return request.post('/auth/change-password', data)
 }
 
-/** 登出：服务端把当前 token 加入黑名单（失败也不影响前端清理本地会话）。
- * token 显式传入：调用方会紧接着清空 store，不能依赖请求拦截器再去读取。 */
-export function logout(token?: string) {
+/** 登出：服务端把当前 access token 加入黑名单并作废 refresh token（失败也不影响前端清理本地会话）。
+ * token / refresh_token 显式传入：调用方会紧接着清空 store，不能依赖请求拦截器再去读取。 */
+export function logout(token?: string, refreshToken?: string) {
   const config = token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
-  return request.post('/auth/logout', null, config)
+  return request.post('/auth/logout', { refresh_token: refreshToken || '' }, config)
 }

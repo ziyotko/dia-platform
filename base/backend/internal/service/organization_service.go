@@ -13,10 +13,28 @@ import (
 type OrganizationService struct{}
 
 func (s OrganizationService) Create(o *models.Organization) error {
+	if err := validateOrgFields(o); err != nil {
+		return err
+	}
 	return db.DB.Create(o).Error
 }
 
+// validateOrgFields 校验机构字段长度（对应 base_organization 的定长列）。
+func validateOrgFields(o *models.Organization) error {
+	return validateLengths(
+		fieldLen{"机构编码", o.Code, 64},
+		fieldLen{"机构名称", o.Name, 128},
+		fieldLen{"负责人", o.Leader, 64},
+		fieldLen{"联系电话", o.Phone, 32},
+		fieldLen{"邮箱", o.Email, 128},
+		fieldLen{"描述", o.Description, 512},
+	)
+}
+
 func (s OrganizationService) Update(o *models.Organization, tenantID uint64) error {
+	if err := validateOrgFields(o); err != nil {
+		return err
+	}
 	check := db.DB.Model(&models.Organization{}).Where("id = ?", o.ID)
 	db := db.DB.Model(o)
 	if tenantID > 0 {

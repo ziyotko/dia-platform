@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"strings"
+
 	"base/internal/models"
 	"base/internal/service"
 	"base/pkg/notifier"
@@ -46,13 +48,28 @@ func (ctl *SettingsController) Save(c *gin.Context) {
 	response.OkWithMessage(c, "保存成功", nil)
 }
 
-// SiteInfo 公开站点信息（无需登录）：登录页据此决定是否展示验证码等。
-// 只返回与登录页展示相关的非敏感设置。
+// SiteInfo 公开站点信息（无需登录）：登录页据此决定是否展示验证码，并展示平台名称/Logo/版权。
+// 只返回与登录页展示相关的非敏感设置（不包含任何密码类配置）。
 func (ctl *SettingsController) SiteInfo(c *gin.Context) {
 	security := ctl.service.GetSecuritySettings()
+	// 基础配置（平台名称/Logo/版权）是可公开的展示信息；取不到时用默认值
+	basic, _ := ctl.service.GetByCategory("basic")
 	response.Ok(c, gin.H{
 		"captchaEnabled": security.CaptchaEnabled,
+		"platformName":   firstNonEmpty(basic["platformName"], "Base 底座平台"),
+		"logo":           basic["logo"],
+		"copyright":      basic["copyright"],
 	})
+}
+
+// firstNonEmpty 返回第一个非空（去空白）的值，全部为空时返回 fallback。
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return ""
 }
 
 func (ctl *SettingsController) TestEmail(c *gin.Context) {

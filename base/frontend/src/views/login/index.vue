@@ -12,10 +12,11 @@
         <div class="login-header">
           <div class="brand">
             <div class="brand-icon">
-              <el-icon :size="32" color="#fff"><Management /></el-icon>
+              <img v-if="siteStore.logo" :src="siteStore.logo" alt="logo" class="brand-logo" />
+              <el-icon v-else :size="32" color="#fff"><Management /></el-icon>
             </div>
             <div class="brand-text">
-              <h1 class="title">Base 管理后台</h1>
+              <h1 class="title">{{ siteStore.platformName }}</h1>
               <p class="subtitle">统一的企业级管理底座</p>
             </div>
           </div>
@@ -89,7 +90,7 @@
         </el-form>
 
         <div class="login-footer">
-          <p>© {{ currentYear }} Base Platform. All rights reserved.</p>
+          <p>{{ siteStore.copyright || `© ${currentYear} Base Platform. All rights reserved.` }}</p>
         </div>
       </el-card>
     </div>
@@ -102,10 +103,12 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Management, OfficeBuilding, User, Lock, Grid } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
-import { getCaptcha, getSiteInfo } from '@/api/auth'
+import { useSiteStore } from '@/stores/site'
+import { getCaptcha } from '@/api/auth'
 
 const router = useRouter()
 const userStore = useUserStore()
+const siteStore = useSiteStore()
 const formRef = ref<any>(null)
 const loading = ref(false)
 const captchaImage = ref('')
@@ -143,13 +146,10 @@ const loadCaptcha = async () => {
 }
 
 // 验证码开关确定后再加载验证码图片（关闭时不请求，避免无谓的接口调用）
+// 站点信息（平台名称/Logo/版权）与开关同一次请求拿到，避免重复调接口
 const loadSiteInfo = async () => {
-  try {
-    const res: any = await getSiteInfo()
-    captchaEnabled.value = res.data?.captchaEnabled !== false
-  } catch {
-    // 拉取失败时保持默认开启
-  }
+  await siteStore.fetchSiteInfo()
+  captchaEnabled.value = siteStore.captchaEnabled
   if (captchaEnabled.value) {
     loadCaptcha()
   }
@@ -306,6 +306,15 @@ onMounted(loadSiteInfo)
     align-items: center;
     justify-content: center;
     box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
+    overflow: hidden;
+  }
+
+  /* 系统设置 → 基础配置 里配了 Logo 就显示图片，否则回退到默认图标 */
+  .brand-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #fff;
   }
 
   .brand-text {

@@ -115,18 +115,22 @@ const showTrend = computed(() => isAdmin.value)
 // 当前租户已开通的应用（普通用户也可见，未开通则为空、不展示卡片）
 const myApps = computed(() => appStore.myApps)
 
-const openApp = (app: App) => {
+const openApp = async (app: App) => {
   if (!app.frontendUrl) {
     ElMessage.info('该应用未配置前端入口，请通过左侧菜单访问')
     return
   }
-  // 与菜单里的 iframe 入口保持一致：带上底座会话参数，子应用才能识别当前用户
-  const url = buildAppEntryUrl(app.frontendUrl, {
-    token: userStore.token,
-    userId: userStore.userInfo?.id,
-    username: userStore.userInfo?.username,
-    tenantId: userStore.userInfo?.tenantId
-  })
+  // 与菜单里的 iframe 入口保持一致：现场签一张一次性票据（base_ticket），
+  // 不再把底座 access token 直接放进 URL（浏览器历史/日志会留痕）
+  const url = await buildAppEntryUrl(app.frontendUrl)
+  if (!url) {
+    ElMessage.error('该应用未配置前端入口')
+    return
+  }
+  if (url.includes('base_ticket_error=1')) {
+    ElMessage.error('签发子应用接入票据失败，请重试或联系管理员')
+    return
+  }
   window.open(url, '_blank')
 }
 

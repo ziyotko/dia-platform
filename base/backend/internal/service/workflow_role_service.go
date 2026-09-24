@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"base/internal/models"
 	"base/pkg/db"
@@ -18,6 +19,12 @@ import (
 type WorkflowRoleService struct{}
 
 func (s WorkflowRoleService) Create(r *models.WorkflowRole) error {
+	if strings.TrimSpace(r.Name) == "" {
+		return errors.New("请填写流程角色名称")
+	}
+	if err := validateWorkflowRoleFields(r); err != nil {
+		return err
+	}
 	var count int64
 	if err := db.DB.Model(&models.WorkflowRole{}).
 		Where("tenant_id = ? AND code = ?", r.TenantID, r.Code).
@@ -34,6 +41,9 @@ func (s WorkflowRoleService) Create(r *models.WorkflowRole) error {
 }
 
 func (s WorkflowRoleService) Update(r *models.WorkflowRole, tenantID uint64) error {
+	if err := validateWorkflowRoleFields(r); err != nil {
+		return err
+	}
 	query := db.DB.Model(&models.WorkflowRole{}).Where("id = ?", r.ID)
 	if tenantID > 0 {
 		query = query.Where("tenant_id = ?", tenantID)
@@ -92,6 +102,15 @@ func (s WorkflowRoleService) Delete(id uint64, tenantID uint64) error {
 		}
 		return tx.Delete(&role).Error
 	})
+}
+
+// validateWorkflowRoleFields 校验流程角色字段长度（对应 base_workflow_role 的定长列）。
+func validateWorkflowRoleFields(r *models.WorkflowRole) error {
+	return validateLengths(
+		fieldLen{"流程角色编码", r.Code, 64},
+		fieldLen{"流程角色名称", r.Name, 128},
+		fieldLen{"角色说明", r.Description, 512},
+	)
 }
 
 func (s WorkflowRoleService) GetByID(id uint64, tenantID uint64) (*models.WorkflowRole, error) {
@@ -190,6 +209,10 @@ func (s WorkflowRoleService) AssignUsers(roleID uint64, userIDs []uint64, tenant
 func (s WorkflowRoleService) ListUserOptions(tenantID, filterTenantID uint64, keyword string, limit int) ([]models.User, error) {
 	if limit <= 0 {
 		limit = 100
+	}
+	// 上限固定，避免 {"limit":100000} 把整租户用户拉出来
+	if limit > 500 {
+		limit = 500
 	}
 	var users []models.User
 	query := db.DB.Model(&models.User{})

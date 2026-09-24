@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"gorm.io/gorm"
@@ -57,3 +58,38 @@ const msgNotOwnedOrMissing = "记录不存在，或不属于当前租户（平�
 
 // msgNotOwnedOrMissingDelete 同上，用于删除场景。
 const msgNotOwnedOrMissingDelete = "记录不存在，或不属于当前租户（平台内置数据不可删除）"
+
+// clipText 按字符数截断文本，用于写入定长列前兜底。
+// 为什么需要：MySQL 严格模式下超长会直接报 1406（字段过长），最终变成 500，
+// 而超长往往只是用户粘贴了一长段文本，截断比报错更符合预期。max 为字符数（rune）。
+func clipText(s string, max int) string {
+	if max <= 0 {
+		return ""
+	}
+	runes := []rune(s)
+	if len(runes) <= max {
+		return s
+	}
+	return string(runes[:max])
+}
+
+// fieldLen 一个待校验的字段（Label 用于错误提示，Max 为字符数上限）。
+type fieldLen struct {
+	Label string
+	Value string
+	Max   int
+}
+
+// validateLengths 校验各字段的字符数上限，超长时返回明确提示。
+//
+// 为什么需要：这些字段在库里都是定长列，超长会由 MySQL 报 1406（Data too long）→ 接口 500，
+// 前端只能提示「服务器错误」；预先校验可以给出「应用名称不能超过 128 个字符」这种可操作提示。
+// 注意按 字符数（rune）计：utf8mb4 下 mysql 的 varchar(n) 也是字符数。
+func validateLengths(fields ...fieldLen) error {
+	for _, f := range fields {
+		if len([]rune(f.Value)) > f.Max {
+			return fmt.Errorf("%s不能超过 %d 个字符", f.Label, f.Max)
+		}
+	}
+	return nil
+}

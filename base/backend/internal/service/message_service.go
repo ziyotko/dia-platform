@@ -73,6 +73,8 @@ func (s MessageService) normalizeDraft(tenantID uint64, in DraftInput) (map[stri
 	if title == "" {
 		return nil, errors.New("请填写标题")
 	}
+	// 标题列长 256：超长会报 MySQL 1406 → 500，这里直接截断
+	title = clipText(title, 256)
 	content := strings.TrimSpace(in.Content)
 	if content == "" {
 		return nil, errors.New("请填写内容")
@@ -160,17 +162,23 @@ func (s MessageService) GetByID(id, userID, tenantID uint64) (*models.Message, e
 }
 
 // messageVisibleTo 判断消息对该用户是否可见。
-// 广播消息（receiver_id = 0）对所有人可见，但草稿广播仅发送者可见。
+// 规则：发送者始终可见自己的消息；**草稿（未发送）只有发送者可见**；
+// 已发送的定向消息接收者可见；已发送的广播所有人都可见。
 func messageVisibleTo(m *models.Message, userID uint64) bool {
-	if m.SenderID == userID || m.ReceiverID == userID {
+	if m.SenderID == userID {
 		return true
 	}
-	return m.ReceiverID == 0 && m.Status == models.MessageStatusSent
+	if m.Status != models.MessageStatusSent {
+		// 草稿哪怕指定了接收人也不应被对方读到（接收人的收件箱只列 status=3，能读到内容等于草稿泄露）
+		return false
+	}
+	return m.ReceiverID == userID || m.ReceiverID == 0
 }
 
 // Delete 删除消息。权限口径：
-//   - 定向消息：发送者或接收者本人可删；
-//   - 广播消息：库中只有一行、租户内共享，普通接收者不可删，仅发送者或管理员可删。
+//   - 未发送的草稿：只有发送者（或管理员）可删（旧实现允许「草稿指定的接收人」把尚未发送的草稿删掉）；
+//   - 已发送的定向消息：发送者或接收者本人可删；
+//   - 已发送的广播消息：库中只有一行、租户内共享，普通接收者不可删，仅发送者或管理员可删。
 func (s MessageService) Delete(id, userID uint64, isAdmin bool, tenantID uint64) error {
 	var m models.Message
 	query := db.DB.Where("id = ?", id)
@@ -181,6 +189,12 @@ func (s MessageService) Delete(id, userID uint64, isAdmin bool, tenantID uint64)
 		return errors.New("消息不存在")
 	}
 	switch {
+	case m.Status != models.MessageStatusSent:
+		// 草稿是发送者的私有内容（连管理员都读不到），因此只有发送者本人能删——
+		// 否则「草稿指定的接收人」或租户管理员可以删掉尚未发送的草稿。
+		if m.SenderID != userID {
+			return errors.New("草稿仅发送者可以删除")
+		}
 	case m.ReceiverID == 0:
 		if m.SenderID != userID && !isAdmin {
 			return errors.New("广播消息不支持单个接收者删除")
@@ -188,7 +202,14 @@ func (s MessageService) Delete(id, userID uint64, isAdmin bool, tenantID uint64)
 	case m.SenderID != userID && m.ReceiverID != userID:
 		return errors.New("只能删除自己发送或接收的消息")
 	}
-	return db.DB.Delete(&m).Error
+	// 广播消息的「每人已读」记录必须一并删除：否则 base_message_read 会留下指向
+	// 已删消息的孤儿行，越积越多（删除是硬删，不会自动级联）。
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("message_id = ?", m.ID).Delete(&models.MessageRead{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&m).Error
+	})
 }
 
 func (s MessageService) List(q MessageListQuery) ([]models.Message, int64, error) {
@@ -280,10 +301,12 @@ func (s MessageService) GetUnreadCount(receiverID uint64, tenantID uint64) (int6
 	return directCount + broadcastCount, nil
 }
 
-// MarkRead 标记单条消息为已读（仅限发给自己的定向消息或广播消息）。
+// MarkRead 标记单条消息为已读（仅限发给自己的**已发送**定向消息或广播消息）。
+// 必须限定 status = 已发送：否则接收人把尚未发送的草稿标成已读，发送后会直接显示为已读。
 func (s MessageService) MarkRead(id, receiverID uint64, tenantID uint64) error {
 	var m models.Message
-	query := db.DB.Where("id = ? AND (receiver_id = ? OR receiver_id = 0)", id, receiverID)
+	query := db.DB.Where("id = ? AND (receiver_id = ? OR receiver_id = 0) AND status = ?",
+		id, receiverID, models.MessageStatusSent)
 	if tenantID > 0 {
 		query = query.Where("tenant_id = ? OR tenant_id = 0", tenantID)
 	}

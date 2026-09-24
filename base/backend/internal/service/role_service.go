@@ -13,13 +13,28 @@ import (
 type RoleService struct{}
 
 func (s RoleService) Create(r *models.Role) error {
+	if err := validateRoleFields(r); err != nil {
+		return err
+	}
 	// 必须 Omit 关联：Role.Menus / Role.Perms 都是 many2many，GORM 的 Create 会把请求体里的
 	// menus / permissions 一并 upsert 进 base_menu / base_permission（可凭空造菜单或权限点）。
 	// 菜单与权限统一走 POST /roles/:id/menus 与 /roles/:id/permissions。
 	return db.DB.Omit(clause.Associations).Create(r).Error
 }
 
+// validateRoleFields 校验角色字段长度（对应 base_role 的定长列）。
+func validateRoleFields(r *models.Role) error {
+	return validateLengths(
+		fieldLen{"角色编码", r.Code, 64},
+		fieldLen{"角色名称", r.Name, 128},
+		fieldLen{"备注", r.Remark, 512},
+	)
+}
+
 func (s RoleService) Update(r *models.Role, tenantID uint64) error {
+	if err := validateRoleFields(r); err != nil {
+		return err
+	}
 	check := db.DB.Model(&models.Role{}).Where("id = ?", r.ID)
 	db := db.DB.Model(r)
 	if tenantID > 0 {

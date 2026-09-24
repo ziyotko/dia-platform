@@ -22,11 +22,26 @@ type DictListQuery struct {
 }
 
 func (s DictService) Create(d *models.Dict) error {
+	if err := validateDictFields(d); err != nil {
+		return err
+	}
 	// 字典项统一走 POST /dicts/:id/items，避免 Create 连带 upsert 请求体里的 items
 	return db.DB.Omit(clause.Associations).Create(d).Error
 }
 
+// validateDictFields 校验字典字段长度（对应 base_dict 的定长列）。
+func validateDictFields(d *models.Dict) error {
+	return validateLengths(
+		fieldLen{"字典编码", d.Code, 64},
+		fieldLen{"字典名称", d.Name, 128},
+		fieldLen{"描述", d.Description, 512},
+	)
+}
+
 func (s DictService) Update(d *models.Dict, tenantID uint64) error {
+	if err := validateDictFields(d); err != nil {
+		return err
+	}
 	check := db.DB.Model(&models.Dict{}).Where("id = ?", d.ID)
 	db := db.DB.Model(d).Where("id = ?", d.ID)
 	if tenantID > 0 {
@@ -132,6 +147,12 @@ func (s DictService) SaveItems(dictID uint64, items []models.DictItem, tenantID 
 		for i := range items {
 			items[i].DictID = dictID
 			items[i].ID = 0
+			if err := validateLengths(
+				fieldLen{"字典项显示名", items[i].Label, 128},
+				fieldLen{"字典项值", items[i].Value, 128},
+			); err != nil {
+				return err
+			}
 		}
 		return tx.Create(&items).Error
 	})

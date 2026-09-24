@@ -56,6 +56,9 @@ server:
   captcha_rate_window_seconds: 60
   init_rate_limit: 5                      # POST /auth/init
   init_rate_window_seconds: 60
+  refresh_rate_limit: 60                  # POST /auth/refresh、POST /auth/app-ticket/exchange
+  refresh_rate_window_seconds: 60
+  app_ticket_ttl_seconds: 60              # 子应用一次性接入票据有效期（秒），<=0 回退 60
   upload_dir: ./uploads                   # 上传目录（相对进程工作目录；初始化时转绝对路径）
   max_upload_mb: 50                        # 单文件大小上限（MB），<=0 回退 50
   workflow_remind_interval_seconds: 600   # 工作流超时提醒扫描周期（秒）；显式配 0/负数表示关闭
@@ -74,7 +77,8 @@ redis:
   db: 1
 jwt:
   secret: base-platform-jwt-secret        # ⚠️ 生产必须换成 ≥32 位随机串
-  expire_hours: 8                         # 登录态有效期（小时）
+  expire_hours: 8                         # access token（JWT）有效期（小时）
+  refresh_expire_hours: 168               # refresh token 有效期（小时，默认 7 天）；改密/禁用/删除用户立即失效
   issuer: base-platform
 ```
 
@@ -84,6 +88,8 @@ jwt:
 | `server.trusted_proxies` | 决定是否信任 `X-Forwarded-For` / `X-Real-IP`；仅在来源属于该列表时使用，否则一律 `RemoteAddr`（防伪造头绕过限流） |
 | `server.upload_dir` / `max_upload_mb` | 上传落盘目录与单文件上限；控制器按 header 快速拒绝，存储层再用 `io.LimitReader` 兜底 |
 | `server.workflow_remind_interval_seconds` | 工作流超时提醒后台轮询周期，`<= 0` 不启动提醒 |
+| `jwt.expire_hours` / `jwt.refresh_expire_hours` | access / refresh token 有效期；前端在 access 过期时自动用 refresh 续期（轮换），因此用户感知的会话长度 = refresh 有效期（连续 7 天未打开才会掉线） |
+| `server.app_ticket_ttl_seconds` | 子应用一次性接入票据有效期（默认 60s）；子应用加载慢可适当调大 |
 
 ### 2. 敏感信息（与 portal / member 的差异）
 
@@ -160,7 +166,8 @@ POST /business_base/api/auth/init
 
 ### 7. 健康检查与统一响应
 
-- 健康检查（公开、无需 Token）：`GET /business_base/api/site-info` → `{code:0,data:{captchaEnabled}}`
+- 健康检查（公开、无需 Token）：`GET /business_base/api/site-info` → `{code:0,data:{captchaEnabled,platformName,logo,copyright}}`
+  （`platformName/logo/copyright` 来自「系统设置 → 基础配置」，仅用于登录页与浏览器标题展示，不包含任何密码类配置）
 - **统一返回 HTTP 200 + 业务码**：`code=0` 成功、`400` 参数错误、`401` 未认证/Token 失效、`403` 无权限、`404` 不存在、`429` 触发限流、`500` 业务失败。
 - 前端拦截器遇 `code=401` 会清理本地会话并跳转 `${BASE_URL}login`；遇其它非 0 码统一弹错误提示。
 - 文件访问：`GET /business_base/api/files/*key`（公开，key 形如 `20260101/xxx.png`）。
@@ -283,8 +290,15 @@ server {
 ### 2. IFrame 接入（最快）
 
 - 子应用独立部署；菜单 `目标/打开方式 = IFrame` 时，底座用 `views/base/iframe/index.vue` 加载菜单「组件路径」中的地址。
-- 底座自动在地址后追加查询参数（已有 query 会以 `&` 追加）：`base_token`、`user_id`、`username`、`tenant_id`。
-- 子应用前端解析 `base_token`，调用底座 `GET /business_base/api/auth/info` 校验用户信息。
+- 底座自动在地址后追加 **一次性票据**（已有 query 会以 `&` 追加）：`base_ticket`（有效期 `server.app_ticket_ttl_seconds`，默认 60 秒，**只用一次**）。
+- 子应用启动时用它换会话（公开接口，无需先登录底座）：
+  ```http
+  POST /business_base/api/auth/app-ticket/exchange   { "ticket": "<base_ticket>" }
+  → { code:0, data:{ token, expires_in, user:{ id, username, realName, tenantId, isAdmin } } }
+  ```
+  拿到 `token` 后即可调用底座接口（如 `GET /auth/info`）；推荐换完就用 `history.replaceState` 把 `base_ticket` 从地址栏抹掉。
+- 为什么不再直传 token：`base_token` 这类长期凭证放在 URL 里会进入**浏览器历史、Referer 与网关访问日志**；票据只有 60 秒且消费即失效（Redis 原子 GET+DEL，不会双花），即使被记录也已失效。
+- 兼容：子应用若尚未改造，仍可读取 URL 里的 `base_token`（**已废弃**，不再由底座生成）；请尽快迁移到票据流程。参考实现见 `base/integration/adapter-ts/types.ts` 的 `resolveBaseSession()`。
 - 适合已有系统改动成本低的场景。
 
 ### 3. API 代理接入（推荐）
@@ -302,16 +316,17 @@ server {
 
 | 来源 | 字段 | 说明 |
 | --- | --- | --- |
-| URL Query | `base_token` | 底座 JWT（仅 iframe 接入，由底座前端自动追加） |
-| URL Query | `user_id` / `username` / `tenant_id` | 仅 iframe 接入，便于子应用展示与调试，可信度低于请求头 |
+| URL Query | `base_ticket` | 一次性接入票据（iframe 与新窗口均由底座前端自动追加）；换回 token 与用户信息 |
+| 兑换接口返回 | `token` / `user{id,username,realName,tenantId,isAdmin}` | `POST /auth/app-ticket/exchange` 的响应体（不返回 refresh token，子应用不能后台无限续期） |
 | Header | `X-Base-User-ID` | 用户 ID（代理接入） |
 | Header | `X-Base-Username` | 用户名（代理接入） |
 | Header | `X-Base-Tenant-ID` | 租户 ID（代理接入，平台超管为 `0`） |
+| URL Query（已废弃） | `base_token` / `user_id` / `username` / `tenant_id` | 旧接口径，底座不再生成，仅为存量子应用保留读取兼容 |
 
 ### 5. 适配器示例
 
 - Go / Gin 中间件示例见 `base/integration/adapter-go/middleware.go`：读取底座请求头并写入 gin 上下文，`r.Use(adapter.BaseAuthMiddleware())`。
-- TypeScript 侧示例见 `base/integration/adapter-ts/types.ts`：定义用户类型与 `base_token` / 用户信息本地存取工具。
+- TypeScript 侧示例见 `base/integration/adapter-ts/types.ts`：`resolveBaseSession()`（票据换会话，推荐）与旧的 `base_token` 读取工具（兼容）。
 - 本仓库内的 `base/integration/` 只保留适配器示例代码，接入规范即本节内容。
 
 ### 6. 安全建议
@@ -548,6 +563,8 @@ if tenantID > 0 {
 | `GET /business_base/api/auth/captcha` | 30 次/分钟 | `captcha_rate_limit` / `captcha_rate_window_seconds` |
 | `GET /business_base/api/site-info` | 30 次/分钟 | 同上（与验证码共用额度参数） |
 | `POST /business_base/api/auth/init` | 5 次/分钟 | `init_rate_limit` / `init_rate_window_seconds` |
+| `POST /business_base/api/auth/refresh` | 60 次/分钟 | `refresh_rate_limit` / `refresh_rate_window_seconds` |
+| `POST /business_base/api/auth/app-ticket/exchange` | 60 次/分钟 | 同上（与续期共用额度参数，各路由独立计数） |
 
 **要点**
 
@@ -556,23 +573,29 @@ if tenantID > 0 {
 - Redis 不可用时退化为**进程内固定窗口限流**（fail-closed），避免限流组件故障时被无限刷量。
 - 客户端 IP 走 gin `ClientIP()`：仅当请求来自 `server.trusted_proxies` 时才信任 `X-Forwarded-For` / `X-Real-IP`，否则用 `RemoteAddr`。**部署在 Nginx 后必须填代理真实地址**。
 
-### A.8 Token 吊销（登出 / 改密）
+### A.8 Token 吊销与会话续期
 
-实现：`internal/service/token_service.go` + `internal/middleware/auth.go`，全部状态存 Redis，不新增数据表：
+实现：`internal/service/token_service.go`（access token 吊销）、`internal/service/refresh_token_service.go`（refresh token）、`internal/middleware/auth.go`，全部状态存 Redis，不新增数据表：
 
 | Key | 写入时机 | 含义 |
 | --- | --- | --- |
-| `auth:token:revoked:<jti>` | `POST /auth/logout` | 该 token 已登出，TTL = 剩余有效期 |
-| `auth:user:revoked-before:<userID>` | 修改密码成功后 | 该时刻之前签发的 token 全部失效，TTL = JWT 有效期 |
+| `auth:token:revoked:<jti>` | `POST /auth/logout` | 该 access token 已登出，TTL = 剩余有效期 |
+| `auth:user:revoked-before:<userID>` | 改密 / **禁用用户 / 删除用户** / 检测到 refresh 复用 | 该时刻之前签发的 access **与 refresh** token 全部失效 |
+| `auth:refresh:<sha256>` | 登录 / 每次续期 | 有效 refresh token（只存摘要）{userId, issuedAt}，TTL = `jwt.refresh_expire_hours` |
+| `auth:refresh:rev:<sha256>` | 续期轮换 / 登出 | 已消费/已作废标记；再次出现即判定复用 |
+| `auth:refresh:used:<sha256>` | 续期轮换 | 宽限期（120s）重放缓存，容忍并发与网络重试 |
+| `auth:app-ticket:<sha256>` | `POST /auth/app-ticket` | 子应用一次性票据（TTL = `app_ticket_ttl_seconds`，消费即删） |
 
 - `JWTAuth` 解析后校验 `jti` 黑名单与用户级失效时间，命中返回 `401 登录状态已失效，请重新登录`。
-- Redis 不可用时 **fail-open**（放行并记 warn）：宁可短暂失去吊销能力，也不能让全部用户无法登录。
-- 前端 `stores/user.ts` 的 `logout()` 会尽力调用登出接口（显式携带 token）后清理本地会话；拦截器遇 401 只调 `clearSession()`（**不要再调 logout()，会递归**）。
+- Redis 不可用时：**access token 校验 fail-open**（放行并记 warn，宁可短暂失去吊销能力也不能让全部用户无法登录）；**续期 fail-closed**（无法校验的 refresh token 不放行，用户仍可继续用完当前 access token）。
+- **会话续期**：`POST /auth/refresh`（公开 + 按 IP 限流，refresh token 在请求体里）→ 返回新的 `{token, refresh_token, expires_in}`。refresh token **每次续期都轮换**，旧串立即失效；已被消费的串再次出现（超出 120 秒宽限期）视为泄漏，直接吊销该用户全部会话。子应用票据兑换**只发 access token**，不发 refresh token。
+- 前端 `stores/user.ts` 的 `logout()` 会尽力调用登出接口（显式携带 access 与 refresh）后清理本地会话；`utils/request.ts` 遇 401 先用 refresh token 续期并重放原请求一次（**单飞**：并发 401 只续期一次），失败才清会话并跳登录页（**不要再调 logout()，会递归**）。
 
 ### A.9 写操作保护（删除 / 引用）
 
 - **引用校验**：租户（用户/角色/应用实例/流程角色/流程定义/流程实例）、应用（应用实例）、机构（子机构）、菜单（子菜单）、权限（子权限）在存在下级或引用时拒绝删除，并返回具体数量。
 - **级联清理**：删除用户清理 `base_user_role` / `base_workflow_role_user`；删除角色清理 `base_role_menu` / `base_role_permission` / `base_user_role`；删除菜单清理 `base_role_menu`；删除权限清理 `base_role_permission`；删除流程角色同时删 `base_workflow_role_user`。均在事务内完成。
+- **删除租户的口径**：用户/角色/应用实例/流程角色/流程定义/流程实例仍存在时**拒绝删除**（提示先清理）；其余租户级业务数据（消息与已读记录、消息模板、字典与字典项、机构、租户自建菜单、上传文件记录）在同一事务内**级联删除**，磁盘上的上传文件在提交后尽力删除；**操作日志与登录日志有意保留**（审计留痕优先，平台超管仍可在日志页追溯；MySQL 8 自增 id 不复用，不会串给新建租户），如需彻底清空请用日志页的「清理」功能。
 - **账号保护**：不能删除当前登录用户；平台内置 `admin` 账号与 `tenant_id=0, code=super_admin` 角色不可删除。
 - **应用实例唯一**：同一租户同一应用不可重复开通（应用层校验，删除后可重新开通）。
 - **用户名唯一**：`uk_base_user_tenant_username (tenant_id, username)`——同租户内不可重名、跨租户可同名（与登录按「租户编码 + 用户名」定位一致）；service 层预检查只给友好提示，**并发由索引兜底**（MySQL 1062 转成「该租户下用户名已存在」，不暴露 SQL 细节）；启动时 `dedupeUserUsernames` 先整理历史重复数据，否则建索引会失败导致服务起不来。
@@ -688,7 +711,7 @@ if tenantID > 0 {
 | POST | `/auth/login` | 登录（支持租户编码、验证码），10 次/分钟 |
 | POST | `/auth/init` | 首次部署创建超级管理员（已存在则报错），5 次/分钟 |
 | GET | `/auth/captcha` | 图形验证码，返回 `captcha_id` / `captcha_img`，30 次/分钟 |
-| GET | `/site-info` | 站点公开配置（`captchaEnabled`），30 次/分钟 |
+| GET | `/site-info` | 站点公开配置（`captchaEnabled` + 平台名称/Logo/版权），30 次/分钟 |
 | GET | `/files/*key` | 文件公开访问（key 含日期目录，如 `20260101/xxx.png`） |
 
 ### 登录后接口（JWT + 操作审计 + 接口权限校验）
@@ -762,14 +785,14 @@ frontend/
 ### C.3 请求封装约定
 
 - `utils/request.ts`：`baseURL = VITE_API_BASE_URL || '/business_base/api'`，超时 30s，请求拦截自动加 `Authorization: Bearer <token>`。
-- 响应拦截：`responseType === 'blob'`（导出）**直接返回原始数据**，跳过 `{code}` 校验；`code !== 0 && code !== 200` 统一 `ElMessage.error`；`code === 401` → `clearSession()` + 跳 `${BASE_URL}login`（**不要再调 logout()，会递归**）。
+- 响应拦截：`responseType === 'blob'`（导出）**直接返回原始数据**，跳过 `{code}` 校验；`code !== 0 && code !== 200` 统一 `ElMessage.error`；`code === 401` 时先尝试用 refresh token 续期并**重放原请求一次**（单飞：并发 401 只续期一次），续期失败才 `clearSession()` + 跳 `${BASE_URL}login`（**不要再调 logout()，会递归**）。
 - 后端统一 `{code,message,data}`，失败也返回 HTTP 200，因此**不要用 HTTP 状态码判断业务成败**。
 
 ### C.4 动态路由
 
 - 路由基路径 `createWebHistory(import.meta.env.BASE_URL)`；`constantRoutes` 只有 `/login`，其余由 `GET /auth/menus` 生成。
 - 菜单 `type` 为 `directory` 生成嵌套路由（无组件）；`menu` 按 `component` 字段解析 `.vue`；
-  `target === 'iframe'` 时用 `views/base/iframe/index.vue` 加载，地址存 `meta.url` 并自动追加 `base_token` 等参数。
+  `target === 'iframe'` 时用 `views/base/iframe/index.vue` 加载，地址存 `meta.url` 并自动追加 `base_ticket`（现场签发的一次性票据）。
 - 路由守卫：`/auth/info` 失败 → 清会话回登录页；`/auth/menus` 失败 → 提示「菜单加载失败」但**继续进入系统**；**菜单为空 → 提示「当前账号未分配菜单权限，请联系管理员」并落到 `/profile`**。
 - 因此：非管理员租户用户要看到菜单，必须由管理员在「角色管理」为其角色分配菜单（并分配接口权限，否则只有白名单接口可用）。
 - 菜单勾选「页面缓存」后，Layout 用 `<keep-alive :include="cachedViewNames">` 保活；组件名由 `withComponentName()` 注入菜单名（`index.vue` 的推断名不唯一）。

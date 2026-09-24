@@ -41,6 +41,13 @@ type Server struct {
 	InitRateLimit      int `mapstructure:"init_rate_limit"`
 	InitRateWindowSecs int `mapstructure:"init_rate_window_seconds"`
 
+	// 令牌换发与应用票据兑换接口限流（公开接口，凭证在请求体里，按真实客户端 IP）
+	RefreshRateLimit      int `mapstructure:"refresh_rate_limit"`
+	RefreshRateWindowSecs int `mapstructure:"refresh_rate_window_seconds"`
+
+	// 子应用一次性票据有效期（秒），默认 60
+	AppTicketTTLSeconds int `mapstructure:"app_ticket_ttl_seconds"`
+
 	// 工作流超时提醒的后台扫描间隔（秒），<= 0 表示关闭
 	WorkflowRemindInterval int `mapstructure:"workflow_remind_interval_seconds"`
 }
@@ -63,9 +70,12 @@ type Redis struct {
 }
 
 type JWT struct {
-	Secret      string `mapstructure:"secret"`
-	ExpireHours int    `mapstructure:"expire_hours"`
-	Issuer      string `mapstructure:"issuer"`
+	Secret string `mapstructure:"secret"`
+	// ExpireHours access token（JWT）有效期（小时）
+	ExpireHours int `mapstructure:"expire_hours"`
+	// RefreshExpireHours refresh token 有效期（小时），默认 168（7 天）
+	RefreshExpireHours int    `mapstructure:"refresh_expire_hours"`
+	Issuer             string `mapstructure:"issuer"`
 }
 
 var Cfg *Config
@@ -102,12 +112,24 @@ func (c *Config) applyDefaults(remindConfigured bool) {
 	setRateLimit(&c.Server.LoginRateLimit, &c.Server.LoginRateWindowSecs, 10, 60)
 	setRateLimit(&c.Server.CaptchaRateLimit, &c.Server.CaptchaRateWindowSecs, 30, 60)
 	setRateLimit(&c.Server.InitRateLimit, &c.Server.InitRateWindowSecs, 5, 60)
+	setRateLimit(&c.Server.RefreshRateLimit, &c.Server.RefreshRateWindowSecs, 60, 60)
+
+	// JWT：缺失/非法时兜底，避免签发即过期（ExpireHours=0）
+	if c.JWT.ExpireHours <= 0 {
+		c.JWT.ExpireHours = 8
+	}
+	if c.JWT.RefreshExpireHours <= 0 {
+		c.JWT.RefreshExpireHours = 168
+	}
 
 	if c.Server.UploadDir == "" {
 		c.Server.UploadDir = "./uploads"
 	}
 	if c.Server.MaxUploadMB <= 0 {
 		c.Server.MaxUploadMB = 50
+	}
+	if c.Server.AppTicketTTLSeconds <= 0 {
+		c.Server.AppTicketTTLSeconds = 60
 	}
 	// 工作流超时提醒：未配置时默认 10 分钟扫一次；
 	// 显式配置 0 或负数表示关闭（与 DEPLOY.md / 配置注释保持一致，不要再把 0 改写成默认值）

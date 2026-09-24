@@ -37,6 +37,15 @@ func NewFileService() *FileService {
 	return &FileService{storage: s}
 }
 
+// RemoveStoredFile 按存储 key 删除物理文件（租户级联清理等场景使用）。
+// 存储未初始化或 key 为空时静默返回，删不掉只影响磁盘占用。
+func (s *FileService) RemoveStoredFile(key string) error {
+	if s.storage == nil || key == "" {
+		return nil
+	}
+	return s.storage.Delete(key)
+}
+
 // ResolvePath 把存储 key 解析为绝对路径（已校验不会越出上传目录）。
 func (s *FileService) ResolvePath(key string) (string, error) {
 	if s.storage == nil {

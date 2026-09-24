@@ -167,18 +167,29 @@ func (ctl *WorkflowEngineController) handleTaskAction(c *gin.Context, approve bo
 	}
 	taskID := uint64(parseID(c))
 	actor := workflowActor(c)
+	// 审批意见按字符数截断（受限列长度约束，避免超长报 500）
+	comment := clipComment(req.Comment)
 
 	var err error
 	message := "已驳回"
 	if approve {
-		err = ctl.service.Approve(taskID, req.Comment, actor)
+		err = ctl.service.Approve(taskID, comment, actor)
 		message = "审批通过"
 	} else {
-		err = ctl.service.Reject(taskID, req.Comment, actor)
+		err = ctl.service.Reject(taskID, comment, actor)
 	}
 	if err != nil {
 		response.Fail(c, err.Error())
 		return
 	}
 	response.OkWithMessage(c, message, nil)
+}
+
+// clipComment 审批意见超长截断（WorkflowTask.Comment / WorkflowLog.Comment 为 512 字节级定长列）
+func clipComment(s string) string {
+	r := []rune(s)
+	if len(r) > 500 {
+		return string(r[:500])
+	}
+	return s
 }
