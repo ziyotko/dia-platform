@@ -286,7 +286,11 @@ async function uploadPdf(file: File) {
     const res = await authApi.upload(fd)
     form.templateFile = res.data?.url || ''
     ElMessage.success('模板上传成功')
-  } catch {} finally { return false }
+  } catch {
+    // 上传失败：请求拦截器已统一提示
+  }
+  // before-upload 返回 false：阻止 el-upload 自行再传一次（这里已用 authApi.upload 手动上传）
+  return false
 }
 
 function previewPdf() {

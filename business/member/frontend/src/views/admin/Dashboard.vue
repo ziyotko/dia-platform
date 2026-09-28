@@ -143,10 +143,9 @@ import * as echarts from 'echarts'
 import { adminApi } from '@/api/admin'
 import CountUp from '@/components/CountUp.vue'
 import {
-  UserFilled, User, Clock, CircleClose, Refresh,
+  UserFilled, Refresh,
   PieChart, DataAnalysis, Lightning, Bell,
-  ArrowRight, DocumentChecked, Money, Medal, ChatDotRound,
-  TrendCharts
+  ArrowRight
 } from '@element-plus/icons-vue'
 
 const loading = ref(true)

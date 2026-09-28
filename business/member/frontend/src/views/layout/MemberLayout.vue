@@ -91,14 +91,12 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
-import { useSiteStore } from '@/stores/site'
 import { ElMessage } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const appStore = useAppStore()
-const siteStore = useSiteStore()
 const collapsed = computed(() => appStore.collapsed)
 
 function handleCommand(cmd: string) {

@@ -163,7 +163,7 @@ import { feeApi } from '@/api/index'
 import { authApi } from '@/api/auth'
 import { ElMessage } from 'element-plus'
 import { Upload } from '@element-plus/icons-vue'
-import type { UploadInstance, UploadFile, UploadProps } from 'element-plus'
+import type { UploadInstance, UploadFile } from 'element-plus'
 import { fileUrl } from '@/utils/fileUrl'
 
 const fees = ref<any[]>([])

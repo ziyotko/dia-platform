@@ -213,10 +213,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { dashboardApi } from '@/api/index'
 
-const router = useRouter()
 const dash = ref<any>(null)
 const loading = ref(true)
 

@@ -51,7 +51,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { charterApi } from '@/api/index'
 import { sanitizeHtml } from '@/utils/sanitizeHtml'
@@ -71,11 +71,6 @@ const loading = ref(true)
 
 const progress = ref(0)
 const showTop = ref(false)
-
-// 正文字数：剥离 HTML 标签与空白后的字符数
-const wordCount = computed(() =>
-  content.value.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, '').length
-)
 
 onMounted(async () => {
   window.addEventListener('scroll', onScroll, { passive: true })
@@ -131,17 +126,6 @@ function printPage() {
 function downloadPdf() {
   const base = import.meta.env.VITE_API_BASE_URL || '/business_member/api'
   window.open(`${base}/charter`, '_blank')
-}
-
-function formatSize(n?: number) {
-  if (!n) return ''
-  if (n < 1024) return `${n} B`
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
-  return `${(n / 1024 / 1024).toFixed(2)} MB`
-}
-
-function formatDate(d?: string) {
-  return d ? d.slice(0, 10) : ''
 }
 </script>
 

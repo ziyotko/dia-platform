@@ -66,13 +66,11 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { useSiteStore } from '@/stores/site'
 import { UserFilled, Fold, Expand, Coin, User, Switch, EditPen } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
-const siteStore = useSiteStore()
 const collapsed = ref(false)
 
 function toggleCollapse() {

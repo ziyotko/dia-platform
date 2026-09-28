@@ -183,14 +183,13 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminApi } from '@/api/admin'
 import { applicationStatusMap, applicationStatusType, reviewStatusMap, fmt } from '@/utils/constants'
 import { openFile } from '@/utils/file'
 
 const route = useRoute()
-const router = useRouter()
 const id = Number(route.params.id)
 const loading = ref(false)
 const app = ref<any>({})

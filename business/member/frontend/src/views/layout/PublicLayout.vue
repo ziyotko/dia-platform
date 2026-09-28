@@ -67,7 +67,7 @@
       <p v-if="siteStore.copyright_name">版权所有：{{ siteStore.copyright_name }}</p>
       <p v-if="siteStore.icp_no || siteStore.beian_no">
         <span v-if="siteStore.icp_no">ICP备案号：{{ siteStore.icp_no }}</span>
-        <span v-if="siteStore.icp_no && siteStore.beian_no" class="footer-sep">　</span>
+        <span v-if="siteStore.icp_no && siteStore.beian_no" class="footer-sep">&emsp;</span>
         <span v-if="siteStore.beian_no">网安备案号：{{ siteStore.beian_no }}</span>
       </p>
     </footer>
