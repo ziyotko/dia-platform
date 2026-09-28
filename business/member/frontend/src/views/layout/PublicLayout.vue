@@ -128,6 +128,20 @@ onBeforeUnmount(() => {
   top: 0;
   z-index: 100;
   background: rgba(255, 255, 255, 0.86);
+  // 头部局部使用绿色品牌主色（与首页 hero #366D28 一致），
+  // 只在 .public-header 作用域生效，不改 global.scss / 页面内容
+  --el-color-primary: #366d28;
+  --el-color-primary-light-3: #729968;
+  --el-color-primary-light-5: #9bb694;
+  --el-color-primary-light-7: #c3d3bf;
+  --el-color-primary-light-8: #d7e2d4;
+  --el-color-primary-light-9: #ebf0ea;
+  --el-color-primary-dark-2: #2b5720;
+
+  // global.scss 里主按钮阴影写死了蓝色 rgba，头部内覆盖为绿色
+  .el-button--primary {
+    box-shadow: 0 2px 6px rgba(54, 109, 40, 0.25);
+  }
   backdrop-filter: saturate(180%) blur(12px);
   border-bottom: 1px solid transparent;
   transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
@@ -174,8 +188,8 @@ onBeforeUnmount(() => {
     font-weight: 700;
     color: #fff;
     border-radius: 10px;
-    background: linear-gradient(135deg, #001b5e, #002fa7 55%, #2050cf);
-    box-shadow: 0 2px 8px rgba(0, 47, 167, 0.28);
+    background: linear-gradient(135deg, #1c3d12, #366d28 55%, #4f9a3a);
+    box-shadow: 0 2px 8px rgba(54, 109, 40, 0.28);
   }
 
   .brand-text {

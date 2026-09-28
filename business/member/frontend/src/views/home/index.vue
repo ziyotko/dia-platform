@@ -89,7 +89,10 @@ function goStep(s: ProcessStep) {
 </script>
 
 <style scoped lang="scss">
-$primary: #002fa7;
+// 首页主视觉绿色系（基准 #366D28，同色相推导深/浅阶）
+$primary: #366d28;
+$primary-dark: #1c3d12;
+$primary-light: #4f9a3a;
 $text: #1f2937;
 $text-secondary: #6b7280;
 
@@ -101,6 +104,15 @@ $text-secondary: #6b7280;
 
 .home-page {
   overflow-x: hidden;
+  // 本页局部覆盖 Element 主色为品牌绿（含各浅色阶，供 hover/disabled 使用）
+  // 只作用于首页，不影响 global.scss 与其他页面
+  --el-color-primary: #{$primary};
+  --el-color-primary-light-3: #729968;
+  --el-color-primary-light-5: #9bb694;
+  --el-color-primary-light-7: #c3d3bf;
+  --el-color-primary-light-8: #d7e2d4;
+  --el-color-primary-light-9: #ebf0ea;
+  --el-color-primary-dark-2: #2b5720;
 }
 
 // ════════════════════════════════════════════
@@ -123,7 +135,7 @@ $text-secondary: #6b7280;
 // ════════════════════════════════════════════
 .hero {
   position: relative;
-  background: linear-gradient(135deg, #001b5e 0%, #002fa7 55%, #2050cf 100%);
+  background: linear-gradient(135deg, $primary-dark 0%, $primary 55%, $primary-light 100%);
   color: #fff;
   text-align: center;
   padding: 110px 24px 110px;
@@ -141,9 +153,9 @@ $text-secondary: #6b7280;
     filter: blur(60px);
     opacity: 0.35;
   }
-  .blob-1 { width: 420px; height: 420px; background: #002fa7; top: -140px; left: -100px; }
-  .blob-2 { width: 360px; height: 360px; background: #22d3ee; bottom: -120px; right: -80px; }
-  .blob-3 { width: 280px; height: 280px; background: #818cf8; top: 10%; right: 22%; }
+  .blob-1 { width: 420px; height: 420px; background: #366d28; top: -140px; left: -100px; }
+  .blob-2 { width: 360px; height: 360px; background: #55d435; bottom: -120px; right: -80px; }
+  .blob-3 { width: 280px; height: 280px; background: #a5e595; top: 10%; right: 22%; }
   .hero-grid {
     position: absolute;
     inset: 0;
@@ -191,14 +203,14 @@ $text-secondary: #6b7280;
     border-radius: 999px;
     margin-bottom: 26px;
     backdrop-filter: blur(6px);
-    .el-icon { color: #7dd3fc; }
+    .el-icon { color: #a0df90; }
   }
   h1 {
     font-size: 46px;
     font-weight: 800;
     margin: 0 0 14px;
     letter-spacing: 1px;
-    background: linear-gradient(90deg, #fff 0%, #b3c1e5 100%);
+    background: linear-gradient(90deg, #fff 0%, #c0e0b8 100%);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -262,13 +274,13 @@ $text-secondary: #6b7280;
     height: 72px;
     margin: 0 auto;
     border-radius: 50%;
-    background: linear-gradient(135deg, #e6eaf6, #cfe3f6);
+    background: linear-gradient(135deg, #e9f3e7, #daf2d4);
     color: $primary;
     display: flex;
     align-items: center;
     justify-content: center;
     border: 3px solid #fff;
-    box-shadow: 0 8px 20px rgba(26, 111, 181, 0.18);
+    box-shadow: 0 8px 20px rgba(54, 109, 40, 0.18);
     position: relative;
     z-index: 2;
   }
@@ -278,7 +290,7 @@ $text-secondary: #6b7280;
     left: calc(50% + 40px);
     width: calc(100% - 76px);
     height: 2px;
-    background: repeating-linear-gradient(90deg, #c3d9f0 0 6px, transparent 6px 12px);
+    background: repeating-linear-gradient(90deg, #cdecc6 0 6px, transparent 6px 12px);
   }
   h4 { margin: 0 0 8px; font-size: 16px; color: $text; }
   p { margin: 0; font-size: 13px; color: $text-secondary; line-height: 1.6; }
