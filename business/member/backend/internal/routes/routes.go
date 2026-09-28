@@ -10,10 +10,32 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// publicReadLimit 公开只读接口的固定窗口限流（次/分钟/IP）。
-// 仅作防脚本刷量的兜底：正常浏览（首屏 site-info + 公告/等级/机构树/章程）远低于该值。
+// 以下限流参数可在 config.yaml 的 server.*_rate_limit 覆盖（次数/分钟，按真实客户端 IP）。
+// 仅作防脚本刷量的兜底：正常浏览（首屏 site-info + 公告/等级/机构树/章程）远低于这些值。
 // 注意：部署在反向代理后必须正确配置 server.trusted_proxies，否则所有用户会共用一个 IP 桶。
-const publicReadLimit = 300
+// 命名与 portal / application 一致（login/captcha/public/upload）。
+var (
+	publicReadLimit  = 300
+	captchaRateLimit = 30
+	loginRateLimit   = 10
+	uploadRateLimit  = 20
+)
+
+// applyRateLimitConfig 用配置覆盖限流默认值（在 Register 开头调用一次）。
+func applyRateLimitConfig(s config.ServerConfig) {
+	if s.PublicRateLimit > 0 {
+		publicReadLimit = s.PublicRateLimit
+	}
+	if s.CaptchaRateLimit > 0 {
+		captchaRateLimit = s.CaptchaRateLimit
+	}
+	if s.LoginRateLimit > 0 {
+		loginRateLimit = s.LoginRateLimit
+	}
+	if s.UploadRateLimit > 0 {
+		uploadRateLimit = s.UploadRateLimit
+	}
+}
 
 func Register(r *gin.Engine) {
 	// 与 portal 一致：API 前缀由 config.yaml 的 server.api_prefix 决定（缺失时回退到默认值），
@@ -22,6 +44,9 @@ func Register(r *gin.Engine) {
 	if prefix == "" {
 		prefix = "/member/api"
 	}
+
+	// 限流参数上收配置（未配置时用代码默认值）
+	applyRateLimitConfig(config.Cfg.Server)
 
 	// 限流统一走 Redis 版 middleware.RateLimitMiddleware（与 portal 一致：多实例共享计数，Redis 不可用时进程内兜底）
 
@@ -49,13 +74,13 @@ func Register(r *gin.Engine) {
 	{
 		// Auth
 		// 验证码接口独立限流：30 次/分钟（对齐 portal 的 captcha_rate_limit），防刷验证码
-		public.GET("/captcha", middleware.RateLimitMiddleware("captcha", 30, time.Minute), authCtrl.GetCaptcha)
+		public.GET("/captcha", middleware.RateLimitMiddleware("captcha", captchaRateLimit, time.Minute), authCtrl.GetCaptcha)
 		// 注册限流：10 次/分钟，防刷账号
 		public.POST("/auth/register", middleware.RateLimitMiddleware("register", 10, time.Minute), authCtrl.Register)
 		// check-exists 枚举接口限流：30 次/分钟，防止探测已注册账号
 		public.POST("/auth/check-exists", middleware.RateLimitMiddleware("check-exists", 30, time.Minute), authCtrl.CheckExists)
 		// 登录限流：10 次/分钟，防暴力破解
-		public.POST("/auth/login", middleware.RateLimitMiddleware("login", 10, time.Minute), authCtrl.Login)
+		public.POST("/auth/login", middleware.RateLimitMiddleware("login", loginRateLimit, time.Minute), authCtrl.Login)
 
 		// Site info / 模板下载 / 章程正文 / 公告 / 机构树 / 会员等级：
 		// 均为无需认证的只读接口，统一挂公开只读限流（共用一个 scope，总预算 publicReadLimit 次/分钟/IP）
@@ -88,7 +113,7 @@ func Register(r *gin.Engine) {
 
 		// 注册流程专用上传（匿名）：仅允许组织机构证，
 		// 服务端强制子目录 certs + 图片/PDF 白名单，限流 20 次/分钟/IP
-		public.POST("/upload-public", middleware.RateLimitMiddleware("upload-public", 20, time.Minute), authCtrl.UploadPublicFile)
+		public.POST("/upload-public", middleware.RateLimitMiddleware("upload-public", uploadRateLimit, time.Minute), authCtrl.UploadPublicFile)
 	}
 
 	// === Member routes (auth required) ===
@@ -102,7 +127,7 @@ func Register(r *gin.Engine) {
 
 		// 通用上传（需登录）：会员中心（证照/头像/回执/封面/发票模板等）均走这里，
 		// 扩展名与子目录走白名单；匿名上传只有注册页的 /upload-public
-		member.POST("/upload", middleware.RateLimitMiddleware("upload", 20, time.Minute), authCtrl.UploadFile)
+		member.POST("/upload", middleware.RateLimitMiddleware("upload", uploadRateLimit, time.Minute), authCtrl.UploadFile)
 
 		// Dashboard
 		member.GET("/member/dashboard", dashCtrl.GetMemberDashboard)

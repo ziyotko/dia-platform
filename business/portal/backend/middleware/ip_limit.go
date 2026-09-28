@@ -39,7 +39,7 @@ func (l *IPLimiter) Limit() gin.HandlerFunc {
 		count := l.active[ip]
 		if count >= l.maxConcurrent {
 			l.mu.Unlock()
-			ctx.JSON(http.StatusOK, utils.Error(1, "访问过于频繁，请稍后再试"))
+			ctx.JSON(http.StatusOK, utils.TooManyRequests("访问过于频繁，请稍后再试"))
 			ctx.Abort()
 			return
 		}

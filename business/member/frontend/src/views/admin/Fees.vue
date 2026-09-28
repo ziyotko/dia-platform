@@ -404,7 +404,7 @@ function onFilterChange() {
 async function fetchData() {
   loading.value = true
   try {
-    const params: any = { page: page.value, size: size.value }
+    const params: any = { page: page.value, pageSize: size.value }
     if (filterYear.value) params.year = filterYear.value
     if (filterStatus.value) params.status = filterStatus.value
     if (filterType.value) params.member_type = filterType.value
@@ -418,7 +418,7 @@ async function searchMember(query: string) {
   if (!query) return
   searchLoading.value = true
   try {
-    const r = await adminApi.getMembers({ keyword: query, page: 1, size: 20 })
+    const r = await adminApi.getMembers({ keyword: query, page: 1, pageSize: 20 })
     memberOptions.value = r.data?.list || []
   } catch {} finally { searchLoading.value = false }
 }

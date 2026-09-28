@@ -12,14 +12,35 @@ type Response struct {
 	Data any    `json:"data,omitempty"`
 }
 
+// 业务码统一口径（与 member / application 保持一致）：
+// 0 成功 / 1 业务失败 / 401 登录态失效 / 429 限流。HTTP 状态码恒为 200。
+const (
+	CodeSuccess         = 0
+	CodeFail            = 1
+	CodeUnauthorized    = 401
+	CodeTooManyRequests = 429
+)
+
 func Success(msg string, data any) *Response {
 	if msg == "" {
 		msg = "success"
 	}
 	return &Response{
-		Code: 0,
+		Code: CodeSuccess,
 		Msg:  msg,
 		Data: data,
+	}
+}
+
+// TooManyRequests 限流统一出口（业务码 429，与 member / application 一致）。
+func TooManyRequests(msg string) *Response {
+	if msg == "" {
+		msg = "请求过于频繁，请稍后再试"
+	}
+	return &Response{
+		Code: CodeTooManyRequests,
+		Msg:  msg,
+		Data: nil,
 	}
 }
 

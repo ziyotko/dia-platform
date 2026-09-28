@@ -28,7 +28,7 @@ func (w *gormLogWriter) Write(p []byte) (n int, err error) {
 var DB *gorm.DB
 
 func InitDB() {
-	conf := config.AppConfig.Database
+	conf := config.AppConfig.MySQL
 
 	parseTime := "false"
 	if conf.ParseTime {
@@ -36,7 +36,7 @@ func InitDB() {
 	}
 
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=%s&parseTime=%s&loc=%s&timeout=%s&readTimeout=%s&writeTimeout=%s",
-		conf.Username,
+		conf.User,
 		conf.Password,
 		conf.Host,
 		conf.Port,
@@ -82,14 +82,14 @@ func InitDB() {
 		log.Fatalf("Failed to ping database: %s", err)
 	}
 
-	if conf.MaxIdleConns > 0 {
-		sqlDB.SetMaxIdleConns(conf.MaxIdleConns)
+	if conf.MaxIdle > 0 {
+		sqlDB.SetMaxIdleConns(conf.MaxIdle)
 	} else {
 		sqlDB.SetMaxIdleConns(10)
 	}
 
-	if conf.MaxOpenConns > 0 {
-		sqlDB.SetMaxOpenConns(conf.MaxOpenConns)
+	if conf.MaxOpen > 0 {
+		sqlDB.SetMaxOpenConns(conf.MaxOpen)
 	} else {
 		sqlDB.SetMaxOpenConns(100)
 	}

@@ -156,7 +156,7 @@ function statusTag(s: string) { return statusMap[s]?.tag || 'info' as any }
 onMounted(async () => {
   try {
     const [artRes, catRes] = await Promise.all([
-      articleApi.getMyArticles({ page: page.value, size: size.value }),
+      articleApi.getMyArticles({ page: page.value, pageSize: size.value }),
       articleApi.getCategories()
     ])
     articles.value = artRes.data?.list || []
@@ -173,7 +173,7 @@ function onFilterChange() {
 async function fetchData() {
   loading.value = true
   try {
-    const params: any = { page: page.value, size: size.value }
+    const params: any = { page: page.value, pageSize: size.value }
     if (filterStatus.value) params.status = filterStatus.value
     if (filterCat.value) params.category_id = filterCat.value
     const res = await articleApi.getMyArticles(params)

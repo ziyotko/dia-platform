@@ -122,7 +122,7 @@ async function fetchData() {
   try {
     const res = await adminApi.getMemberLevelChanges({
       page: page.value,
-      size: size.value,
+      pageSize: size.value,
       keyword: keyword.value,
       member_type: filterType.value,
       year: filterYear.value || undefined

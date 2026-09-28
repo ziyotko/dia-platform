@@ -23,7 +23,14 @@ type ServerConfig struct {
 	APIPrefix        string   `mapstructure:"api_prefix"`
 	MaxConcurrentIPs int      `mapstructure:"max_concurrent_ips"`
 	UploadDirPrefix  string   `mapstructure:"upload_dir_prefix"`
+	AllowedOrigins   []string `mapstructure:"allowed_origins"`
 	TrustedProxies   []string `mapstructure:"trusted_proxies"`
+
+	// 固定窗口限流（次数/分钟，按真实客户端 IP；<=0 回退代码默认值）。
+	// 与 portal / member 同名同义：登录、验证码、上传。
+	LoginRateLimit   int `mapstructure:"login_rate_limit"`
+	CaptchaRateLimit int `mapstructure:"captcha_rate_limit"`
+	UploadRateLimit  int `mapstructure:"upload_rate_limit"`
 }
 
 type MySQLConfig struct {
@@ -51,6 +58,7 @@ type JWTConfig struct {
 }
 
 type LogConfig struct {
+	Level      string `mapstructure:"level"`
 	Path       string `mapstructure:"path"`
 	MaxSize    int    `mapstructure:"max_size"`
 	MaxBackups int    `mapstructure:"max_backups"`
@@ -78,6 +86,14 @@ func applyEnvOverrides() {
 	}
 	if v := os.Getenv("APPLICATION_JWT_SECRET"); v != "" {
 		Cfg.JWT.Secret = v
+	}
+	if v := os.Getenv("APPLICATION_MODE"); v != "" {
+		Cfg.Server.Mode = v
+	}
+
+	// 与 portal / member 一致：mode 留空时回退 release，避免默认输出调试信息
+	if Cfg.Server.Mode == "" {
+		Cfg.Server.Mode = "release"
 	}
 
 	if Cfg.MySQL.Password == "" || Cfg.MySQL.Password == "APPLICATION_DB_PASSWORD" {

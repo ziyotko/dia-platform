@@ -44,7 +44,7 @@ onMounted(() => fetchData())
 async function fetchData() {
   loading.value = true
   try {
-    const res = await announcementApi.getPublished({ page: page.value, size: size.value, keyword: keyword.value })
+    const res = await announcementApi.getPublished({ page: page.value, pageSize: size.value, keyword: keyword.value })
     list.value = res.data?.list || []
     total.value = res.data?.total || 0
   } catch {} finally { loading.value = false }

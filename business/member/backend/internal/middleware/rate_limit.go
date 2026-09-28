@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"fmt"
-	"net/http"
 	"sync"
 	"time"
 
@@ -82,7 +81,7 @@ func RateLimitMiddleware(scope string, limit int, window time.Duration) gin.Hand
 		if err != nil {
 			// Redis 不可用：退化为进程内限流兜底（fail-closed），避免限流组件故障时被无限刷量
 			if !allowLocalRateLimit(fmt.Sprintf("ratelimit:%s:%d:%s", scope, limit, ip), limit, window) {
-				response.Error(c, http.StatusTooManyRequests, "请求过于频繁，请稍后再试")
+				response.TooManyRequests(c, "请求过于频繁，请稍后再试")
 				c.Abort()
 				return
 			}
@@ -96,7 +95,7 @@ func RateLimitMiddleware(scope string, limit int, window time.Duration) gin.Hand
 			redis.AntiReplayClient.Expire(redis.Ctx, key, window)
 		}
 		if count > int64(limit) {
-			response.Error(c, http.StatusTooManyRequests, "请求过于频繁，请稍后再试")
+			response.TooManyRequests(c, "请求过于频繁，请稍后再试")
 			c.Abort()
 			return
 		}

@@ -87,7 +87,7 @@ function onFilterChange() {
 async function fetchData() {
   loading.value = true
   try {
-    const params: any = { page: page.value, size: size.value }
+    const params: any = { page: page.value, pageSize: size.value }
     if (statusFilter.value) params.status = statusFilter.value
     const r = await adminApi.getApplications(params)
     list.value = r.data?.list || []

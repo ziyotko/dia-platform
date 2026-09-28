@@ -88,7 +88,7 @@ async function fetchData() {
   try {
     const res = await adminApi.getOperationLogs({
       page: page.value,
-      size: size.value,
+      pageSize: size.value,
       keyword: keyword.value
     })
     list.value = res.data?.list || []

@@ -10,6 +10,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// configInt 读取可配置的限流次数：<=0（未配置）时回退代码默认值。
+// 与 portal / member 的口径一致：限流参数写在 config.yaml 的 server.*_rate_limit，缺失不报错。
+func configInt(value, def int) int {
+	if value <= 0 {
+		return def
+	}
+	return value
+}
+
 func Register(r *gin.Engine) {
 	// 与 portal / member 一致：API 前缀由 config.yaml 的 server.api_prefix 决定（缺失时回退到默认值），
 	// 便于部署时只改配置，无需改代码。
@@ -17,6 +26,12 @@ func Register(r *gin.Engine) {
 	if apiPrefix == "" {
 		apiPrefix = "/application/api"
 	}
+
+	// 限流参数上收配置（未配置时用代码默认值；与 portal / member 同名同义）
+	loginRateLimit := configInt(config.Cfg.Server.LoginRateLimit, 10)
+	captchaRateLimit := configInt(config.Cfg.Server.CaptchaRateLimit, 30)
+	uploadRateLimit := configInt(config.Cfg.Server.UploadRateLimit, 20)
+
 	api := r.Group(apiPrefix)
 
 	// === Controllers ===
@@ -37,10 +52,10 @@ func Register(r *gin.Engine) {
 	// === Public routes ===
 	// 公开接口按用途分别限流（scope 不同 → 计数器互不干扰）：captcha 防刷图，
 	// register/login 防批量注册与密码撞库，计数均按真实客户端 IP。
-	api.GET("/captcha", middleware.RateLimitMiddleware("captcha", 30, time.Minute), authCtrl.GetCaptcha)
+	api.GET("/captcha", middleware.RateLimitMiddleware("captcha", captchaRateLimit, time.Minute), authCtrl.GetCaptcha)
 	api.POST("/member/register", middleware.RateLimitMiddleware("register", 10, time.Minute), authCtrl.UserRegister)
-	api.POST("/member/login", middleware.RateLimitMiddleware("login", 10, time.Minute), authCtrl.UserLogin)
-	api.POST("/admin/login", middleware.RateLimitMiddleware("admin-login", 10, time.Minute), authCtrl.AdminLogin)
+	api.POST("/member/login", middleware.RateLimitMiddleware("login", loginRateLimit, time.Minute), authCtrl.UserLogin)
+	api.POST("/admin/login", middleware.RateLimitMiddleware("admin-login", loginRateLimit, time.Minute), authCtrl.AdminLogin)
 
 	// === Applicant routes (申报人, JWT required) ===
 	member := api.Group("/member")
@@ -81,7 +96,7 @@ func Register(r *gin.Engine) {
 		member.GET("/dashboard", dashboardCtrl.UserStats)
 
 		// Upload (材料上传)
-		member.POST("/upload", middleware.RateLimitMiddleware("upload", 20, time.Minute), uploadCtrl.Upload)
+		member.POST("/upload", middleware.RateLimitMiddleware("upload", uploadRateLimit, time.Minute), uploadCtrl.Upload)
 
 		// 文件下载（鉴权）：上传目录不再对外静态托管，预览/下载都走这里
 		member.GET("/files", middleware.RateLimitMiddleware("file", 120, time.Minute), fileCtrl.MemberFile)
@@ -102,7 +117,7 @@ func Register(r *gin.Engine) {
 
 		// Upload（申报材料 / 证书附件共用）：管理员侧所有角色都能到，但需具备相应业务权限，
 		// 避免只读角色（评审人）把服务器当图床循环写盘。
-		admin.POST("/upload", middleware.RateLimitMiddleware("admin-upload", 20, time.Minute), middleware.PermissionGuardAny("application:preliminary", "certificate:manage"), uploadCtrl.Upload)
+		admin.POST("/upload", middleware.RateLimitMiddleware("admin-upload", uploadRateLimit, time.Minute), middleware.PermissionGuardAny("application:preliminary", "certificate:manage"), uploadCtrl.Upload)
 
 		// 文件下载（鉴权）：管理人可读全部，评审人仅限分配给自己的申报材料
 		admin.GET("/files", middleware.RateLimitMiddleware("file-admin", 120, time.Minute), fileCtrl.AdminFile)

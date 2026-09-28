@@ -54,7 +54,7 @@ func (ctrl *CertificateController) CreateCertificate(c *gin.Context) {
 // ListCertificates lists issued certificates (admin)
 func (ctrl *CertificateController) ListCertificates(c *gin.Context) {
 	page := parseIntDefault(c.Query("page"), 1)
-	size := parsePageSize(c.Query("size"))
+	size := parsePageSize(c)
 	keyword := c.Query("keyword")
 	status := c.Query("status")
 

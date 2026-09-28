@@ -8,13 +8,19 @@ import (
 	"application/pkg/utils"
 )
 
+// 业务码统一口径（与 portal / member 一致）：
+// 0 成功 / 1 业务失败 / 401 登录态失效 / 429 限流。
+// 下面的名字保留以兼容既有调用点，但取值已统一为 CodeFail（不要再按 400/403/404/500 分支）。
 const (
-	CodeSuccess      = 0
-	CodeError        = 500
-	CodeBadRequest   = 400
-	CodeUnauthorized = 401
-	CodeForbidden    = 403
-	CodeNotFound     = 404
+	CodeSuccess         = 0
+	CodeFail            = 1
+	CodeUnauthorized    = 401
+	CodeTooManyRequests = 429
+
+	CodeError      = CodeFail
+	CodeBadRequest = CodeFail
+	CodeForbidden  = CodeFail
+	CodeNotFound   = CodeFail
 )
 
 type Result struct {
@@ -59,11 +65,16 @@ func Unauthorized(c *gin.Context) {
 }
 
 func Forbidden(c *gin.Context) {
-	c.JSON(http.StatusOK, Result{Code: CodeForbidden, Message: "无操作权限", Data: nil})
+	c.JSON(http.StatusOK, Result{Code: CodeFail, Message: "无操作权限", Data: nil})
 }
 
 func NotFound(c *gin.Context) {
-	c.JSON(http.StatusOK, Result{Code: CodeNotFound, Message: "资源不存在", Data: nil})
+	c.JSON(http.StatusOK, Result{Code: CodeFail, Message: "资源不存在", Data: nil})
+}
+
+// TooManyRequests 限流统一出口（业务码 429）。
+func TooManyRequests(c *gin.Context, message string) {
+	fail(c, CodeTooManyRequests, message)
 }
 
 type PageData struct {

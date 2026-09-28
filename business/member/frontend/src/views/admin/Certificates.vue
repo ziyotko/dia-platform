@@ -213,7 +213,7 @@ async function fetchRecords() {
   try {
     const res = await adminApi.getCertificates({
       page: recPage.value,
-      size: recSize.value,
+      pageSize: recSize.value,
       keyword: recKeyword.value,
       status: recStatus.value
     })

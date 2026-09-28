@@ -30,5 +30,10 @@ func InitLogger() {
 
 	multiWriter := io.MultiWriter(os.Stdout, lumberjackLogger)
 	Logger.SetOutput(multiWriter)
-	Logger.SetLevel(logrus.InfoLevel)
+	// 日志级别走配置（与 portal / member 一致），非法值或未配置回退 info
+	level, err := logrus.ParseLevel(cfg.Level)
+	if err != nil {
+		level = logrus.InfoLevel
+	}
+	Logger.SetLevel(level)
 }

@@ -59,7 +59,8 @@ func main() {
 	seed.Run()
 
 	// 9. Setup Gin
-	gin.SetMode(config.Cfg.Server.Mode)
+	// gin.SetMode 遇到非法值会 panic，因此统一走 normalizeGinMode（空/非法回退 release）
+	gin.SetMode(normalizeGinMode(config.Cfg.Server.Mode))
 	r := gin.New()
 	r.Use(middleware.CORS(), middleware.Logger(), middleware.IPLimit(), gin.Recovery())
 	r.MaxMultipartMemory = 64 << 20 // 64MB
@@ -93,4 +94,17 @@ func main() {
 	// 12. Start server
 	utils.Logger.Info("Application server starting on port " + strconv.Itoa(config.Cfg.Server.Port))
 	r.Run("0.0.0.0:" + strconv.Itoa(config.Cfg.Server.Port))
+}
+
+// normalizeGinMode 校验 gin 运行模式（仅支持 debug/release/test）：
+// 空值或非法值一律回退 release。（gin.SetMode 遇到非法值会 panic，配错即启动失败。）
+func normalizeGinMode(mode string) string {
+	switch mode {
+	case gin.DebugMode, gin.ReleaseMode, gin.TestMode:
+		return mode
+	}
+	if mode != "" {
+		utils.Logger.Warnf("server.mode=%q 无效（仅支持 debug/release/test），已回退为 release", mode)
+	}
+	return gin.ReleaseMode
 }

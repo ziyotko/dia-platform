@@ -14,9 +14,25 @@ type Response struct {
 	Data    interface{} `json:"data,omitempty"`
 }
 
+// 业务码统一口径（与 portal / application 保持一致）：
+//
+//	0   成功
+//	1   业务失败（参数错误 / 无权限 / 记录不存在 / 服务端异常——用文案区分，不靠数字）
+//	401 登录态失效
+//	429 限流
+//
+// HTTP 状态码恒为 200，业务码只在响应体里（前端拦截器只对 0 放行、对 401 登出）。
+// 新增接口请用 CodeFail，不要再引入 400/403/404/500 这类业务码。
+const (
+	CodeSuccess         = 0
+	CodeFail            = 1
+	CodeUnauthorized    = 401
+	CodeTooManyRequests = 429
+)
+
 func Success(c *gin.Context, data interface{}) {
 	c.JSON(http.StatusOK, Response{
-		Code:    0,
+		Code:    CodeSuccess,
 		Message: "success",
 		Data:    data,
 	})
@@ -24,7 +40,7 @@ func Success(c *gin.Context, data interface{}) {
 
 func SuccessWithMessage(c *gin.Context, message string, data interface{}) {
 	c.JSON(http.StatusOK, Response{
-		Code:    0,
+		Code:    CodeSuccess,
 		Message: message,
 		Data:    data,
 	})
@@ -46,23 +62,28 @@ func ErrorWithData(c *gin.Context, code int, message string, data interface{}) {
 }
 
 func BadRequest(c *gin.Context, message string) {
-	Error(c, 400, message)
+	Error(c, CodeFail, message)
 }
 
 func Unauthorized(c *gin.Context, message string) {
-	Error(c, 401, message)
+	Error(c, CodeUnauthorized, message)
 }
 
 func Forbidden(c *gin.Context, message string) {
-	Error(c, 403, message)
+	Error(c, CodeFail, message)
 }
 
 func NotFound(c *gin.Context, message string) {
-	Error(c, 404, message)
+	Error(c, CodeFail, message)
 }
 
 func ServerError(c *gin.Context, message string) {
-	Error(c, 500, message)
+	Error(c, CodeFail, message)
+}
+
+// TooManyRequests 限流统一出口（业务码 429）。
+func TooManyRequests(c *gin.Context, message string) {
+	Error(c, CodeTooManyRequests, message)
 }
 
 // ServerErrorFrom 处理服务端错误：业务错误（中文提示）原样返回；

@@ -63,7 +63,7 @@ onBeforeUnmount(() => {
 onMounted(() => fetchData())
 async function fetchData() {
   loading.value = true
-  try { const r = await adminApi.getAnnouncements({ page: page.value, size: size.value }); list.value = r.data?.list || []; total.value = r.data?.total || 0 } catch {} finally { loading.value = false }
+  try { const r = await adminApi.getAnnouncements({ page: page.value, pageSize: size.value }); list.value = r.data?.list || []; total.value = r.data?.total || 0 } catch {} finally { loading.value = false }
 }
 function openCreate() { editingId.value = null; Object.assign(annForm, { title: '', content: '', type: 'notice', is_pinned: false }); showDialog.value = true }
 function editAnn(row: any) { editingId.value = row.id; Object.assign(annForm, { title: row.title, content: row.content, type: row.type, is_pinned: !!row.is_pinned }); showDialog.value = true }

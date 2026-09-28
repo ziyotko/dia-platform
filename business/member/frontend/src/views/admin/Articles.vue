@@ -147,7 +147,7 @@ async function deleteCat(row: any) {
 onMounted(() => fetchData())
 async function fetchData() {
   loading.value = true
-  try { const r = await adminApi.getArticles({ page: page.value, size: size.value }); list.value = r.data?.list || []; total.value = r.data?.total || 0 } catch {} finally { loading.value = false }
+  try { const r = await adminApi.getArticles({ page: page.value, pageSize: size.value }); list.value = r.data?.list || []; total.value = r.data?.total || 0 } catch {} finally { loading.value = false }
 }
 async function review(row: any, approved: boolean) {
   if (approved) {

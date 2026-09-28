@@ -54,11 +54,9 @@ func main() {
 		utils.Logger.Infof("静态化参数已加载到缓存 (key: %s)", services.StaticParamsCacheKey)
 	}
 
-	// 生产环境使用 release 模式，避免输出敏感调试信息
-	gin.SetMode(config.AppConfig.Server.Mode)
-	if config.AppConfig.Server.Mode == "" {
-		gin.SetMode(gin.ReleaseMode)
-	}
+	// 生产环境使用 release 模式，避免输出敏感调试信息。
+	// gin.SetMode 遇到非法值会 panic，因此统一走 normalizeGinMode（空/非法回退 release）。
+	gin.SetMode(normalizeGinMode(config.AppConfig.Server.Mode))
 
 	router := gin.New()
 	// panic 兜底：gin.Recovery() 会返回 HTTP 500 空响应体，违反「HTTP 200 + 业务码」约定
@@ -93,4 +91,17 @@ func main() {
 	utils.Logger.Infof("Server started on %s", addr)
 	println("启动成功，访问地址: " + addr)
 	router.Run(addr)
+}
+
+// normalizeGinMode 校验 gin 运行模式（仅支持 debug/release/test）：
+// 空值或非法值一律回退 release。（gin.SetMode 遇到非法值会 panic，配错即启动失败。）
+func normalizeGinMode(mode string) string {
+	switch mode {
+	case gin.DebugMode, gin.ReleaseMode, gin.TestMode:
+		return mode
+	}
+	if mode != "" {
+		utils.Logger.Warnf("server.mode=%q 无效（仅支持 debug/release/test），已回退为 release", mode)
+	}
+	return gin.ReleaseMode
 }

@@ -54,7 +54,7 @@ func ReplayProtectionMiddleware() gin.HandlerFunc {
 		// 0. 来源已被临时封禁（持续重放/伪造签名）
 		if utils.Redis1.Exists(utils.Ctx, fmt.Sprintf("replay:ban:%s", ip)).Val() == 1 {
 			utils.RecordReplayFail(c, "banned_ip", uid, false)
-			c.JSON(http.StatusOK, utils.Error(1, "请求过于频繁，请稍后再试"))
+			c.JSON(http.StatusOK, utils.TooManyRequests("请求过于频繁，请稍后再试"))
 			c.Abort()
 			return
 		}

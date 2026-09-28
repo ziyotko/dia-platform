@@ -47,38 +47,47 @@ server:
     - http://localhost:3000
     - http://127.0.0.1:3000
 
-database:
+# 段名与 member / application / base 一致：mysql / redis / jwt / log
+mysql:
   host: 10.3.1.95
   port: 63400
-  username: 'root'
+  user: 'root'
   # 请使用环境变量 PORTAL_DB_PASSWORD 注入，勿提交真实密码到仓库
   password: PORTAL_DB_PASSWORD
-  dbname: 'caam_portal'
+  db_name: 'caam_portal'
   charset: 'utf8mb4'
   parse_time: true
   loc: 'Asia/Shanghai'
   timeout: '30s'
   read_timeout: '100s'
   write_timeout: '100s'
-  max_idle_conns: 10
-  max_open_conns: 100
+  max_idle: 10
+  max_open: 100
   conn_max_lifetime: 3600
   conn_max_idle_time: 600
 
 redis:
-  host: localhost
-  port: 6379
+  # addr = host:port；三个库用途固定（见 DEPLOY.md）
+  addr: localhost:6379
   password: ""
-  db: 6
-  db1: 7
-  db2: 8
+  captcha_db: 6      # 验证码（5 分钟 TTL）
+  anti_replay_db: 7  # 防重放 nonce + 限流计数
+  cache_db: 8        # 设置/静态化参数缓存
 
 
 jwt:
   # 请使用环境变量 PORTAL_JWT_SECRET 注入强随机密钥（>=32字符）
   secret: PORTAL_JWT_SECRET
-  expires_hour: 24
+  expire_hours: 24
+  # 令牌签发者（默认 caam-portal；解析时不校验）
+  issuer: caam-portal
 
 log:
+  # 日志级别：debug/info/warn/error（非法值回退 info）
   level: info
+  # 日志目录：portal 按天生成 <path>/YYYY-MM-DD.log
   path: ./logs
+  # 轮转参数（与 member/application 同名字段）：单文件上限 MB / 保留文件数 / 保留天数
+  max_size: 100
+  max_backups: 1000
+  max_age: 180

@@ -235,6 +235,10 @@ server {
 - **分页 `pageSize` 收敛修正**：上限 100，超出时**收敛为 100**。此前实现是「超出上限就退回 10 条」，导致前端传 `pageSize=200` 的批次下拉、发证候选、申报人下拉只显示 10 条（现已修正，前端也统一改为 100）。
 - **结果公示补齐申报人**：`GET /member/results` 的 `userRealName` 此前恒为空（`Select` 漏了外键列 `user_id`，`Preload("User")` 取不到数据），现已修复。
 - **错误信息统一脱敏**：所有错误响应统一走 `pkg/utils.SafeMessage` —— 业务错误（中文提示）原样返回；数据库/驱动/文件系统等底层错误（可能含表名、列名、SQL 片段）替换为「操作失败，请稍后重试」并写服务端日志。此前 79 处 `response.Fail(c, err.Error())` 会把 `Error 1062/1406…` 原文返回浏览器。
+- **业务码统一**：参数错误 / 无权限 / 资源不存在 / 服务端异常由 `400/403/404/500` 统一改为 **`1`**（“未登录/过期”仍为 `401`，“限流”为 `429`）。前端只按 0 / 401 分支，提示文案不变。
+- **CORS 改为白名单**：不再固定下发 `Access-Control-Allow-Origin: *`，改为 `server.allowed_origins`（默认 `http://localhost:3003`、`http://127.0.0.1:3003`，与 `frontend/vite.config.ts` 的 dev 端口一致）。**同源部署（Nginx 反代）不受影响**；若你的前端在其它域名/端口直连后端，必须在 `allowed_origins` 中补上，否则浏览器会拦请求。
+- **`server.mode` 默认改为 `release`**（原为 `debug`），并新增环境变量 `APPLICATION_MODE` 覆盖；非法值不再让 `gin.SetMode` panic，而是告警并回退 `release`。
+- **限流参数上收配置**（`server.login_rate_limit` / `captcha_rate_limit` / `upload_rate_limit`，次数/分钟，<=0 时用代码默认值 10/30/20）；`log.level` 新增可配置（默认 info）。
 
 ### 升级说明（2026-09-23，上线前安全加固）
 

@@ -88,7 +88,7 @@ func (ctrl *ApplicationController) ReviewApplication(c *gin.Context) {
 // ListApplications lists all applications (admin)
 func (ctrl *ApplicationController) ListApplications(c *gin.Context) {
 	page := parseIntDefault(c.Query("page"), 1)
-	size := parsePageSize(c.Query("size"))
+	size := parsePageSize(c)
 	status := c.Query("status")
 
 	apps, total, err := ctrl.appService.ListApplications(page, size, status)
@@ -135,9 +135,14 @@ func parseIntDefault(s string, def int) int {
 const maxListSize = 100
 
 // parsePageSize 解析列表分页大小并收敛到 [1, maxListSize]。
+// 参数名统一为 **pageSize**（与 portal / application 一致）；旧客户端的 `size` 仍兼容。
 // 新增列表接口时统一用它，不要直接写 parseIntDefault(c.Query("size"), 10)。
-func parsePageSize(s string) int {
-	size := parseIntDefault(s, 10)
+func parsePageSize(c *gin.Context) int {
+	raw := c.Query("pageSize")
+	if raw == "" {
+		raw = c.Query("size")
+	}
+	size := parseIntDefault(raw, 10)
 	if size > maxListSize {
 		return maxListSize
 	}

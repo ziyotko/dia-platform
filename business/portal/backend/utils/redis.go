@@ -2,7 +2,6 @@ package utils
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/go-redis/redis/v8"
@@ -18,9 +17,9 @@ var Ctx = context.Background()
 func InitRedisCaptcha() {
 	conf := config.AppConfig.Redis
 	Redis = redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%s", conf.Host, conf.Port),
+		Addr:     conf.Addr,
 		Password: conf.Password,
-		DB:       conf.DB,
+		DB:       conf.CaptchaDB,
 	})
 
 	_, err := Redis.Ping(Ctx).Result()
@@ -32,9 +31,9 @@ func InitRedisCaptcha() {
 func InitRedisAnti() {
 	conf := config.AppConfig.Redis
 	Redis1 = redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%s", conf.Host, conf.Port),
+		Addr:     conf.Addr,
 		Password: conf.Password,
-		DB:       conf.DB1,
+		DB:       conf.AntiReplayDB,
 	})
 	_, err := Redis1.Ping(Ctx).Result()
 	if err != nil {
@@ -45,9 +44,9 @@ func InitRedisAnti() {
 func InitRedisCache() {
 	conf := config.AppConfig.Redis
 	Redis2 = redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%s", conf.Host, conf.Port),
+		Addr:     conf.Addr,
 		Password: conf.Password,
-		DB:       conf.DB2,
+		DB:       conf.CacheDB,
 	})
 	_, err := Redis2.Ping(Ctx).Result()
 	if err != nil {

@@ -349,8 +349,8 @@ async function fetchData() {
 
     // 2. 获取类型分布（并行查询）
     const [unitRes, personalRes] = await Promise.all([
-      adminApi.getMembers({ member_type: 'unit', page: 1, size: 1 }).catch(() => ({ data: { total: 0 } })),
-      adminApi.getMembers({ member_type: 'personal', page: 1, size: 1 }).catch(() => ({ data: { total: 0 } }))
+      adminApi.getMembers({ member_type: 'unit', page: 1, pageSize: 1 }).catch(() => ({ data: { total: 0 } })),
+      adminApi.getMembers({ member_type: 'personal', page: 1, pageSize: 1 }).catch(() => ({ data: { total: 0 } }))
     ])
     typeData.unit = unitRes.data?.total || 0
     typeData.personal = personalRes.data?.total || 0
@@ -363,7 +363,7 @@ async function fetchData() {
 
     // 5. 最近注册会员
     try {
-      const memberRes = await adminApi.getMembers({ page: 1, size: 5 })
+      const memberRes = await adminApi.getMembers({ page: 1, pageSize: 5 })
       recentMembers.value = memberRes.data?.list || []
     } catch {}
 

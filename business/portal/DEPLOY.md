@@ -27,7 +27,7 @@ business/portal/
 | Go | ≥ 1.27（`backend/go.mod` 声明 `go 1.27.1`），交叉编译 Linux 需 `CGO_ENABLED=0` |
 | Node.js | ≥ 18（Vite 5） |
 | MySQL | ≥ 8.0（InnoDB + utf8mb4）库名 `XXXX_portal`，端口/账号按环境配置（本仓库当前为 `10.3.1.95:63400` 的 `caam_portal`） | 
-| Redis | 端口 6379，**三个库分工固定**：`db`(6) 验证码（5 分钟 TTL）、`db1`(7) 防重放 nonce + 限流计数、`db2`(8) 设置/静态化参数缓存 |
+| Redis | 端口 6379，**三个库分工固定**：`captcha_db`(6) 验证码（5 分钟 TTL）、`anti_replay_db`(7) 防重放 nonce + 限流计数、`cache_db`(8) 设置/静态化参数缓存 |
 | Nginx | 托管前端静态文件并反代 API；**需把 Nginx 自身地址填入 `server.trusted_proxies`**，否则限流/封禁会把所有用户算成同一个 IP |
 
 ---
@@ -39,7 +39,7 @@ business/portal/
 编辑 `backend/config.yaml`（敏感项用环境变量覆盖，见下一节）：
 
 - `server.host` / `server.port`: 监听地址与端口，默认 `0.0.0.0:8092`；改端口后需同步 Nginx 与 `frontend/vite.config.ts` 的 dev 代理目标
-- `server.mode`: 生产用 `release`（留空也会回退 release，不会输出调试信息）
+- `server.mode`: 生产用 `release`（留空/非法值均回退 release，不会输出调试信息）；可用环境变量 `PORTAL_MODE` 覆盖
 - `server.api_prefix`: `/xxxxx/api`（与前端 `VITE_API_BASE_URL` 一致；本仓库当前值为 `/business_portal/api`）
 - `server.upload_dir_prefix`: `/xxxxx`（上传挂载点前缀，需与 `VITE_BASE_PATH` 去尾斜杠一致；本仓库当前值为 `/business_portal`，文件从 `/business_portal/uploads/**` 提供）
 - `server.allowed_origins`: 生产环境改为实际前端域名，不要用 `*`（dev 默认值需与 `frontend/vite.config.ts` 的 `server.port` 一致，当前为 `http://localhost:3000`、`http://127.0.0.1:3000`）
@@ -49,10 +49,10 @@ business/portal/
 - 限流（Redis db 7 固定窗口，按真实客户端 IP 计数；Redis 不可用时退化为进程内限流）：`analytics_rate_limit`/`analytics_rate_window_seconds`（站点分析，默认 60 次/60s）、`login_rate_limit`/`login_rate_window_seconds`（登录，默认 10 次/300s）、`captcha_rate_limit`/`captcha_rate_window_seconds`（验证码，默认 30 次/60s）、`public_rate_limit`/`public_rate_window_seconds`（公开只读接口 `/site-info`、`/search/articles`，默认 120 次/60s，未配置回退 60 次/60s）、`upload_rate_limit`/`upload_rate_window_seconds`（文件上传 `POST /upload`，默认 30 次/60s，未配置回退 60 次/60s）。计数器 key 形如 `ratelimit:{用途}:{limit}:{ip}:{窗口}`；**个人改密（`PUT /profile/password`）复用登录的限流配置**（同一额度池内的独立计数器，用途名 `password`）
 - `server.upload_daily_quota_mb`：**单账号每日上传量上限（MB，默认 4096 = 4GB，`<=0` 回退 4096）**。按实际上传字节累计，键 `upload:quota:{用户ID}:{YYYY-MM-DD}`（Redis db 7，TTL 48h）。超限返回业务码 1 + 「今日上传量已达上限（N MB）」；**Redis 不可用时放行并记 Warn**（配额属防滥用加固，可用性优先，与限流的 fail-closed 取舍不同）。频率限流挡不住「慢速大量上传」，单文件上限也挡不住多次上传，故保留此配额
 - 防重放：`replay_window_seconds`（时间戳新鲜度窗口，默认 120s）、`replay_max_fail`（同一 IP 窗口内失败次数阈值，默认 10）、`replay_ban_minutes`（达阈值后临时封禁分钟数，默认 15）。**匿名只读请求（GET/HEAD/OPTIONS）不消耗 nonce**（不会写 Redis 键），匿名写接口（登录/站点分析写入）仍逐次占用 nonce
-- `database`: host / port / username / `password`（**只填占位值 `PORTAL_DB_PASSWORD`**）/ dbname / charset(`utf8mb4`) / `loc: Asia/Shanghai` / 读写超时与连接池
-- `redis`: host / port / password / **`db`=6 验证码、`db1`=7 防重放+限流、`db2`=8 缓存**
-- `jwt.secret`（占位值 `PORTAL_JWT_SECRET`）、`jwt.expires_hour`（默认 24）。**注意**：登录态有效期优先取数据库设置 `setting.token_expire`（后台「系统设置 → 安全设置」，1–720 小时）；仅当该值为 0 时才用 `jwt.expires_hour`
-- `log.level` / `log.path`（默认 `./logs`；单文件 100MB、保留 180 天、自动压缩）
+- `mysql`: host / port / user / `password`（**只填占位值 `PORTAL_DB_PASSWORD`**）/ db_name / charset(`utf8mb4`) / `loc: Asia/Shanghai` / parse_time / 读写超时与连接池（`max_idle`、`max_open`、`conn_max_lifetime`、`conn_max_idle_time`）。**段名与 member / application 的 `mysql:` 一致**
+- `redis`: `addr`（`host:port`）/ password / **`captcha_db`=6 验证码、`anti_replay_db`=7 防重放+限流、`cache_db`=8 缓存**
+- `jwt.secret`（占位值 `PORTAL_JWT_SECRET`）、`jwt.expire_hours`（默认 24）、`jwt.issuer`（默认 `caam-portal`）。**注意**：登录态有效期优先取数据库设置 `setting.token_expire`（后台「系统设置 → 安全设置」，1–720 小时）；仅当该值为 0 时才用 `jwt.expire_hours`
+- `log.level`（debug/info/warn/error，非法值回退 info）/ `log.path`（**目录**，按天生成 `<path>/YYYY-MM-DD.log`）/ `log.max_size`(100MB) / `log.max_backups`(1000) / `log.max_age`(180 天，自动压缩)
 
 ### 2. 敏感信息用环境变量注入（必填）
 
@@ -156,6 +156,11 @@ SELECT id, title, publish_time, created_at FROM article
 - **静态化代理的自身错误回归 HTTP 200**：参数未配置 / 请求构造失败 / 读取响应失败 / 无法连接静态化程序，原先分别返回 HTTP 500 / 502，现统一为「HTTP 200 + 业务码 1」（前端提示文案不变）。上游静态化程序的真实响应（202 等）仍原样透传。
 - **创建用户事务化**：用户行与「加入机构」改为同一事务，机构关联失败会整体回滚，不再留下「初始密码未知」的孤儿账号（只能改库回收）。
 - **错误不再被静默忽略**：仪表盘三项统计、登录/登录失败日志写入、删除菜单前的子菜单计数均会检查错误（计数失败时直接报错，不再误删父菜单留下孤儿）。
+
+**配置键名与其它三个项目对齐（强烈建议迁移）**：`database:` → **`mysql:`**（`username`→`user`、`dbname`→`db_name`、`max_idle_conns`→`max_idle`、`max_open_conns`→`max_open`）；`redis.host`+`port` → **`redis.addr`**，`redis.db/db1/db2` → **`redis.captcha_db`/`anti_replay_db`/`cache_db`**；`jwt.expires_hour` → **`jwt.expire_hours`**（新增 `jwt.issuer`）；`log` 新增 `max_size`/`max_backups`/`max_age`（默认值与旧代码一致）。
+- **旧键名仍可用**：启动时检测到旧键名会自动转换并打印 `[WARN] ... 请迁移为 mysql.*`，因此**老 config.yaml 不改也能启动**；但新环境请直接用新键名（见「二.1 配置」）。
+- 新增环境变量 `PORTAL_MODE`（覆盖 `server.mode`）；`server.mode` 为非法值时不再让 `gin.SetMode` panic，而是告警并回退 `release`。
+- **限流类响应业务码由 1 改为 429**（`RateLimitMiddleware` / 单 IP 并发限制 / 防重放临时封禁，文案不变）；前端仍只依赖 0 与 401，无需改动。
 
 #### ⚠️ 页面层合并迁移（2026-09-21，手工执行，不可逆）
 
@@ -401,7 +406,7 @@ server {
 | 文章查询报 `Can't find FULLTEXT index matching the column list` | `article` 表缺少 `MATCH ... AGAINST` 所需的 FULLTEXT 索引。当前版本启动时会自动补齐 `idx_article_title_fulltext` / `idx_article_author_fulltext` / `idx_article_source_fulltext`；若日志出现 `[migrate] 创建 FULLTEXT 索引 ... 失败`，检查数据库账号是否具备 `ALTER` 权限 |
 | 接口返回「缺少防重放攻击请求头」/「请求已过期，请重新发送」 | 请求未带 `X-Request-Timestamp`（毫秒时间戳）与 `X-Request-Nonce`（8–128 位）头。浏览器端由前端 `utils/request.ts` 统一添加；脚本或第三方对接需自行实现（已认证请求还需 `X-Request-Signature`） |
 | 登录/验证码返回「请求过于频繁，请稍后再试」 | 命中固定窗口限流或防重放临时封禁（Redis db 7）。优先确认 `server.trusted_proxies` 是否填了 Nginx IP，否则全站共用一个 IP 会误伤合法用户 |
-| 多用户同时被登出、接口返回 `code=401` | Token 过期（`jwt.expires_hour`/`setting.token_expire`）或 `PORTAL_JWT_SECRET` 被更换；前端收到 401 会自动跳登录页 |
+| 多用户同时被登出、接口返回 `code=401` | Token 过期（`jwt.expire_hours`/`setting.token_expire`）或 `PORTAL_JWT_SECRET` 被更换；前端收到 401 会自动跳登录页 |
 | 静态化请求 502 / 504 | 502 = 外部静态化程序不可达（检查「系统设置」中的地址与网络连通）；504 = 生成耗时超过网关超时（后端客户端 120s，Nginx `proxy_read_timeout` 建议 ≥180s） |
 | 上传大文件失败 | 后端按扩展名限制：**`.mp4` 视频 800MB**，其余格式（图片/附件/其它视频）50MB；同时确认 Nginx `client_max_body_size` ≥ 该值；`POST /upload` 另有 `upload_rate_limit` 限流（默认 30 次/60s）；单账号每日上传量超 `upload_daily_quota_mb`（默认 4GB）会报「今日上传量已达上限」 |
 | 用户反映"改完密码后其他设备被登出" | 属正常安全机制：`user.password_changed_at` 会作废旧 Token（含管理员重置密码），前端提示"密码已修改，请重新登录" |

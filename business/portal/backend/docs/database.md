@@ -305,7 +305,7 @@
 | max_fail_count | bigint | 是 | 5 | - | 最大失败次数（服务端限 1–100） |
 | lock_duration | bigint | 是 | 30 | - | 锁定时长（分钟，服务端限 1–1440） |
 | min_password_length | bigint | 是 | 8 | - | 密码最小长度（服务端限 1–64，**不得为 0**） |
-| token_expire | bigint | 是 | 24 | - | Token 有效期（小时，服务端限 1–720）；>0 时优先于 `config.yaml` 的 `jwt.expires_hour` |
+| token_expire | bigint | 是 | 24 | - | Token 有效期（小时，服务端限 1–720）；>0 时优先于 `config.yaml` 的 `jwt.expire_hours` |
 | smtp_host | varchar(200) | 是 | - | - | SMTP 服务器 |
 | smtp_port | varchar(10) | 是 | - | - | SMTP 端口 |
 | from_email | varchar(200) | 是 | - | - | 发件邮箱 |

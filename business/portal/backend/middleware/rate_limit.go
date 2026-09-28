@@ -77,7 +77,7 @@ func RateLimitMiddlewareScoped(scope string, limit int, window time.Duration) gi
 		if err != nil {
 			// Redis 不可用：退化为进程内限流兜底（fail-closed），避免限流组件故障时被无限刷量
 			if !allowLocalRateLimit(fmt.Sprintf("ratelimit:%s:%d:%s", scope, limit, ip), limit, window) {
-				ctx.JSON(http.StatusOK, utils.Error(1, "请求过于频繁，请稍后再试"))
+				ctx.JSON(http.StatusOK, utils.TooManyRequests("请求过于频繁，请稍后再试"))
 				ctx.Abort()
 				return
 			}
@@ -91,7 +91,7 @@ func RateLimitMiddlewareScoped(scope string, limit int, window time.Duration) gi
 			utils.Redis1.Expire(utils.Ctx, key, window)
 		}
 		if count > int64(limit) {
-			ctx.JSON(http.StatusOK, utils.Error(1, "请求过于频繁，请稍后再试"))
+			ctx.JSON(http.StatusOK, utils.TooManyRequests("请求过于频繁，请稍后再试"))
 			ctx.Abort()
 			return
 		}

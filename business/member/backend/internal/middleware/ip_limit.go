@@ -75,7 +75,7 @@ func IPLimit() gin.HandlerFunc {
 		defer atomic.AddInt32(count, -1)
 
 		if int(current) > limiter.maxConcurrent {
-			response.Error(c, 429, "请求过于频繁，请稍后再试")
+			response.TooManyRequests(c, "请求过于频繁，请稍后再试")
 			c.Abort()
 			return
 		}

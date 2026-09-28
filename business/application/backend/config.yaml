@@ -1,14 +1,24 @@
 server:
   port: 8094
-  mode: debug
+  # 生产环境务必使用 release；可用环境变量 APPLICATION_MODE 覆盖（如开发机用 debug）
+  mode: release
   api_prefix: /business_application/api
   # fileUrl 前缀：仅用于把数据库中带前缀的历史 URL 归一化回 uploads/ 路径（不再静态托管，见 DEPLOY.md「二.5」）
   upload_dir_prefix: /business_application
   max_concurrent_ips: 100
+  # CORS 白名单（前端来源），生产环境请按实际域名配置，不要使用 *
+  # 端口需与 frontend/vite.config.ts 的 server.port 保持一致（当前为 3003）
+  allowed_origins:
+    - http://localhost:3003
+    - http://127.0.0.1:3003
   # 可信反向代理 IP 列表（用于正确获取客户端真实 IP；限流/审计均按真实 IP 计数）
   # 生产环境请填入 Nginx 等代理的实际地址；本机回环保留 127.0.0.1。
   trusted_proxies:
     - 127.0.0.1
+  # 固定窗口限流（次数/分钟，按真实客户端 IP；未配置或 <=0 时回退代码默认值）
+  login_rate_limit: 10
+  captcha_rate_limit: 30
+  upload_rate_limit: 20
 
 mysql:
   host: 10.3.1.95
@@ -34,6 +44,8 @@ jwt:
   issuer: caam-application
 
 log:
+  # 日志级别：debug/info/warn/error（非法值回退 info）
+  level: info
   path: logs/application.log
   max_size: 100
   max_backups: 30

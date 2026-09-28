@@ -52,7 +52,7 @@ const replyText = ref('')
 onMounted(() => fetchData())
 async function fetchData() {
   loading.value = true
-  try { const r = await adminApi.getMessages({ page: page.value, size: size.value }); list.value = r.data?.list || []; total.value = r.data?.total || 0 } catch {} finally { loading.value = false }
+  try { const r = await adminApi.getMessages({ page: page.value, pageSize: size.value }); list.value = r.data?.list || []; total.value = r.data?.total || 0 } catch {} finally { loading.value = false }
 }
 function openReply(row: any) {
   replyTarget.value = row

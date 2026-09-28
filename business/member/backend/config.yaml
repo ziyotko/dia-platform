@@ -15,6 +15,11 @@ server:
   # 可信反向代理 IP 列表（用于正确获取客户端真实 IP）
   trusted_proxies:
     - 127.0.0.1
+  # 固定窗口限流（次数/分钟，按真实客户端 IP；未配置或 <=0 时回退代码默认值）
+  login_rate_limit: 10
+  captcha_rate_limit: 30
+  public_rate_limit: 300
+  upload_rate_limit: 20
 
 mysql:
   host: 10.3.1.95
@@ -40,6 +45,8 @@ jwt:
   issuer: caam-member
 
 log:
+  # 日志级别：debug/info/warn/error（非法值回退 info）
+  level: info
   path: logs/member.log
   max_size: 100
   max_backups: 30

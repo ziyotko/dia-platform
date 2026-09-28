@@ -478,7 +478,7 @@ async function fetchLevels() {
 async function fetchData() {
   loading.value = true
   try {
-    const res = await adminApi.getMembers({ page: page.value, size: size.value, keyword: keyword.value, status: filterStatus.value, member_type: filterType.value })
+    const res = await adminApi.getMembers({ page: page.value, pageSize: size.value, keyword: keyword.value, status: filterStatus.value, member_type: filterType.value })
     list.value = res.data?.list || []; total.value = res.data?.total || 0
   } catch {} finally { loading.value = false }
 }
@@ -694,7 +694,7 @@ async function fetchHistory() {
   try {
     const res = await adminApi.getMemberLevelChangesByMember(historyTarget.value.id, {
       page: historyPage.value,
-      size: historySize
+      pageSize: historySize
     })
     const list = res.data?.list || []
     historyTotal.value = res.data?.total || 0

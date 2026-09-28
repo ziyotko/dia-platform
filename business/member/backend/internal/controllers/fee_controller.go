@@ -181,7 +181,7 @@ func (ctrl *FeeController) IssueInvoice(c *gin.Context) {
 
 func (ctrl *FeeController) ListAllFees(c *gin.Context) {
 	page := parseIntDefault(c.Query("page"), 1)
-	size := parsePageSize(c.Query("size"))
+	size := parsePageSize(c)
 	year := parseIntDefault(c.Query("year"), 0)
 	status := c.Query("status")
 	memberType := c.Query("member_type")

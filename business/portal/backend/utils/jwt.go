@@ -17,9 +17,14 @@ type Claims struct {
 
 func GenerateToken(userID uint, email string, expiresHour int) (string, error) {
 	if expiresHour <= 0 {
-		expiresHour = config.AppConfig.JWT.ExpiresHour
+		expiresHour = config.AppConfig.JWT.ExpireHours
 	}
 	expireTime := time.Now().Add(time.Hour * time.Duration(expiresHour))
+	// issuer 与 member / application 一样走配置（默认 caam-portal）；本服务解析时不校验 issuer
+	issuer := config.AppConfig.JWT.Issuer
+	if issuer == "" {
+		issuer = "caam-portal"
+	}
 	claims := Claims{
 		UserID: userID,
 		Email:  email,
@@ -27,7 +32,7 @@ func GenerateToken(userID uint, email string, expiresHour int) (string, error) {
 			ExpiresAt: jwt.NewNumericDate(expireTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
-			Issuer:    "caam-portal",
+			Issuer:    issuer,
 			Subject:   "user-token",
 			ID:        uuid.New().String(),
 		},

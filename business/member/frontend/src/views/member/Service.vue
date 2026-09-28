@@ -121,7 +121,7 @@ function downloadCharterPdf() {
 async function fetchAnnouncements() {
   annLoading.value = true
   try {
-    const res = await announcementApi.getPublished({ page: annPage.value, size: annSize.value })
+    const res = await announcementApi.getPublished({ page: annPage.value, pageSize: annSize.value })
     announcements.value = res.data?.list || []
     annTotal.value = res.data?.total || 0
   } catch {} finally { annLoading.value = false }
@@ -130,7 +130,7 @@ async function fetchAnnouncements() {
 async function fetchArticles() {
   artLoading.value = true
   try {
-    const res = await articleApi.listPublished({ page: artPage.value, size: artSize.value })
+    const res = await articleApi.listPublished({ page: artPage.value, pageSize: artSize.value })
     pubArticles.value = res.data?.list || []
     artTotal.value = res.data?.total || 0
   } catch {} finally { artLoading.value = false }

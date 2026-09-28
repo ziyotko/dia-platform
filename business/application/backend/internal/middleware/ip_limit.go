@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"log"
-	"net/http"
 	"sync"
 	"sync/atomic"
 
@@ -61,7 +60,7 @@ func IPLimit() gin.HandlerFunc {
 		}()
 
 		if current > maxPerIP {
-			response.FailWithCode(c, http.StatusTooManyRequests, "请求过于频繁，请稍后再试")
+			response.TooManyRequests(c, "请求过于频繁，请稍后再试")
 			c.Abort()
 			return
 		}

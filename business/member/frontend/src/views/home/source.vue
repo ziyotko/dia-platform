@@ -280,7 +280,7 @@ onMounted(async () => {
 async function fetchAnnouncements() {
   loadingAnn.value = true
   try {
-    const res = await announcementApi.getPublished({ page: 1, size: 10 })
+    const res = await announcementApi.getPublished({ page: 1, pageSize: 10 })
     announcements.value = res.data.list || []
   } catch {} finally { loadingAnn.value = false }
 }
