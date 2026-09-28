@@ -166,7 +166,13 @@ func (s *MemberService) UpdateMemberStatus(id uint64, status string, operator st
 	if m.Status == status {
 		return nil
 	}
-	if err := db.DB.Model(&models.Member{}).Where("id = ?", id).Update("status", status).Error; err != nil {
+	// 管理员变更会籍状态时，立刻作废该会员已签发的 Token：
+	// 否则旧 Token 最长还能用满 24h（会籍已终止却仍在系统内）。
+	// 会员登录本身不限状态，故只强制「重新登录」，不做状态否决。
+	if err := db.DB.Model(&models.Member{}).Where("id = ?", id).Updates(map[string]any{
+		"status":               status,
+		"token_invalid_before": models.NewInvalidBefore(),
+	}).Error; err != nil {
 		return err
 	}
 
@@ -629,7 +635,11 @@ func (s *MemberService) ResetMemberPassword(id uint64) error {
 	if err != nil {
 		return errors.New("密码加密失败")
 	}
-	return db.DB.Model(&models.Member{}).Where("id = ?", id).Update("password", string(hashed)).Error
+	// 重置密码必须同时记录改密时间：否则重置前签发（或被窃取）的 Token 仍可用到自然过期。
+	return db.DB.Model(&models.Member{}).Where("id = ?", id).Updates(map[string]any{
+		"password":            string(hashed),
+		"password_changed_at": models.NewInvalidBefore(),
+	}).Error
 }
 
 // CreateMemberRequest is the admin request for creating a member directly.

@@ -36,8 +36,9 @@ func GenerateToken(memberID uint64, username string, isAdmin bool) (string, erro
 func ParseToken(tokenString string) (*MemberClaims, error) {
 	cfg := config.Cfg.JWT
 	token, err := jwtlib.ParseWithClaims(tokenString, &MemberClaims{}, func(t *jwtlib.Token) (interface{}, error) {
-		// 只接受 HS256，防止算法混淆攻击
-		if _, ok := t.Method.(*jwtlib.SigningMethodHMAC); !ok {
+		// 只接受 HS256：原先判 `*SigningMethodHMAC` 会同时放行 HS384/HS512（算法混淆面）。
+		// 与 portal 的 utils/jwt.go 口径一致。
+		if t.Method.Alg() != jwtlib.SigningMethodHS256.Alg() {
 			return nil, jwtlib.ErrSignatureInvalid
 		}
 		return []byte(cfg.Secret), nil

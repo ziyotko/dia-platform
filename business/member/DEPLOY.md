@@ -236,6 +236,17 @@ server {
 - 更换 `MEMBER_JWT_SECRET` 会使所有已签发 Token 立即失效（在线用户需重新登录）
 - 备份建议：`mysqldump` 数据库 + `backend/uploads` 目录（含证书 PDF、证书模板、章程 PDF、票据、文章配图）+ `backend/config.yaml`（不含密码明文）
 
+### 升级说明（2026-09-28 第二批：Token 服务端失效机制，无需手工 SQL）
+
+- **新增两列** `member_users.password_changed_at`、`member_users.token_invalid_before`（启动 `AutoMigrate` 自动补列，**无需手工 SQL**）。
+- **改密后旧 Token 立即失效**：本人「修改密码」与管理员「重置密码」都会记录改密时间，改密前签发的 Token（含被窃取的）立即 401，不再需要等 `jwt.expire_hours`（默认 24h）。⚠️ 改密后**当前会话也会被强制登出**，前端提示「密码修改成功，请重新登录」（与 portal 口径一致，属有意行为）。
+- **管理员变更会籍状态后旧 Token 立即失效**：`正式会员 ⇄ 已过期` 变更会写入 `token_invalid_before`，该会员的在线会话立即失效（需重新登录）。
+- **会员被删除后立即失效**：鉴权时按主键查会员行，查不到直接 401（原先只要 Token 未过期就仍可调用全部接口）。
+- **新增 `POST /business_member/api/logout`**（需登录）：把当前 Token 的 `jti` 写入 Redis 黑名单（键 `blacklist:{jti}`、值 `1`、TTL = Token 剩余有效期，存于 `redis.captcha_db`）。前端「退出登录」按钮调用它；**401 自动登出路径仍只清本地会话**（Token 已失效，再调接口只会二次 401）。
+- **管理员标记以数据库为准**：`is_admin` 置 0 后旧 Token 立即失去后台权限（原先 Token 里的 `is_admin` 是签发时快照，最长 24h 才生效）。
+- **JWT 算法收紧为仅 HS256**（原先接受 HS256/HS384/HS512 三类）。
+- ⚠️ 该机制依赖 Redis（`redis.captcha_db`）：**Redis 不可用时鉴权按 fail-closed 处理**（返回「服务暂时不可用」，不再放行），请确保 Redis 与后端一并探活。
+
 ### 升级说明（2026-09-28，无需手工 SQL）
 
 - **列表分页上限**：所有列表接口的 `size` 收敛到**最大 100**（`?size=100000` 不再把整表读进内存；公告 / 已发布文章等**匿名只读列表同样受限**）。

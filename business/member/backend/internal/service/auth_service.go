@@ -8,6 +8,7 @@ import (
 	"member/pkg/captcha"
 	"member/pkg/db"
 	mjwt "member/pkg/jwt"
+	"member/pkg/redis"
 	"member/pkg/utils"
 	"strings"
 	"time"
@@ -461,7 +462,32 @@ func (s *AuthService) ChangePassword(memberID uint64, oldPwd, newPwd string) err
 	if err != nil {
 		return errors.New("密码加密失败")
 	}
-	return db.DB.Model(&member).Update("password", string(hashed)).Error
+	// 改密必须同时写 password_changed_at：Auth 中间件比较 Token 的 iat，
+	// 使改密前签发的 Token（含被窃取的）立即失效，而不是等 24h 自然过期。
+	return db.DB.Model(&member).Updates(map[string]any{
+		"password":            string(hashed),
+		"password_changed_at": models.NewInvalidBefore(),
+	}).Error
+}
+
+// logoutBlacklistTTLFallback Token 缺少过期时间时的黑名单兜底 TTL（正常不会用到）
+const logoutBlacklistTTLFallback = 24 * time.Hour
+
+// Logout 把 Token 的 jti 写入黑名单，使其在自然过期前不再可用。
+// 只存标记（值 "1"），不存 Token 原文。
+func (s *AuthService) Logout(jti string, expiresAt *time.Time) error {
+	if jti == "" {
+		return nil
+	}
+	ttl := logoutBlacklistTTLFallback
+	if expiresAt != nil {
+		ttl = time.Until(*expiresAt)
+		if ttl <= 0 {
+			// Token 已过期，无需入黑名单
+			return nil
+		}
+	}
+	return redis.CaptchaClient.Set(redis.Ctx, "blacklist:"+jti, "1", ttl).Err()
 }
 
 // --- Request/Response types ---

@@ -120,6 +120,10 @@ func Register(r *gin.Engine) {
 	member := r.Group(prefix)
 	member.Use(middleware.Auth())
 	{
+		// 退出登录：把当前 Token 的 jti 写入黑名单（TTL = 剩余有效期），使其立即失效。
+		// 前端「退出登录」按钮会调用它；401 自动登出路径仍只清本地，避免死循环。
+		member.POST("/logout", authCtrl.Logout)
+
 		// Profile
 		member.GET("/member/profile", authCtrl.GetProfile)
 		member.PUT("/member/profile", authCtrl.UpdateProfile)

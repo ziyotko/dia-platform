@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"member/config"
 	"member/internal/middleware"
@@ -84,6 +85,22 @@ func (ctrl *AuthController) Login(c *gin.Context) {
 		return
 	}
 	response.Success(c, result)
+}
+
+// Logout 退出登录：把当前 Token 的 jti 写入黑名单（TTL = Token 剩余有效期），
+// 使其在自然过期前不可再用。写黑名单失败不影响本地登出，只记日志。
+func (ctrl *AuthController) Logout(c *gin.Context) {
+	claims := middleware.GetClaims(c)
+	if claims != nil {
+		var expiresAt *time.Time
+		if claims.ExpiresAt != nil {
+			expiresAt = &claims.ExpiresAt.Time
+		}
+		if err := ctrl.authService.Logout(claims.ID, expiresAt); err != nil {
+			utils.LogWarn("退出登录写黑名单失败: %s", err)
+		}
+	}
+	response.SuccessWithMessage(c, "已退出登录", nil)
 }
 
 // GetProfile returns the member's profile

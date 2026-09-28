@@ -102,6 +102,8 @@
 | id_card | varchar(32) | 是 | - | - | 身份证号（个人会员） |
 | login_fail_count | bigint | 是 | 0 | - | 连续登录失败次数（不出参 JSON） |
 | locked_until | datetime | 是 | - | - | 账号锁定截止时间（不出参 JSON） |
+| password_changed_at | datetime | 是 | - | - | 最后一次修改密码时间（秒级；本人改密/管理员重置密码时写入，不出参 JSON） |
+| token_invalid_before | datetime | 是 | - | - | 该时间之前签发的 Token 一律作废（秒级；管理员变更会籍状态时写入，不出参 JSON） |
 
 > **密码策略**：注册页要求 8~20 位且含小写字母、大写字母、数字、特殊字符（**后端 `RegisterRequest` 仅强制 `required,min=6`**，复杂度校验在前端）；「修改密码」后端强制 `min=8`；管理员「新增会员」密码留空、以及后台「重置密码」时使用默认密码常量 `Abcd@1234`。密码以 **bcrypt** 哈希存储（与 portal 的 SM3 不同）。
 > 关联字段 `org_name`（入会机构名）是 `gorm:"-"` 的**非数据库字段**，由 service 在查询时填充。
@@ -624,7 +626,7 @@ erDiagram
 6. **证书 `expire_at` 不参与任何自动判断**：系统**没有**定时任务，会员「已过期」状态与证书过期均需管理员手工处理；后台「会员管理 → 状态变更」可在「正式会员 ⇄ 已过期」之间切换（`PUT /admin/members/:id/status` 仅接受 `active`/`expired`），置为已过期会同步作废该会员的生效证书。
 7. **操作日志的两点口径**：
    - `params` 记录**完整请求体**（JSON），但写库前会**按键名脱敏**（`password`/`old_password`/`new_password`/`token`/`secret` 等置为 `***`；非 JSON 体走正则脱敏），且按**字符**（非字节）截断到 2000 字，避免切碎中文导致写库失败；
-   - `status` 判定依赖 HTTP 状态码，而本系统响应恒为 HTTP 200（业务码在 body），因此 `status` 目前**恒为 1（成功）**。
+   - `status` 写库前会读响应体里的**业务码**（非 0 记失败）——HTTP 状态码恒为 200，单看它会把所有操作都记成成功。
 8. **`member_system_configs.value` 为 `text`（约 64KB 上限）**：`charter_content`（章程正文）存于此列，正文已在前端禁止插入图片/视频，正常不会超限；若后续允许插图需改 `longtext`。
 9. **上传文件落盘位置**与数据库列对应关系：
 
@@ -642,3 +644,10 @@ erDiagram
 
 10. **上传目录对外是静态可读的**（`/business_member/uploads/**`，无鉴权），证书编号规则可推导，存在被枚举下载的风险，建议后续改为受控下载接口（详见代码审查记录）。
 11. **备份范围**：数据库（`mysqldump`）+ `backend/uploads/`（证书、模板、发票、回执、图片、章程）+ `config.yaml`（不含密码明文）。
+12. **登录态（Token）服务端失效口径**：`middleware.Auth()` 每次请求都按主键查 `member_users` 并比对 Token 的 `iat`。
+    - `iat < password_changed_at` → 「密码已修改，请重新登录」（本人改密 `PUT /member/change-password`、管理员重置密码 `PUT /admin/members/:id/reset-password` 时写入）；
+    - `iat < token_invalid_before` → 「账号状态已变更，请重新登录」（管理员变更会籍状态 `PUT /admin/members/:id/status` 时写入）；
+    - 行不存在（会员已删除）→ 「账号不存在或已注销，请重新登录」；
+    - Redis 键 `blacklist:{jti}` 存在（主动登出 `POST /logout` 写入，TTL = Token 剩余有效期）→ 「已退出登录，请重新登录」。
+
+    两个时间列均为**秒级**写入（列无小数秒，MySQL 会四舍五入）；比较是 `iat.Before(失效点)`，故同一秒内签发的 Token 仍有效。**`status` 不做白名单拦截**——会员登录本身不限状态（注册中/待审核/待缴费/已过期都要能登录完成入会与缴费），因此「禁用」靠管理员的动作即时踢下线，而不是状态否决。

@@ -47,7 +47,7 @@ request.interceptors.response.use(
         if (biz) {
           ElMessage.error(biz.message)
           if (biz.code === 401) {
-            useUserStore().logout()
+            useUserStore().forceLogout()
           }
           return Promise.reject(new Error(biz.message))
         }
@@ -59,7 +59,7 @@ request.interceptors.response.use(
       ElMessage.error(res.message || '请求失败')
       if (res.code === 401) {
         const userStore = useUserStore()
-        userStore.logout()
+        userStore.forceLogout()
       }
       return Promise.reject(new Error(res.message))
     }
@@ -72,7 +72,7 @@ request.interceptors.response.use(
     let msg = error?.message || '网络错误'
     if (status === 401 || status === 403) {
       msg = '登录状态已失效，请重新登录'
-      useUserStore().logout()
+      useUserStore().forceLogout()
     } else if (status === 413) {
       msg = '上传内容过大，请压缩后重试'
     } else if (status === 429) {

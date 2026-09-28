@@ -27,7 +27,7 @@ export const useUserStore = defineStore('user', () => {
     userInfo.value = res.data
   }
 
-  function logout() {
+  function clearSession() {
     token.value = ''
     userInfo.value = null
     menus.value = []
@@ -35,9 +35,27 @@ export const useUserStore = defineStore('user', () => {
     // localStorage.clear() 会连带把其它系统的登录态一起清掉
     localStorage.removeItem('member-token')
     sessionStorage.removeItem('member-token')
+  }
+
+  // 本地强制登出：Token 已失效（401）时使用；不再请求服务端，避免二次 401 递归
+  function forceLogout() {
+    clearSession()
     // 跳登录页必须带上部署子路径（BASE_URL = vite base），否则子路径部署下会跳到不存在的 /login
     window.location.href = `${import.meta.env.BASE_URL || '/'}login`
   }
 
-  return { token, userInfo, menus, isLoggedIn, isAdmin, setToken, login, fetchUserInfo, logout }
+  // 主动退出登录（用户点「退出登录」/改密后）：先让服务端把当前 Token 拉黑
+  // （TTL = 剩余有效期），再清理本地会话。服务端失败不阻塞本地登出。
+  async function logout() {
+    if (token.value) {
+      try {
+        await authApi.logout()
+      } catch {
+        // 忽略：服务端登出失败也要完成本地登出
+      }
+    }
+    forceLogout()
+  }
+
+  return { token, userInfo, menus, isLoggedIn, isAdmin, setToken, login, fetchUserInfo, clearSession, forceLogout, logout }
 })

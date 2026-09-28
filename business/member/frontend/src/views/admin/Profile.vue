@@ -219,8 +219,11 @@ async function changePwd() {
   changingPwd.value = true
   try {
     await authApi.changePassword({ old_password: pwdForm.oldPassword, new_password: pwdForm.newPassword })
-    ElMessage.success('密码修改成功')
+    ElMessage.success('密码修改成功，请重新登录')
     showPwdDialog.value = false
+    // 改密后服务端已作废当前 Token（password_changed_at）：本地会话同步失效并回登录页
+    userStore.clearSession()
+    setTimeout(() => userStore.logout(), 800)
   } catch {
   } finally {
     changingPwd.value = false
