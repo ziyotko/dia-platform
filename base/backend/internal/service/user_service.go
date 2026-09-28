@@ -129,6 +129,9 @@ func (s UserService) Update(u *models.User, tenantID uint64) error {
 			return err
 		}
 		updates["password"] = hash
+		// 管理员在「用户管理」里改了别人的密码：必须记录改密时间，
+		// 否则该用户已登录的会话（8h）仍能继续使用（旧行为：这里完全不吊销）。
+		updates["password_changed_at"] = models.NewInvalidBefore()
 	}
 	check := db.DB.Model(&models.User{}).Where("id = ?", u.ID)
 	query := db.DB.Model(u)
@@ -145,9 +148,16 @@ func (s UserService) Update(u *models.User, tenantID uint64) error {
 		return err
 	}
 	// 禁用账号必须立即生效：JWT 是无状态的，不吊销的话被禁用的账号在 token 过期前仍能正常访问接口
+	// （另：以库为准的存活校验在 JWTAuth 里，Redis 写失败也不影响这一点）
 	if current.Status == 1 && u.Status == 0 {
 		if err := (TokenService{}).RevokeUserTokensBefore(u.ID, time.Now()); err != nil {
 			logrus.WithError(err).Warn("禁用用户后吊销旧 token 失败")
+		}
+	}
+	// 改密（含重置/管理员修改）后同样吊销该用户全部旧会话，使 refresh token 一并失效
+	if _, changed := updates["password"]; changed {
+		if err := (TokenService{}).RevokeUserTokensBefore(u.ID, time.Now()); err != nil {
+			logrus.WithError(err).Warn("改密后吊销旧 token 失败")
 		}
 	}
 	return nil
@@ -264,7 +274,11 @@ func (s UserService) ResetPassword(userID uint64, newPwd string, tenantID uint64
 	if err != nil {
 		return err
 	}
-	if err := db.DB.Model(&user).Update("password", hash).Error; err != nil {
+	// 密码与「改密时间」一起写：JWTAuth 据此让该用户改密前签发的 Token 立即失效
+	if err := db.DB.Model(&user).Updates(map[string]interface{}{
+		"password":            hash,
+		"password_changed_at": models.NewInvalidBefore(),
+	}).Error; err != nil {
 		return err
 	}
 	if err := (TokenService{}).RevokeUserTokensBefore(user.ID, time.Now()); err != nil {
@@ -288,5 +302,17 @@ func (s UserService) ChangePassword(userID uint64, oldPwd, newPwd string) error 
 	if err != nil {
 		return err
 	}
-	return db.DB.Model(&user).Update("password", hash).Error
+	// 改密与「记录改密时间」一起写：JWTAuth 据此使改密前签发的 Token 立即失效
+	// （原先只靠 Redis 的 revoked-before，Redis 数据丢失就漏；且写失败只告警）。
+	if err := db.DB.Model(&user).Updates(map[string]interface{}{
+		"password":            hash,
+		"password_changed_at": models.NewInvalidBefore(),
+	}).Error; err != nil {
+		return err
+	}
+	// refresh token 也要一并失效（refresh 校验会带上 revoked-before）
+	if err := (TokenService{}).RevokeUserTokensBefore(user.ID, time.Now()); err != nil {
+		logrus.WithError(err).Warn("改密后吊销旧 token 失败")
+	}
+	return nil
 }

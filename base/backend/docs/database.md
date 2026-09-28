@@ -142,9 +142,11 @@
 | status | bigint | 是 | 1 | - | 状态：1 启用 / 0 禁用 |
 | is_admin | tinyint(1) | 是 | 0 | - | 是否租户管理员（开启后在本租户内拥有全部接口权限与菜单） |
 | organization_id | bigint unsigned | 是 | - | IDX | 所属机构 ID（0 = 未分配） |
+| password_changed_at | datetime | 是 | - | - | 最后一次改密时间（秒级）；Token 的 iat 早于它就返回 401（JSON 不下发） |
 
 - 唯一索引 `uk_base_user_tenant_username (tenant_id, username)`：**同租户内不可重名、跨租户可同名**（与登录按「租户编码 + 用户名」定位一致）。
 - 登录失败次数 / 锁定状态**不落库**，存 Redis：`login_fail:<tenantID>:<username>`（TTL = 锁定时长）。
+- 登录态失效（`JWTAuth`）三轴判定：`status != 1`（禁用）或行不存在（删除）→ 401；Token 的 `iat` 早于 `password_changed_at` → 401；Redis 里 `auth:token:revoked:<jti>`（登出）或 `auth:user:revoked-before:<uid>`（禁用/删除/改密/refresh 重用）存在且早于 `iat` → 401。`tenant_id` 以本表为准（不用 Token 里的快照）。
 - 删除保护：不能删除当前登录用户；不能删除平台内置 `admin`（`tenant_id = 0`）；删除时级联清理 `base_user_role` 与 `base_workflow_role_user`。
 - `organization_id` 引用的机构必须存在且属于该租户（或平台内置机构）；机构下仍有用户时不允许删除机构。
 

@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type User struct {
 	BaseModel
 	// 用户名唯一性由数据库唯一索引 (tenant_id, username) 保证：同租户内不能重名，跨租户可同名。
@@ -16,6 +18,10 @@ type User struct {
 	// OrganizationID 所属机构（0 表示未分配）；机构树见 base_organization
 	OrganizationID uint64 `gorm:"index;comment:所属机构ID" json:"organizationId"`
 	Roles          []Role `gorm:"many2many:base_user_role;" json:"roles,omitempty"`
+	// PasswordChangedAt 最后一次修改密码的时间（本人改密 / 管理员重置或修改密码时写入，秒级）。
+	// JWT 没有版本号，改密本身不会让已签发的 Token 失效；JWTAuth 会比较 iat 与本字段，
+	// 使改密前签发的 Token 立即作废（且不依赖 Redis：Redis 数据丢失也不会漏）。
+	PasswordChangedAt *time.Time `gorm:"comment:最后改密时间" json:"-"`
 }
 
 func (User) TableName() string {

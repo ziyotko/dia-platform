@@ -123,7 +123,13 @@ func (s RefreshTokenService) Load(token string) (uint64, error) {
 	if err := json.Unmarshal([]byte(raw), &rec); err != nil {
 		return 0, errRefreshInvalid
 	}
-	if before, ok := (TokenService{}).UserRevokedBefore(rec.UserID); ok && time.Unix(rec.IssuedAt, 0).Before(before) {
+	before, ok, err := (TokenService{}).UserRevokedBefore(rec.UserID)
+	if err != nil {
+		// 与上面的读失败同口径：无法确认失效状态时拒绝续期（fail-closed）
+		logrus.WithError(err).Warn("读取用户 token 失效时间失败，拒绝续期")
+		return 0, errRefreshStorage
+	}
+	if ok && time.Unix(rec.IssuedAt, 0).Before(before) {
 		return 0, errRefreshInvalid
 	}
 	return rec.UserID, nil

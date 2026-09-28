@@ -179,6 +179,13 @@ POST /business_base/api/auth/init
 - **历史软删数据自动清理**：日志形如 `[migrate] <表> 表物理删除 N 条历史软删除记录`；**首次启动可能触发多轮重试**（父表被外键引用时需等子表先清空），最多 3 轮，仍失败只告警不阻断启动。
 - **用户名去重 + 唯一索引**：启动时 `dedupeUserUsernames()` 先整理重复用户名（改名 `<原名>_dup<id>` 并打日志），再建唯一索引 `uk_base_user_tenant_username (tenant_id, username)`。
 - **机构外键列**：`AutoMigrate` 会给 `base_user` 补 `organization_id` 列，无需手工处理。
+- **改密时间列（2026-09-28）**：`AutoMigrate` 会给 `base_user` 补 `password_changed_at` 列，无需手工 SQL。
+- **登录态失效口径收紧（2026-09-28，无需手工 SQL）**：`JWTAuth` 现在每请求按主键回查 `base_user`：
+  - 账号被**禁用**（`status != 1`）或**删除**（行不存在）→ 立即 401，**不再依赖 Redis 吊销标记**；
+  - 本人改密、管理员重置密码、管理员在「用户管理」改密码 → 该用户旧 Token **立即** 401（`password_changed_at` 落库；Redis 数据丢失也不会漏）；
+  - `tenant_id` 改为**以数据库为准**：用户被调到其它租户后，旧 Token 不再按旧租户访问数据；
+  - Redis 吊销售校验读失败时由「放行」改为「**拒绝**」（返回业务码 1 +「登录状态校验失败，请稍后重试」，不会把用户登出）；写失败仍只告警（正确性由上面的库内存活校验兜底）；
+  - JWT 解析限制为仅 **HS256**（原先 HS384/HS512 也会被接受），并在 `jwt.issuer` 非空时校验签发者。
 - **限流 / 开关参数**：`config.yaml` 未配 `*_rate_limit` 时自动回退默认值，旧配置可直接使用。
 
 ### 9. 可选手工 SQL：清理历史 `deleted_at` 列
