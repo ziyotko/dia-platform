@@ -6,12 +6,15 @@ server:
   mode: release
   api_prefix: /business_member/api
   max_concurrent_ips: 100
+  # 非 multipart（JSON）请求体上限（MB）：<=0 回退 64；文件上传（multipart）不受此限制
+  max_json_body_mb: 64
   # 上传文件挂载前缀：实际挂在 <upload_dir_prefix>/uploads（与前端 VITE_BASE_PATH 去尾斜杠一致）
   upload_dir_prefix: /business_member
   # CORS 白名单（前端来源），生产环境请按实际域名配置，不要使用 *
+  # 端口需与 frontend/vite.config.ts 的 server.port 保持一致（当前为 3001）
   allowed_origins:
-    - http://localhost:5173
-    - http://127.0.0.1:5173
+    - http://localhost:3001
+    - http://127.0.0.1:3001
   # 可信反向代理 IP 列表（用于正确获取客户端真实 IP）
   trusted_proxies:
     - 127.0.0.1
@@ -31,6 +34,13 @@ mysql:
   charset: utf8mb4
   max_open: 50
   max_idle: 10
+  # 时区（与 portal 同名同义）：推荐显式写 Asia/Shanghai，不依赖部署机时区；
+  # 留空则用 Local（此时部署机时区必须是 Asia/Shanghai，否则时间会偏移）
+  loc: Asia/Shanghai
+  # go-sql-driver 超时参数（留空则不附加，用驱动默认值）
+  timeout: 30s
+  read_timeout: 100s
+  write_timeout: 100s
 
 redis:
   addr: 127.0.0.1:6379

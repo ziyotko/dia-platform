@@ -43,13 +43,15 @@ business/member/
 - `server.mode`: 生产用 `release`（可用 `MEMBER_MODE` 覆盖；留空自动回退 `release`）
 - `server.api_prefix`: `/business_member/api`（必须与前端 `VITE_API_BASE_URL` 一致；留空回退 `/member/api`）
 - `server.upload_dir_prefix`: `/business_member`（上传挂载 = `<该值>/uploads`，需与 `VITE_BASE_PATH` 去尾斜杠一致）
-- `server.allowed_origins`: 允许的前端来源（生产填实际域名，不要用 `*`；当前 dev 值 `http://localhost:5173`、`http://127.0.0.1:5173`）
+- `server.allowed_origins`: 允许的前端来源（生产填实际域名，不要用 `*`；当前 dev 值 `http://localhost:3001`、`http://127.0.0.1:3001`，与 `frontend/vite.config.ts` 的 `server.port` 一致）
 - `server.trusted_proxies`: **可信反向代理地址，生产必须填 Nginx 的 IP**（决定 `X-Forwarded-For`/`X-Real-IP` 是否被信任；默认仅 `127.0.0.1`）
 - `server.max_concurrent_ips`: 单个 IP 的并发请求上限（默认 100）
-- `mysql`: host / port / user / `password`（**只填占位值 `MEMBER_DB_PASSWORD`**）/ db_name / charset(`utf8mb4`) / max_open / max_idle
+- `server.max_json_body_mb`: 非 multipart（JSON）请求体上限，默认 64（MB，`<=0` 回退 64）。文件上传（multipart）不受此限制
+- `server.login_rate_limit` / `captcha_rate_limit` / `public_rate_limit` / `upload_rate_limit`: 固定窗口限流（次数/分钟，`<=0` 用代码默认值 10/30/300/20）
+- `mysql`: host / port / user / `password`（**只填占位值 `MEMBER_DB_PASSWORD`**）/ db_name / charset(`utf8mb4`) / max_open / max_idle / `loc`（时区，默认 `Asia/Shanghai`）/ `timeout` / `read_timeout` / `write_timeout`
 - `redis`: addr / password / `captcha_db`(4) / `anti_replay_db`(5)
 - `jwt`: `secret`（占位值 `MEMBER_JWT_SECRET`）/ `expire_hours`（默认 24）/ `issuer`（`caam-member`）
-- `log`: `path`（默认 `logs/member.log`）/ `max_size`(100MB) / `max_backups`(30) / `max_age`(180 天)
+- `log`: `level`（debug/info/warn/error，默认 info）/ `path`（默认 `logs/member.log`）/ `max_size`(100MB) / `max_backups`(30) / `max_age`(180 天)
 - `certificate.font_path`: 证书 PDF 中文字体路径，留空按系统常见路径自动查找（可用 `MEMBER_CERT_FONT` 覆盖）
 
 > 注意：YAML 中不要出现重复 key（viper 解析会直接报错）。
@@ -243,6 +245,12 @@ server {
 - **分页参数统一为 `pageSize`**（与 portal / application 一致）：列表接口现在优先读 `pageSize`；旧客户端的 `size` 仍兼容，但**新调用请用 `pageSize`**（前端已全部改完）。分页上限两者共用（最大 100）。
 - **限流参数上收配置**（`server.login_rate_limit` / `captcha_rate_limit` / `public_rate_limit` / `upload_rate_limit`，次数/分钟，<=0 时用代码默认值 10/30/300/20）；`log.level` 新增可配置（debug/info/warn/error，默认 info）。
 - **业务码统一**：参数错误 / 无权限 / 记录不存在 / 服务端异常由 `400/403/404/500` 统一改为 **`1`**（“登录态失效”仍为 `401`，“限流”为 `429`）。前端只按 0 / 401 分支，页面提示文案不变；若有外部脚本按旧码判断需同步。
+- **新增全局安全响应头**：`X-Content-Type-Options: nosniff` / `X-Frame-Options: SAMEORIGIN` / `Referrer-Policy`（原 `middleware.SecureUploads` 的逻辑合并进新的 `middleware.SecurityHeaders`，上传目录危险扩展名强制下载的行为不变）。
+- **新增非 multipart 请求体上限** `server.max_json_body_mb`（默认 64MB，`<=0` 回退 64）：JSON 体会被操作日志中间件整体读入内存，原先无上限。
+- **panic 兜底**由裸 `gin.Recovery()`（HTTP 500 空 body）改为 `gin.CustomRecovery` → **HTTP 200 + code 1**「服务内部异常，请稍后重试」，堆栈写入日志文件。
+- **GORM SQL 日志改为参数化并写入 `logs/member.log`**：不再把参数插值进 SQL 文本（避免密码哈希/手机号/证件号明文落日志），也不再只写 stdout；日志时间格式统一为 `2006-01-02 15:04:05`。
+- **MySQL 连接新增 `loc` / `timeout` / `read_timeout` / `write_timeout`**（仓库默认 `Asia/Shanghai` / 30s / 100s / 100s），不再依赖部署机时区（二进体内嵌 `time/tzdata`）。⚠️ 若原部署机时区**不是** `Asia/Shanghai`，历史时间字段可能有偏移，升级后建议抽几条核对。
+- **CORS 白名单端口**由 `5173` 改为 `3001`（与 `frontend/vite.config.ts` 的 dev 端口一致）。
 
 ### 升级说明（2026-09-23，无需手工 SQL）
 

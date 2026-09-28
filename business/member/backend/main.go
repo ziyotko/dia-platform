@@ -1,7 +1,11 @@
 package main
 
 import (
+	"runtime/debug"
 	"strconv"
+
+	// 内嵌时区数据库：DSN 的 loc=Asia/Shanghai 在没装 tzdata 的精简镜像上也能解析
+	_ "time/tzdata"
 
 	"member/config"
 	"member/internal/middleware"
@@ -10,6 +14,7 @@ import (
 	"member/internal/seed"
 	"member/pkg/db"
 	"member/pkg/redis"
+	"member/pkg/response"
 	"member/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -68,13 +73,24 @@ func main() {
 	gin.SetMode(normalizeGinMode(config.Cfg.Server.Mode))
 	r := gin.New()
 
-	// Global middleware
+	// Global middleware（顺序与 portal / application 对齐）
 	r.Use(middleware.CORS())
+	r.Use(middleware.SecurityHeaders())
+	// 限制非 multipart 请求体大小：JSON 体会被操作日志中间件整体读入内存
+	r.Use(middleware.BodyLimitMiddleware(config.Cfg.Server.MaxJSONBodyMB))
 	r.Use(middleware.Logger())
 	r.Use(middleware.IPLimit())
-	r.Use(gin.Recovery())
-	r.Use(middleware.SecureUploads())
-	r.SetTrustedProxies(config.Cfg.Server.TrustedProxies)
+	// panic 兜底：裸 gin.Recovery() 会返回 HTTP 500 空 body，破坏「HTTP 200 + 业务码」约定，
+	// 且堆栈只写 stderr、不进 logs/*.log
+	r.Use(gin.CustomRecovery(func(c *gin.Context, err any) {
+		utils.LogError("服务内部异常: %v\n%s", err, debug.Stack())
+		response.Error(c, response.CodeFail, "服务内部异常，请稍后重试")
+	}))
+	// 可信代理：写错时回退为「不信任任何代理」并告警（否则 gin 取到的是代理 IP，限流会共用一个桶）
+	if err := r.SetTrustedProxies(config.Cfg.Server.TrustedProxies); err != nil {
+		utils.LogWarn("server.trusted_proxies 配置无效，已回退为不信任任何代理（限流将按代理 IP 计数）：%s", err)
+		_ = r.SetTrustedProxies(nil)
+	}
 
 	// Serve uploaded files
 	r.Static(config.Cfg.Server.UploadDirPrefix+"/uploads", "./uploads")

@@ -161,6 +161,7 @@ SELECT id, title, publish_time, created_at FROM article
 - **旧键名仍可用**：启动时检测到旧键名会自动转换并打印 `[WARN] ... 请迁移为 mysql.*`，因此**老 config.yaml 不改也能启动**；但新环境请直接用新键名（见「二.1 配置」）。
 - 新增环境变量 `PORTAL_MODE`（覆盖 `server.mode`）；`server.mode` 为非法值时不再让 `gin.SetMode` panic，而是告警并回退 `release`。
 - **限流类响应业务码由 1 改为 429**（`RateLimitMiddleware` / 单 IP 并发限制 / 防重放临时封禁，文案不变）；前端仍只依赖 0 与 401，无需改动。
+- 二进体内嵌 `time/tzdata`：DSN 的 `loc=Asia/Shanghai` 在没装 tzdata 的精简镜像上也能正常解析（无需系统时区库）。
 
 #### ⚠️ 页面层合并迁移（2026-09-21，手工执行，不可逆）
 

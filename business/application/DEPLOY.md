@@ -44,15 +44,18 @@ business/application/
 编辑 `backend/config.yaml`（敏感项用环境变量覆盖，见下一节）：
 
 - `server.port`: 监听端口，默认 `8094`（监听地址在代码中固定为 `0.0.0.0`）；改端口后需同步 Nginx 与 `frontend/vite.config.ts` 的 dev 代理目标
-- `server.mode`: **当前仓库值为 `debug`，生产必须改为 `release`**（无环境变量可覆盖，需改配置文件）
+- `server.mode`: 默认 `release`（可用环境变量 `APPLICATION_MODE` 覆盖，开发机可设为 `debug`）
 - `server.api_prefix`: `/business_application/api`（必须与前端 `VITE_API_BASE_URL` 一致；留空回退 `/application/api`）
 - `server.upload_dir_prefix`: `/business_application`（历史 `fileUrl` 的前缀，用于把数据库里的 URL 归一化回 `uploads/` 路径；需与 `VITE_BASE_PATH` 去尾斜杠一致）
 - `server.max_concurrent_ips`: 单个 IP 的并发请求上限（默认 100），超限返回 `code=429`
+- `server.allowed_origins`: CORS 白名单（**不再固定下发 `*`**；默认 `http://localhost:3003`、`http://127.0.0.1:3003`，与 `frontend/vite.config.ts` 的 `server.port` 一致）。前端在其它域名/端口直连后端时必须补上，否则浏览器会拦请求
+- `server.max_json_body_mb`: 非 multipart（JSON）请求体上限，默认 64（MB，`<=0` 回退 64）。文件上传（multipart）不受此限制
+- `server.login_rate_limit` / `captcha_rate_limit` / `upload_rate_limit`: 固定窗口限流（次数/分钟，`<=0` 用代码默认值 10/30/20）
 - `server.trusted_proxies`: **可信反向代理地址，生产必须填 Nginx 的 IP**（`c.ClientIP()` 取真实 IP 的依据；默认仅 `127.0.0.1`）
-- `mysql`: host / port / user / `password`（**只填占位值 `APPLICATION_DB_PASSWORD`**）/ db_name / charset(`utf8mb4`) / max_open / max_idle
+- `mysql`: host / port / user / `password`（**只填占位值 `APPLICATION_DB_PASSWORD`**）/ db_name / charset(`utf8mb4`) / max_open / max_idle / `loc`（时区，默认 `Asia/Shanghai`）/ `timeout` / `read_timeout` / `write_timeout`
 - `redis`: addr / password / `captcha_db`(2) / `anti_replay_db`(3)
 - `jwt`: `secret`（占位值 `APPLICATION_JWT_SECRET`）/ `expire_hours`（默认 24）/ `issuer`（`caam-application`）
-- `log`: `path`（默认 `logs/application.log`）/ `max_size`(100MB) / `max_backups`(30) / `max_age`(180 天)
+- `log`: `level`（debug/info/warn/error，默认 info）/ `path`（默认 `logs/application.log`）/ `max_size`(100MB) / `max_backups`(30) / `max_age`(180 天)
 
 > 注意：YAML 中不要出现重复 key（viper 解析会直接报错）。
 
@@ -239,6 +242,15 @@ server {
 - **CORS 改为白名单**：不再固定下发 `Access-Control-Allow-Origin: *`，改为 `server.allowed_origins`（默认 `http://localhost:3003`、`http://127.0.0.1:3003`，与 `frontend/vite.config.ts` 的 dev 端口一致）。**同源部署（Nginx 反代）不受影响**；若你的前端在其它域名/端口直连后端，必须在 `allowed_origins` 中补上，否则浏览器会拦请求。
 - **`server.mode` 默认改为 `release`**（原为 `debug`），并新增环境变量 `APPLICATION_MODE` 覆盖；非法值不再让 `gin.SetMode` panic，而是告警并回退 `release`。
 - **限流参数上收配置**（`server.login_rate_limit` / `captcha_rate_limit` / `upload_rate_limit`，次数/分钟，<=0 时用代码默认值 10/30/20）；`log.level` 新增可配置（默认 info）。
+- **新增全局安全响应头**：`X-Content-Type-Options: nosniff` / `X-Frame-Options: SAMEORIGIN` / `Referrer-Policy`（本项目上传不做静态托管，故无需「危险扩展名强制下载」分支）。
+- **新增非 multipart 请求体上限** `server.max_json_body_mb`（默认 64MB，`<=0` 回退 64）。
+- **panic 兜底**由裸 `gin.Recovery()`（HTTP 500 空 body）改为 `gin.CustomRecovery` → **HTTP 200 + code 1**「服务内部异常，请稍后重试」，堆栈写入日志文件。
+- **日志格式由 JSON 改为文本**（与 portal / member 统一，时间格式 `2006-01-02 15:04:05`）；若有日志采集规则依赖 JSON 字段，需同步调整。
+- **GORM SQL 日志改为参数化并写入 `logs/application.log`**：不再把参数插值进 SQL 文本（避免身份证号/手机号/密码哈希明文落日志）。
+- **MySQL 连接新增 `loc` / `timeout` / `read_timeout` / `write_timeout`**（仓库默认 `Asia/Shanghai` / 30s / 100s / 100s），不再要求部署机时区必须是 `Asia/Shanghai`（二进体内嵌 `time/tzdata`）。⚠️ 若原部署机时区**不是** `Asia/Shanghai`，历史时间字段可能有偏移，升级后建议抽几条核对。
+- **撤回初审的「已评分」判定移入事务**：并对申报行与全部评审任务行加 `FOR UPDATE`，与评审人提交评分串行化 —— 并发时不再可能把已提交的分数静默删除。
+- **管理端鉴权每次以数据库的 `role_code` 为准**（token 里的角色码只是签发快照）：超管被降级为 manager 后，旧 token **立即**失去超管权限（原先在 24h 有效期内仍按超管放行）。
+- **种子里 reviewer 的权限与生效权限对齐**（去掉 `application:view` / `batch:view`，只保留 `dashboard:view` + `review:score`）：角色管理页显示的权限不再与真实生效权限不一致。启动时 `seedRoles()` 会按代码覆盖角色表权限。
 
 ### 升级说明（2026-09-23，上线前安全加固）
 

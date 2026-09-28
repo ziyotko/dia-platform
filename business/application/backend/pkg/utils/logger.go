@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"io"
 	"os"
 
@@ -12,12 +13,32 @@ import (
 
 var Logger *logrus.Logger
 
+// LogInfo 安全写信息日志：Logger 未初始化（脚本/测试环境）时退化为标准输出，避免 nil panic。
+func LogInfo(format string, args ...interface{}) {
+	if Logger != nil {
+		Logger.Infof(format, args...)
+		return
+	}
+	fmt.Printf("[INFO] "+format+"\n", args...)
+}
+
+// LogWarn 安全写告警日志：Logger 未初始化（脚本/测试环境）时退化为标准输出，避免 nil panic。
+func LogWarn(format string, args ...interface{}) {
+	if Logger != nil {
+		Logger.Warnf(format, args...)
+		return
+	}
+	fmt.Printf("[WARN] "+format+"\n", args...)
+}
+
 func InitLogger() {
 	cfg := config.Cfg.Log
 	Logger = logrus.New()
 
-	Logger.SetFormatter(&logrus.JSONFormatter{
+	Logger.SetFormatter(&logrus.TextFormatter{
+		// 与 portal / member 统一为文本格式（原为 JSON，四端日志格式不一致不好排查）
 		TimestampFormat: "2006-01-02 15:04:05",
+		FullTimestamp:   true,
 	})
 
 	lumberjackLogger := &lumberjack.Logger{

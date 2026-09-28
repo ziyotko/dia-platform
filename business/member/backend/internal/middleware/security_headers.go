@@ -19,13 +19,17 @@ var dangerousExts = map[string]bool{
 	".zip": true, ".rar": true,
 }
 
-// SecureUploads 为上传静态资源（<upload_dir_prefix>/uploads）添加安全响应头：
+// SecurityHeaders 为所有响应添加基础安全头（与 portal / application 一致），
+// 并对上传静态资源（<upload_dir_prefix>/uploads）做额外保护：
 // 1. X-Content-Type-Options: nosniff，禁止浏览器 MIME 嗅探；
-// 2. 对危险类型强制 Content-Disposition: attachment，以附件下载而非内联渲染。
-func SecureUploads() gin.HandlerFunc {
+// 2. 对危险扩展名强制 Content-Disposition: attachment，以附件下载而非内联渲染。
+func SecurityHeaders() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Header("X-Frame-Options", "SAMEORIGIN")
+		c.Header("Referrer-Policy", "strict-origin-when-cross-origin")
+
 		if strings.HasPrefix(c.Request.URL.Path, config.Cfg.Server.UploadDirPrefix+"/uploads") {
-			c.Header("X-Content-Type-Options", "nosniff")
 			ext := strings.ToLower(filepath.Ext(c.Request.URL.Path))
 			if dangerousExts[ext] {
 				c.Header("Content-Disposition", "attachment")

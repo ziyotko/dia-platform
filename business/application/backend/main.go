@@ -1,8 +1,12 @@
 package main
 
 import (
+	"runtime/debug"
 	"strconv"
 	"time"
+
+	// 内嵌时区数据库：DSN 的 loc=Asia/Shanghai 在没装 tzdata 的精简镜像上也能解析
+	_ "time/tzdata"
 
 	"application/config"
 	"application/internal/middleware"
@@ -13,6 +17,7 @@ import (
 	"application/pkg/captcha"
 	"application/pkg/db"
 	"application/pkg/redis"
+	"application/pkg/response"
 	"application/pkg/utils"
 
 	"github.com/gin-gonic/gin"
@@ -62,7 +67,18 @@ func main() {
 	// gin.SetMode 遇到非法值会 panic，因此统一走 normalizeGinMode（空/非法回退 release）
 	gin.SetMode(normalizeGinMode(config.Cfg.Server.Mode))
 	r := gin.New()
-	r.Use(middleware.CORS(), middleware.Logger(), middleware.IPLimit(), gin.Recovery())
+	// 中间件顺序与 portal / member 对齐：CORS → 安全头 → 请求体上限 → 访问日志 → IP 并发限制 → panic 兜底
+	r.Use(middleware.CORS())
+	r.Use(middleware.SecurityHeaders())
+	// 限制非 multipart 请求体大小（JSON 体可能被日志类中间件整体读入内存）
+	r.Use(middleware.BodyLimitMiddleware(config.Cfg.Server.MaxJSONBodyMB))
+	r.Use(middleware.Logger())
+	r.Use(middleware.IPLimit())
+	// panic 兜底：裸 gin.Recovery() 会返回 HTTP 500 空 body，破坏「HTTP 200 + 业务码」约定
+	r.Use(gin.CustomRecovery(func(c *gin.Context, err any) {
+		utils.LogError("服务内部异常: %v\n%s", err, debug.Stack())
+		response.Fail(c, "服务内部异常，请稍后重试")
+	}))
 	r.MaxMultipartMemory = 64 << 20 // 64MB
 	// 上传目录不再静态托管（原先 r.Static(upload_dir_prefix+"/uploads", "./uploads") 等于"知道 URL 就能下载"）：
 	// 现在只能通过带鉴权的 GET /member/files、GET /admin/files 读取。

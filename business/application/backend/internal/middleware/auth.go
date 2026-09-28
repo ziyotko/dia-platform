@@ -71,16 +71,23 @@ func AdminAuth() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		// 回查账号：角色变更/禁用/删除后，旧 token 不应继续生效。
+		// 回查账号：禁用/删除后旧 token 不应继续生效；**角色码也以数据库为准**
+		// （token 里的 role_code 是签发时的快照，若不回查，超管被降级为 manager 后
+		//  旧 token 在 24h 有效期内仍会按超管放行）。
 		var admin models.Admin
-		if err := db.DB.Select("id", "status").First(&admin, claims.AdminID).Error; err != nil || admin.Status != 1 {
+		if err := db.DB.Select("id", "status", "role_code").First(&admin, claims.AdminID).Error; err != nil || admin.Status != 1 {
+			response.Unauthorized(c)
+			c.Abort()
+			return
+		}
+		if admin.RoleCode == "" {
 			response.Unauthorized(c)
 			c.Abort()
 			return
 		}
 		c.Set(CtxAdminID, claims.AdminID)
 		c.Set(CtxAdminName, claims.Username)
-		c.Set(CtxRoleCode, claims.RoleCode)
+		c.Set(CtxRoleCode, admin.RoleCode)
 		c.Next()
 	}
 }
@@ -206,7 +213,10 @@ func GetRoleCode(c *gin.Context) string {
 	return v
 }
 
-// GetRolePermissions returns permission codes per role
+// GetRolePermissions returns permission codes per role.
+//
+// ⚠️ 这是**生效的**权限表（鉴权只看这里）；数据库 `application_roles.permissions` 仅用于后台展示。
+// 因此 seed 里的同一份权限必须与此处保持一致（见 internal/seed/seed.go 的 permMap），否则角色管理页显示错。
 func GetRolePermissions() map[string][]string {
 	return map[string][]string{
 		"super_admin": {

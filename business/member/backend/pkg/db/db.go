@@ -3,9 +3,12 @@ package db
 import (
 	"fmt"
 	"log"
-	"member/config"
-	"os"
+	"net/url"
+	"strings"
 	"time"
+
+	"member/config"
+	"member/pkg/utils"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -14,18 +17,46 @@ import (
 
 var DB *gorm.DB
 
-func Init(cfg *config.MySQLConfig) {
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=%s&parseTime=True&loc=Local",
-		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.DBName, cfg.Charset,
-	)
+// gormLogWriter 把 GORM 的 SQL 日志接到应用日志（与 portal 一致）：
+// 否则 SQL 只写 stdout，不会进 logs/<name>.log，排障时拿不到历史。
+type gormLogWriter struct{}
 
+func (w *gormLogWriter) Write(p []byte) (int, error) {
+	msg := strings.TrimSpace(string(p))
+	if msg != "" {
+		utils.LogInfo("%s", msg)
+	}
+	return len(p), nil
+}
+
+func Init(cfg *config.MySQLConfig) {
+	// 时区：优先用配置的 loc（推荐显式 Asia/Shanghai，不依赖部署机时区），留空回退 Local。
+	loc := cfg.Loc
+	if loc == "" {
+		loc = "Local"
+	}
+	params := "charset=" + cfg.Charset + "&parseTime=True&loc=" + url.QueryEscape(loc)
+	if cfg.Timeout != "" {
+		params += "&timeout=" + cfg.Timeout
+	}
+	if cfg.ReadTimeout != "" {
+		params += "&readTimeout=" + cfg.ReadTimeout
+	}
+	if cfg.WriteTimeout != "" {
+		params += "&writeTimeout=" + cfg.WriteTimeout
+	}
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?%s", cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.DBName, params)
+
+	// 参数化输出 SQL（占位符 + 参数分列）：默认模式会把参数插值进 SQL 文本，
+	// 使得密码哈希 / 手机号 / 证件号等明文落进日志文件（与 portal 一致）。
 	newLogger := logger.New(
-		log.New(os.Stdout, "\r\n", log.LstdFlags),
+		log.New(&gormLogWriter{}, "\r\n", log.LstdFlags),
 		logger.Config{
 			SlowThreshold:             time.Second,
 			LogLevel:                  logger.Info,
+			ParameterizedQueries:      true,
 			IgnoreRecordNotFoundError: true,
-			Colorful:                  true,
+			Colorful:                  false,
 		},
 	)
 

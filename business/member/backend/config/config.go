@@ -32,6 +32,9 @@ type ServerConfig struct {
 	AllowedOrigins   []string `mapstructure:"allowed_origins"`
 	TrustedProxies   []string `mapstructure:"trusted_proxies"`
 
+	// 非 multipart（JSON）请求体上限（MB）：<=0 回退 64。文件上传（multipart）不受此限制。
+	MaxJSONBodyMB int `mapstructure:"max_json_body_mb"`
+
 	// 固定窗口限流（次数/分钟，按真实客户端 IP；<=0 回退代码默认值）。
 	// 与 portal / application 同名同义：登录、验证码、公开只读、上传。
 	LoginRateLimit   int `mapstructure:"login_rate_limit"`
@@ -49,6 +52,14 @@ type MySQLConfig struct {
 	Charset  string `mapstructure:"charset"`
 	MaxOpen  int    `mapstructure:"max_open"`
 	MaxIdle  int    `mapstructure:"max_idle"`
+
+	// 时区与超时（与 portal 的 mysql 段同名同义）：
+	// loc 决定时间按哪个时区写入/读出（留空用 Local，此时部署机时区必须是 Asia/Shanghai）；
+	// timeout/read_timeout/write_timeout 为 go-sql-driver 的参数，留空则不附加（用驱动默认值）。
+	Loc          string `mapstructure:"loc"`
+	Timeout      string `mapstructure:"timeout"`
+	ReadTimeout  string `mapstructure:"read_timeout"`
+	WriteTimeout string `mapstructure:"write_timeout"`
 }
 
 type RedisConfig struct {

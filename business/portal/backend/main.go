@@ -5,6 +5,9 @@ import (
 	"net/http"
 	"runtime/debug"
 
+	// 内嵌时区数据库：DSN 的 loc=Asia/Shanghai 在没装 tzdata 的精简镜像上也能解析
+	_ "time/tzdata"
+
 	"github.com/gin-gonic/gin"
 
 	"server/config"

@@ -428,14 +428,29 @@ func (s *ApplicationService) RevokePreliminary(id uint64) error {
 	if app.Status != models.AppStatusUnderReview {
 		return errors.New("仅待评审的申报可撤回初审")
 	}
-	var scored int64
-	db.DB.Model(&models.ReviewAssignment{}).
-		Where("application_id = ? AND status = ?", id, models.ReviewStatusScored).Count(&scored)
-	if scored > 0 {
-		return errors.New("已有专家完成评分，无法撤回初审")
-	}
 
+	// 「是否已评分」的判定与「清空评审任务」必须在同一事务内，并先锁住申报行与全部评审任务行：
+	// 否则判定与删除之间如有评审人提交评分（SubmitReview 的条件更新会持有任务行锁），
+	// 已提交的分数会被静默删除（申报退回待初审、分数消失）。
 	err := db.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Select("id", "status").First(&app, id).Error; err != nil {
+			return errors.New("申报记录不存在")
+		}
+		if app.Status != models.AppStatusUnderReview {
+			return errors.New("仅待评审的申报可撤回初审")
+		}
+		var assignments []models.ReviewAssignment
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("application_id = ?", id).Find(&assignments).Error; err != nil {
+			return err
+		}
+		for _, a := range assignments {
+			if a.Status == models.ReviewStatusScored {
+				return errors.New("已有专家完成评分，无法撤回初审")
+			}
+		}
+
 		res := tx.Model(&models.Application{}).
 			Where("id = ? AND status = ?", id, models.AppStatusUnderReview).
 			Updates(map[string]interface{}{

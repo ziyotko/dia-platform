@@ -52,9 +52,10 @@ func seedRoles() {
 			"audit:view",
 		},
 		models.RoleReviewer: {
+			// 与 middleware.GetRolePermissions() 的 reviewer 保持一致（那里才是生效的权限）：
+			// 评审人只做「我的评审」，不授予 application:view / batch:view，
+			// 否则评审人可翻看全部申报与他人评分意见。
 			"dashboard:view",
-			"batch:view",
-			"application:view",
 			"review:score",
 		},
 	}

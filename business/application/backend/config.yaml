@@ -19,6 +19,8 @@ server:
   login_rate_limit: 10
   captcha_rate_limit: 30
   upload_rate_limit: 20
+  # 非 multipart（JSON）请求体上限（MB）：<=0 回退 64；文件上传（multipart）不受此限制
+  max_json_body_mb: 64
 
 mysql:
   host: 10.3.1.95
@@ -30,6 +32,13 @@ mysql:
   charset: utf8mb4
   max_open: 50
   max_idle: 10
+  # 时区（与 portal / member 同名同义）：推荐显式写 Asia/Shanghai，不依赖部署机时区；
+  # 留空则用 Local（此时部署机时区必须是 Asia/Shanghai，否则时间会偏移）
+  loc: Asia/Shanghai
+  # go-sql-driver 超时参数（留空则不附加，用驱动默认值）
+  timeout: 30s
+  read_timeout: 100s
+  write_timeout: 100s
 
 redis:
   addr: 127.0.0.1:6379
