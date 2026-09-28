@@ -5,7 +5,6 @@ import (
 	"member/internal/models"
 	"member/pkg/db"
 	"member/pkg/utils"
-	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -127,10 +126,11 @@ func (s *ApplicationService) GetApplication(id, memberID uint64) (*models.Applic
 
 // ReviewApplication reviews an application (admin)
 func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved bool, comment string) error {
-	// 拒绝必须写明理由（前端不做硬校验时也能兜住），便于会员知道如何修正资料。
-	comment = strings.TrimSpace(comment)
-	if !approved && comment == "" {
-		return errors.New("请填写拒绝理由")
+	// 拒绝必须写明理由、长度不超过 500 字（与文章审核同口径，见 normalizeReviewComment），
+	// 便于会员知道如何修正资料。
+	comment, err := normalizeReviewComment(approved, comment)
+	if err != nil {
+		return err
 	}
 
 	var app models.Application

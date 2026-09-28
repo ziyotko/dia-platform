@@ -156,6 +156,12 @@ func (s *ArticleService) ReviewArticle(id uint64, approved bool, comment string)
 		return errors.New("该文章不在待审核状态")
 	}
 
+	// 与入会审核同口径：拒绝必填（不能只填空格）、长度不超过 500 字。
+	comment, err := normalizeReviewComment(approved, comment)
+	if err != nil {
+		return err
+	}
+
 	newStatus := models.ArticleStatusRejected
 	updates := map[string]interface{}{
 		"status":         newStatus,

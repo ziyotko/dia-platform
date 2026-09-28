@@ -23,8 +23,9 @@ func (s *DashboardService) UserStats(userID uint64) map[string]interface{} {
 		[]string{models.AppStatusPassed, models.AppStatusPublished, models.AppStatusCertified}).Count(&passed)
 	stats["passedApplications"] = passed
 
+	// 已作废的证书不计入（与「我的证书」列表口径一致）
 	var certCount int64
-	db.DB.Model(&models.Certificate{}).Where("user_id = ?", userID).Count(&certCount)
+	db.DB.Model(&models.Certificate{}).Where("user_id = ? AND status <> ?", userID, models.CertStatusVoid).Count(&certCount)
 	stats["certificates"] = certCount
 
 	var unread int64

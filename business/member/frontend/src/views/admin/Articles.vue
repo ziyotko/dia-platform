@@ -160,7 +160,23 @@ async function review(row: any, approved: boolean) {
     } catch { return }
   }
   try {
-    const comment = approved ? '' : (await ElMessageBox.prompt('拒绝理由', '拒绝')).value || ''
+    let comment = ''
+    if (!approved) {
+      const { value } = await ElMessageBox.prompt('请输入拒绝理由（必填，不超过 500 字）', '拒绝', {
+        inputType: 'textarea',
+        inputPlaceholder: '请输入拒绝理由...',
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        // 与后端 normalizeReviewComment 同口径：必填（不能只填空格）、长度不超过 500 字
+        inputValidator: (v: string) => {
+          const text = (v || '').trim()
+          if (!text) return '请填写拒绝理由'
+          if ([...text].length > 500) return '审核意见不能超过 500 个字'
+          return true
+        }
+      })
+      comment = (value || '').trim()
+    }
     await adminApi.reviewArticle(row.id, { approved, comment })
     ElMessage.success(approved ? '已发布' : '已拒绝'); fetchData()
   } catch {}

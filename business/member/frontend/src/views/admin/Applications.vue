@@ -103,13 +103,19 @@ function viewMember(row: any) {
 async function review(row: any, approved: boolean) {
   try {
     const title = approved ? '通过申请' : '拒绝申请'
-    const tip = approved ? '请输入审核意见（选填）' : '请输入拒绝理由'
+    const tip = approved ? '请输入审核意见（选填，不超过 500 字）' : '请输入拒绝理由（必填，不超过 500 字）'
     const { value: comment } = await ElMessageBox.prompt(tip, title, {
       inputType: 'textarea',
       inputPlaceholder: approved ? '可选，输入审核意见...' : '请输入拒绝理由...',
       confirmButtonText: '确定',
       cancelButtonText: '取消',
-      inputValidator: (v: string) => (!approved && !(v && v.trim()) ? '请填写拒绝理由' : true)
+      // 与后端 normalizeReviewComment 同口径：拒绝必填（不能只填空格）、长度不超过 500 字
+      inputValidator: (v: string) => {
+        const text = (v || '').trim()
+        if (!approved && !text) return '请填写拒绝理由'
+        if ([...text].length > 500) return '审核意见不能超过 500 个字'
+        return true
+      }
     })
     await adminApi.reviewApplication(row.id, { approved, comment: (comment || '').trim() })
     ElMessage.success(approved ? '已通过' : '已拒绝')
