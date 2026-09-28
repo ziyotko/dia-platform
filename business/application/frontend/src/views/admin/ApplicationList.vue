@@ -88,7 +88,7 @@ async function quickPreliminary(row: any, pass: boolean) {
 
 onMounted(async () => {
   fetch()
-  const res = await adminApi.getBatches({ page: 1, pageSize: 200 })
+  const res = await adminApi.getBatches({ page: 1, pageSize: 100 })
   batches.value = res.data.list
 })
 </script>

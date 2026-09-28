@@ -201,19 +201,24 @@ func (s *UserService) CreateUser(username, account, email, password, phone strin
 		user.RoleIds = strings.Join(roleIdsStr, ",")
 	}
 
-	if err := utils.DB.Create(user).Error; err != nil {
-		return "", err
-	}
-
-	if len(orgIds) > 0 {
+	// 用户行与机构关联必须同生同死：原先先提交用户行、再加机构，
+	// 第二步失败会留下「随机初始密码已丢失、唯一键被占用」的孤儿账号（只能改库回收）。
+	err := utils.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(user).Error; err != nil {
+			return err
+		}
 		orgService := OrganizationService{}
 		for _, orgId := range orgIds {
 			if orgId > 0 {
-				if err := orgService.AddUserToOrganization(orgId, user.ID); err != nil {
-					return "", err
+				if err := orgService.AddUserToOrganizationTx(tx, orgId, user.ID); err != nil {
+					return err
 				}
 			}
 		}
+		return nil
+	})
+	if err != nil {
+		return "", err
 	}
 
 	return password, nil

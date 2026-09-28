@@ -1,6 +1,8 @@
 package main
 
 import (
+	"strconv"
+
 	"member/config"
 	"member/internal/middleware"
 	"member/internal/models"
@@ -80,21 +82,9 @@ func main() {
 	routes.Register(r)
 
 	// Start server
-	addr := config.Cfg.Server.Host + ":" + itoa(config.Cfg.Server.Port)
+	addr := config.Cfg.Server.Host + ":" + strconv.Itoa(config.Cfg.Server.Port)
 	utils.Logger.Infof("Member server starting on %s", addr)
 	if err := r.Run(addr); err != nil {
 		utils.Logger.Fatalf("Server failed: %v", err)
 	}
-}
-
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	s := ""
-	for n > 0 {
-		s = string(rune('0'+n%10)) + s
-		n /= 10
-	}
-	return s
 }

@@ -98,7 +98,7 @@ function onPage(p: number) { page.value = p; fetch() }
 
 async function openDialog() {
   Object.assign(form, { id: 0, applicationId: '', certNo: '', title: '', holder: '', fileUrl: '' })
-  const res = await adminApi.getApplications({ page: 1, pageSize: 200, status: 'published' })
+  const res = await adminApi.getApplications({ page: 1, pageSize: 100, status: 'published' })
   passedApps.value = res.data.list
   dialogVisible.value = true
 }

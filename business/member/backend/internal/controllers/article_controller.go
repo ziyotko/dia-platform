@@ -123,7 +123,7 @@ func (ctrl *ArticleController) GetArticle(c *gin.Context) {
 func (ctrl *ArticleController) GetMyArticles(c *gin.Context) {
 	memberID := middleware.GetMemberID(c)
 	page := parseIntDefault(c.Query("page"), 1)
-	size := parseIntDefault(c.Query("size"), 10)
+	size := parsePageSize(c.Query("size"))
 	status := c.Query("status")
 	categoryIDStr := c.Query("category_id")
 	var categoryID uint64
@@ -148,7 +148,7 @@ func (ctrl *ArticleController) GetMyArticles(c *gin.Context) {
 
 func (ctrl *ArticleController) ListArticles(c *gin.Context) {
 	page := parseIntDefault(c.Query("page"), 1)
-	size := parseIntDefault(c.Query("size"), 10)
+	size := parsePageSize(c.Query("size"))
 	categoryIDStr := c.Query("category_id")
 	keyword := c.Query("keyword")
 	var categoryID uint64
@@ -200,7 +200,7 @@ func (ctrl *ArticleController) ReviewArticle(c *gin.Context) {
 
 func (ctrl *ArticleController) ListAllArticles(c *gin.Context) {
 	page := parseIntDefault(c.Query("page"), 1)
-	size := parseIntDefault(c.Query("size"), 10)
+	size := parsePageSize(c.Query("size"))
 	status := c.Query("status")
 
 	articles, total, err := ctrl.articleService.ListAllArticles(page, size, status)

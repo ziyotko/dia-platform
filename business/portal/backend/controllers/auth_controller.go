@@ -77,7 +77,9 @@ func (c *AuthController) Login(ctx *gin.Context) {
 
 	if err != nil {
 		loginLog.Status = 0
-		utils.DB.Create(loginLog)
+		if logErr := utils.DB.Create(loginLog).Error; logErr != nil {
+			utils.Logger.Warnf("记录登录失败日志失败: %v", logErr)
+		}
 		// 安全考虑：登录失败一律返回统一提示，避免泄露具体错误原因
 		ctx.JSON(http.StatusOK, utils.Error(1, "登录失败，请稍后重试"))
 		return
@@ -89,7 +91,9 @@ func (c *AuthController) Login(ctx *gin.Context) {
 	}
 	loginLog.UserID = user.ID
 	loginLog.Status = 1
-	utils.DB.Create(loginLog)
+	if logErr := utils.DB.Create(loginLog).Error; logErr != nil {
+		utils.Logger.Warnf("记录登录日志失败: %v", logErr)
+	}
 
 	// 登录返回的 user 仅暴露前端所需字段，roleIds 统一为数字数组（原 models.User.RoleIds 是逗号分隔字符串）
 	userRoles, err := c.userService.GetUserRoleIds(user.ID)

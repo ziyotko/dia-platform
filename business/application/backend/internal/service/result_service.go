@@ -372,7 +372,9 @@ func (s *ResultService) ListPublishedResults(page, size int, batchID uint64, key
 	}
 	query.Count(&total)
 	// 只取展示需要的列，且预加载也只取必要字段：申报人联系方式/身份证号绝不进入该响应。
-	err := query.Select("id", "title", "status", "batch_id", "published_at").
+	// 注意：必须带上外键列 user_id——GORM 的 belongs-to 预加载是从父结构体的外键取值，
+	// Select 里漏掉 user_id 会让 UserID 恒为 0，Preload("User") 取不到任何数据（userRealName 恒为空）。
+	err := query.Select("id", "title", "status", "batch_id", "user_id", "published_at").
 		Preload("Batch", func(tx *gorm.DB) *gorm.DB { return tx.Select("id", "title") }).
 		Preload("User", func(tx *gorm.DB) *gorm.DB { return tx.Select("id", "real_name") }).
 		Order("published_at DESC").

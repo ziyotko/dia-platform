@@ -36,13 +36,22 @@ func (c *DashboardController) GetStats(ctx *gin.Context) {
 	now := time.Now()
 	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	endOfDay := startOfDay.Add(24 * time.Hour)
-	utils.DB.Model(&models.VisitAnalytics{}).Where("visited_at >= ? AND visited_at < ?", startOfDay, endOfDay).Count(&todayVisit)
+	if err := utils.DB.Model(&models.VisitAnalytics{}).Where("visited_at >= ? AND visited_at < ?", startOfDay, endOfDay).Count(&todayVisit).Error; err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("获取统计数据失败", err)))
+		return
+	}
 
 	userID := ctx.GetUint("userID")
 	userIDStr := strconv.FormatUint(uint64(userID), 10)
 	// 以下两项均为「我的」维度，与日期无关
-	utils.DB.Model(&models.Article{}).Where("author_code = ? AND status = ?", userIDStr, models.ArticleStatusPublished).Count(&myArticleCount)
-	utils.DB.Model(&models.Article{}).Where("author_code = ? AND status = ?", userIDStr, models.ArticleStatusDraft).Count(&myDraftCount)
+	if err := utils.DB.Model(&models.Article{}).Where("author_code = ? AND status = ?", userIDStr, models.ArticleStatusPublished).Count(&myArticleCount).Error; err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("获取统计数据失败", err)))
+		return
+	}
+	if err := utils.DB.Model(&models.Article{}).Where("author_code = ? AND status = ?", userIDStr, models.ArticleStatusDraft).Count(&myDraftCount).Error; err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("获取统计数据失败", err)))
+		return
+	}
 
 	ctx.JSON(http.StatusOK, utils.Success("获取成功", gin.H{
 		"articleCount":   articleCount,

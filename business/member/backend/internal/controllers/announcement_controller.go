@@ -15,7 +15,7 @@ type AnnouncementController struct {
 
 func (ctrl *AnnouncementController) GetPublishedAnnouncements(c *gin.Context) {
 	page := parseIntDefault(c.Query("page"), 1)
-	size := parseIntDefault(c.Query("size"), 10)
+	size := parsePageSize(c.Query("size"))
 	keyword := c.Query("keyword")
 	aType := c.Query("type")
 
@@ -83,7 +83,7 @@ func (ctrl *AnnouncementController) DeleteAnnouncement(c *gin.Context) {
 
 func (ctrl *AnnouncementController) ListAllAnnouncements(c *gin.Context) {
 	page := parseIntDefault(c.Query("page"), 1)
-	size := parseIntDefault(c.Query("size"), 10)
+	size := parsePageSize(c.Query("size"))
 
 	list, total, err := ctrl.announceService.ListAllAnnouncements(page, size)
 	if err != nil {

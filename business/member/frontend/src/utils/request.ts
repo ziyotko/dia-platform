@@ -10,6 +10,20 @@ const request = axios.create({
   headers: { 'Content-Type': 'application/json' }
 })
 
+// 后端所有响应都是 HTTP 200（业务码在 body 里）：blob 请求失败时 body 其实是 {code,message} 的 JSON。
+// 读出并返回该业务错误；不是业务错误（真的是文件流）时返回 null。
+async function readBlobBizError(blob: Blob): Promise<{ code: number; message: string } | null> {
+  try {
+    const parsed = JSON.parse(await blob.text())
+    if (parsed && typeof parsed.code === 'number' && parsed.code !== 0) {
+      return { code: parsed.code, message: parsed.message || '请求失败' }
+    }
+  } catch {
+    // 不是 JSON：视为正常文件流
+  }
+  return null
+}
+
 request.interceptors.request.use(
   (config) => {
     const userStore = useUserStore()
@@ -22,9 +36,22 @@ request.interceptors.request.use(
 )
 
 request.interceptors.response.use(
-  (response) => {
-    // 文件下载/导出等非统一响应体：直接返回原始数据，跳过 {code} 校验
+  async (response) => {
+    // 文件下载/导出等非统一响应体：直接返回原始数据，跳过 {code} 校验。
+    // 但后端出错时仍是 HTTP 200 + {code,message} 的 JSON，只是被 axios 当 Blob 返回：
+    // 必须读出来判断，否则错误 JSON 会被当成 CSV/PDF 下载并提示「导出成功」。
     if (response.config.responseType === 'blob') {
+      const blob = response.data as Blob
+      if (blob instanceof Blob && blob.type.includes('json')) {
+        const biz = await readBlobBizError(blob)
+        if (biz) {
+          ElMessage.error(biz.message)
+          if (biz.code === 401) {
+            useUserStore().logout()
+          }
+          return Promise.reject(new Error(biz.message))
+        }
+      }
       return response.data
     }
     const res = response.data

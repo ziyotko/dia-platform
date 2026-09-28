@@ -104,38 +104,46 @@ func (s *FeeService) ConfirmFee(id uint64, amount float64, remark *string, opera
 	if remark != nil {
 		updates["remark"] = *remark
 	}
-	if err := db.DB.Model(&fee).Updates(updates).Error; err != nil {
-		return err
-	}
-
-	// 重新读取，确保副作用使用更新后的字段
-	if err := db.DB.First(&fee, id).Error; err != nil {
-		return err
-	}
-	s.applyPaidSideEffects(fee, operator)
-
-	return nil
+	// 确认缴费与「会员激活 / 等级同步 / 证书同步 / 会籍记录」必须同生同死：
+	// 原先副作用写在事务外且错误被丢弃，会出现「费用已缴费但会员未激活、无会籍记录」的半套数据。
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.FeeRecord{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+			return err
+		}
+		// 重新读取，确保副作用使用更新后的字段
+		if err := tx.First(&fee, id).Error; err != nil {
+			return err
+		}
+		return s.applyPaidSideEffects(tx, fee, operator)
+	})
 }
 
 // applyPaidSideEffects 执行“费用变为已缴费”后的一次性副作用：
 // 激活会员、同步会员等级、同步证书、写入会籍变更记录。
 // ConfirmFee 与 UpdateFeeRecord 共用，避免两条确认路径行为漂移。
-func (s *FeeService) applyPaidSideEffects(fee models.FeeRecord, operator string) {
+// 传入 tx：所有写入必须与「费用置为已缴费」在同一事务，任一步失败整体回滚。
+func (s *FeeService) applyPaidSideEffects(tx *gorm.DB, fee models.FeeRecord, operator string) error {
 	// Update member status to active if pending_payment
-	db.DB.Model(&models.Member{}).Where("id = ? AND status = ?", fee.MemberID, models.MemberStatusPendingPay).
-		Update("status", models.MemberStatusActive)
+	if err := tx.Model(&models.Member{}).Where("id = ? AND status = ?", fee.MemberID, models.MemberStatusPendingPay).
+		Update("status", models.MemberStatusActive).Error; err != nil {
+		return err
+	}
 
 	// Update the member's level on the user record
 	if fee.LevelID > 0 {
-		db.DB.Model(&models.Member{}).Where("id = ?", fee.MemberID).
-			Update("member_level", strconv.FormatUint(fee.LevelID, 10))
+		if err := tx.Model(&models.Member{}).Where("id = ?", fee.MemberID).
+			Update("member_level", strconv.FormatUint(fee.LevelID, 10)).Error; err != nil {
+			return err
+		}
 	}
 
 	// Update the member's active certificate with level info and template ID
-	s.updateCertificateWithLevelAndTemplate(fee.MemberID, fee.LevelID, fee.LevelName)
+	if err := s.updateCertificateWithLevelAndTemplate(tx, fee.MemberID, fee.LevelID, fee.LevelName); err != nil {
+		return err
+	}
 
 	// Record membership change (缴费确认)
-	s.recordPaymentChange(fee, operator)
+	return s.recordPaymentChange(tx, fee, operator)
 }
 
 // CreateFeeRecord creates a fee record (admin)
@@ -237,29 +245,31 @@ func (s *FeeService) UpdateFeeRecord(id uint64, req UpdateFeeRequest, operator s
 		return nil
 	}
 
-	if err := db.DB.Model(&models.FeeRecord{}).Where("id = ?", id).Updates(updates).Error; err != nil {
-		return err
-	}
-
-	// If confirmed as paid, activate member and update certificate
-	if paidNow {
-		var fee models.FeeRecord
-		if err := db.DB.First(&fee, id).Error; err != nil {
+	// 与 ConfirmFee 同一口径：费用状态与副作用（会员/证书/会籍记录）同生同死
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.FeeRecord{}).Where("id = ?", id).Updates(updates).Error; err != nil {
 			return err
 		}
-		s.applyPaidSideEffects(fee, operator)
-	}
 
-	return nil
+		// If confirmed as paid, activate member and update certificate
+		if !paidNow {
+			return nil
+		}
+		var fee models.FeeRecord
+		if err := tx.First(&fee, id).Error; err != nil {
+			return err
+		}
+		return s.applyPaidSideEffects(tx, fee, operator)
+	})
 }
 
 // recordPaymentChange inserts a membership change record for a paid fee confirmation.
 // 变更原因为“缴费确认”，原始会籍 id/name 为空，新会籍取自费用记录。
 // 幂等：同一会员 + 机构 + 等级 + 会费年度只保留一条。
-func (s *FeeService) recordPaymentChange(fee models.FeeRecord, operator string) {
+func (s *FeeService) recordPaymentChange(tx *gorm.DB, fee models.FeeRecord, operator string) error {
 	var member models.Member
-	if err := db.DB.First(&member, fee.MemberID).Error; err != nil {
-		return
+	if err := tx.First(&member, fee.MemberID).Error; err != nil {
+		return err
 	}
 
 	// 变更年份取会费年度（而非操作年份），否则跨年度缴费会让年度台账错位
@@ -269,15 +279,17 @@ func (s *FeeService) recordPaymentChange(fee models.FeeRecord, operator string) 
 	}
 
 	var exists int64
-	db.DB.Model(&models.MemberLevelChange{}).
+	if err := tx.Model(&models.MemberLevelChange{}).
 		Where("member_id = ? AND reason = ? AND org_id = ? AND new_level_id = ? AND change_year = ?",
 			member.ID, models.ReasonFeePaid, fee.OrgID, fee.LevelID, year).
-		Count(&exists)
+		Count(&exists).Error; err != nil {
+		return err
+	}
 	if exists > 0 {
-		return
+		return nil
 	}
 
-	_ = writeMembershipChange(&member, year, fee.OrgID, fee.OrgName,
+	return writeMembershipChangeTx(tx, &member, year, fee.OrgID, fee.OrgName,
 		0, "", fee.LevelID, fee.LevelName, models.ReasonFeePaid, operator)
 }
 
@@ -595,16 +607,16 @@ type ApplyInvoiceRequest struct {
 
 // updateCertificateWithLevelAndTemplate updates the member's active certificate with level info and template ID.
 // 仅当费用关联了有效等级时才更新证书等级，避免把证书已有的 level_id / level_name / cert_template_id 清空。
-func (s *FeeService) updateCertificateWithLevelAndTemplate(memberID, levelID uint64, levelName string) {
+func (s *FeeService) updateCertificateWithLevelAndTemplate(tx *gorm.DB, memberID, levelID uint64, levelName string) error {
 	// Find the active certificate for this member
 	var cert models.Certificate
-	if err := db.DB.Where("member_id = ? AND status = ?", memberID, models.CertStatusActive).First(&cert).Error; err != nil {
-		return // no active certificate found, skip
+	if err := tx.Where("member_id = ? AND status = ?", memberID, models.CertStatusActive).First(&cert).Error; err != nil {
+		return nil // no active certificate found, skip
 	}
 
 	// 无有效等级（如手工新增的免缴费用）时保持证书原等级不变
 	if levelID == 0 {
-		return
+		return nil
 	}
 
 	updates := map[string]interface{}{
@@ -614,9 +626,9 @@ func (s *FeeService) updateCertificateWithLevelAndTemplate(memberID, levelID uin
 
 	// Look up certificate template for this level; if not found, fall back to the lowest level's template
 	var tpl models.MemberCertificateTemplate
-	if err := db.DB.Where("level_id = ?", levelID).First(&tpl).Error; err != nil {
+	if err := tx.Where("level_id = ?", levelID).First(&tpl).Error; err != nil {
 		// Fallback: find template for the lowest level
-		db.DB.Joins("JOIN member_levels ml ON ml.id = member_certificate_templates.level_id").
+		tx.Joins("JOIN member_levels ml ON ml.id = member_certificate_templates.level_id").
 			Order("ml.level ASC").
 			First(&tpl)
 	}
@@ -624,5 +636,5 @@ func (s *FeeService) updateCertificateWithLevelAndTemplate(memberID, levelID uin
 		updates["cert_template_id"] = tpl.ID
 	}
 
-	db.DB.Model(&cert).Updates(updates)
+	return tx.Model(&cert).Updates(updates).Error
 }

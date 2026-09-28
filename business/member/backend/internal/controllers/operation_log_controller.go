@@ -14,7 +14,7 @@ type OperationLogController struct {
 // List lists operation logs (admin)
 func (ctrl *OperationLogController) List(c *gin.Context) {
 	page := parseIntDefault(c.Query("page"), 1)
-	size := parseIntDefault(c.Query("size"), 10)
+	size := parsePageSize(c.Query("size"))
 	keyword := c.Query("keyword")
 
 	list, total, err := ctrl.logService.List(page, size, keyword)

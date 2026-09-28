@@ -88,7 +88,7 @@ func (ctrl *ApplicationController) ReviewApplication(c *gin.Context) {
 // ListApplications lists all applications (admin)
 func (ctrl *ApplicationController) ListApplications(c *gin.Context) {
 	page := parseIntDefault(c.Query("page"), 1)
-	size := parseIntDefault(c.Query("size"), 10)
+	size := parsePageSize(c.Query("size"))
 	status := c.Query("status")
 
 	apps, total, err := ctrl.appService.ListApplications(page, size, status)
@@ -128,4 +128,18 @@ func parseIntDefault(s string, def int) int {
 		return def
 	}
 	return n
+}
+
+// 列表分页大小上限：防止 ?size=100000 把整表（含长文本字段）读进内存。
+// 项目内有匿名只读列表（公告 / 已发布文章 / 会员等级），所以这里是硬上限而不是仅前端约束。
+const maxListSize = 100
+
+// parsePageSize 解析列表分页大小并收敛到 [1, maxListSize]。
+// 新增列表接口时统一用它，不要直接写 parseIntDefault(c.Query("size"), 10)。
+func parsePageSize(s string) int {
+	size := parseIntDefault(s, 10)
+	if size > maxListSize {
+		return maxListSize
+	}
+	return size
 }

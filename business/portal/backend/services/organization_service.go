@@ -156,22 +156,28 @@ func (s *OrganizationService) GetOrganizationUsers(id uint) ([]int, error) {
 // rejectInvalid 为 true 时（覆盖式分配），请求中若包含不存在的用户则直接报错，避免“静默少了几个成员”。
 func (s *OrganizationService) mutateOrganizationMembers(orgID uint, rejectInvalid bool, mutate func(existing []uint) []uint) error {
 	return utils.DB.Transaction(func(tx *gorm.DB) error {
-		var org models.Organization
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&org, orgID).Error; err != nil {
-			return errors.New("机构不存在")
-		}
-		kept, joined, dropped, err := normalizeMemberIDs(mutate(parseMemberIDList(org.UserIds)), organizationMemberIDsMaxChars)
-		if err != nil {
-			return err
-		}
-		if rejectInvalid && dropped > 0 {
-			return fmt.Errorf("有 %d 个成员不存在（可能已被删除），请刷新后重试", dropped)
-		}
-		return tx.Model(&models.Organization{}).Where("id = ?", orgID).UpdateColumns(map[string]any{
-			"user_ids":   joined,
-			"user_count": len(kept),
-		}).Error
+		return s.mutateOrganizationMembersTx(tx, orgID, rejectInvalid, mutate)
 	})
+}
+
+// mutateOrganizationMembersTx 同 mutateOrganizationMembers，但可指定事务：
+// 供调用方把「建用户 + 加机构」等多个写操作包在同一事务里。
+func (s *OrganizationService) mutateOrganizationMembersTx(tx *gorm.DB, orgID uint, rejectInvalid bool, mutate func(existing []uint) []uint) error {
+	var org models.Organization
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&org, orgID).Error; err != nil {
+		return errors.New("机构不存在")
+	}
+	kept, joined, dropped, err := normalizeMemberIDs(mutate(parseMemberIDList(org.UserIds)), organizationMemberIDsMaxChars)
+	if err != nil {
+		return err
+	}
+	if rejectInvalid && dropped > 0 {
+		return fmt.Errorf("有 %d 个成员不存在（可能已被删除），请刷新后重试", dropped)
+	}
+	return tx.Model(&models.Organization{}).Where("id = ?", orgID).UpdateColumns(map[string]any{
+		"user_ids":   joined,
+		"user_count": len(kept),
+	}).Error
 }
 
 func (s *OrganizationService) AssignOrganizationUsers(id uint, userIds []int) error {
@@ -236,6 +242,20 @@ func (s *OrganizationService) AddUserToOrganization(orgId uint, userId uint) err
 		return nil
 	}
 	return s.mutateOrganizationMembers(orgId, false, func(existing []uint) []uint {
+		if slices.Contains(existing, userId) {
+			return existing
+		}
+		return append(existing, userId)
+	})
+}
+
+// AddUserToOrganizationTx 事务版本（不自行开启事务）：
+// 供「创建用户 + 加入机构」等同事务写入场景使用，避免建用户成功后加机构失败留下孤儿账号。
+func (s *OrganizationService) AddUserToOrganizationTx(tx *gorm.DB, orgId uint, userId uint) error {
+	if orgId == 0 || userId == 0 {
+		return nil
+	}
+	return s.mutateOrganizationMembersTx(tx, orgId, false, func(existing []uint) []uint {
 		if slices.Contains(existing, userId) {
 			return existing
 		}

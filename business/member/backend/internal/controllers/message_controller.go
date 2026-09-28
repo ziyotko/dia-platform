@@ -30,7 +30,7 @@ func (ctrl *MessageController) CreateMessage(c *gin.Context) {
 func (ctrl *MessageController) GetMyMessages(c *gin.Context) {
 	memberID := middleware.GetMemberID(c)
 	page := parseIntDefault(c.Query("page"), 1)
-	size := parseIntDefault(c.Query("size"), 10)
+	size := parsePageSize(c.Query("size"))
 
 	msgs, total, err := ctrl.msgService.GetMyMessages(memberID, page, size)
 	if err != nil {
@@ -58,7 +58,7 @@ func (ctrl *MessageController) GetMessage(c *gin.Context) {
 
 func (ctrl *MessageController) ListAllMessages(c *gin.Context) {
 	page := parseIntDefault(c.Query("page"), 1)
-	size := parseIntDefault(c.Query("size"), 10)
+	size := parsePageSize(c.Query("size"))
 	status := c.Query("status")
 
 	msgs, total, err := ctrl.msgService.ListAllMessages(page, size, status)

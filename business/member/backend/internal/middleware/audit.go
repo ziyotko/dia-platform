@@ -12,6 +12,7 @@ import (
 
 	"member/internal/models"
 	"member/pkg/db"
+	"member/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -61,16 +62,36 @@ func OperationLog() gin.HandlerFunc {
 			IP:          c.ClientIP(),
 			Params:      params,
 			Result:      result,
-			Status:      1,
+			Status:      statusFromResponse(c.Writer.Status(), writer.body.Bytes()),
 			Duration:    time.Since(start).Milliseconds(),
 			OperationAt: start,
 		}
-		if c.Writer.Status() >= 400 {
-			log.Status = 0
-		}
-		// 异步写入，不阻塞请求
-		go db.DB.Create(&log)
+		// 异步写入，不阻塞请求；失败必须记日志，否则审计记录会静默丢失
+		go func(entry models.OperationLog) {
+			if err := db.DB.Create(&entry).Error; err != nil {
+				utils.LogError("写入操作日志失败: %v", err)
+			}
+		}(log)
 	}
+}
+
+// statusFromResponse 判定本次操作成功(1)/失败(0)。
+// 本项目所有响应都是 HTTP 200 + 业务码在响应体里（pkg/response），
+// 因此不能只用 c.Writer.Status() >= 400 判断（该条件永不成立，会让审计日志恒显示「成功」）。
+func statusFromResponse(httpStatus int, body []byte) int {
+	if httpStatus >= 400 {
+		return 0
+	}
+	var payload struct {
+		Code int `json:"code"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return 1
+	}
+	if payload.Code != 0 {
+		return 0
+	}
+	return 1
 }
 
 type responseBodyWriter struct {

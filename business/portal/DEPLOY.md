@@ -140,6 +140,23 @@ UPDATE article_attachment SET url = REPLACE(url, '/caamm/uploads/', '/business_p
 - **错误提示统一由请求拦截器给出**：各页面 `catch` 中的重复提示与 `if (res.code === 0) {…} else {…}` 死分支已清理，同一次失败不再弹两个提示（静态化 raw 接口仍由页面自行提示）。
 - **弹窗/表单交互统一**：表单类弹窗补 `:close-on-click-modal="false"`（防误点遮罩丢内容），常规表单弹窗宽度统一 600px，普通表单 `label-width` 统一 90px（**系统设置页签按最长标签保留 120/160/180px**：「Token 有效期（小时）」「静态化程序访问令牌名」等改成 120px 会折行）；筛选区输入框支持回车即搜索；删除确认框标题统一「提示」（清空日志等不可逆操作「警告」）、文案统一用「」包裹名称、确认按钮统一「确定」。
 
+#### 升级说明（2026-09-28，无需手工 SQL）
+
+- **发布时间（`article.publish_time`）时区修正**：此前 `models.LocalTime` 用裸 `time.Parse`（按 UTC 解析），而 DSN 是 `loc=Asia/Shanghai`，go-sql-driver 写入时会按配置时区换算 → 经「图文/视频/数据/报刊」编辑弹窗保存的发布时间比实际**晚 8 小时**（列表与详情都能看到）。现已改为 `time.ParseInLocation(..., time.Local)`。
+  - **新数据无需处理**；若历史数据的发布时间来自该编辑弹窗，值会偏晚 8 小时，可按需核对（先备份）：
+
+```sql
+-- 核对：发布时间比创建时间还晚约 8 小时的疑似行
+SELECT id, title, publish_time, created_at FROM article
+ WHERE publish_time IS NOT NULL AND TIMESTAMPDIFF(HOUR, created_at, publish_time) BETWEEN 7 AND 9;
+-- 确认需要回拨时（只改确认偏移的行）
+-- UPDATE article SET publish_time = DATE_SUB(publish_time, INTERVAL 8 HOUR) WHERE id IN (...);
+```
+
+- **静态化代理的自身错误回归 HTTP 200**：参数未配置 / 请求构造失败 / 读取响应失败 / 无法连接静态化程序，原先分别返回 HTTP 500 / 502，现统一为「HTTP 200 + 业务码 1」（前端提示文案不变）。上游静态化程序的真实响应（202 等）仍原样透传。
+- **创建用户事务化**：用户行与「加入机构」改为同一事务，机构关联失败会整体回滚，不再留下「初始密码未知」的孤儿账号（只能改库回收）。
+- **错误不再被静默忽略**：仪表盘三项统计、登录/登录失败日志写入、删除菜单前的子菜单计数均会检查错误（计数失败时直接报错，不再误删父菜单留下孤儿）。
+
 #### ⚠️ 页面层合并迁移（2026-09-21，手工执行，不可逆）
 
 模板即「页面」：原 `page` 表已合并进 `template`，`column`/`ad`/`link`/`article_column_publish` 改用 `template_id`。

@@ -250,15 +250,16 @@ func (c *StaticJobController) proxyToStaticProgram(ctx *gin.Context, params *ser
 				// 参数未配置属业务提示，统一 200 + code=1
 				ctx.JSON(http.StatusOK, utils.Error(1, progErr.Message))
 			case services.StaticErrBuildRequest:
-				ctx.JSON(http.StatusInternalServerError, utils.Error(1, utils.SanitizeError(progErr.Message, progErr.Err)))
+				ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError(progErr.Message, progErr.Err)))
 			case services.StaticErrReadBody:
-				ctx.JSON(http.StatusBadGateway, utils.Error(1, utils.SanitizeError(progErr.Message, progErr.Err)))
+				ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError(progErr.Message, progErr.Err)))
 			default:
-				// 无法连接静态化程序：保持既有 502 + code=1 透传
-				ctx.JSON(http.StatusBadGateway, utils.Error(1, progErr.Message))
+				// 无法连接静态化程序：同样回归「HTTP 200 + 业务码」口径
+				// （上游真实响应仍原样透传；这里是本系统自身的错误，不能用 502）
+				ctx.JSON(http.StatusOK, utils.Error(1, progErr.Message))
 			}
 		} else {
-			ctx.JSON(http.StatusBadGateway, utils.Error(1, "静态化服务调用失败"))
+			ctx.JSON(http.StatusOK, utils.Error(1, "静态化服务调用失败"))
 		}
 		return 0, nil
 	}

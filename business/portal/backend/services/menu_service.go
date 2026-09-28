@@ -144,7 +144,10 @@ func (s *MenuService) UpdateMenu(id uint, menu *models.Menu) error {
 
 func (s *MenuService) DeleteMenu(id uint) error {
 	var count int64
-	utils.DB.Model(&models.Menu{}).Where("parent_id = ?", id).Count(&count)
+	// Count 的错误必须处理：DB 异常时 count 恒 0，会直接删掉父菜单并把子菜单变成孤儿
+	if err := utils.DB.Model(&models.Menu{}).Where("parent_id = ?", id).Count(&count).Error; err != nil {
+		return err
+	}
 	if count > 0 {
 		return errors.New("该菜单下存在子菜单，无法删除")
 	}

@@ -18,7 +18,9 @@ func (t *LocalTime) UnmarshalJSON(b []byte) error {
 		t.Time = time.Time{}
 		return nil
 	}
-	parsed, err := time.Parse("2006-01-02 15:04:05", s)
+	// 必须用 ParseInLocation：裸 time.Parse 得到 UTC，而 DSN 带 loc=Asia/Shanghai，
+	// 驱动写入时会 v.In(loc) 转换 → 发布时间整体 +8 小时。
+	parsed, err := time.ParseInLocation("2006-01-02 15:04:05", s, time.Local)
 	if err != nil {
 		return err
 	}
@@ -50,7 +52,8 @@ func (t *LocalTime) Scan(value any) error {
 		t.Time = v
 		return nil
 	case string:
-		parsed, err := time.Parse("2006-01-02 15:04:05", v)
+		// 同 UnmarshalJSON：不能用裸 time.Parse（会当 UTC，写入时被驱动转成 +8h）
+		parsed, err := time.ParseInLocation("2006-01-02 15:04:05", v, time.Local)
 		if err != nil {
 			return err
 		}

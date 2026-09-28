@@ -21,7 +21,7 @@ type MemberController struct {
 // ListMembers lists all members (admin)
 func (ctrl *MemberController) ListMembers(c *gin.Context) {
 	page := parseIntDefault(c.Query("page"), 1)
-	size := parseIntDefault(c.Query("size"), 10)
+	size := parsePageSize(c.Query("size"))
 	keyword := c.Query("keyword")
 	status := c.Query("status")
 	memberType := c.Query("member_type")
@@ -129,7 +129,7 @@ func (ctrl *MemberController) CheckMemberExists(c *gin.Context) {
 func (ctrl *MemberController) GetMemberLevelChanges(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	page := parseIntDefault(c.Query("page"), 1)
-	size := parseIntDefault(c.Query("size"), 10)
+	size := parsePageSize(c.Query("size"))
 
 	list, total, err := ctrl.memberService.GetMemberLevelChanges(id, page, size)
 	if err != nil {
@@ -147,7 +147,7 @@ func (ctrl *MemberController) GetMemberLevelChanges(c *gin.Context) {
 // ListLevelChanges lists membership change records (admin)
 func (ctrl *MemberController) ListLevelChanges(c *gin.Context) {
 	page := parseIntDefault(c.Query("page"), 1)
-	size := parseIntDefault(c.Query("size"), 10)
+	size := parsePageSize(c.Query("size"))
 	keyword := c.Query("keyword")
 	memberType := c.Query("member_type")
 	year := parseIntDefault(c.Query("year"), 0)
@@ -196,7 +196,7 @@ func (ctrl *MemberController) ExportLevelChanges(c *gin.Context) {
 // ListProfileChanges lists profile change records (资料变更记录, admin)
 func (ctrl *MemberController) ListProfileChanges(c *gin.Context) {
 	page := parseIntDefault(c.Query("page"), 1)
-	size := parseIntDefault(c.Query("size"), 10)
+	size := parsePageSize(c.Query("size"))
 	keyword := c.Query("keyword")
 
 	list, total, err := ctrl.memberService.ListProfileChanges(page, size, keyword)

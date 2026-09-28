@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strconv"
 	"time"
 
 	"application/config"
@@ -90,25 +91,6 @@ func main() {
 	}()
 
 	// 12. Start server
-	utils.Logger.Info("Application server starting on port " + itoa(config.Cfg.Server.Port))
-	r.Run("0.0.0.0:" + itoa(config.Cfg.Server.Port))
-}
-
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	var digits []byte
-	neg := n < 0
-	if neg {
-		n = -n
-	}
-	for n > 0 {
-		digits = append([]byte{byte('0' + n%10)}, digits...)
-		n /= 10
-	}
-	if neg {
-		digits = append([]byte{'-'}, digits...)
-	}
-	return string(digits)
+	utils.Logger.Info("Application server starting on port " + strconv.Itoa(config.Cfg.Server.Port))
+	r.Run("0.0.0.0:" + strconv.Itoa(config.Cfg.Server.Port))
 }
