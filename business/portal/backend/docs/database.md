@@ -2,7 +2,7 @@
 
 > 适用范围：`business/portal/` 管理后台 + 后端 API 所使用的数据库
 > 数据库类型：MySQL ≥ 8.0
-> 建表方式：后端启动时通过 GORM `AutoMigrate` 自动建表（见 `models/migrate.go`、`main.go`）
+> 建表方式：后端启动时通过 GORM `AutoMigrate` 自动建表（见 `internal/models/migrate.go`、`main.go`）
 > 数据初始化：启动时自动写入默认角色 / 默认用户 / 默认菜单（幂等）
 
 ---
@@ -63,7 +63,7 @@
 | 29 | `operation_log` | 系统管理 | 操作日志 |
 | 30 | `login_log` | 系统管理 | 登录日志 |
 
-> 以上 30 张表全部由 `models/migrate.go` 的 `AutoMigrate` 创建；其中 `article_tag`、`article_column` 是 GORM 自动生成的连接表（无对应模型文件）。
+> 以上 30 张表全部由 `internal/models/migrate.go` 的 `AutoMigrate` 创建；其中 `article_tag`、`article_column` 是 GORM 自动生成的连接表（无对应模型文件）。
 
 ---
 
@@ -122,7 +122,7 @@
 | status | bigint | 是 | 1 | - | 状态：0 禁用 / 1 启用 |
 | permissions | varchar(500) | 是 | - | - | 权限标识集合 |
 
-> 内置角色 ID 约定：`1` 管理员、`3` 内容审核、`4` 内容作者（见 `models/seed.go`）；`2` 为已下线的「普通管理员」，不再使用（历史库中若存在该角色，按普通自定义角色处理）。
+> 内置角色 ID 约定：`1` 管理员、`3` 内容审核、`4` 内容作者（见 `internal/models/seed.go`）；`2` 为已下线的「普通管理员」，不再使用（历史库中若存在该角色，按普通自定义角色处理）。
 
 #### `operation_log` 操作日志表
 
@@ -623,7 +623,7 @@ erDiagram
 
 后端启动时自动执行，均为**幂等**操作（已存在则跳过）。
 
-### 默认角色（`models/seed.go`）
+### 默认角色（`internal/models/seed.go`）
 
 | ID | 名称 | 编码 |
 | --- | --- | --- |
@@ -632,9 +632,9 @@ erDiagram
 | 4 | 内容作者 | `content_author` |
 
 > 原 `2` 普通管理员（`admin`）已下线移除，不再播种；ID `3`/`4` 保持原值不重排。
-> 角色 1 名称于 2026-09-21 由「超级管理员」更名为「管理员」（`code` 仍为 `super_admin`）。仅影响**新库播种**（`models/seed.go`）：启动流程不会改写存量库，如需同步可手工执行 `UPDATE role SET name = '管理员' WHERE code = 'super_admin' AND name = '超级管理员';`（内置账号 `id = 1` 的 `username` 同理）。
+> 角色 1 名称于 2026-09-21 由「超级管理员」更名为「管理员」（`code` 仍为 `super_admin`）。仅影响**新库播种**（`internal/models/seed.go`）：启动流程不会改写存量库，如需同步可手工执行 `UPDATE role SET name = '管理员' WHERE code = 'super_admin' AND name = '超级管理员';`（内置账号 `id = 1` 的 `username` 同理）。
 
-### 默认用户（`models/seed.go`，初始密码 `1qaz@WSX`，SM3 加密存储）
+### 默认用户（`internal/models/seed.go`，初始密码 `1qaz@WSX`，SM3 加密存储）
 
 | ID | 用户名 | 账号 | 角色 |
 | --- | --- | --- | --- |
@@ -644,7 +644,7 @@ erDiagram
 
 > 用户 ID 与内置角色 ID 一一对应，`2` 随「普通管理员」一并下线保留空缺。
 
-### 默认菜单（`models/menu_seed.go`）
+### 默认菜单（`internal/models/menu_seed.go`）
 
 菜单表同时维护 **api_prefix**（“菜单可见范围 = 可调用接口范围”，见 §七.5），下方一并列出：
 
@@ -669,7 +669,7 @@ erDiagram
 3. **物理删除（硬删）**：各表均无 `deleted_at`，删除即物理删除，删除后不可恢复；旧库残留的软删数据由启动期 `PurgeLegacySoftDeletedRows()` 自动清理，残留的 `deleted_at` 列/索引按 `DEPLOY.md` 的「移除软删除列」手工 DROP。
 4. **密码安全**：`user.password` 为 SM3 加盐哈希，禁止明文。
 5. **多对多连接表**：`article_tag`、`article_column` 为 GORM 自动生成（无显式模型）；`article_category` 同时存在显式模型与 many2many 标签，二者指向同一张表。
-6. **菜单 `api_prefix` 决定接口可调用范围**：`middleware/api_prefix.go` 把请求路径去掉 `server.api_prefix` 后与用户已授权菜单的前缀逐一比对（支持逗号分隔多前缀），未命中且不在豁免表内则返回「没有授权」。新增页面/接口时必须确保：该页调用的每个接口要么被其菜单 `api_prefix` 覆盖，要么在 `apiPrefixExemptPaths`（精确匹配）/`apiPrefixExemptPrefixes`（前缀匹配）豁免表内。
+6. **菜单 `api_prefix` 决定接口可调用范围**：`internal/middleware/api_prefix.go` 把请求路径去掉 `server.api_prefix` 后与用户已授权菜单的前缀逐一比对（支持逗号分隔多前缀），未命中且不在豁免表内则返回「没有授权」。新增页面/接口时必须确保：该页调用的每个接口要么被其菜单 `api_prefix` 覆盖，要么在 `apiPrefixExemptPaths`（精确匹配）/`apiPrefixExemptPrefixes`（前缀匹配）豁免表内。
 7. **`article.column_count` 已废弃**：模型已移除该字段，代码不再读写（栏目数一律用 `len(article.Columns)` 计算）；旧库残留的列无副作用，新库不会创建。
 8. **静态化联动**：`setting` 中保存的静态化地址/令牌用于调用外部静态化程序；`static_log` 记录其执行日志。静态化输出路径以 `setting.static_path` **为准**（接口不接受调用方传入的路径）。
 9. **账号锁定**：`user.locked_until` 与 `login_fail_count`、`setting.lock_*` 配置共同实现登录失败锁定。

@@ -3,13 +3,17 @@
 > 分支：`caam_release`（汽车版）／ `miic_release`（中心版）｜ 项目路径：`business/portal/`
 > 部署拓扑：Nginx 承载静态资源并反代后端 → Go 后端（默认 `0.0.0.0:8092`，配置项 `server.port`） → MySQL / Redis
 > 说明：本仓库仅含「管理后台」与「后端 API」；网站静态化由外部程序完成，产物由外部 Web 服务托管。
-> 文档与代码同步至：2026-09-18
+> 文档与代码同步至：2026-09-28
 
 ## 目录结构
 
 ```
 business/portal/
-├── backend/          # Go 后端（Gin），module: server
+├── backend/          # Go 后端（Gin），module: portal
+│   ├── main.go       # 入口（配置/日志/DB/Redis 初始化 + 路由注册）
+│   ├── config/       # 配置加载（./config.yaml → config.AppConfig）
+│   ├── internal/     # 业务代码：controllers/ services/ models/ middleware/ routes/
+│   ├── pkg/utils/    # 通用库：db / jwt / redis / logger / response / captcha / sm3 等
 │   ├── config.yaml   # 唯一配置文件（viper 从当前工作目录读 ./config.yaml，须在 backend 目录下启动）
 │   ├── docs/         # 数据库结构等文档（docs/database.md）
 │   ├── uploads/      # 上传文件目录（运行时需可写）
@@ -17,6 +21,8 @@ business/portal/
 └── frontend/         # 管理后台（Vue3 + Vite + Element Plus）
     └── .env          # 部署子路径 VITE_BASE_PATH 与接口前缀 VITE_API_BASE_URL
 ```
+
+> 目录口径与 member / application 一致（`internal/*` 放业务代码、`pkg/*` 放通用库）；旧路径 `backend/controllers|services|models|middleware|routes` 已迁入 `backend/internal/`，`backend/utils` 已迁为 `backend/pkg/utils`。
 
 ---
 
@@ -302,7 +308,7 @@ ALTER TABLE `static_log`             DROP INDEX `idx_static_log_deleted_at`,    
 - 后端通过 `POST /xxxxx/api/static/*` 转发到「外部静态化程序」，非本仓库代码
 - 静态化程序的地址 / 令牌环境变量名 / 输出路径在后台「系统设置」中配置（存于数据库，缓存于 Redis db 8）；令牌值从「所填环境变量名」对应的环境变量读取，以 `Authorization: Bearer <token>` 发送。**环境变量缺失时会直接返回「访问令牌未配置」并提示该变量名**（不再静默用令牌名当令牌发出）
 - **输出路径只认后台配置**：所有生成/删除请求的 `path` 一律取 `setting.static_path`，接口不接受调用方传入的目录（前端传同值也仅用于比对告警），避免误写/误删服务器其它目录
-- 后端调用超时 120s（`services/static_program_client.go`），**Nginx 的 `proxy_read_timeout` 必须 ≥ 180s**，否则大页面生成会被网关截断成 504
+- 后端调用超时 120s（`internal/services/static_program_client.go`），**Nginx 的 `proxy_read_timeout` 必须 ≥ 180s**，否则大页面生成会被网关截断成 504
 - 部署前确认该程序可达，否则静态化请求返回 502
 
 ---

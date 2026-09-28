@@ -10,12 +10,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"server/config"
-	"server/middleware"
-	"server/models"
-	"server/routes"
-	"server/services"
-	"server/utils"
+	"portal/config"
+	"portal/internal/middleware"
+	"portal/internal/models"
+	"portal/internal/routes"
+	"portal/internal/services"
+	"portal/pkg/utils"
 )
 
 func main() {

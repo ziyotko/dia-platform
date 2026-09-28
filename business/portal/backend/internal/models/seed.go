@@ -1,0 +1,121 @@
+package models
+
+import (
+	"gorm.io/gorm"
+
+	"portal/pkg/utils"
+)
+
+// 系统内置默认角色。
+// ID 与现有硬编码约定保持一致：
+//   - 1 = 管理员（拥有一切权限，code 仍为 super_admin）
+//   - 3 = 内容审核（仅审阅/通过/驳回）
+//   - 4 = 内容作者（仅自有内容，需审核后发布）
+//
+// 注：ID 2 原为「普通管理员（admin）」，该角色已整体下线移除，不再播种；ID 3/4 保持原值不重排。
+var defaultRoles = []Role{
+	{
+		ID:          1,
+		Name:        "管理员",
+		Code:        "super_admin",
+		Description: "系统最高权限角色，拥有平台全部功能模块的访问、配置与管理权限，不受任何权限范围限制。通常仅授予系统运维或平台负责人，请谨慎分配。",
+		Status:      1,
+	},
+	{
+		ID:          3,
+		Name:        "内容审核",
+		Code:        "content_reviewer",
+		Description: "专职内容审核角色，仅可对提交审核的内容进行审阅、通过或驳回操作，并可在驳回时附上审核意见；不具备内容的直接发布、编辑或删除权限，亦不可修改栏目与审核流程配置。",
+		Status:      1,
+	},
+	{
+		ID:          4,
+		Name:        "内容作者",
+		Code:        "content_author",
+		Description: "内容创作角色，可创建和编辑本人创作的内容，并可提交送审；内容须经审核通过后方可发布，不可直接发布，亦不可编辑或删除他人内容。",
+		Status:      1,
+	},
+}
+
+// SeedDefaultRoles 启动时检查默认角色是否存在，不存在则自动创建（幂等，按 code 判定）。
+func SeedDefaultRoles() {
+	for i := range defaultRoles {
+		role := defaultRoles[i]
+		var existing Role
+		err := utils.DB.Where("code = ?", role.Code).First(&existing).Error
+		if err == nil {
+			// 已存在，跳过
+			continue
+		}
+		if err != gorm.ErrRecordNotFound {
+			utils.Logger.Warnf("检查默认角色[%s]失败: %v", role.Code, err)
+			continue
+		}
+		if createErr := utils.DB.Create(&role).Error; createErr != nil {
+			utils.Logger.Warnf("创建默认角色[%s]失败: %v", role.Code, createErr)
+			continue
+		}
+		utils.Logger.Infof("已自动创建默认角色: %s (%s)", role.Name, role.Code)
+	}
+}
+
+// 系统内置默认用户（与默认角色一一对应）。
+// 初始密码统一为 1qaz@WSX，写入时由 User.BeforeCreate 自动进行 SM3 加盐加密。
+// ID 显式固定，与内置角色 ID 一一对应（ID 2 随「普通管理员」一并下线，不再创建 operator 账号）。
+var defaultUsers = []User{
+	{
+		// 内置管理员账号固定为 ID=1，与前端 users.vue 的内置用户保护逻辑保持一致
+		ID:       1,
+		Username: "管理员",
+		Account:  "admin",
+		Email:    "admin@example.com",
+		Password: "1qaz@WSX",
+		Mobile:   "1",
+		RoleIds:  "1",
+		Status:   1,
+	},
+	{
+		// 固定 ID=3，与角色 3（内容审核）一一对应
+		ID:       3,
+		Username: "内容审核",
+		Account:  "reviewer",
+		Email:    "reviewer@example.com",
+		Password: "1qaz@WSX",
+		Mobile:   "3",
+		RoleIds:  "3",
+		Status:   1,
+	},
+	{
+		// 固定 ID=4，与角色 4（内容作者）一一对应
+		ID:       4,
+		Username: "内容作者",
+		Account:  "author",
+		Email:    "author@example.com",
+		Password: "1qaz@WSX",
+		Mobile:   "4",
+		RoleIds:  "4",
+		Status:   1,
+	},
+}
+
+// SeedDefaultUsers 启动时检查默认用户是否存在，不存在则自动创建（幂等，按 account 判定）。
+func SeedDefaultUsers() {
+	for i := range defaultUsers {
+		user := defaultUsers[i]
+		var existing User
+		err := utils.DB.Where("account = ?", user.Account).First(&existing).Error
+		if err == nil {
+			// 已存在，跳过
+			continue
+		}
+		if err != gorm.ErrRecordNotFound {
+			utils.Logger.Warnf("检查默认用户[%s]失败: %v", user.Account, err)
+			continue
+		}
+		if createErr := utils.DB.Create(&user).Error; createErr != nil {
+			utils.Logger.Warnf("创建默认用户[%s]失败: %v", user.Account, createErr)
+			continue
+		}
+		utils.Logger.Infof("已自动创建默认用户: %s (%s)", user.Username, user.Account)
+	}
+}
