@@ -233,6 +233,14 @@ server {
 - 更换 `APPLICATION_JWT_SECRET` 会使两套 Token 立即失效（在线用户需重新登录）
 - 备份建议：`mysqldump` 数据库 + `backend/uploads` 目录（申报材料、证书附件）+ `backend/config.yaml`（不含密码明文）
 
+### 升级说明（2026-09-28 · 第二批：Token 服务端失效机制，无需手工 SQL）
+
+- **新增两列** `application_users.password_changed_at`、`application_admins.password_changed_at`（启动 `AutoMigrate` 自动补列，**无需手工 SQL**）。
+- **改密后旧 Token 立即失效**：申报人「修改密码」、管理人「修改密码」，以及管理端「账号管理 / 申报人管理」里由管理员替他人改密，都会写入改密时间；改密前签发的 Token（含被窃取的）立即 401，不必等 `jwt.expire_hours`（默认 24h）。⚠️ 改密后**当前会话也会被强制登出**，前端提示「密码修改成功，请重新登录」（有意行为）。
+- **新增两个登出接口**：`POST /business_application/api/member/logout`（申报人）、`POST /business_application/api/admin/logout`（管理端），把当前 Token 的 `jti` 写入 Redis 黑名单（键 `blacklist:{jti}`、值 `1`、TTL = Token 剩余有效期，存于 `redis.captcha_db`）。前端「退出登录」按钮会调用；**401 自动登出路径仍只清本地**（Token 已失效，再调接口只会二次 401）。
+- **「禁用 / 删除 / 降权即时生效」保持不变**：`UserAuth` / `AdminAuth` 本来就每请求回查 `status`，管理端另以库中 `role_code` 为准。
+- ⚠️ 该机制依赖 Redis（`redis.captcha_db`）：**Redis 不可用时鉴权按 fail-closed 处理**（返回「服务暂时不可用」，不再放行），请确保 Redis 与后端一并探活。
+
 ### 升级说明（2026-09-28，无需手工 SQL）
 
 - **分页 `pageSize` 收敛修正**：上限 100，超出时**收敛为 100**。此前实现是「超出上限就退回 10 条」，导致前端传 `pageSize=200` 的批次下拉、发证候选、申报人下拉只显示 10 条（现已修正，前端也统一改为 100）。

@@ -65,6 +65,9 @@ func Register(r *gin.Engine) {
 		member.GET("/profile", authCtrl.GetUserProfile)
 		member.PUT("/profile", authCtrl.UpdateUserProfile)
 		member.PUT("/change-password", authCtrl.ChangeUserPassword)
+		// 退出登录：把当前 Token 的 jti 写入黑名单（TTL = 剩余有效期），使其立即失效。
+		// 前端「退出登录」按钮调用它；401 自动登出路径仍只清本地，避免二次 401 递归。
+		member.POST("/logout", authCtrl.UserLogout)
 
 		// Browse published batches & results
 		member.GET("/batches", batchCtrl.ListVisible)
@@ -110,6 +113,8 @@ func Register(r *gin.Engine) {
 		admin.GET("/profile", authCtrl.GetAdminProfile)
 		admin.PUT("/profile", authCtrl.UpdateAdminProfile)
 		admin.PUT("/change-password", authCtrl.ChangeAdminPassword)
+		// 退出登录：与管理端「退出登录」按钮对应（申报人端为 POST /member/logout）
+		admin.POST("/logout", authCtrl.AdminLogout)
 
 		// Dashboard
 		// 看板会返回全站统计，必须带权限校验（之前只有 AdminAuth，任意有效 token 都能读）

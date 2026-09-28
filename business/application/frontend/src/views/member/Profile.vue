@@ -30,6 +30,9 @@
 import { reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { authApi } from '@/api/auth'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
 
 const form = reactive({ username: '', realName: '', phone: '', email: '', idCard: '', organization: '', position: '' })
 const pwdForm = reactive({ oldPassword: '', newPassword: '' })
@@ -52,10 +55,18 @@ async function save() {
 
 async function changePwd() {
   if (!pwdForm.oldPassword || !pwdForm.newPassword) return ElMessage.warning('请填写完整')
-  await authApi.changeUserPassword(pwdForm)
-  ElMessage.success('密码修改成功')
+  try {
+    await authApi.changeUserPassword(pwdForm)
+  } catch {
+    return
+  }
+  ElMessage.success('密码修改成功，请重新登录')
   pwdForm.oldPassword = ''
   pwdForm.newPassword = ''
+  // 改密后服务端已作废当前 Token（password_changed_at）：本地会话同步失效并回登录页。
+  // 先清会话（logout 会因无 Token 而跳过服务端调用），留一点时间让提示可见。
+  userStore.clearSession()
+  setTimeout(() => userStore.logout(), 800)
 }
 
 onMounted(fetch)

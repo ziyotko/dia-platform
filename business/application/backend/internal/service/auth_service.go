@@ -2,11 +2,13 @@ package service
 
 import (
 	"errors"
+	"time"
 
 	"application/internal/models"
 	"application/pkg/captcha"
 	"application/pkg/db"
 	"application/pkg/jwt"
+	"application/pkg/redis"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -118,7 +120,12 @@ func (s *AuthService) ChangeUserPassword(userID uint64, oldPassword, newPassword
 		return errors.New("原密码错误")
 	}
 	hashed, _ := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
-	return db.DB.Model(&user).Update("password", string(hashed)).Error
+	// 改密必须同时写 password_changed_at：UserAuth 比较 Token 的 iat，
+	// 使改密前签发的 Token（含被窃取的）立即失效，而不是等 24h 自然过期。
+	return db.DB.Model(&user).Updates(map[string]interface{}{
+		"password":            string(hashed),
+		"password_changed_at": models.NewInvalidBefore(),
+	}).Error
 }
 
 // --- Admin (管理人 / 评审人) ---
@@ -175,5 +182,15 @@ func (s *AuthService) ChangeAdminPassword(adminID uint64, oldPassword, newPasswo
 		return errors.New("原密码错误")
 	}
 	hashed, _ := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
-	return db.DB.Model(&admin).Update("password", string(hashed)).Error
+	// 同申报人：改密后旧 Token 立即失效（AdminAuth 比对 iat 与 password_changed_at）
+	return db.DB.Model(&admin).Updates(map[string]interface{}{
+		"password":            string(hashed),
+		"password_changed_at": models.NewInvalidBefore(),
+	}).Error
+}
+
+// Logout 把 Token 的 jti 写入黑名单，使其在自然过期前不再可用。
+// 申报人与管理端共用（两套 token 的 jti 都是 uuid，不会碰撞）。
+func (s *AuthService) Logout(jti string, expiresAt time.Time) error {
+	return redis.RevokeToken(jti, expiresAt)
 }

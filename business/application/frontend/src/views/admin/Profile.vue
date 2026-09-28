@@ -28,6 +28,9 @@
 import { reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { authApi } from '@/api/auth'
+import { useAdminStore } from '@/stores/admin'
+
+const adminStore = useAdminStore()
 
 const form = reactive({ username: '', realName: '', roleCode: '', phone: '', email: '' })
 const pwdForm = reactive({ oldPassword: '', newPassword: '' })
@@ -52,10 +55,17 @@ async function save() {
 
 async function changePwd() {
   if (!pwdForm.oldPassword || !pwdForm.newPassword) return ElMessage.warning('请填写完整')
-  await authApi.changeAdminPassword(pwdForm)
-  ElMessage.success('密码修改成功')
+  try {
+    await authApi.changeAdminPassword(pwdForm)
+  } catch {
+    return
+  }
+  ElMessage.success('密码修改成功，请重新登录')
   pwdForm.oldPassword = ''
   pwdForm.newPassword = ''
+  // 改密后服务端已作废当前 Token（password_changed_at）：本地会话同步失效并回管理端登录页
+  adminStore.clearSession()
+  setTimeout(() => adminStore.logout(), 800)
 }
 
 onMounted(fetch)

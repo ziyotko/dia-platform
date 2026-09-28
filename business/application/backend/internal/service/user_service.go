@@ -95,6 +95,8 @@ func (s *UserService) UpdateUser(id uint64, updates map[string]interface{}) erro
 	if pwd, ok := clean["password"].(string); ok && pwd != "" {
 		hashed, _ := bcrypt.GenerateFromPassword([]byte(pwd), bcrypt.DefaultCost)
 		clean["password"] = string(hashed)
+		// 管理员替申报人改密同样作废旧 Token（UserAuth 比对 iat 与 password_changed_at）
+		clean["password_changed_at"] = models.NewInvalidBefore()
 	} else {
 		delete(clean, "password")
 	}
@@ -197,6 +199,9 @@ func (s *UserService) UpdateAdmin(id uint64, updates map[string]interface{}) err
 	if pwd, ok := clean["password"].(string); ok && pwd != "" {
 		hashed, _ := bcrypt.GenerateFromPassword([]byte(pwd), bcrypt.DefaultCost)
 		clean["password"] = string(hashed)
+		// 管理员替其他管理员改密同样作废其旧 Token（AdminAuth 比对 iat 与 password_changed_at）；
+		// 改密与降权/停用一样，都需要让旧 Token 立即失效（角色码已是每请求回查，无需额外处理）。
+		clean["password_changed_at"] = models.NewInvalidBefore()
 	} else {
 		delete(clean, "password")
 	}

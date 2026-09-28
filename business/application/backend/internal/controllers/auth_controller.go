@@ -4,6 +4,7 @@ import (
 	"application/internal/middleware"
 	"application/internal/service"
 	"application/pkg/response"
+	"application/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -102,6 +103,15 @@ func (ctrl *AuthController) ChangeUserPassword(c *gin.Context) {
 	response.OkWithMessage(c, "密码修改成功", nil)
 }
 
+// UserLogout 申报人退出登录：把当前 Token 的 jti 写入黑名单（TTL = Token 剩余有效期），
+// 使其在自然过期前不可再用。写黑名单失败不影响本地登出，只记日志。
+func (ctrl *AuthController) UserLogout(c *gin.Context) {
+	if err := ctrl.authService.Logout(middleware.GetTokenID(c), middleware.GetTokenExpiry(c)); err != nil {
+		utils.LogWarn("申报人退出登录写黑名单失败: %s", err)
+	}
+	response.OkWithMessage(c, "已退出登录", nil)
+}
+
 // --- Admin Auth (管理人 / 评审人) ---
 
 func (ctrl *AuthController) AdminLogin(c *gin.Context) {
@@ -162,4 +172,12 @@ func (ctrl *AuthController) ChangeAdminPassword(c *gin.Context) {
 		return
 	}
 	response.OkWithMessage(c, "密码修改成功", nil)
+}
+
+// AdminLogout 管理端退出登录：把当前 Token 的 jti 写入黑名单（TTL = Token 剩余有效期）。
+func (ctrl *AuthController) AdminLogout(c *gin.Context) {
+	if err := ctrl.authService.Logout(middleware.GetTokenID(c), middleware.GetTokenExpiry(c)); err != nil {
+		utils.LogWarn("管理员退出登录写黑名单失败: %s", err)
+	}
+	response.OkWithMessage(c, "已退出登录", nil)
 }

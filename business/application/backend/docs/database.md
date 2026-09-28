@@ -78,6 +78,7 @@
 | organization | varchar(256) | 是 | - | - | 所在单位 |
 | position | varchar(64) | 是 | - | - | 职务 |
 | status | bigint | 是 | 1 | - | 状态：0 禁用 / 1 正常（登录时校验） |
+| password_changed_at | datetime | 是 | - | - | 最后一次改密时间（秒级）；Token 的 iat 早于它就返回 401（接口不下发） |
 
 > 申报人由「申报人注册」页自助创建，或由管理端「申报人管理」新增；两处均要求 `username` / `password` / `real_name` 非空，且用户名全局唯一。
 
@@ -94,6 +95,7 @@
 | email | varchar(128) | 是 | - | - | 邮箱 |
 | role_code | varchar(32) | 是 | - | - | 角色编码：`super_admin` / `manager` / `reviewer` |
 | status | bigint | 是 | 1 | - | 状态：0 禁用 / 1 正常 |
+| password_changed_at | datetime | 是 | - | - | 最后一次改密时间（秒级）；Token 的 iat 早于它就返回 401（接口不下发） |
 
 > **两套账号互不通用**：申报人存本表的兄弟表 `application_users`，管理端账号存本表。`admin` 账号在申报人登录页必然报「用户名或密码错误」。
 > `role_code = reviewer` 的账号**只能从「专家库」新增**（`UserService.CreateAdmin` 会拒绝），以保证账号与专家档案一一对应。
@@ -464,6 +466,12 @@ draft(草稿) ──提交──► submitted(待初审)
 8. **`avg_score` 需配合 `scoredCount` 解读**：数据库里 0 分与「无人评分」不可区分，展示侧以评审任务表为准。
 9. **`application_system_configs.key` 是保留字**：写 SQL 时必须写成 `` `key` ``。
 10. **数据库连接**：连接参数见 `backend/config.yaml`；生产环境密码通过环境变量 `APPLICATION_DB_PASSWORD` 注入（未注入或仍是占位值时启动即退出）。
+11. **登录态（Token）服务端失效口径**：`UserAuth` / `AdminAuth` 每请求按主键回查账号（两轴判定）：
+    - `status != 1`（禁用）或行不存在（已删除）→ 401（原有行为）；管理端另要求库中 `role_code` 非空且以它为准（降权即时生效）；
+    - Token 的 `iat` **早于** `password_changed_at` → 401「密码已修改，请重新登录」（改密写入点：申报人/管理人本人改密、管理端账号管理与申报人管理里改密）；
+    - Redis 键 `blacklist:{jti}` 存在（主动登出 `POST /member/logout` 或 `POST /admin/logout`）→ 401「已退出登录，请重新登录」。
+
+    `password_changed_at` 为**秒级**写入（JWT 的 `iat` 也是秒级），恰好等于该时刻的 Token 视为有效；Redis 异常时鉴权 fail-closed。
 
 ---
 
