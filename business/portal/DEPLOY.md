@@ -178,14 +178,23 @@ SELECT id, title, publish_time, created_at FROM article
   - 视频：`cover` + `full_video_url` + `preview_video_url`；
   - 报刊：`issue_no` + `publish_year_month` + `cover` + `summary` + `paper_file_name/url`；
   - 共用：`member_column_id`（会员栏目）、`source`（来源）、`publish_time`（发布时间）、`status`、`is_top`。
-- **⚠️ 手工 SQL（仅「已经用初版代码建过 `member_content` 表」的环境需要）**：初版把视频地址存在 `video_url`，现更名为 `full_video_url`。AutoMigrate 只加列不删列，不处理会残留一个孤儿列（含数据）。先备份后执行：
+- **⚠️ 手工 SQL（仅「已经用初版代码建过 `member_content` / `member_column` 表」的环境需要）**：
+  - 初版把视频地址存在 `video_url`，现更名为 `full_video_url`；
+  - 初版「会员栏目」有「栏目编码」`code` 列，现已取消该字段（改为仅按`名称`唯一）。
+  AutoMigrate 只加列不删列，不处理会残留孤儿列（含数据）。先备份后执行：
 
 ```sql
--- 核对：是否存在旧列（返回 1 行才需要执行下面这条）
+-- 核对：video_url 是否存在（返回 1 行才需要执行下面那条）
 SELECT COLUMN_NAME FROM information_schema.COLUMNS
  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'member_content' AND COLUMN_NAME = 'video_url';
 -- 列存在且 full_video_url 尚不存在时（会保留原数据）：
 ALTER TABLE `member_content` CHANGE COLUMN `video_url` `full_video_url` VARCHAR(500) NULL COMMENT '完整视频地址';
+
+-- 核对：member_column.code 是否存在（返回 1 行才需要执行下面那条）
+SELECT COLUMN_NAME FROM information_schema.COLUMNS
+ WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'member_column' AND COLUMN_NAME = 'code';
+-- 列存在时删除（栏目编码已不再使用，数据不可恢复）：
+ALTER TABLE `member_column` DROP COLUMN `code`;
 ```
 > 全新部署（本次才启用会员专区）无需该 SQL：`AutoMigrate` 会直接按新结构建表。其余新增列（`data_year`/`unit_name`/... /`paper_file_url` 等）由启动时的 `AutoMigrate` 自动补齐。
 - **新增菜单「会员专区」**：`/content/member-zone`（组件 `content/member-zone`），`api_prefix = /member-columns,/member-contents`，启动时幂等播种，无需手工 SQL。

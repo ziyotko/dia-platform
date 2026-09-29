@@ -5,207 +5,246 @@
         <div class="card-header">
           <span>会员专区</span>
           <div class="header-actions">
-            <el-button v-if="activeTab === 'column' && isAdmin" type="primary" @click="handleAddColumn">
-              <el-icon><Plus /></el-icon>新增会员栏目
+            <el-button v-if="isAdmin" @click="openColumnManager">
+              <el-icon><Grid /></el-icon>
+              会员栏目管理
             </el-button>
-            <el-button v-if="activeTab === 'content'" type="primary" @click="handleAddContent">
-              <el-icon><Plus /></el-icon>发布会员内容
+            <el-button type="primary" @click="handleAddContent">
+              <el-icon><Plus /></el-icon>
+              发布会员内容
             </el-button>
           </div>
         </div>
       </template>
 
-      <el-tabs v-model="activeTab">
-        <el-tab-pane label="会员栏目" name="column">
-          <el-form :model="columnQuery" inline>
-            <el-form-item label="栏目名称">
-              <el-input
-                v-model="columnQuery.name"
-                placeholder="请输入栏目名称"
-                clearable
-                @keyup.enter="handleColumnSearch"
-              />
-            </el-form-item>
-            <el-form-item label="状态">
-              <el-select v-model="columnQuery.status" placeholder="全部状态" clearable style="width: 120px">
-                <el-option label="启用" :value="1" />
-                <el-option label="禁用" :value="0" />
-              </el-select>
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" @click="handleColumnSearch">
-                <el-icon><Search /></el-icon>查询
-              </el-button>
-              <el-button @click="resetColumnQuery">
-                <el-icon><RefreshRight /></el-icon>重置
-              </el-button>
-            </el-form-item>
-          </el-form>
-
-          <el-table :data="columnData" v-loading="columnLoading" border stripe>
-            <el-table-column type="index" width="60" align="center" />
-            <el-table-column prop="name" label="栏目名称" min-width="150" />
-            <el-table-column prop="code" label="栏目编码" min-width="140" />
-            <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-            <el-table-column prop="sort" label="排序" width="90" align="center" />
-            <el-table-column prop="status" label="状态" width="100" align="center">
-              <template #default="{ row }">
-                <el-switch
-                  v-model="row.status"
-                  :active-value="1"
-                  :inactive-value="0"
-                  :disabled="!isAdmin"
-                  @change="(val: number) => handleColumnStatusChange(row, val)"
-                />
-              </template>
-            </el-table-column>
-            <el-table-column prop="createdAt" label="创建时间" width="170" />
-            <el-table-column v-if="isAdmin" label="操作" width="180" align="center" fixed="right">
-              <template #default="{ row }">
-                <el-button link type="primary" @click="handleEditColumn(row)">
-                  <el-icon><Edit /></el-icon>编辑
-                </el-button>
-                <el-button link type="danger" @click="handleDeleteColumn(row)">
-                  <el-icon><Delete /></el-icon>删除
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-
-          <div class="pagination">
-            <el-pagination
-              v-model:current-page="columnQuery.page"
-              v-model:page-size="columnQuery.pageSize"
-              :page-sizes="[10, 20, 50, 100]"
-              :total="columnTotal"
-              layout="total, sizes, prev, pager, next, jumper"
-              @size-change="handleColumnSizeChange"
-              @current-change="fetchColumns"
+      <!-- 主界面只呈现会员内容；会员栏目维护收进「会员栏目管理」弹窗（见下方 dialog） -->
+      <el-form :model="contentQuery" inline>
+        <el-form-item label="内容标题">
+          <el-input
+            v-model="contentQuery.title"
+            placeholder="请输入内容标题"
+            clearable
+            @keyup.enter="handleContentSearch"
+          />
+        </el-form-item>
+        <el-form-item label="会员栏目">
+          <el-select
+            v-model="contentQuery.columnId"
+            placeholder="全部栏目"
+            clearable
+            style="width: 160px"
+          >
+            <el-option
+              v-for="item in columnOptions"
+              :key="item.id"
+              :label="item.status === 1 ? item.name : `${item.name}（已禁用）`"
+              :value="item.id"
             />
-          </div>
-        </el-tab-pane>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="内容类型">
+          <el-select
+            v-model="contentQuery.type"
+            placeholder="全部类型"
+            clearable
+            style="width: 120px"
+          >
+            <el-option label="新闻" :value="1" />
+            <el-option label="数据" :value="2" />
+            <el-option label="视频" :value="3" />
+            <el-option label="报刊" :value="4" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select
+            v-model="contentQuery.status"
+            placeholder="全部状态"
+            clearable
+            style="width: 120px"
+          >
+            <el-option label="草稿" :value="0" />
+            <el-option label="已发布" :value="1" />
+            <el-option label="已下线" :value="2" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleContentSearch">
+            <el-icon><Search /></el-icon>
+            查询
+          </el-button>
+          <el-button @click="resetContentQuery">
+            <el-icon><RefreshRight /></el-icon>
+            重置
+          </el-button>
+        </el-form-item>
+      </el-form>
 
-        <el-tab-pane label="会员内容" name="content">
-          <el-form :model="contentQuery" inline>
-            <el-form-item label="内容标题">
-              <el-input
-                v-model="contentQuery.title"
-                placeholder="请输入内容标题"
-                clearable
-                @keyup.enter="handleContentSearch"
-              />
-            </el-form-item>
-            <el-form-item label="会员栏目">
-              <el-select
-                v-model="contentQuery.columnId"
-                placeholder="全部栏目"
-                clearable
-                style="width: 160px"
-              >
-                <el-option
-                  v-for="item in columnOptions"
-                  :key="item.id"
-                  :label="item.status === 1 ? item.name : `${item.name}（已禁用）`"
-                  :value="item.id"
-                />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="内容类型">
-              <el-select v-model="contentQuery.type" placeholder="全部类型" clearable style="width: 120px">
-                <el-option label="新闻" :value="1" />
-                <el-option label="数据" :value="2" />
-                <el-option label="视频" :value="3" />
-                <el-option label="报刊" :value="4" />
-              </el-select>
-            </el-form-item>
-            <el-form-item label="状态">
-              <el-select v-model="contentQuery.status" placeholder="全部状态" clearable style="width: 120px">
-                <el-option label="草稿" :value="0" />
-                <el-option label="已发布" :value="1" />
-                <el-option label="已下线" :value="2" />
-              </el-select>
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" @click="handleContentSearch">
-                <el-icon><Search /></el-icon>查询
-              </el-button>
-              <el-button @click="resetContentQuery">
-                <el-icon><RefreshRight /></el-icon>重置
-              </el-button>
-            </el-form-item>
-          </el-form>
+      <el-table v-loading="contentLoading" :data="contentData" border stripe>
+        <el-table-column type="index" width="60" align="center" />
+        <el-table-column prop="title" label="内容标题" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="memberColumnName" label="会员栏目" min-width="130" />
+        <el-table-column prop="type" label="类型" width="90" align="center">
+          <template #default="{ row }">
+            <el-tag size="small" :type="typeTagType(row.type)">{{ typeName(row.type) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="关键信息" min-width="150" show-overflow-tooltip>
+          <template #default="{ row }">{{ keyInfo(row) }}</template>
+        </el-table-column>
+        <el-table-column prop="author" label="作者" width="110" />
+        <el-table-column prop="publishTime" label="发布时间" width="170" />
+        <el-table-column prop="status" label="状态" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag size="small" :type="statusTagType(row.status)">
+              {{ statusName(row.status) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="isTop" label="置顶" width="80" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.isTop === 1" size="small" type="danger">置顶</el-tag>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="220" align="center" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="handleEditContent(row)">
+              <el-icon><Edit /></el-icon>
+              编辑
+            </el-button>
+            <el-button link type="primary" @click="handleToggleContentStatus(row)">
+              {{ row.status === 1 ? '下线' : '发布' }}
+            </el-button>
+            <el-button link type="danger" @click="handleDeleteContent(row)">
+              <el-icon><Delete /></el-icon>
+              删除
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
 
-          <el-table :data="contentData" v-loading="contentLoading" border stripe>
-            <el-table-column type="index" width="60" align="center" />
-            <el-table-column prop="title" label="内容标题" min-width="200" show-overflow-tooltip />
-            <el-table-column prop="memberColumnName" label="会员栏目" min-width="130" />
-            <el-table-column prop="type" label="类型" width="90" align="center">
-              <template #default="{ row }">
-                <el-tag size="small" :type="typeTagType(row.type)">{{ typeName(row.type) }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="关键信息" min-width="150" show-overflow-tooltip>
-              <template #default="{ row }">{{ keyInfo(row) }}</template>
-            </el-table-column>
-            <el-table-column prop="author" label="作者" width="110" />
-            <el-table-column prop="publishTime" label="发布时间" width="170" />
-            <el-table-column prop="status" label="状态" width="100" align="center">
-              <template #default="{ row }">
-                <el-tag size="small" :type="statusTagType(row.status)">{{ statusName(row.status) }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="isTop" label="置顶" width="80" align="center">
-              <template #default="{ row }">
-                <el-tag v-if="row.isTop === 1" size="small" type="danger">置顶</el-tag>
-                <span v-else>-</span>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="220" align="center" fixed="right">
-              <template #default="{ row }">
-                <el-button link type="primary" @click="handleEditContent(row)">
-                  <el-icon><Edit /></el-icon>编辑
-                </el-button>
-                <el-button link type="primary" @click="handleToggleContentStatus(row)">
-                  {{ row.status === 1 ? '下线' : '发布' }}
-                </el-button>
-                <el-button link type="danger" @click="handleDeleteContent(row)">
-                  <el-icon><Delete /></el-icon>删除
-                </el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-
-          <div class="pagination">
-            <el-pagination
-              v-model:current-page="contentQuery.page"
-              v-model:page-size="contentQuery.pageSize"
-              :page-sizes="[10, 20, 50, 100]"
-              :total="contentTotal"
-              layout="total, sizes, prev, pager, next, jumper"
-              @size-change="handleContentSizeChange"
-              @current-change="fetchContents"
-            />
-          </div>
-        </el-tab-pane>
-      </el-tabs>
+      <div class="pagination">
+        <el-pagination
+          v-model:current-page="contentQuery.page"
+          v-model:page-size="contentQuery.pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="contentTotal"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleContentSizeChange"
+          @current-change="fetchContents"
+        />
+      </div>
     </el-card>
 
+    <!-- 会员栏目管理：栏目列表与增删改全部收在该弹窗内，主界面不再展示栏目列表 -->
     <el-dialog
-      v-model="columnDialogVisible"
+      v-model="columnManagerVisible"
+      title="会员栏目管理"
+      width="900px"
+      :close-on-click-modal="false"
+    >
+      <el-form :model="columnQuery" inline>
+        <el-form-item label="栏目名称">
+          <el-input
+            v-model="columnQuery.name"
+            placeholder="请输入栏目名称"
+            clearable
+            @keyup.enter="handleColumnSearch"
+          />
+        </el-form-item>
+        <el-form-item label="状态">
+          <el-select
+            v-model="columnQuery.status"
+            placeholder="全部状态"
+            clearable
+            style="width: 120px"
+          >
+            <el-option label="启用" :value="1" />
+            <el-option label="禁用" :value="0" />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="handleColumnSearch">
+            <el-icon><Search /></el-icon>
+            查询
+          </el-button>
+          <el-button @click="resetColumnQuery">
+            <el-icon><RefreshRight /></el-icon>
+            重置
+          </el-button>
+          <el-button type="primary" @click="handleAddColumn">
+            <el-icon><Plus /></el-icon>
+            新增会员栏目
+          </el-button>
+        </el-form-item>
+      </el-form>
+
+      <el-table v-loading="columnLoading" :data="columnData" border stripe max-height="420">
+        <el-table-column type="index" width="60" align="center" />
+        <el-table-column prop="name" label="栏目名称" min-width="150" />
+        <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="sort" label="排序" width="90" align="center" />
+        <el-table-column prop="status" label="状态" width="100" align="center">
+          <template #default="{ row }">
+            <el-switch
+              v-model="row.status"
+              :active-value="1"
+              :inactive-value="0"
+              @change="(val: number) => handleColumnStatusChange(row, val)"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column prop="createdAt" label="创建时间" width="170" />
+        <el-table-column label="操作" width="180" align="center" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="handleEditColumn(row)">
+              <el-icon><Edit /></el-icon>
+              编辑
+            </el-button>
+            <el-button link type="danger" @click="handleDeleteColumn(row)">
+              <el-icon><Delete /></el-icon>
+              删除
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="pagination">
+        <el-pagination
+          v-model:current-page="columnQuery.page"
+          v-model:page-size="columnQuery.pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          :total="columnTotal"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handleColumnSizeChange"
+          @current-change="fetchColumns"
+        />
+      </div>
+
+      <template #footer>
+        <el-button @click="columnManagerVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="columnFormVisible"
       :title="columnDialogTitle"
       width="600px"
       destroy-on-close
+      append-to-body
       :close-on-click-modal="false"
     >
       <el-form ref="columnFormRef" :model="columnForm" :rules="columnRules" label-width="90px">
         <el-form-item label="栏目名称" prop="name">
           <el-input v-model="columnForm.name" placeholder="请输入会员栏目名称" />
         </el-form-item>
-        <el-form-item label="栏目编码" prop="code">
-          <el-input v-model="columnForm.code" placeholder="请输入会员栏目编码" />
-        </el-form-item>
         <el-form-item label="描述" prop="description">
-          <el-input v-model="columnForm.description" type="textarea" :rows="3" placeholder="请输入描述" />
+          <el-input
+            v-model="columnForm.description"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入描述"
+          />
         </el-form-item>
         <el-form-item label="排序" prop="sort">
           <el-input-number v-model="columnForm.sort" :min="0" :max="999" />
@@ -218,8 +257,10 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="columnDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="columnSubmitLoading" @click="handleSubmitColumn">确定</el-button>
+        <el-button @click="columnFormVisible = false">取消</el-button>
+        <el-button type="primary" :loading="columnSubmitLoading" @click="handleSubmitColumn">
+          确定
+        </el-button>
       </template>
     </el-dialog>
 
@@ -232,10 +273,19 @@
     >
       <el-form ref="contentFormRef" :model="contentForm" :rules="contentRules" label-width="160px">
         <el-form-item label="内容标题" prop="title">
-          <el-input v-model="contentForm.title" placeholder="请输入内容标题" maxlength="200" show-word-limit />
+          <el-input
+            v-model="contentForm.title"
+            placeholder="请输入内容标题"
+            maxlength="200"
+            show-word-limit
+          />
         </el-form-item>
         <el-form-item label="会员栏目" prop="memberColumnId">
-          <el-select v-model="contentForm.memberColumnId" placeholder="请选择会员栏目" style="width: 100%">
+          <el-select
+            v-model="contentForm.memberColumnId"
+            placeholder="请选择会员栏目"
+            style="width: 100%"
+          >
             <el-option
               v-for="item in columnOptions"
               :key="item.id"
@@ -257,7 +307,10 @@
         <!-- 封面图：新闻 / 视频 / 报刊 使用 -->
         <el-form-item v-if="contentForm.type !== 2" label="封面图" prop="cover">
           <el-upload :show-file-list="false" :http-request="handleCoverUpload" accept="image/*">
-            <el-button><el-icon><Upload /></el-icon>上传封面图</el-button>
+            <el-button>
+              <el-icon><Upload /></el-icon>
+              上传封面图
+            </el-button>
           </el-upload>
           <div v-if="contentForm.cover" class="cover-preview">
             <el-image :src="contentForm.cover" fit="cover" />
@@ -272,20 +325,23 @@
               <Toolbar
                 style="border-bottom: 1px solid #e4e7ed"
                 :editor="editorRef"
-                :defaultConfig="toolbarConfig"
+                :default-config="toolbarConfig"
                 mode="default"
               />
               <Editor
                 v-model="contentForm.content"
-                :defaultConfig="editorConfig"
+                :default-config="editorConfig"
                 mode="default"
-                @onCreated="handleEditorCreated"
+                @on-created="handleEditorCreated"
               />
             </div>
           </el-form-item>
           <el-form-item label="文章附件" prop="attachmentUrl">
             <el-upload :show-file-list="false" :http-request="handleAttachmentUpload">
-              <el-button><el-icon><Paperclip /></el-icon>上传文章附件</el-button>
+              <el-button>
+                <el-icon><Paperclip /></el-icon>
+                上传文章附件
+              </el-button>
             </el-upload>
             <span v-if="contentForm.attachmentName" class="attachment-name">
               {{ contentForm.attachmentName }}
@@ -308,7 +364,11 @@
             <el-input v-model="contentForm.unitName" placeholder="请输入单位名称" maxlength="200" />
           </el-form-item>
           <el-form-item label="所属省份及直辖市" prop="province">
-            <el-input v-model="contentForm.province" placeholder="请输入所属省份及直辖市" maxlength="100" />
+            <el-input
+              v-model="contentForm.province"
+              placeholder="请输入所属省份及直辖市"
+              maxlength="100"
+            />
           </el-form-item>
           <el-form-item label="所属地区" prop="region">
             <el-input v-model="contentForm.region" placeholder="请输入所属地区" maxlength="100" />
@@ -343,17 +403,37 @@
         <template v-if="contentForm.type === 3">
           <el-form-item label="完整视频" prop="fullVideoUrl">
             <div class="media-row">
-              <el-input v-model="contentForm.fullVideoUrl" placeholder="上传后自动填入，也可直接填写视频地址" />
-              <el-upload :show-file-list="false" :http-request="handleFullVideoUpload" accept="video/mp4">
-                <el-button><el-icon><VideoCamera /></el-icon>上传完整视频</el-button>
+              <el-input
+                v-model="contentForm.fullVideoUrl"
+                placeholder="上传后自动填入，也可直接填写视频地址"
+              />
+              <el-upload
+                :show-file-list="false"
+                :http-request="handleFullVideoUpload"
+                accept="video/mp4"
+              >
+                <el-button>
+                  <el-icon><VideoCamera /></el-icon>
+                  上传完整视频
+                </el-button>
               </el-upload>
             </div>
           </el-form-item>
           <el-form-item label="预览视频" prop="previewVideoUrl">
             <div class="media-row">
-              <el-input v-model="contentForm.previewVideoUrl" placeholder="上传后自动填入，也可直接填写视频地址" />
-              <el-upload :show-file-list="false" :http-request="handlePreviewVideoUpload" accept="video/mp4">
-                <el-button><el-icon><VideoCamera /></el-icon>上传预览视频</el-button>
+              <el-input
+                v-model="contentForm.previewVideoUrl"
+                placeholder="上传后自动填入，也可直接填写视频地址"
+              />
+              <el-upload
+                :show-file-list="false"
+                :http-request="handlePreviewVideoUpload"
+                accept="video/mp4"
+              >
+                <el-button>
+                  <el-icon><VideoCamera /></el-icon>
+                  上传预览视频
+                </el-button>
               </el-upload>
             </div>
           </el-form-item>
@@ -384,7 +464,10 @@
           </el-form-item>
           <el-form-item label="报刊文件" prop="paperFileUrl">
             <el-upload :show-file-list="false" :http-request="handlePaperFileUpload">
-              <el-button><el-icon><Paperclip /></el-icon>上传报刊文件</el-button>
+              <el-button>
+                <el-icon><Paperclip /></el-icon>
+                上传报刊文件
+              </el-button>
             </el-upload>
             <span v-if="contentForm.paperFileName" class="attachment-name">
               {{ contentForm.paperFileName }}
@@ -416,7 +499,9 @@
       </el-form>
       <template #footer>
         <el-button @click="contentDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="contentSubmitLoading" @click="handleSubmitContent">确定</el-button>
+        <el-button type="primary" :loading="contentSubmitLoading" @click="handleSubmitContent">
+          确定
+        </el-button>
       </template>
     </el-dialog>
   </div>
@@ -428,12 +513,13 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Delete,
   Edit,
+  Grid,
   Paperclip,
   Plus,
   RefreshRight,
   Search,
   Upload,
-  VideoCamera
+  VideoCamera,
 } from '@element-plus/icons-vue'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
@@ -453,20 +539,19 @@ import {
   updateMemberColumn,
   updateMemberColumnStatus,
   updateMemberContent,
-  updateMemberContentStatus
+  updateMemberContentStatus,
 } from '@/api/member-zone'
 
 const userStore = useUserStore()
 // 会员栏目的新增/编辑/删除/改状态均为管理员接口（写路由在 admin 组）
 const isAdmin = computed(() => hasAdminRole(userStore.userInfo?.roleIds))
 
-const activeTab = ref<'column' | 'content'>('column')
-
 // ============================ 会员栏目 ============================
+const columnManagerVisible = ref(false)
 const columnLoading = ref(false)
 const columnTotal = ref(0)
 const columnData = ref<any[]>([])
-const columnDialogVisible = ref(false)
+const columnFormVisible = ref(false)
 const columnDialogTitle = ref('')
 const columnSubmitLoading = ref(false)
 const columnFormRef = ref()
@@ -475,21 +560,19 @@ const columnQuery = reactive({
   page: 1,
   pageSize: 10,
   name: '',
-  status: undefined as number | undefined
+  status: undefined as number | undefined,
 })
 
 const columnForm = reactive({
   id: undefined as number | undefined,
   name: '',
-  code: '',
   description: '',
   sort: 0,
-  status: 1
+  status: 1,
 })
 
 const columnRules = {
   name: [{ required: true, message: '请输入栏目名称', trigger: 'blur' }],
-  code: [{ required: true, message: '请输入栏目编码', trigger: 'blur' }]
 }
 
 // 供「会员栏目」下拉使用（含禁用项，便于编辑历史内容时保留原栏目）
@@ -499,10 +582,9 @@ const resetColumnForm = () => {
   Object.assign(columnForm, {
     id: undefined,
     name: '',
-    code: '',
     description: '',
     sort: 0,
-    status: 1
+    status: 1,
   })
 }
 
@@ -538,6 +620,13 @@ const handleColumnSearch = () => {
   fetchColumns()
 }
 
+// 会员栏目维护收在弹窗里，打开时再拉列表（主界面不展示栏目列表）
+const openColumnManager = () => {
+  columnManagerVisible.value = true
+  columnQuery.page = 1
+  fetchColumns()
+}
+
 const resetColumnQuery = () => {
   columnQuery.name = ''
   columnQuery.status = undefined
@@ -553,7 +642,7 @@ const handleColumnSizeChange = () => {
 const handleAddColumn = () => {
   columnDialogTitle.value = '新增会员栏目'
   resetColumnForm()
-  columnDialogVisible.value = true
+  columnFormVisible.value = true
 }
 
 const handleEditColumn = (row: any) => {
@@ -561,12 +650,11 @@ const handleEditColumn = (row: any) => {
   Object.assign(columnForm, {
     id: row.id,
     name: row.name,
-    code: row.code,
     description: row.description,
     sort: row.sort,
-    status: row.status
+    status: row.status,
   })
-  columnDialogVisible.value = true
+  columnFormVisible.value = true
 }
 
 const handleSubmitColumn = async () => {
@@ -581,7 +669,7 @@ const handleSubmitColumn = async () => {
       await createMemberColumn({ ...columnForm })
       ElMessage.success('新增成功')
     }
-    columnDialogVisible.value = false
+    columnFormVisible.value = false
     fetchColumns()
     fetchColumnOptions()
   } finally {
@@ -603,7 +691,7 @@ const handleDeleteColumn = (row: any) => {
   ElMessageBox.confirm(`确定要删除会员栏目 「${row.name}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'warning'
+    type: 'warning',
   })
     .then(async () => {
       await deleteMemberColumn(row.id)
@@ -629,7 +717,7 @@ const contentQuery = reactive({
   title: '',
   columnId: undefined as number | undefined,
   type: undefined as number | undefined,
-  status: undefined as number | undefined
+  status: undefined as number | undefined,
 })
 
 const contentForm = reactive({
@@ -663,7 +751,7 @@ const contentForm = reactive({
   publishYearMonth: '',
   summary: '',
   paperFileName: '',
-  paperFileUrl: ''
+  paperFileUrl: '',
 })
 
 /** 富文本正文转纯文本后判断是否真的填了内容（空编辑器会产出 <p><br></p>） */
@@ -679,7 +767,7 @@ const contentRules = computed(() => {
   const rules: Record<string, any> = {
     title: [{ required: true, message: '请输入内容标题', trigger: 'blur' }],
     memberColumnId: [{ required: true, message: '请选择会员栏目', trigger: 'change' }],
-    type: [{ required: true, message: '请选择内容类型', trigger: 'change' }]
+    type: [{ required: true, message: '请选择内容类型', trigger: 'change' }],
   }
   if (contentForm.status !== 1) return rules
   if (contentForm.type === 1) {
@@ -689,8 +777,8 @@ const contentRules = computed(() => {
           if (hasRichText(contentForm.content) || contentForm.attachmentUrl) callback()
           else callback(new Error('发布新闻前请填写文章内容或上传文章附件'))
         },
-        trigger: 'blur'
-      }
+        trigger: 'blur',
+      },
     ]
   } else if (contentForm.type === 2) {
     rules.dataYear = [{ required: true, message: '发布数据前请填写数据年份', trigger: 'change' }]
@@ -699,7 +787,9 @@ const contentRules = computed(() => {
     rules.fullVideoUrl = [{ required: true, message: '发布视频前请上传完整视频', trigger: 'blur' }]
   } else if (contentForm.type === 4) {
     rules.issueNo = [{ required: true, message: '发布报刊前请填写期号', trigger: 'blur' }]
-    rules.publishYearMonth = [{ required: true, message: '发布报刊前请填写出版年月', trigger: 'change' }]
+    rules.publishYearMonth = [
+      { required: true, message: '发布报刊前请填写出版年月', trigger: 'change' },
+    ]
     rules.paperFileUrl = [{ required: true, message: '发布报刊前请上传报刊文件', trigger: 'blur' }]
   }
   return rules
@@ -715,7 +805,7 @@ const typeTagType = (type: number): 'primary' | 'success' | 'warning' | 'danger'
     1: 'primary',
     2: 'success',
     3: 'warning',
-    4: 'danger'
+    4: 'danger',
   }
   return map[type] || 'primary'
 }
@@ -736,7 +826,7 @@ const statusTagType = (status: number): 'info' | 'success' | 'warning' => {
   const map: Record<number, 'info' | 'success' | 'warning'> = {
     0: 'info',
     1: 'success',
-    2: 'warning'
+    2: 'warning',
   }
   return map[status] || 'info'
 }
@@ -769,7 +859,7 @@ const resetContentForm = () => {
     publishYearMonth: '',
     summary: '',
     paperFileName: '',
-    paperFileUrl: ''
+    paperFileUrl: '',
   })
 }
 
@@ -849,7 +939,7 @@ const handleEditContent = async (row: any) => {
       publishYearMonth: detail.publishYearMonth,
       summary: detail.summary,
       paperFileName: detail.paperFileName,
-      paperFileUrl: detail.paperFileUrl
+      paperFileUrl: detail.paperFileUrl,
     })
     contentDialogVisible.value = true
   } catch {
@@ -882,7 +972,7 @@ const handleToggleContentStatus = (row: any) => {
   ElMessageBox.confirm(`确定要${actionText}内容 「${row.title}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'warning'
+    type: 'warning',
   })
     .then(async () => {
       await updateMemberContentStatus(row.id, nextStatus)
@@ -896,7 +986,7 @@ const handleDeleteContent = (row: any) => {
   ElMessageBox.confirm(`确定要删除内容 「${row.title}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'warning'
+    type: 'warning',
   })
     .then(async () => {
       await deleteMemberContent(row.id)
@@ -995,9 +1085,9 @@ const editorConfig: Partial<IEditorConfig> = {
       },
       async customUpload(file: File, insertFn: (url: string, alt: string, href: string) => void) {
         await uploadImageFile(file, insertFn)
-      }
-    }
-  }
+      },
+    },
+  },
 }
 
 const handleEditorCreated = (editor: IDomEditor) => {
@@ -1005,7 +1095,6 @@ const handleEditorCreated = (editor: IDomEditor) => {
 }
 
 onMounted(() => {
-  fetchColumns()
   fetchColumnOptions()
   fetchContents()
 })

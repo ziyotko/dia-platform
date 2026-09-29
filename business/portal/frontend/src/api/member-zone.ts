@@ -4,7 +4,6 @@ import request from '@/utils/request'
 export interface MemberColumnForm {
   id?: number
   name: string
-  code: string
   description?: string
   sort: number
   status: number

@@ -36,7 +36,7 @@ func (s *MemberColumnService) GetMemberColumns(name string, status int, page int
 func (s *MemberColumnService) CreateMemberColumn(column *models.MemberColumn) error {
 	// Create 接口忽略请求体主键（防伪造内置 ID），与其它模块 Create 口径一致
 	column.ID = 0
-	if err := ensureNameCodeUnique(&models.MemberColumn{}, "会员栏目", column.Name, column.Code, 0, nil); err != nil {
+	if err := ensureValueUnique(&models.MemberColumn{}, "name", column.Name, "会员栏目", "名称", 0, nil); err != nil {
 		return err
 	}
 	return utils.DB.Create(column).Error
@@ -47,12 +47,11 @@ func (s *MemberColumnService) UpdateMemberColumn(id uint, column *models.MemberC
 	if err := utils.DB.First(&old, id).Error; err != nil {
 		return err
 	}
-	if err := ensureNameCodeUnique(&models.MemberColumn{}, "会员栏目", column.Name, column.Code, id, nil); err != nil {
+	if err := ensureValueUnique(&models.MemberColumn{}, "name", column.Name, "会员栏目", "名称", id, nil); err != nil {
 		return err
 	}
 	return utils.DB.Model(&old).Updates(map[string]any{
 		"name":        column.Name,
-		"code":        column.Code,
 		"description": column.Description,
 		"sort":        column.Sort,
 		"status":      column.Status,

@@ -6,13 +6,12 @@ import (
 )
 
 // MemberColumn 会员栏目（会员栏目分类）。
-// 会员专区下用于归类「会员专属内容」的栏目，仅管理员可维护；禁用后不再允许向其投放新内容。
+// 会员专区下用于归类「会员专属内容」的栏目，仅管理员可维护（名称唯一）；禁用后不再允许向其投放新内容。
 type MemberColumn struct {
 	ID          uint      `gorm:"primarykey" json:"id"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
 	Name        string    `gorm:"size:100;not null" json:"name"`
-	Code        string    `gorm:"size:100;not null" json:"code"`
 	Description string    `gorm:"size:500" json:"description"`
 	Sort        int       `gorm:"default:0" json:"sort"`
 	Status      int       `gorm:"default:1;index" json:"status"` // 1启用 0禁用
