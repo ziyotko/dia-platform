@@ -309,10 +309,12 @@ func (c *MemberZoneController) GetMemberContentByID(ctx *gin.Context) {
 		memberContentFullDTO(*content, columnNames[content.MemberColumnID], true)))
 }
 
-// ================= 对外只读接口（需登录，仅返回「已发布」内容） =================
+// ================= 会员专区「对外只读」接口（仅注册在外部会员组，凭 member 登录令牌） =================
+// 路径前缀 `/member-zone`，见 routes.go 的 externalMember 组：只认外部会员令牌（会员中心登录态），
+// 参数与返回结构与其它接口一致，仅身份口径不同（原先 portal 登录用户版已移除）。
 
 // GetColumnMemberContents 对外接口：分页取指定会员栏目下「已发布」的内容（置顶优先）。
-// GET /member-contents/column/:key?page=&pageSize=
+// GET /member-zone/member-contents/column/:key?page=&pageSize=
 // `:key` 为「会员栏目标识」：纯数字按 ID 匹配，其它按名称精确匹配（名称唯一）。
 // 这样外部系统（如 CAMIE）按名称调用即可跨环境使用，无需维护「ID 映射配置」。
 // 列表不含正文（正文请用下面的详情接口）。
@@ -340,7 +342,7 @@ func (c *MemberZoneController) GetColumnMemberContents(ctx *gin.Context) {
 
 // GetMemberColumnOptions 对外接口：返回全部会员栏目（含禁用）的 id/名称/状态，
 // 供外部系统确认栏目写法，或自行按名称→ID 映射调用。
-// GET /member-columns/options
+// GET /member-zone/member-columns/options
 func (c *MemberZoneController) GetMemberColumnOptions(ctx *gin.Context) {
 	columns, err := c.columnService.GetAllMemberColumns()
 	if err != nil {
@@ -359,7 +361,7 @@ func (c *MemberZoneController) GetMemberColumnOptions(ctx *gin.Context) {
 }
 
 // GetMemberContentDetail 对外接口：按 ID 取「已发布」内容的完整信息（含正文）。
-// GET /member-contents/detail/:id
+// GET /member-zone/member-contents/detail/:id
 func (c *MemberZoneController) GetMemberContentDetail(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
 	if err != nil {
@@ -498,7 +500,7 @@ func memberFileSignedURL(name string, exp int64, nonce string, sign string) stri
 }
 
 // SignMemberFile 下发会员专区文件的「短时效签名 URL」（需登录）。
-// GET /member-files/sign?name=<文件名>（portal 登录用户）
+// GET /member-files/sign?name=<文件名>（portal 登录用户：后台会员专区编辑页要预览已保存内容的封面/附件/报刊文件）
 // GET /member-zone/member-files/sign?name=<文件名>（外部会员，见 routes.go 的外部会员组）
 //
 // 访问判定（按文件名反查 member_content，见 FindMemberFileReferences，具体见 canSignMemberFile）：

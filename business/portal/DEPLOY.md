@@ -209,12 +209,13 @@ ALTER TABLE `member_column` DROP COLUMN `code`;
   - 会员内容：`GET /member-contents`、`GET /member-contents/:id`、`POST/PUT/DELETE /member-contents*`、`PATCH /member-contents/:id/status` 在**登录用户组**；非管理员只能看到/维护 `author_code` 为本人 ID 的内容（与 `/articles` 口径一致），管理员可代管全部。
   - 发布校验（后端为准，前端同步提示）：**仅当状态置为「已发布」时**校验该类型的关键字段（新闻=文章内容或文章附件之一、数据=数据年份+单位名称、视频=完整视频、报刊=期号+出版年月+报刊文件）；草稿/已下线可先建后补。前端 `/member-contents` 列表的「发布」按钮改状态时同样受此校验保护。
   - 封面/文章附件/报刊文件复用 `POST /upload`（`dir=article` / `attachment`），完整/预览视频用 `dir=video`；该接口在菜单豁免表内并已挂 `upload` 限流。
-- **对外只读接口（需登录，仅返回「已发布」内容）**：供外部系统（CAMIE/门户/会员前台等）读取会员内容，以下接口均只需通过认证，**不再要求调用方被授予「会员专区」菜单**（`middleware/api_prefix.go`：`/member-columns/options` 在精确豁免表、两个 `/member-contents/...` 子路径在前缀豁免表；成员组的写路由仍受菜单前缀约束）：
-  - `GET /member-columns/options` —— 全部会员栏目（含禁用）的 `{id, name, status}`，供外部系统确认栏目写法或自建「名称→ID」映射。
-  - `GET /member-contents/column/:key?page=&pageSize=` —— 指定会员栏目的**已发布内容（分页）**，按 `is_top DESC, id DESC` 排序；**`page` 缺省 `1`（`<1` 回退 1）；`pageSize` 缺省 `10`，上限 `100`（`>100` 按 `100` 截断，`<1` 或非数字回退 `10`）**，响应回显实际生效的 `page`/`pageSize`。列表**不含正文 `content`**（正文请用详情接口）。
+- **对外只读接口（仅返回「已发布」内容）**：供外部系统（CAMIE/门户/会员前台等）读取会员内容。
+  - ⚠️ **2026-09-29 调整：这 3 条接口只有「外部会员」一套口径了 —— 路径前缀改为 `/member-zone`、鉴权改为会员中心的登录 Token，portal 登录用户版已移除**（详见本文件下方「升级说明（2026-09-29，无需手工 SQL）— 外部会员（member）登录态只读会员专区」）。原先依赖 portal 登录态的 CAMIE 等调用方**需同步改造**；参数与返回结构、以及下面「对外可见性口径」完全不变。
+  - `GET /member-zone/member-columns/options` —— 全部会员栏目（含禁用）的 `{id, name, status}`，供外部系统确认栏目写法或自建「名称→ID」映射。
+  - `GET /member-zone/member-contents/column/:key?page=&pageSize=` —— 指定会员栏目的**已发布内容（分页）**，按 `is_top DESC, id DESC` 排序；**`page` 缺省 `1`（`<1` 回退 1）；`pageSize` 缺省 `10`，上限 `100`（`>100` 按 `100` 截断，`<1` 或非数字回退 `10`）**，响应回显实际生效的 `page`/`pageSize`。列表**不含正文 `content`**（正文请用详情接口）。
     - **`:key` 支持两种写法（解决「各环境自增 ID 不一致」的问题）**：纯数字 → 按栏目 ID 匹配；**其它 → 按栏目名称精确匹配**（名称写入前已做唯一校验）。外部系统直接按名称调用即可，**无需维护各环境的 ID 映射**；栏目不存在统一返回「会员栏目不存在」。
     - 注意：`GET` 请求里中文名称需 URL 编码（如 `%E6%B5%8B%E8%AF%95%E6%A0%8F%E7%9B%AE`），`axios`/`fetch` 会自动编码。
-  - `GET /member-contents/detail/:id` —— 按 ID 取**已发布内容**的完整信息（含正文）；内容不存在或未发布统一返回「内容不存在或未发布」。
+  - `GET /member-zone/member-contents/detail/:id` —— 按 ID 取**已发布内容**的完整信息（含正文）；内容不存在或未发布统一返回「内容不存在或未发布」。
     - 内容的 `id` 各环境也不同，但外部系统应**先调栏目内容列表拿到 id，再用该 id 取详情**（同一环境内，无需跨环境配置）。
   - 返回结构：栏目内容列表为分页结构 `{list,total,page,pageSize}`（`utils.PageData`）；栏目清单与详情为 `{list,total}`（`utils.AllData`）/ 单个对象。内容均带 `memberColumnId` / `memberColumnName`；时间字段格式 `YYYY-MM-DD HH:mm:ss`；统一「HTTP 200 + 业务码」。
   - 注意：已发布内容会被任何已登录账号读到，与「会员专属」语义一致（会员内容面向登录会员）；草稿/已下线内容不会对外暴露。
@@ -244,12 +245,13 @@ ALTER TABLE `member_column` DROP COLUMN `code`;
 #### 升级说明（2026-09-29，无需手工 SQL）— 外部会员（member）登录态只读会员专区
 
 - **新能力**：会员在会员中心（`business/member`）登录后，可用**会员中心签发的登录 Token** 直接读取 portal 的会员专区已发布内容，无需在 portal 再注册/登录账号（只读）。
-- **新增接口（外部会员组，前缀 `/member-zone`，全部 `GET`）**：语义与实现与上一条「对外只读接口」完全一致，仅**身份口径**不同（凭 member 的 Token，而非 portal 的 Token）：
+- **「会员专区对外只读接口」现在只有这一套（前缀 `/member-zone`，全部 `GET`，只认外部会员令牌）**：参数与返回结构与上一条「对外只读接口」完全一致，但**身份口径只有一种**：会员中心的登录 Token。原先 portal 登录用户版的同名路径（`/member-columns/options`、`/member-contents/column|detail`）**已移除**，调用方需改用本组路径。
   - `GET /business_portal/api/member-zone/member-columns/options` —— 全部会员栏目的 `{id, name, status}`；
   - `GET /business_portal/api/member-zone/member-contents/column/:key?page=&pageSize=` —— 指定栏目下的已发布内容（分页，置顶优先，**不含正文**）；`:key` 同样支持「纯数字=栏目 ID / 其它=栏目名称」；
   - `GET /business_portal/api/member-zone/member-contents/detail/:id` —— 指定已发布内容的完整信息（含正文）；
   - `GET /business_portal/api/member-zone/member-files/sign?name=<文件名>` —— 会员专区文件的 5 分钟签名地址（供 `<img>`/`<video>`/`<a>` 使用；文件本体仍走 `/member-files/:name?exp=&nonce=&sign=`，无需再签发一次）。
-  - **为何另起 `/member-zone` 前缀而不是复用原路径**：Gin 不允许同一 `method+path` 重复注册（会 panic），而原路径已属「portal 登录用户」口径，两套身份不能挂在同一条路由上。**原路径的接口与行为完全不变**（现有 CAMIE 等依赖 portal 登录态的调用方不受影响）。
+  - **为何用 `/member-zone` 前缀**：这批接口只认外部会员令牌，与 portal 登录用户的口径完全不同，用独立前缀在 URL 上把两种身份区分开（API 文档/排错时不会误以为需要 portal 令牌）。原先 portal 登录版的同名路径已删除，避免同一批对外接口存在两套鉴权口径（Gin 也不允许同一 `method+path` 注册两次）。
+  - ⚠️ **`/member-files/sign` 是唯一保留在 portal 登录组的接口**：portal 后台「会员专区」编辑页要预览已保存内容的封面/附件/报刊文件与正文内联图（前端 `ensureSignedFile` → `GET /member-files/sign`），去掉它会导致编辑页图片全裂；外部会员的同名能力是 `/member-zone/member-files/sign`（只对「对外可见内容」引用的文件签发）。文件本体仍走 `/member-files/:name?exp=&nonce=&sign=`（只验签，不分身份）。
 - **鉴权方式**：请求头 `Authorization: Bearer <member 登录 Token>`。后端用 `jwt.member_secret`（= member 的 `MEMBER_JWT_SECRET`）验签，只接受 HS256、强校验 `issuer = jwt.member_issuer`（默认 `caam-member`）、要求令牌带 `exp`，并额外读 member 的登出黑名单（`blacklist:<jti>`，见 `redis.member_token_db`）→ **会员主动登出后 portal 侧立即失效**。
 - **该路由组刻意不挂的中间件（逐条都有原因，勿“补齐”）**：`AuthMiddleware`（按 portal 用户表校验，会员无账号）、`MenuAPIPrefixMiddleware`（会员无 portal 菜单授权）、`ReplayProtectionMiddleware`（会员前端不会带 `X-Request-Signature`，挂了会 100% 拒绝）、`OperationLog`（只读接口且操作人无 portal 账号）。仅挂「外部会员鉴权 + 按真实 IP 限流」（scope `member-zone`，复用 `public_rate_limit` / `public_rate_window_seconds`）。
 - **权限边界（重要）**：外部会员**只能读已发布内容**（已发布 + 所属栏目启用 + 发布时间已到），**不能**读草稿/已下线/未到发布时间的内容；`/member-zone/member-files/sign` 对会员只对「对外可见内容」引用的文件签发；**member 的 `is_admin` 不会获得 portal 的任何管理员权限**（会员身份写入 `externalMemberID`，不写 `userID`/`currentUser`）。
@@ -508,7 +510,8 @@ server {
 | 静态化操作提示"静态化程序访问令牌未配置" | 后台填的是**环境变量名**，但服务端未设置同名环境变量；注入该变量后重试即可（不再退化为把令牌名当令牌发送） |
 | 启动即退出并打印 `程序退出` | 未注入 `PORTAL_DB_PASSWORD` 或 `PORTAL_JWT_SECRET`（仍为占位值），或 `./config.yaml` 不在进程工作目录下 |
 | 端口被占用启动失败 | `server.port` 默认 8092；被占用时改配置或释放端口，并同步 Nginx 与 `frontend/vite.config.ts`（dev 代理） |
-| 会员（会员中心）读取会员专区接口返回「会员登录校验未启用，请联系管理员」 | 未配置 `jwt.member_secret` / 未注入 `PORTAL_MEMBER_JWT_SECRET`（或值为占位值）。注：调的是 `/business_portal/api/member-zone/...` 才是外部会员接口；调 `/business_portal/api/member-contents/...` 用的仍是 portal 登录 Token |
+| 会员（会员中心）读取会员专区接口返回「会员登录校验未启用，请联系管理员」 | 未配置 `jwt.member_secret` / 未注入 `PORTAL_MEMBER_JWT_SECRET`（或值为占位值）。对外只读接口只有 `/business_portal/api/member-zone/...` 这一套（凭会员中心 Token）|
+| 外部调用方（如 CAMIE）报 404：`/member-columns/options`、`/member-contents/column|detail` | 2026-09-29 起这三条「对外只读」接口只对外部会员开放，路径改为 `/member-zone/...` 且需携带会员中心的登录 Token（portal 登录用户版已移除）；请调用方按升级说明改造 |
 | 会员刚登录就拿不到会员专区内容，返回「会员登录已过期或无效」 | 两侧 `MEMBER_JWT_SECRET` 与 `PORTAL_MEMBER_JWT_SECRET` 不一致（或 `jwt.member_issuer` 与 member 的 `jwt.issuer` 不一致）。注意环境变量末尾空格/换行也会导致验签失败 |
 | 会员已登出，但 portal 侧仍能读到会员专区内容 | `redis.member_token_db` 填错（应为 **member 的 `redis.captcha_db`**）或两服务不在同一 Redis 实例。该检查失败时鉴权会 fail-closed（Redis 读不通返回「服务暂时不可用」），不会静默放行 |
 | 会员能读已发布内容，但读取草稿预览图报「无权访问该文件」 | 属预期：外部会员没有 portal 的「作者本人/管理员」身份，`/member-zone/member-files/sign` 只对**对外可见内容**引用的文件签发 |

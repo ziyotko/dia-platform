@@ -152,16 +152,14 @@ func SetupRoutes(router *gin.Engine) {
 		// 会员专区：会员栏目为只读选项（写操作在 admin 组），会员内容由作者本人维护
 		member.GET("/member-columns", memberZoneController.GetMemberColumns)
 		member.GET("/member-contents", memberZoneController.GetMemberContents)
-		// 对外只读接口（需登录，仅返回「已发布」内容）：
-		//   GET /member-columns/options                       全部会员栏目（id/名称/状态），供外部确认栏目写法
-		//   GET /member-contents/column/:key?page=&pageSize=  指定会员栏目下的已发布内容（分页，置顶优先）
-		//       :key 纯数字=栏目 ID；其它=栏目名称（名称唯一，跨环境稳定，外部无需维护 ID 映射配置）
-		//   GET /member-contents/detail/:id                   指定已发布内容的完整信息（含正文）
-		// 以上接口在 middleware/api_prefix.go 的豁免表内，故任意已登录用户均可调用，不再要求授予「会员专区」菜单。
-		member.GET("/member-columns/options", memberZoneController.GetMemberColumnOptions)
-		member.GET("/member-contents/column/:key", memberZoneController.GetColumnMemberContents)
-		member.GET("/member-contents/detail/:id", memberZoneController.GetMemberContentDetail)
-		// 会员专区文件：下发【短时效签名 URL】（需登录 + 反查引用后授权），<img>/<video>/<a> 用它访问
+		// 会员专区文件：下发【短时效签名 URL】（需登录 + 反查引用后授权），<img>/<video>/<a> 用它访问。
+		// 这一条**保留在 portal 登录组**：portal 后台的会员专区编辑页要预览已保存内容的封面/附件/报刊文件
+		// （前端 ensureSignedFile → GET /member-files/sign），无 portal 令牌则编辑页图片全裂。
+		// 外部会员的同名能力在 /member-zone/member-files/sign（只对【对外可见内容】引用的文件签发）。
+		//
+		// 另外三条「对外只读」内容接口（/member-columns/options、/member-contents/column|detail）
+		// **已从本组移除**：它们只服务外部会员，统一放在下面的「外部会员只读路由」组（凭 member 令牌）。
+		// 也不要在本组重新加回去——同一 method+path 注册两次会让 Gin panic。
 		member.GET("/member-files/sign", memberZoneController.SignMemberFile)
 		member.GET("/member-contents/:id", memberZoneController.GetMemberContentByID)
 		member.POST("/member-contents", memberZoneController.CreateMemberContent)
@@ -194,13 +192,14 @@ func SetupRoutes(router *gin.Engine) {
 		memberFileServe.GET("/member-files/:name", memberZoneController.GetMemberFile)
 	}
 
-	// === 外部会员只读路由（凭 member 项目的登录令牌，仅「会员专区」对外只读接口）===
+	// === 外部会员只读路由（凭 member 项目的登录令牌，会员专区「对外只读」接口的唯一入口）===
 	// 场景：会员在会员中心（business/member）登录后，直接读取 portal 的会员专区已发布内容，
 	// 不需要（也无法）在 portal 再登录一次。
 	//
-	// 为什么是独立前缀而不是复用上面的 /member-* 路径：Gin 不允许同一 method+path 重复注册
-	// （会 panic），而这些路径已经属于「portal 登录用户」口径，不能混合两套身份。
-	// 因此外部会员版 = 原路径加 `/member-zone` 前缀，接口语义与实现完全一致。
+	// 为何用 `/member-zone` 前缀：这批接口**只认外部会员令牌**，与 portal 登录用户的口径完全不同；
+	// 用独立前缀把两种身份在 URL 上区分开，API 阅读/文档/排错时不会误以为它需要 portal 令牌。
+	// （原先 portal 登录版的同名路径 `/member-columns/options`、`/member-contents/column|detail`
+	// 已移除——同一批对外接口不留两套鉴权口径；否则 Gin 也不允许同一 method+path 注册两次。）
 	//
 	// 与 member/admin 组刻意隔离的挂载差异（逐条都有原因，勿照抄那两组）：
 	//   - 不挂 AuthMiddleware：它按 portal 的 user 表校验，会员在 portal 没有账号；
