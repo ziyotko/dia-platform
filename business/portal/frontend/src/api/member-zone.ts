@@ -58,6 +58,11 @@ export interface MemberContentQuery {
   columnId?: number
   type?: number
   status?: number
+  /** 所属会员栏目的启用状态：1 启用 / 0 禁用；不传 = 全部 */
+  columnStatus?: number
+  /** 发布时间区间（YYYY-MM-DD，含当天；两端可只传一端） */
+  publishStart?: string
+  publishEnd?: string
   page?: number
   pageSize?: number
 }

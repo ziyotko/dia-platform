@@ -67,6 +67,27 @@
             <el-option label="已下线" :value="2" />
           </el-select>
         </el-form-item>
+        <el-form-item label="发布时间">
+          <el-date-picker
+            v-model="contentQuery.publishRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            value-format="YYYY-MM-DD"
+          />
+        </el-form-item>
+        <el-form-item label="栏目状态">
+          <el-select
+            v-model="contentQuery.columnStatus"
+            placeholder="全部状态"
+            clearable
+            style="width: 120px"
+          >
+            <el-option label="启用" :value="1" />
+            <el-option label="禁用" :value="0" />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleContentSearch">
             <el-icon><Search /></el-icon>
@@ -767,6 +788,10 @@ const contentQuery = reactive({
   columnId: undefined as number | undefined,
   type: undefined as number | undefined,
   status: undefined as number | undefined,
+  // 所属会员栏目的启用状态：1 启用 / 0 禁用；undefined = 全部
+  columnStatus: undefined as number | undefined,
+  // 发布时间区间（YYYY-MM-DD）；空数组 = 不限
+  publishRange: [] as string[],
 })
 
 const contentForm = reactive({
@@ -929,6 +954,11 @@ const fetchContents = async () => {
     if (contentQuery.columnId !== undefined) params.columnId = contentQuery.columnId
     if (contentQuery.type !== undefined) params.type = contentQuery.type
     if (contentQuery.status !== undefined) params.status = contentQuery.status
+    if (contentQuery.columnStatus !== undefined) params.columnStatus = contentQuery.columnStatus
+    if (contentQuery.publishRange && contentQuery.publishRange.length === 2) {
+      params.publishStart = contentQuery.publishRange[0]
+      params.publishEnd = contentQuery.publishRange[1]
+    }
     const res: any = await getMemberContents(params)
     contentData.value = res.data?.list || []
     contentTotal.value = res.data?.total || 0
@@ -949,6 +979,8 @@ const resetContentQuery = () => {
   contentQuery.columnId = undefined
   contentQuery.type = undefined
   contentQuery.status = undefined
+  contentQuery.columnStatus = undefined
+  contentQuery.publishRange = []
   contentQuery.page = 1
   fetchContents()
 }

@@ -238,6 +238,8 @@ func (c *MemberZoneController) GetMemberContents(ctx *gin.Context) {
 	columnID := memberZoneQueryInt(ctx.Query("columnId"), 0)
 	contentType := memberZoneQueryInt(ctx.Query("type"), 0)
 	status := memberZoneQueryInt(ctx.Query("status"), -1)
+	// 所属会员栏目的启用状态：-1 全部 / 0 禁用 / 1 启用
+	columnStatus := memberZoneQueryInt(ctx.Query("columnStatus"), -1)
 	page := memberZoneQueryPage(ctx.DefaultQuery("page", "1"), 1)
 	pageSize := memberZoneQueryPageSize(ctx.DefaultQuery("pageSize", "10"), 10)
 
@@ -247,7 +249,19 @@ func (c *MemberZoneController) GetMemberContents(ctx *gin.Context) {
 		authorCodeScope = strconv.FormatUint(uint64(userID), 10)
 	}
 
-	contents, total, err := c.contentService.GetMemberContents(title, columnID, contentType, status, authorCodeScope, page, pageSize)
+	contents, total, err := c.contentService.GetMemberContents(services.MemberContentQuery{
+		Title:        title,
+		ColumnID:     columnID,
+		Type:         contentType,
+		Status:       status,
+		ColumnStatus: columnStatus,
+		// 发布时间区间（YYYY-MM-DD，含当天，两端可只传一端）
+		PublishStart:    ctx.Query("publishStart"),
+		PublishEnd:      ctx.Query("publishEnd"),
+		AuthorCodeScope: authorCodeScope,
+		Page:            page,
+		PageSize:        pageSize,
+	})
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取会员内容列表失败"))
 		return

@@ -10,9 +10,10 @@ import (
 	"gorm.io/gorm"
 )
 
-// parseLogDate 解析日志筛选的日期参数（YYYY-MM-DD）。
+// parseDateParam 解析日期筛选参数（YYYY-MM-DD，按本地时区）。
 // 日期筛选两端均可单独使用；原实现要求 startDate 与 endDate 同时提供，只传一端会被静默忽略。
-func parseLogDate(value string) (time.Time, bool) {
+// 日志筛选与会员专区「发布时间」筛选共用本解析（同为 package services）。
+func parseDateParam(value string) (time.Time, bool) {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
 		return time.Time{}, false
@@ -28,10 +29,10 @@ func parseLogDate(value string) (time.Time, bool) {
 // 用 created_at >= / < 的范围条件（半开区间），而不是 DATE(created_at) BETWEEN：
 // 后者会让 created_at 上的索引失效，且无法正确处理“只传一端”。
 func applyLogDateRange(query *gorm.DB, startDate, endDate string) *gorm.DB {
-	if start, ok := parseLogDate(startDate); ok {
+	if start, ok := parseDateParam(startDate); ok {
 		query = query.Where("created_at >= ?", start)
 	}
-	if end, ok := parseLogDate(endDate); ok {
+	if end, ok := parseDateParam(endDate); ok {
 		query = query.Where("created_at < ?", end.AddDate(0, 0, 1)) // 含当天
 	}
 	return query

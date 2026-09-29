@@ -227,6 +227,11 @@ ALTER TABLE `member_column` DROP COLUMN `code`;
   - **部署要点**：`private_uploads/` **不要**加入任何 Nginx `location/alias`（否则绕过签名校验）；该目录需可写、**务必纳入备份**；`exp/nonce/sign` 会出现在 Nginx 访问日志中（仅是单文件、5 分钟有效的签名参数，可接受）。**更换 `PORTAL_JWT_SECRET` 会使已签发的文件 URL 立即失效**，前端重新签发即可。
   - **入库地址**：数据库存的是 `/business_portal/api/member-files/<文件名>`（**不带任何签名参数**）；正文 HTML 内联图片地址同样不带签名参数，消费方（前端/CAMIE）渲染时先调签发接口换取带签名的地址。
   - **未受影响的其它上传**：图文管理/广告/友链/头像/系统设置等仍走公开 `./uploads/...`（本次只改会员专区），历史数据里的旧地址继续可用；如需把旧会员文件也迁入私有目录，手工移动文件并 `UPDATE` 对应 URL 列即可。
+- **会员内容列表新增两个筛选条件（2026-09-29 追加，无需手工 SQL）**：`GET /member-contents`（管理端列表，需登录）新增查询参数：
+  - `publishStart` / `publishEnd`：**发布时间区间**，格式 `YYYY-MM-DD`（按本地时区），实现为半开区间「`publish_time >= 起始当天 00:00` 且 `< 结束当天 +1 天`」，含起止当天；两端可只传一端；非法日期串忽略该条件；**带区间条件时未填发布时间的内容会被排除**。
+  - `columnStatus`：按内容**所属会员栏目的启用状态**筛选，`1` 启用 / `0` 禁用；缺省（或不传/非法）为 `-1` 即全部。实现用子查询 `member_column_id IN (SELECT id FROM member_column WHERE status = ?)`，不改变 `total` 语义与返回字段。
+  前端会员专区查询区同步新增「发布时间」（日期区间）与「栏目状态」（启用/禁用）；后端列表参数改为 `services.MemberContentQuery` 结构体承载（新增筛选条件只改该结构体与一处 `Where`）。
+- **修复：新建会员栏目时选「禁用」会被静默存成「启用」**：`member_column.status` 带 `default:1` 标签，GORM 对零值不写库（改用库默认值 1），且插入后把库默认值回填进结构体；`CreateMemberColumn` 现已在插入后按界面所选状态显式补写一次。无结构变更、无需 SQL；若历史上有被错建成「启用」的栏目需改回，按需手工执行 `UPDATE member_column SET status=0 WHERE id=?...;`。
 
 #### ⚠️ 页面层合并迁移（2026-09-21，手工执行，不可逆）
 

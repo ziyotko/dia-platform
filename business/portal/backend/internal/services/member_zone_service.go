@@ -74,7 +74,21 @@ func (s *MemberColumnService) CreateMemberColumn(column *models.MemberColumn) er
 	if err := ensureValueUnique(&models.MemberColumn{}, "name", column.Name, "会员栏目", "名称", 0, nil); err != nil {
 		return err
 	}
-	return utils.DB.Create(column).Error
+	// Status 字段带 `default:1` 标签：GORM 会把「零值」当作未设置而改用库默认值（1），
+	// 且插入后还会把库里的默认值回填进结构体 →「新建时选禁用」会被静默存成启用。
+	// 因此先记下本次要写的状态，插入后与库中不一致时显式补写一次。
+	status := column.Status
+	if err := utils.DB.Create(column).Error; err != nil {
+		return err
+	}
+	if status == column.Status {
+		return nil
+	}
+	if err := utils.DB.Model(&models.MemberColumn{}).Where("id = ?", column.ID).Update("status", status).Error; err != nil {
+		return err
+	}
+	column.Status = status
+	return nil
 }
 
 func (s *MemberColumnService) UpdateMemberColumn(id uint, column *models.MemberColumn) error {
@@ -117,30 +131,60 @@ func (s *MemberColumnService) DeleteMemberColumn(id uint) error {
 
 type MemberContentService struct{}
 
-func (s *MemberContentService) GetMemberContents(title string, columnID int, contentType int, status int, authorCodeScope string, page int, pageSize int) ([]models.MemberContent, int64, error) {
+// MemberContentQuery 管理端「会员内容列表」的筛选条件。
+// 约定：ColumnID/Type <= 0、Status/ColumnStatus < 0、字符串为空 均表示「该项不过滤」。
+type MemberContentQuery struct {
+	Title        string
+	ColumnID     int
+	Type         int
+	Status       int    // 内容状态：0 草稿 / 1 已发布 / 2 已下线
+	ColumnStatus int    // 所属会员栏目的启用状态：1 启用 / 0 禁用
+	PublishStart string // 发布时间起（YYYY-MM-DD，含当天）
+	PublishEnd   string // 发布时间止（YYYY-MM-DD，含当天）
+	// 非管理员只查本人内容（按 author_code）；空 = 不限制
+	AuthorCodeScope string
+	Page            int
+	PageSize        int
+}
+
+func (s *MemberContentService) GetMemberContents(q MemberContentQuery) ([]models.MemberContent, int64, error) {
 	var list []models.MemberContent
 	var total int64
 	query := utils.DB.Model(&models.MemberContent{})
-	if title != "" {
-		query = query.Where("title LIKE ?", "%"+title+"%")
+	if q.Title != "" {
+		query = query.Where("title LIKE ?", "%"+q.Title+"%")
 	}
-	if columnID > 0 {
-		query = query.Where("member_column_id = ?", columnID)
+	if q.ColumnID > 0 {
+		query = query.Where("member_column_id = ?", q.ColumnID)
 	}
-	if contentType > 0 {
-		query = query.Where("type = ?", contentType)
+	if q.Type > 0 {
+		query = query.Where("type = ?", q.Type)
 	}
-	if status >= 0 {
-		query = query.Where("status = ?", status)
+	if q.Status >= 0 {
+		query = query.Where("status = ?", q.Status)
+	}
+	// 按「所属会员栏目的启用状态」筛选：用子查询而不是 JOIN，
+	// 这样 Count 语义与 SELECT 列保持不变（JOIN 会同时影响两者）。
+	if q.ColumnStatus >= 0 {
+		query = query.Where("member_column_id IN (?)",
+			utils.DB.Model(&models.MemberColumn{}).Select("id").Where("status = ?", q.ColumnStatus))
+	}
+	// 发布时间区间：半开区间（含起始当天、含结束当天），只传一端也生效。
+	// 未填发布时间（NULL）的内容会被区间条件排除，符合「按发布时间筛选」的预期。
+	if start, ok := parseDateParam(q.PublishStart); ok {
+		query = query.Where("publish_time >= ?", start)
+	}
+	if end, ok := parseDateParam(q.PublishEnd); ok {
+		query = query.Where("publish_time < ?", end.AddDate(0, 0, 1))
 	}
 	// 非管理员只能看到自己发布的内容（内容作者仅限自有内容，与文章列表口径一致）
-	if authorCodeScope != "" {
-		query = query.Where("author_code = ?", authorCodeScope)
+	if q.AuthorCodeScope != "" {
+		query = query.Where("author_code = ?", q.AuthorCodeScope)
 	}
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	err := query.Order("is_top DESC, id DESC").Limit(pageSize).Offset((page - 1) * pageSize).Find(&list).Error
+	err := query.Order("is_top DESC, id DESC").Limit(q.PageSize).Offset((q.Page - 1) * q.PageSize).Find(&list).Error
 	return list, total, err
 }
 
