@@ -78,8 +78,16 @@ func (s *FeeService) PayFee(memberID, feeID uint64, receiptFile, paidDate string
 		"receipt_file": receiptFile,
 		"paid_date":    paidDate,
 	}
-	if err := db.DB.Model(&fee).Updates(updates).Error; err != nil {
-		return err
+	// 条件更新：只接受仍为「未缴费」的记录，避免双击/并发提交时后一次覆盖前一次
+	// （会员已提交回执后，再一次提交会把状态从 pending 拉回 pending 并覆盖回执）。
+	res := db.DB.Model(&models.FeeRecord{}).
+		Where("id = ? AND member_id = ? AND status = ?", feeID, memberID, models.FeeStatusUnpaid).
+		Updates(updates)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return errors.New("该费用已提交，请等待管理员确认")
 	}
 	return nil
 }
@@ -112,8 +120,17 @@ func (s *FeeService) ConfirmFee(id uint64, amount float64, remark *string, opera
 	// 确认缴费与「会员激活 / 等级同步 / 证书同步 / 会籍记录」必须同生同死：
 	// 原先副作用写在事务外且错误被丢弃，会出现「费用已缴费但会员未激活、无会籍记录」的半套数据。
 	return db.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&models.FeeRecord{}).Where("id = ?", id).Updates(updates).Error; err != nil {
-			return err
+		// 条件更新：只有仍处于「未缴费 / 待确认」的记录才允许置为已缴费，
+		// 两个管理员同时确认时后提交者 RowsAffected=0 直接报错，
+		// 避免重复执行副作用（重复写会籍记录 / 重复同步证书）。
+		res := tx.Model(&models.FeeRecord{}).
+			Where("id = ? AND status IN ?", id, []string{models.FeeStatusUnpaid, models.FeeStatusPending}).
+			Updates(updates)
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return errors.New("该费用记录已被处理，请刷新后重试")
 		}
 		// 重新读取，确保副作用使用更新后的字段
 		if err := tx.First(&fee, id).Error; err != nil {
@@ -206,6 +223,22 @@ func (s *FeeService) UpdateFeeRecord(id uint64, req UpdateFeeRequest, operator s
 	if exist.Status == models.FeeStatusPaid && req.Status != nil && *req.Status != models.FeeStatusPaid {
 		return errors.New("已缴费的记录不可改为其他状态")
 	}
+	// 状态白名单：原先任意字符串都能写入，会把记录落成 unpaid / pending / paid 之外的值，
+	// 既不会触发副作用，也不被任何筛选与统计卡计入（卡片合计与列表对不上）。
+	if req.Status != nil {
+		switch *req.Status {
+		case models.FeeStatusUnpaid, models.FeeStatusPending, models.FeeStatusPaid:
+		default:
+			return errors.New("费用状态不合法")
+		}
+	}
+	// 金额下限：负数会污染「实缴总金额」等聚合（ConfirmFee 已拦，这条路径原先没有）
+	if req.Amount != nil && *req.Amount < 0 {
+		return errors.New("应收金额不能为负数")
+	}
+	if req.PaidAmount != nil && *req.PaidAmount < 0 {
+		return errors.New("实缴金额不能为负数")
+	}
 	// 仅“首次由未缴费/待确认变为已缴费”才执行副作用，
 	// 否则重复提交 status=paid 会重复写会籍记录、重复同步证书。
 	paidNow := req.Status != nil && *req.Status == models.FeeStatusPaid && exist.Status != models.FeeStatusPaid
@@ -252,8 +285,18 @@ func (s *FeeService) UpdateFeeRecord(id uint64, req UpdateFeeRequest, operator s
 
 	// 与 ConfirmFee 同一口径：费用状态与副作用（会员/证书/会籍记录）同生同死
 	return db.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&models.FeeRecord{}).Where("id = ?", id).Updates(updates).Error; err != nil {
-			return err
+		q := tx.Model(&models.FeeRecord{}).Where("id = ?", id)
+		if paidNow {
+			// 条件更新：只有仍处于「未缴费 / 待确认」的记录才允许置为已缴费，
+			// 与 ConfirmFee 并发时只会有一方能真正执行副作用。
+			q = q.Where("status IN ?", []string{models.FeeStatusUnpaid, models.FeeStatusPending})
+		}
+		res := q.Updates(updates)
+		if res.Error != nil {
+			return res.Error
+		}
+		if paidNow && res.RowsAffected == 0 {
+			return errors.New("该费用记录已被处理，请刷新后重试")
 		}
 
 		// If confirmed as paid, activate member and update certificate

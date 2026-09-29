@@ -173,7 +173,19 @@ func (s *ArticleService) ReviewArticle(id uint64, approved bool, comment string)
 		now := time.Now()
 		updates["published_at"] = &models.LocalTime{Time: now}
 	}
-	return db.DB.Model(&article).Updates(updates).Error
+	// 条件更新：只更新仍处于「待审核」的记录。
+	// 原先按主键更新，两个管理员同时提交时「通过 / 拒绝」会互相覆盖
+	// （后提交者静默改写前一人的结论，且审核意见与状态可能来自不同人）。
+	res := db.DB.Model(&models.Article{}).
+		Where("id = ? AND status = ?", id, models.ArticleStatusPending).
+		Updates(updates)
+	if res.Error != nil {
+		return res.Error
+	}
+	if res.RowsAffected == 0 {
+		return errors.New("该文章已被处理，请刷新后重试")
+	}
+	return nil
 }
 
 // ListAllArticles lists all articles (admin)

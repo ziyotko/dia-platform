@@ -70,19 +70,26 @@
         </el-form-item>
         <el-form-item>
           <el-button type="primary" :loading="saving" @click="saveProfile">保存修改</el-button>
-          <el-button style="margin-left:12px" @click="showPwdDialog = true">修改密码</el-button>
+          <el-button style="margin-left:12px" @click="openPwdDialog">修改密码</el-button>
         </el-form-item>
       </el-form>
     </el-card>
 
-    <el-dialog v-model="showPwdDialog" title="修改密码" width="420px">
-      <el-form :model="pwdForm" size="large">
-        <el-form-item><el-input v-model="pwdForm.oldPassword" type="password" placeholder="原密码" show-password /></el-form-item>
-        <el-form-item><el-input v-model="pwdForm.newPassword" type="password" placeholder="新密码" show-password /></el-form-item>
+    <el-dialog v-model="showPwdDialog" title="修改密码" width="420px" :close-on-click-modal="false" @closed="resetPwdForm">
+      <el-form ref="pwdFormRef" :model="pwdForm" :rules="pwdRules" size="large">
+        <el-form-item prop="oldPassword">
+          <el-input v-model="pwdForm.oldPassword" type="password" placeholder="原密码" show-password maxlength="20" />
+        </el-form-item>
+        <el-form-item prop="newPassword">
+          <el-input v-model="pwdForm.newPassword" type="password" placeholder="新密码（8-20 位，含大小写字母、数字、特殊字符）" show-password maxlength="20" />
+        </el-form-item>
+        <el-form-item prop="confirmPassword">
+          <el-input v-model="pwdForm.confirmPassword" type="password" placeholder="确认新密码" show-password maxlength="20" @keyup.enter="changePwd" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showPwdDialog = false">取消</el-button>
-        <el-button type="primary" @click="changePwd">确认修改</el-button>
+        <el-button type="primary" :loading="pwdSaving" @click="changePwd">确认修改</el-button>
       </template>
     </el-dialog>
   </div>
@@ -92,7 +99,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { authApi } from '@/api/auth'
 import { orgApi } from '@/api/index'
-import { ElMessage } from 'element-plus'
+import { ElMessage, type FormInstance } from 'element-plus'
 import { Download, Upload } from '@element-plus/icons-vue'
 import { fileUrl } from '@/utils/fileUrl'
 import { useUserStore } from '@/stores/user'
@@ -105,7 +112,9 @@ const formRef = ref()
 const loading = ref(true)
 const saving = ref(false)
 const showPwdDialog = ref(false)
-const pwdForm = reactive({ oldPassword: '', newPassword: '' })
+const pwdSaving = ref(false)
+const pwdFormRef = ref<FormInstance>()
+const pwdForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
 const uploading = ref(false)
 const fileInputRef = ref<HTMLInputElement>()
 const levels = ref<any[]>([])
@@ -318,7 +327,9 @@ async function handleCertUpload(event: Event) {
 }
 
 async function changePwd() {
-  if (!pwdForm.oldPassword || !pwdForm.newPassword) return
+  const valid = await pwdFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+  pwdSaving.value = true
   try {
     await authApi.changePassword({ old_password: pwdForm.oldPassword, new_password: pwdForm.newPassword })
     ElMessage.success('密码修改成功，请重新登录')
@@ -327,7 +338,51 @@ async function changePwd() {
     // 先清会话（logout 会因无 Token 而跳过服务端调用），留一点时间让提示可见。
     userStore.clearSession()
     setTimeout(() => userStore.logout(), 800)
-  } catch {}
+  } catch {} finally {
+    pwdSaving.value = false
+  }
+}
+
+function openPwdDialog() {
+  resetPwdForm()
+  showPwdDialog.value = true
+}
+
+function resetPwdForm() {
+  pwdForm.oldPassword = ''
+  pwdForm.newPassword = ''
+  pwdForm.confirmPassword = ''
+  pwdFormRef.value?.clearValidate()
+}
+
+// 新密码复杂度与注册页保持同一口径（后端仅兜底 min=8）
+function validateNewPassword(_rule: unknown, value: string, callback: (e?: Error) => void) {
+  if (!value) return callback(new Error('请输入新密码'))
+  if (value.length < 8) return callback(new Error('密码至少8位'))
+  if (value.length > 20) return callback(new Error('密码不能超过20位'))
+  const checks: Array<[RegExp, string]> = [
+    [/[a-z]/, '密码需包含小写字母'],
+    [/[A-Z]/, '密码需包含大写字母'],
+    [/[0-9]/, '密码需包含数字'],
+    [/[^A-Za-z0-9]/, '密码需包含特殊字符']
+  ]
+  for (const [re, msg] of checks) {
+    if (!re.test(value)) return callback(new Error(msg))
+  }
+  if (value === pwdForm.oldPassword) return callback(new Error('新密码不能与原密码相同'))
+  callback()
+}
+
+function validateConfirmPassword(_rule: unknown, value: string, callback: (e?: Error) => void) {
+  if (!value) return callback(new Error('请再次输入新密码'))
+  if (value !== pwdForm.newPassword) return callback(new Error('两次输入的密码不一致'))
+  callback()
+}
+
+const pwdRules = {
+  oldPassword: [{ required: true, message: '请输入原密码', trigger: 'blur' }],
+  newPassword: [{ validator: validateNewPassword, trigger: 'blur' }],
+  confirmPassword: [{ validator: validateConfirmPassword, trigger: 'blur' }]
 }
 </script>
 

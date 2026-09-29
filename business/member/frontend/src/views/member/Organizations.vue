@@ -346,12 +346,15 @@ const canJoin = computed(() => !!selectedOrg.value && !selectedOrg.value.disable
 
 onMounted(async () => {
   try {
-    const currentYear = new Date().getFullYear()
+    // 会费记录**不按年度过滤**：后端 JoinOrg 的「是否已缴费加入」判定不限年度
+    // （status=paid 即算）。若这里只取当年，管理员直录 / 往年缴费今年未续费的会员
+    // 会被显示成「暂未加入任何组织机构」，且「新的加入」按钮被错误禁用。
+    // 接口按 year DESC 返回，下面的 pushUnique 因此保留的是最近年度的记录。
     const [myRes, treeRes, appRes, feeRes, levelRes] = await Promise.all([
       orgApi.getMyOrgs(),
       orgApi.getTree(),
       applicationApi.getMyApplications(),
-      feeApi.getMyFees({ year: currentYear }),
+      feeApi.getMyFees(),
       orgApi.getMemberLevels()
     ])
     myOrgs.value = myRes.data || []
@@ -359,7 +362,7 @@ onMounted(async () => {
     approvedApps.value = (appRes.data || []).filter((a: any) => a.status === 'approved')
     allLevels.value = levelRes.data || []
     const fees: any[] = feeRes.data || []
-    // 优先显示已缴费级别，没有则显示未缴费级别
+    // 优先显示已缴费级别（列表按年度倒序，取到的即最近一次缴费的等级），没有则显示未缴费级别
     const paid = fees.find((f: any) => f.status === 'paid')
     const unpaid = fees.find((f: any) => f.status === 'unpaid')
     memberLevel.value = paid?.level_name || unpaid?.level_name || ''

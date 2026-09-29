@@ -55,9 +55,6 @@ func (s *ApplicationService) CreateApplication(memberID uint64, req CreateAppReq
 		FormData:   req.FormData,
 		SignedFile: req.SignedFile,
 	}
-	if err := db.DB.Create(&app).Error; err != nil {
-		return nil, err
-	}
 
 	// Update member status to pending review
 	// Only update fields actually provided; preserve member_type, legal_person, member_level
@@ -77,8 +74,19 @@ func (s *ApplicationService) CreateApplication(memberID uint64, req CreateAppReq
 	if req.Address != "" {
 		updates["address"] = req.Address
 	}
-	if len(updates) > 0 {
-		db.DB.Model(&models.Member{}).Where("id = ?", memberID).Updates(updates)
+
+	// 申请记录与会员资料/状态必须同生同死：原先会员 Update 的错误被直接丢弃，
+	// 会出现「申请已提交但会员状态没推进」（或资料没保存）而接口返回成功。
+	if err := db.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&app).Error; err != nil {
+			return err
+		}
+		if len(updates) == 0 {
+			return nil
+		}
+		return tx.Model(&models.Member{}).Where("id = ?", memberID).Updates(updates).Error
+	}); err != nil {
+		return nil, err
 	}
 
 	return &app, nil
@@ -97,17 +105,17 @@ func (s *ApplicationService) WithdrawApplication(id, memberID uint64) error {
 		return errors.New("仅待审核状态的申请可以撤回")
 	}
 
-	// 撤回即删除该待审核申请（不再保留草稿状态）
-	if err := db.DB.Delete(&models.Application{}, app.ID).Error; err != nil {
-		return err
-	}
-
-	// Reset member status back to allow re-application
-	db.DB.Model(&models.Member{}).Where("id = ?", memberID).
-		Where("status = ?", models.MemberStatusPendingReview).
-		Update("status", models.MemberStatusRegistering)
-
-	return nil
+	// 撤回即删除该待审核申请（不再保留草稿状态），并把会员状态回退为「注册中」：
+	// 两条写入必须同生同死，否则会出现「申请已删但状态仍停在待审核」（接口已返回成功），
+	// 之后重新提交会被上面的“已有待审核申请”逻辑误拦（实际已无申请记录）。
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Delete(&models.Application{}, app.ID).Error; err != nil {
+			return err
+		}
+		return tx.Model(&models.Member{}).Where("id = ?", memberID).
+			Where("status = ?", models.MemberStatusPendingReview).
+			Update("status", models.MemberStatusRegistering).Error
+	})
 }
 
 // GetMyApplications returns the member's applications
