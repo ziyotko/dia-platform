@@ -17,6 +17,12 @@ type MemberColumn struct {
 	Status      int       `gorm:"default:1;index" json:"status"` // 1启用 0禁用
 }
 
+// MemberColumn 状态取值
+const (
+	MemberColumnStatusDisabled = 0 // 禁用
+	MemberColumnStatusEnabled  = 1 // 启用
+)
+
 func (m MemberColumn) MarshalJSON() ([]byte, error) {
 	type Alias MemberColumn
 	return json.Marshal(&struct {

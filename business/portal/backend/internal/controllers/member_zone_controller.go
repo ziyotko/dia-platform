@@ -501,9 +501,11 @@ func memberFileSignedURL(name string, exp int64, nonce string, sign string) stri
 // GET /member-files/sign?name=<文件名>
 //
 // 访问判定（按文件名反查 member_content，见 FindMemberFileReferences）：
-//   - 被【已发布】内容引用 → 任何登录用户都可取签名地址（会员内容面向已登录会员）；
-//   - 仅被【本人】的内容引用（草稿/已下线） → 作者本人可取（编辑器需要预览草稿的封面/附件）；
-//   - 仅被【他人未发布】内容引用 → 仅管理员可取；
+//   - 被【对外可见】的内容引用（已发布 + 所属栏目启用 + 发布时间已到） → 任何登录用户都可取签名地址
+//     （会员内容面向已登录会员）；
+//   - 仅被【本人】的内容引用（含草稿/已下线/栏目被禁用/未到发布时间） → 作者本人可取
+//     （编辑器需要预览草稿的封面/附件，故不受上述对外可见性限制）；
+//   - 仅被【他人的不可见内容】引用 → 仅管理员可取；
 //   - 完全没有被任何内容引用（如上传后尚未保存） → 拒绝；这种情况请直接用上传接口当场返回的 signedUrl。
 func (c *MemberZoneController) SignMemberFile(ctx *gin.Context) {
 	name := strings.TrimSpace(ctx.Query("name"))
@@ -522,7 +524,7 @@ func (c *MemberZoneController) SignMemberFile(ctx *gin.Context) {
 
 	allowed := false
 	for _, ref := range refs {
-		if ref.Status == models.MemberContentStatusPublished || isAdmin || ref.AuthorCode == authorCode {
+		if ref.IsVisible == 1 || isAdmin || ref.AuthorCode == authorCode {
 			allowed = true
 			break
 		}

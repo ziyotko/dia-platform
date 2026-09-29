@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -197,7 +198,9 @@ func (s *MemberContentService) GetMemberContentByID(id uint) (*models.MemberCont
 }
 
 // GetPublishedMemberContentsByColumn 对外接口用：分页取指定会员栏目下「已发布」的内容（置顶优先）。
-// 栏目不存在时直接报错，便于调用方区分「栏目无内容」与「栏目不存在」。
+// 可见性口径（对外只暴露「应该被别人看到」的内容）：
+//   - 栏目不存在 → 报「会员栏目不存在」；栏目已禁用 → 报「会员栏目已禁用」（内部内容仍保留，后台仍可见）；
+//   - 只返回「已发布」且「发布时间已到」的内容（发布时间未填视为立即生效）。
 func (s *MemberContentService) GetPublishedMemberContentsByColumn(columnID uint, page int, pageSize int) ([]models.MemberContent, int64, error) {
 	var column models.MemberColumn
 	if err := utils.DB.First(&column, columnID).Error; err != nil {
@@ -206,8 +209,14 @@ func (s *MemberContentService) GetPublishedMemberContentsByColumn(columnID uint,
 		}
 		return nil, 0, err
 	}
+	if column.Status != models.MemberColumnStatusEnabled {
+		// 栏目被禁用 → 对外返回**空列表**（不报错）：调用方无需为「栏目临时禁用」单独做错误分支，
+		// 与「栏目下暂无可读内容」表现一致。需要区分「禁用」的场景请用 /member-columns/options 看 status。
+		return []models.MemberContent{}, 0, nil
+	}
 	query := utils.DB.Model(&models.MemberContent{}).
 		Where("member_column_id = ? AND status = ?", columnID, models.MemberContentStatusPublished)
+	query = applyMemberContentPublishDue(query)
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -217,12 +226,27 @@ func (s *MemberContentService) GetPublishedMemberContentsByColumn(columnID uint,
 	return list, total, err
 }
 
+// applyMemberContentPublishDue 只保留「发布时间已到」的内容（预约发布）。
+// publish_time 为空（未设置发布时间）视为立即生效，不会因该条件被隐藏。
+func applyMemberContentPublishDue(query *gorm.DB) *gorm.DB {
+	return query.Where("(publish_time IS NULL OR publish_time <= ?)", time.Now())
+}
+
+// applyMemberColumnEnabled 只保留「所属会员栏目启用中」的内容（栏目被禁用则该栏目下内容对外不可见）。
+// 用子查询而不是 JOIN，保持 Count 语义与 SELECT 列不变。
+func applyMemberColumnEnabled(query *gorm.DB) *gorm.DB {
+	return query.Where("member_column_id IN (?)",
+		utils.DB.Model(&models.MemberColumn{}).Select("id").Where("status = ?", models.MemberColumnStatusEnabled))
+}
+
 // GetPublishedMemberContentByID 对外接口用：按 ID 取「已发布」内容的完整信息。
-// 草稿/已下线内容一律按「不存在」处理（对外只暴露已发布内容）。
+// 草稿/已下线、所属栏目被禁用、发布时间未到 一律按「不存在」处理（对外只暴露已到发布时间的内容）。
 func (s *MemberContentService) GetPublishedMemberContentByID(id uint) (*models.MemberContent, error) {
+	query := utils.DB.Model(&models.MemberContent{}).Where("id = ? AND status = ?", id, models.MemberContentStatusPublished)
+	query = applyMemberColumnEnabled(query)
+	query = applyMemberContentPublishDue(query)
 	var content models.MemberContent
-	err := utils.DB.Where("id = ? AND status = ?", id, models.MemberContentStatusPublished).First(&content).Error
-	if err != nil {
+	if err := query.First(&content).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("内容不存在或未发布")
 		}
@@ -235,8 +259,10 @@ func (s *MemberContentService) GetPublishedMemberContentByID(id uint) (*models.M
 // 只取判定所需的最小字段，避免把正文等大字段读出来。
 type MemberFileReference struct {
 	ID         uint   `gorm:"column:id"`
-	Status     int    `gorm:"column:status"`
 	AuthorCode string `gorm:"column:author_code"`
+	// IsVisible：该内容是否「对外可见」（已发布 + 所属栏目启用 + 发布时间已到）。
+	// 用 int（1/0）而不是 bool，避免嵌套布尔表达式扫描时的类型兼容问题。
+	IsVisible int `gorm:"column:is_visible"`
 }
 
 // FindMemberFileReferences 反查引用了指定私有文件的会员内容。
@@ -245,12 +271,17 @@ type MemberFileReference struct {
 //   - 封面图/文章附件/完整视频/预览视频/报刊文件 → 整条 URL 存在对应列里（用等值匹配）；
 //   - 正文内联图片 → 存在 `content` 的 HTML 里（用 LIKE 匹配，无法走索引，
 //     但 member_content 量级很小且签发频率低，可接受；若日后变慢可加短 TTL 缓存）。
+//
+// 同时算出 `IsVisible`，口径与对外只读接口完全一致（已发布 + 栏目启用 + 发布时间已到），
+// 供签发接口判断「能否对该文件的任意登录用户签发」。
 func (s *MemberContentService) FindMemberFileReferences(fileName string) ([]MemberFileReference, error) {
 	canonical := config.AppConfig.Server.ApiPrefix + "/member-files/" + fileName
 	inlineLike := "%/member-files/" + fileName + "%"
 	var refs []MemberFileReference
 	err := utils.DB.Model(&models.MemberContent{}).
-		Select("id", "status", "author_code").
+		Select("id, author_code, CASE WHEN status = ? AND (publish_time IS NULL OR publish_time <= ?)"+
+			" AND member_column_id IN (SELECT id FROM member_column WHERE status = ?) THEN 1 ELSE 0 END AS is_visible",
+			models.MemberContentStatusPublished, time.Now(), models.MemberColumnStatusEnabled).
 		Where("cover = ? OR attachment_url = ? OR full_video_url = ? OR preview_video_url = ? OR paper_file_url = ? OR content LIKE ?",
 			canonical, canonical, canonical, canonical, canonical, inlineLike).
 		Find(&refs).Error
