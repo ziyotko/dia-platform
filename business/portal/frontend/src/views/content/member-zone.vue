@@ -374,12 +374,21 @@
               clearable
               filterable
               style="width: 100%"
+              @change="handleProvinceChange"
             >
               <el-option v-for="item in PROVINCE_OPTIONS" :key="item" :label="item" :value="item" />
             </el-select>
           </el-form-item>
           <el-form-item label="所属地区" prop="region">
-            <el-input v-model="contentForm.region" placeholder="请输入所属地区" maxlength="100" />
+            <el-select
+              v-model="contentForm.region"
+              placeholder="选择省份后自动带出，可手工调整"
+              clearable
+              filterable
+              style="width: 100%"
+            >
+              <el-option v-for="item in REGION_OPTIONS" :key="item" :label="item" :value="item" />
+            </el-select>
           </el-form-item>
           <el-form-item label="是否一带" prop="isBelt">
             <el-radio-group v-model="contentForm.isBelt">
@@ -394,7 +403,20 @@
             </el-radio-group>
           </el-form-item>
           <el-form-item label="细分领域" prop="subField">
-            <el-input v-model="contentForm.subField" placeholder="请输入细分领域" maxlength="200" />
+            <el-select
+              v-model="contentForm.subField"
+              placeholder="请选择细分领域"
+              clearable
+              filterable
+              style="width: 100%"
+            >
+              <el-option
+                v-for="item in SUB_FIELD_OPTIONS"
+                :key="item"
+                :label="item"
+                :value="item"
+              />
+            </el-select>
           </el-form-item>
           <el-form-item label="主营业务收入（亿元）" prop="mainBusinessIncome">
             <el-input-number
@@ -535,7 +557,8 @@ import type { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor/edit
 
 import { useUserStore } from '@/stores/user'
 import { hasAdminRole } from '@/utils/permission'
-import { PROVINCE_OPTIONS } from '@/utils/regions'
+import { PROVINCE_OPTIONS, REGION_OPTIONS, resolveRegionByProvince } from '@/utils/regions'
+import { SUB_FIELD_OPTIONS } from '@/utils/member-zone-options'
 import { uploadFile } from '@/api/upload'
 import {
   createMemberColumn,
@@ -870,6 +893,11 @@ const resetContentForm = () => {
     paperFileName: '',
     paperFileUrl: '',
   })
+}
+
+// 选定「所属省份及直辖市」后自动带出「所属地区」（用户仍可手工调整为其它区域；清空省份则一并清空）
+const handleProvinceChange = (value: string) => {
+  contentForm.region = resolveRegionByProvince(value)
 }
 
 const fetchContents = async () => {

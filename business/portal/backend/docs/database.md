@@ -538,10 +538,10 @@
 | data_year | varchar(20) | 是 | - | - | **数据年份**（数据，YYYY） |
 | unit_name | varchar(200) | 是 | - | - | **单位名称**（数据） |
 | province | varchar(100) | 是 | - | - | **所属省份及直辖市**（数据；前端为下拉选择，直接存名称，见 `frontend/src/utils/regions.ts`） |
-| region | varchar(100) | 是 | - | - | **所属地区**（数据） |
+| region | varchar(100) | 是 | - | - | **所属地区**（数据；前端为七大区域下拉（东北/华北/华东/华南/华中/西北/西南），选定省份后自动带出、可手工调整，直接存名称） |
 | is_belt | bigint | 是 | 0 | - | **是否一带**（数据）：0 否 / 1 是 |
 | is_axis | bigint | 是 | 0 | - | **是否一轴**（数据）：0 否 / 1 是 |
-| sub_field | varchar(200) | 是 | - | - | **细分领域**（数据） |
+| sub_field | varchar(200) | 是 | - | - | **细分领域**（数据；前端为下拉选择，选项见 `frontend/src/utils/member-zone-options.ts`） |
 | main_business_income | decimal(18,2) | 是 | 0 | - | **主营业务收入（亿元）**（数据） |
 | full_video_url | varchar(500) | 是 | - | - | **完整视频**地址（视频） |
 | preview_video_url | varchar(500) | 是 | - | - | **预览视频**地址（视频） |
