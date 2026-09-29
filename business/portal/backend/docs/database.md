@@ -25,6 +25,7 @@
 - **物理删除（硬删）**：模型不再内嵌 `gorm.DeletedAt`，各表**没有** `deleted_at` 列，删除即 `DELETE`（无回收站/恢复语义）。旧库中残留的软删数据由启动期 `models.PurgeLegacySoftDeletedRows()` 自动物理删除（幂等）；残留的 `deleted_at` 列与 `idx_<表名>_deleted_at` 索引按 `business/portal/DEPLOY.md` 的「移除软删除列」手工 DROP。
 - **保留字注意**：表名 `column` 是 MySQL 保留字，在 SQL 中必须使用反引号：`` `column` ``。
 - **布尔字段**：MySQL 中映射为 `tinyint(1)`（`boolean`）。
+- **`default:` 标签与零值**：模型字段写了 `gorm:"default:1"` 这类「非零默认值」时，GORM 会把 Go 侧零值当作「未设置」而改用库默认值，**并把库默认值回填进结构体**（如 `status` 永远存不进 0 → 「选禁用被存成启用」）。凡「显式传 0 必须存 0」的表，Create 一律走 `pkg/utils/db_create.go` 的 `utils.CreatePreservingZeroValues(db, dest, "status", …)`（插入后按主键补写被改写的字段）；`menu.type`（`default:'directory'`）这类「零值语义 = 用默认值」的字段不要传。
 
 ---
 
@@ -106,7 +107,7 @@
 | name | varchar(50) | 否 | - | - | 菜单名称 |
 | path | varchar(100) | 是 | - | - | 路由路径（绝对路径，如 `/content/article`） |
 | component | varchar(200) | 是 | - | - | 组件路径（相对 views，如 `content/article`） |
-| api_prefix | varchar(100) | 是 | - | - | 该菜单可调用的接口前缀（**逗号分隔多前缀**，如 `/static,/static-logs,/static-monitor,/settings`）；空表示不限制（见 §七.5） |
+| api_prefix | varchar(100) | 是 | - | - | 该菜单可调用的接口前缀（**逗号分隔多前缀**，如 `/static,/static-logs,/static-monitor,/settings,/columns,/articles/column-publishes`）；空表示不限制（见 §七.5） |
 | icon | varchar(50) | 是 | - | - | 图标名（Element Plus 图标） |
 | type | varchar(20) | 是 | `directory` | - | 类型：`directory` 目录 / `menu` 菜单 |
 | sort | bigint | 是 | 0 | - | 排序号 |
@@ -707,11 +708,11 @@ erDiagram
 
 | 顶级目录 | 子菜单（接口前缀） |
 | --- | --- |
-| 管理首页 | 管理首页（`/dashboard`） |
+| 管理首页 | 管理首页（`/dashboard,/articles/my-audits`） |
 | 内容管理 | 待审核（`/articles/my-audits`）、图文管理（`/articles`）、广告管理（`/ads`）、链接管理（`/links`）、模板管理（`/templates`）、栏目管理（`/columns,/templates,/workflows`）、分类管理（`/categories`）、标签管理（`/tags`）、会员专区（`/member-columns,/member-contents`） |
 | 数据统计 | 内容数据（`/analytics/article-trend`）、文章统计（`/articles/author-stats`）、分类统计（`/categories/stats`）、标签统计（`/tags/stats`） |
-| 系统配置 | 用户管理（`/users,/organizations`）、部门管理（`/departments,/organizations,/users`）、机构管理（`/organizations,/users`）、角色管理（`/roles`）、菜单管理（`/menus`）、流程角色（`/workflow-roles,/users`）、流程管理（`/workflows,/users,/workflow-roles`）、操作日志（`/logs`）、登录日志（`/login-logs`） |
-| 基础配置 | 静态化管理（`/static,/static-logs,/static-monitor,/settings`）、系统设置（`/settings`，含“静态化设置”页签） |
+| 系统配置 | 用户管理（`/users,/organizations`）、部门管理（`/departments,/organizations,/users`）、机构管理（`/organizations,/users,/departments`）、角色管理（`/roles`）、菜单管理（`/menus`）、流程角色（`/workflow-roles,/users`）、流程管理（`/workflows,/users,/workflow-roles`）、操作日志（`/logs`）、登录日志（`/login-logs`） |
+| 基础配置 | 静态化管理（`/static,/static-logs,/static-monitor,/settings,/columns,/articles/column-publishes`）、系统设置（`/settings`，含“静态化设置”页签） |
 
 > 菜单结构或前缀调整后，`SeedDefaultMenus()` 会幂等补齐/升级（仅当当前值仍为旧默认值时才改写），并清理历史重复菜单：
 > 同一「父级 + 名称 + 类型 + 路径 + 组件」只保留 id 最小的一条（仍有子菜单的不动），同时把 `role.permissions` 中指向被删菜单的 ID 改指到保留的那条。
@@ -727,7 +728,7 @@ erDiagram
 3. **物理删除（硬删）**：各表均无 `deleted_at`，删除即物理删除，删除后不可恢复；旧库残留的软删数据由启动期 `PurgeLegacySoftDeletedRows()` 自动清理，残留的 `deleted_at` 列/索引按 `DEPLOY.md` 的「移除软删除列」手工 DROP。
 4. **密码安全**：`user.password` 为 SM3 加盐哈希，禁止明文。
 5. **多对多连接表**：`article_tag`、`article_column` 为 GORM 自动生成（无显式模型）；`article_category` 同时存在显式模型与 many2many 标签，二者指向同一张表。
-6. **菜单 `api_prefix` 决定接口可调用范围**：`internal/middleware/api_prefix.go` 把请求路径去掉 `server.api_prefix` 后与用户已授权菜单的前缀逐一比对（支持逗号分隔多前缀），未命中且不在豁免表内则返回「没有授权」。新增页面/接口时必须确保：该页调用的每个接口要么被其菜单 `api_prefix` 覆盖，要么在 `apiPrefixExemptPaths`（精确匹配）/`apiPrefixExemptPrefixes`（前缀匹配）豁免表内。
+6. **菜单 `api_prefix` 决定接口可调用范围**：`internal/middleware/api_prefix.go` 把请求路径去掉 `server.api_prefix` 后与用户已授权菜单的前缀逐一比对（支持逗号分隔多前缀），未命中且不在豁免表内则返回「没有授权」。新增页面/接口时必须确保：该页调用的每个接口要么被其菜单 `api_prefix` 覆盖，要么在 `apiPrefixExemptPaths`（精确匹配）/`apiPrefixExemptPrefixes`（前缀匹配）豁免表内。**管理员（角色 1）不受该前缀限制**（中间件直接放行，其边界由 admin 组的 `AdminMiddleware` 把关），但前端仍按菜单注册路由，故隐藏菜单后管理员也进不去页面。
 7. **`article.column_count` 已废弃**：模型已移除该字段，代码不再读写（栏目数一律用 `len(article.Columns)` 计算）；旧库残留的列无副作用，新库不会创建。
 8. **静态化联动**：`setting` 中保存的静态化地址/令牌用于调用外部静态化程序；`static_log` 记录其执行日志。静态化输出路径以 `setting.static_path` **为准**（接口不接受调用方传入的路径）。
 9. **账号锁定**：`user.locked_until` 与 `login_fail_count`、`setting.lock_*` 配置共同实现登录失败锁定。

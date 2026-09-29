@@ -74,20 +74,29 @@ func getModule(path string) string {
 		"logs":           "日志管理",
 		"captcha":        "认证模块",
 		"dashboard":      "统计模块",
+		"analytics":      "数据统计",
 		"workflows":      "流程管理",
 		"templates":      "模板管理",
 		"departments":    "部门管理",
 		"settings":       "系统设置",
-		"pages":          "页面管理",
 		"columns":        "栏目管理",
 		"login-logs":     "登录日志",
 		"static-logs":    "静态日志",
 		"static-pages":   "静态查询",
+		"static-monitor": "静态化监控",
 		"static":         "静态管理",
 		"organizations":  "机构管理",
-		"uploads":        "文件上传",
+		"upload":         "文件上传",
 		"site-info":      "站点信息",
 		"workflow-roles": "流程角色",
+
+		// 会员专区与选项类接口的路径段较长，单独成组（否则会把上面整块的对齐拉宽）
+		"member-columns":            "会员专区",
+		"member-contents":           "会员专区",
+		"member-files":              "会员专区",
+		"user-options":              "用户管理",
+		"workflow-role-options":     "流程角色",
+		"minPasswordLengthSettings": "系统设置",
 	}
 
 	if module, ok := moduleMap[parts[0]]; ok {

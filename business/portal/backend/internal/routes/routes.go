@@ -89,7 +89,7 @@ func SetupRoutes(router *gin.Engine) {
 	{
 
 		member.GET("/users", userController.GetUsers)
-		// 审批人下拉所需的轻量选项接口（仅 id/名称，豁免菜单 api_prefix 校验）
+		// 审批人 / 流程角色下拉所需的轻量选项接口（仅 id + 名称，豁免菜单 api_prefix 校验）
 		member.GET("/user-options", userController.GetUserOptions)
 		member.GET("/workflow-role-options", workflowRoleController.GetWorkflowRoleOptions)
 		member.GET("/templates", templateController.GetTemplates)
