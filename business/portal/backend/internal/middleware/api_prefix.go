@@ -43,6 +43,11 @@ var apiPrefixExemptPrefixes = []string{
 	// 审核角色（内容审核/内容作者）默认只被授予 /articles、/dashboard 前缀，若不豁免，
 	// 打开审核弹窗时每个栏目都会报「没有授权」且节点为空，审核无法进行。
 	"/workflows/",
+	// 会员专区「对外只读接口」（需登录，仅返回已发布内容），供外部系统按栏目/ID 读取会员内容。
+	// 注意：只列这两个专属前缀，**不要**写成 /member-contents/ —— 那会把成员组的写路由
+	// （PUT/DELETE/PATCH /member-contents/:id）也一并豁免成「登录即可写」，而写操作应仍受菜单前缀约束。
+	"/member-contents/column/",
+	"/member-contents/detail/",
 }
 
 // isExemptPath 判断路径是否属于豁免范围（先精确匹配，再前缀匹配）

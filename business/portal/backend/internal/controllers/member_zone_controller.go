@@ -141,6 +141,74 @@ func (c *MemberZoneController) canAccessMemberContent(content *models.MemberCont
 	return strconv.FormatUint(uint64(userID), 10) == content.AuthorCode
 }
 
+// memberContentBriefDTO 列表精简字段（不含正文 longtext），供管理列表使用。
+func memberContentBriefDTO(item models.MemberContent, columnName string) gin.H {
+	return gin.H{
+		"id":               item.ID,
+		"memberColumnId":   item.MemberColumnID,
+		"memberColumnName": columnName,
+		"title":            item.Title,
+		"type":             item.Type,
+		"cover":            item.Cover,
+		"dataYear":         item.DataYear,
+		"unitName":         item.UnitName,
+		"issueNo":          item.IssueNo,
+		"publishYearMonth": item.PublishYearMonth,
+		"author":           item.Author,
+		"authorCode":       item.AuthorCode,
+		"source":           item.Source,
+		"publishTime":      formatLocalTime(item.PublishTime),
+		"status":           item.Status,
+		"isTop":            item.IsTop,
+		"viewCount":        item.ViewCount,
+		"createdAt":        item.CreatedAt.Format("2006-01-02 15:04:05"),
+		"updatedAt":        item.UpdatedAt.Format("2006-01-02 15:04:05"),
+	}
+}
+
+// memberContentFullDTO 内容完整字段（含各类型专属字段）。
+// withContent=false 时不带正文（正文为 longtext，字段较多时体积大；对外栏目内容列表用）。
+func memberContentFullDTO(item models.MemberContent, columnName string, withContent bool) gin.H {
+	dto := gin.H{
+		"id":                 item.ID,
+		"memberColumnId":     item.MemberColumnID,
+		"memberColumnName":   columnName,
+		"title":              item.Title,
+		"type":               item.Type,
+		"source":             item.Source,
+		"publishTime":        formatLocalTime(item.PublishTime),
+		"status":             item.Status,
+		"isTop":              item.IsTop,
+		"cover":              item.Cover,
+		"attachmentName":     item.AttachmentName,
+		"attachmentUrl":      item.AttachmentURL,
+		"dataYear":           item.DataYear,
+		"unitName":           item.UnitName,
+		"province":           item.Province,
+		"region":             item.Region,
+		"isBelt":             item.IsBelt,
+		"isAxis":             item.IsAxis,
+		"subField":           item.SubField,
+		"mainBusinessIncome": item.MainBusinessIncome,
+		"fullVideoUrl":       item.FullVideoURL,
+		"previewVideoUrl":    item.PreviewVideoURL,
+		"issueNo":            item.IssueNo,
+		"publishYearMonth":   item.PublishYearMonth,
+		"summary":            item.Summary,
+		"paperFileName":      item.PaperFileName,
+		"paperFileUrl":       item.PaperFileURL,
+		"author":             item.Author,
+		"authorCode":         item.AuthorCode,
+		"viewCount":          item.ViewCount,
+		"createdAt":          item.CreatedAt.Format("2006-01-02 15:04:05"),
+		"updatedAt":          item.UpdatedAt.Format("2006-01-02 15:04:05"),
+	}
+	if withContent {
+		dto["content"] = item.Content
+	}
+	return dto
+}
+
 func (c *MemberZoneController) GetMemberContents(ctx *gin.Context) {
 	title := ctx.Query("title")
 	columnID := memberZoneQueryInt(ctx.Query("columnId"), 0)
@@ -173,27 +241,7 @@ func (c *MemberZoneController) GetMemberContents(ctx *gin.Context) {
 
 	list := make([]gin.H, 0, len(contents))
 	for _, item := range contents {
-		list = append(list, gin.H{
-			"id":               item.ID,
-			"memberColumnId":   item.MemberColumnID,
-			"memberColumnName": columnNames[item.MemberColumnID],
-			"title":            item.Title,
-			"type":             item.Type,
-			"cover":            item.Cover,
-			"dataYear":         item.DataYear,
-			"unitName":         item.UnitName,
-			"issueNo":          item.IssueNo,
-			"publishYearMonth": item.PublishYearMonth,
-			"author":           item.Author,
-			"authorCode":       item.AuthorCode,
-			"source":           item.Source,
-			"publishTime":      formatLocalTime(item.PublishTime),
-			"status":           item.Status,
-			"isTop":            item.IsTop,
-			"viewCount":        item.ViewCount,
-			"createdAt":        item.CreatedAt.Format("2006-01-02 15:04:05"),
-			"updatedAt":        item.UpdatedAt.Format("2006-01-02 15:04:05"),
-		})
+		list = append(list, memberContentBriefDTO(item, columnNames[item.MemberColumnID]))
 	}
 	ctx.JSON(http.StatusOK, utils.Success("获取会员内容列表成功", utils.PageData(list, total, page, pageSize)))
 }
@@ -214,40 +262,66 @@ func (c *MemberZoneController) GetMemberContentByID(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "无权查看该内容"))
 		return
 	}
-	ctx.JSON(http.StatusOK, utils.Success("获取会员内容成功", gin.H{
-		"id":                 content.ID,
-		"memberColumnId":     content.MemberColumnID,
-		"title":              content.Title,
-		"type":               content.Type,
-		"source":             content.Source,
-		"publishTime":        formatLocalTime(content.PublishTime),
-		"status":             content.Status,
-		"isTop":              content.IsTop,
-		"cover":              content.Cover,
-		"content":            content.Content,
-		"attachmentName":     content.AttachmentName,
-		"attachmentUrl":      content.AttachmentURL,
-		"dataYear":           content.DataYear,
-		"unitName":           content.UnitName,
-		"province":           content.Province,
-		"region":             content.Region,
-		"isBelt":             content.IsBelt,
-		"isAxis":             content.IsAxis,
-		"subField":           content.SubField,
-		"mainBusinessIncome": content.MainBusinessIncome,
-		"fullVideoUrl":       content.FullVideoURL,
-		"previewVideoUrl":    content.PreviewVideoURL,
-		"issueNo":            content.IssueNo,
-		"publishYearMonth":   content.PublishYearMonth,
-		"summary":            content.Summary,
-		"paperFileName":      content.PaperFileName,
-		"paperFileUrl":       content.PaperFileURL,
-		"author":             content.Author,
-		"authorCode":         content.AuthorCode,
-		"viewCount":          content.ViewCount,
-		"createdAt":          content.CreatedAt.Format("2006-01-02 15:04:05"),
-		"updatedAt":          content.UpdatedAt.Format("2006-01-02 15:04:05"),
-	}))
+	columnNames, err := c.contentService.GetMemberColumnNames([]uint{content.MemberColumnID})
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取会员内容失败"))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("获取会员内容成功",
+		memberContentFullDTO(*content, columnNames[content.MemberColumnID], true)))
+}
+
+// ================= 对外只读接口（需登录，仅返回「已发布」内容） =================
+
+// GetColumnMemberContents 对外接口：分页取指定会员栏目下「已发布」的内容（置顶优先）。
+// GET /member-contents/column/:columnId?page=&pageSize= ；列表不含正文（正文请用下面的详情接口）。
+func (c *MemberZoneController) GetColumnMemberContents(ctx *gin.Context) {
+	columnID, err := strconv.ParseUint(ctx.Param("columnId"), 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "会员栏目ID无效"))
+		return
+	}
+	page := memberZoneQueryPage(ctx.DefaultQuery("page", "1"), 1)
+	pageSize := memberZoneQueryPage(ctx.DefaultQuery("pageSize", "10"), 10)
+
+	contents, total, err := c.contentService.GetPublishedMemberContentsByColumn(uint(columnID), page, pageSize)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("获取会员栏目内容失败", err)))
+		return
+	}
+	columnNames, err := c.contentService.GetMemberColumnNames([]uint{uint(columnID)})
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取会员栏目内容失败"))
+		return
+	}
+	columnName := columnNames[uint(columnID)]
+	list := make([]gin.H, 0, len(contents))
+	for _, item := range contents {
+		list = append(list, memberContentFullDTO(item, columnName, false))
+	}
+	ctx.JSON(http.StatusOK, utils.Success("获取会员栏目内容成功", utils.PageData(list, total, page, pageSize)))
+}
+
+// GetMemberContentDetail 对外接口：按 ID 取「已发布」内容的完整信息（含正文）。
+// GET /member-contents/detail/:id
+func (c *MemberZoneController) GetMemberContentDetail(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "内容ID无效"))
+		return
+	}
+	content, err := c.contentService.GetPublishedMemberContentByID(uint(id))
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("获取会员内容失败", err)))
+		return
+	}
+	columnNames, err := c.contentService.GetMemberColumnNames([]uint{content.MemberColumnID})
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取会员内容失败"))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("获取会员内容成功",
+		memberContentFullDTO(*content, columnNames[content.MemberColumnID], true)))
 }
 
 func (c *MemberZoneController) CreateMemberContent(ctx *gin.Context) {

@@ -117,6 +117,41 @@ func (s *MemberContentService) GetMemberContentByID(id uint) (*models.MemberCont
 	return &content, nil
 }
 
+// GetPublishedMemberContentsByColumn 对外接口用：分页取指定会员栏目下「已发布」的内容（置顶优先）。
+// 栏目不存在时直接报错，便于调用方区分「栏目无内容」与「栏目不存在」。
+func (s *MemberContentService) GetPublishedMemberContentsByColumn(columnID uint, page int, pageSize int) ([]models.MemberContent, int64, error) {
+	var column models.MemberColumn
+	if err := utils.DB.First(&column, columnID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, 0, errors.New("会员栏目不存在")
+		}
+		return nil, 0, err
+	}
+	query := utils.DB.Model(&models.MemberContent{}).
+		Where("member_column_id = ? AND status = ?", columnID, models.MemberContentStatusPublished)
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var list []models.MemberContent
+	err := query.Order("is_top DESC, id DESC").Limit(pageSize).Offset((page - 1) * pageSize).Find(&list).Error
+	return list, total, err
+}
+
+// GetPublishedMemberContentByID 对外接口用：按 ID 取「已发布」内容的完整信息。
+// 草稿/已下线内容一律按「不存在」处理（对外只暴露已发布内容）。
+func (s *MemberContentService) GetPublishedMemberContentByID(id uint) (*models.MemberContent, error) {
+	var content models.MemberContent
+	err := utils.DB.Where("id = ? AND status = ?", id, models.MemberContentStatusPublished).First(&content).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("内容不存在或未发布")
+		}
+		return nil, err
+	}
+	return &content, nil
+}
+
 func (s *MemberContentService) CreateMemberContent(content *models.MemberContent) error {
 	content.ID = 0
 	// 新建时必须投放到「启用中」的会员栏目

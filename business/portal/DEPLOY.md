@@ -204,6 +204,11 @@ ALTER TABLE `member_column` DROP COLUMN `code`;
   - 会员内容：`GET /member-contents`、`GET /member-contents/:id`、`POST/PUT/DELETE /member-contents*`、`PATCH /member-contents/:id/status` 在**登录用户组**；非管理员只能看到/维护 `author_code` 为本人 ID 的内容（与 `/articles` 口径一致），管理员可代管全部。
   - 发布校验（后端为准，前端同步提示）：**仅当状态置为「已发布」时**校验该类型的关键字段（新闻=文章内容或文章附件之一、数据=数据年份+单位名称、视频=完整视频、报刊=期号+出版年月+报刊文件）；草稿/已下线可先建后补。前端 `/member-contents` 列表的「发布」按钮改状态时同样受此校验保护。
   - 封面/文章附件/报刊文件复用 `POST /upload`（`dir=article` / `attachment`），完整/预览视频用 `dir=video`；该接口在菜单豁免表内并已挂 `upload` 限流。
+- **对外只读接口（需登录，仅返回「已发布」内容）**：供外部系统（门户/会员前台等）读取会员内容，两个接口均只需通过认证，**不再要求调用方被授予「会员专区」菜单**（已在 `middleware/api_prefix.go` 的 `apiPrefixExemptPrefixes` 中豁免，仅豁免这两个前缀，成员组的写路由仍受菜单前缀约束）：
+  - `GET /member-contents/column/:columnId?page=&pageSize=` —— 指定会员栏目的**已发布内容（分页）**，按 `is_top DESC, id DESC` 排序；`page`/`pageSize` 缺省为 `1`/`10`（`page < 1` 回退为 `1`）。列表**不含正文 `content`**（正文请用详情接口）。栏目不存在时返回「会员栏目不存在」。
+  - `GET /member-contents/detail/:id` —— 按 ID 取**已发布内容**的完整信息（含正文）；内容不存在或未发布统一返回「内容不存在或未发布」。
+  - 返回结构：栏目内容列表为分页结构 `{list,total,page,pageSize}`（`utils.PageData`），详情为单个对象；两者均带 `memberColumnId` / `memberColumnName`；时间字段格式 `YYYY-MM-DD HH:mm:ss`；统一「HTTP 200 + 业务码」。
+  - 注意：已发布内容会被任何已登录账号读到，与「会员专属」语义一致（会员内容面向登录会员）；草稿/已下线内容不会对外暴露。
 
 #### ⚠️ 页面层合并迁移（2026-09-21，手工执行，不可逆）
 
