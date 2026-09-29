@@ -317,8 +317,8 @@
             </el-button>
           </el-upload>
           <div v-if="contentForm.cover" class="cover-preview">
-            <el-image :src="memberFileUrl(contentForm.cover)" fit="cover" />
-            <el-button link type="danger" @click="contentForm.cover = ''">移除</el-button>
+            <el-image :src="coverDisplay" fit="cover" />
+            <el-button link type="danger" @click="clearCover">移除</el-button>
           </div>
         </el-form-item>
 
@@ -350,7 +350,8 @@
             <span v-if="contentForm.attachmentName" class="attachment-name">
               <el-link
                 type="primary"
-                :href="memberFileUrl(contentForm.attachmentUrl)"
+                :href="attachmentDisplay"
+                :disabled="!attachmentDisplay"
                 target="_blank"
                 rel="noopener"
               >
@@ -509,7 +510,8 @@
             <span v-if="contentForm.paperFileName" class="attachment-name">
               <el-link
                 type="primary"
-                :href="memberFileUrl(contentForm.paperFileUrl)"
+                :href="paperDisplay"
+                :disabled="!paperDisplay"
                 target="_blank"
                 rel="noopener"
               >
@@ -582,6 +584,7 @@ import {
   getMemberColumns,
   getMemberContent,
   getMemberContents,
+  signMemberFile,
   updateMemberColumn,
   updateMemberColumnStatus,
   updateMemberContent,
@@ -878,6 +881,10 @@ const statusTagType = (status: number): 'info' | 'success' | 'warning' => {
 }
 
 const resetContentForm = () => {
+  // 展示用的签名地址也要一并清空，避免上一份内容的预览残留
+  coverDisplay.value = ''
+  attachmentDisplay.value = ''
+  paperDisplay.value = ''
   Object.assign(contentForm, {
     id: undefined,
     memberColumnId: undefined,
@@ -973,8 +980,8 @@ const handleEditContent = async (row: any) => {
       status: detail.status,
       isTop: detail.isTop,
       cover: detail.cover,
-      // 编辑器内需要带 token 才能显示私有图，故载入时注入（提交时再剔除，不落库）
-      content: withMemberFileTokens(detail.content || ''),
+      // 私有图需签名地址才能在编辑器内显示，故载入时逐个签发并注入（提交时剔除，不落库）
+      content: await injectSignedFileUrls(detail.content || ''),
       attachmentName: detail.attachmentName,
       attachmentUrl: detail.attachmentUrl,
       dataYear: detail.dataYear,
@@ -993,6 +1000,10 @@ const handleEditContent = async (row: any) => {
       paperFileName: detail.paperFileName,
       paperFileUrl: detail.paperFileUrl,
     })
+    // 表单里的私有文件也需要签名地址才能预览/打开（入库地址不带签名）
+    coverDisplay.value = await ensureSignedFile(detail.cover)
+    attachmentDisplay.value = await ensureSignedFile(detail.attachmentUrl)
+    paperDisplay.value = await ensureSignedFile(detail.paperFileUrl)
     contentDialogVisible.value = true
   } catch {
     // 错误提示由 request 拦截器统一给出
@@ -1004,8 +1015,8 @@ const handleSubmitContent = async () => {
   if (!valid) return
   contentSubmitLoading.value = true
   try {
-    // 正文里的会员专区图片地址在提交前剔除 token，避免把凭证写进数据库
-    const payload = { ...contentForm, content: stripMemberFileTokens(contentForm.content) }
+    // 正文里的会员专区图片地址在提交前剔除签名参数，避免把签名写进数据库
+    const payload = { ...contentForm, content: stripFileSignParams(contentForm.content) }
     if (contentForm.id) {
       await updateMemberContent(contentForm.id, payload)
       ElMessage.success('修改成功')
@@ -1050,36 +1061,76 @@ const handleDeleteContent = (row: any) => {
     .catch(() => {})
 }
 
-// ============================ 上传 ============================
-// 会员专区的上传统一传 dir=member：后端会落到【私有目录 ./private_uploads】，
-// 返回的 url 形如 /business_portal/api/member-files/xxx（需登录才能读取，非公开静态地址）。
+// ============================ 上传（私有文件 + 短时效签名 URL） ============================
+// 会员专区的上传统一传 dir=member：后端落到私有目录 ./private_uploads，返回 { url, signedUrl }：
+//   - url       形如 /business_portal/api/member-files/xxx，是**入库用的干净地址**（不带签名）；
+//   - signedUrl 是当场签发的短时效地址（5 分钟），供立即预览——此刻内容还没保存，反查不到引用。
 const MEMBER_UPLOAD_DIR = 'member'
 
-/**
- * 会员专区文件地址需鉴权：<img>/<video>/下载链接无法带 Authorization 头，
- * 故渲染时追加 ?token=<jwt>（与后端 TokenFromQueryMiddleware 对应）。
- * 注意：只在渲染时追加，表单里保存的仍是**不带 token 的原始地址**，不会把 token 写进数据库。
- */
-const memberFileUrl = (url?: string) => {
+/** 已签发的短时效地址缓存（按文件名）；签名 5 分钟过期，超过 4 分钟就重新签发 */
+const signedFileCache = new Map<string, { url: string; at: number }>()
+const SIGNED_TTL_MS = 4 * 60 * 1000
+
+const memberFileNameOf = (url: string) => url.substring(url.lastIndexOf('/') + 1).split('?')[0]
+
+/** 取（必要时重新签发）某私有文件的短时效访问地址；非私有地址原样返回 */
+const ensureSignedFile = async (url?: string) => {
   if (!url) return ''
   if (!url.includes('/member-files/')) return url
-  const token = userStore.token || ''
-  if (!token) return url
-  return `${url}${url.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`
+  const name = memberFileNameOf(url)
+  const cached = signedFileCache.get(name)
+  if (cached && Date.now() - cached.at < SIGNED_TTL_MS) return cached.url
+  try {
+    const res: any = await signMemberFile(name)
+    const signed = res.data?.url || ''
+    if (signed) signedFileCache.set(name, { url: signed, at: Date.now() })
+    return signed
+  } catch {
+    // 「无权访问」/已过期等由 request 拦截器统一提示
+    return ''
+  }
 }
 
-// 正文 HTML 里可能内联了会员专区图片（私有地址）：
-//   - 编辑器内需要带 token 才能显示，故载入时注入、提交前剔除；
-//   - **数据库里存的正文地址一律不带 token**（否则 token 落库、过期后整篇正文裂图）。
-const MEMBER_FILE_URL_RE = /(\/member-files\/[A-Za-z0-9._-]+)(\?token=[^"'&\s>]*)?/g
-const withMemberFileTokens = (html: string) =>
-  (html || '').replace(MEMBER_FILE_URL_RE, (_all, url: string) => memberFileUrl(url))
-const stripMemberFileTokens = (html: string) =>
+// 表单里展示用的地址（私有文件必须先换成签名地址，不能直接用入库的干净地址打开）
+const coverDisplay = ref('')
+const attachmentDisplay = ref('')
+const paperDisplay = ref('')
+
+/** 上传后直接记下当场签发的地址，避免再走一次签发接口 */
+const rememberSigned = (cleanUrl: string, signedUrl?: string) => {
+  if (cleanUrl && signedUrl) {
+    signedFileCache.set(memberFileNameOf(cleanUrl), { url: signedUrl, at: Date.now() })
+  }
+}
+
+// 正文 HTML 里内联的会员专区图片同样需要签名地址才能显示：
+//   - 载入（编辑）时逐个签发并注入；提交前剔除签名参数；
+//   - **数据库里存的正文地址不带任何签名参数**（否则签名过期后整篇正文裂图）。
+const MEMBER_FILE_URL_RE = /(\/member-files\/[A-Za-z0-9._-]+)(\?[^"'\s>]*)?/g
+const stripFileSignParams = (html: string) =>
   (html || '').replace(MEMBER_FILE_URL_RE, (_all, url: string) => url)
+
+const injectSignedFileUrls = async (html: string) => {
+  if (!html || !html.includes('/member-files/')) return html || ''
+  const names = Array.from(
+    new Set(Array.from(html.matchAll(/\/member-files\/([A-Za-z0-9._-]+)/g)).map((m) => m[1]))
+  )
+  const signed = new Map<string, string>()
+  for (const name of names) {
+    const url = await ensureSignedFile(`/member-files/${name}`)
+    if (url) signed.set(name, url)
+  }
+  return html.replace(
+    MEMBER_FILE_URL_RE,
+    (all, path: string) => signed.get(memberFileNameOf(path)) || all
+  )
+}
 
 const handleCoverUpload = async (options: any) => {
   const res: any = await uploadFile(options.file, MEMBER_UPLOAD_DIR)
   contentForm.cover = res.data?.url || ''
+  rememberSigned(contentForm.cover, res.data?.signedUrl)
+  coverDisplay.value = res.data?.signedUrl || ''
   ElMessage.success('封面图上传成功')
 }
 
@@ -1087,18 +1138,22 @@ const handleAttachmentUpload = async (options: any) => {
   const res: any = await uploadFile(options.file, MEMBER_UPLOAD_DIR)
   contentForm.attachmentUrl = res.data?.url || ''
   contentForm.attachmentName = res.data?.name || options.file?.name || ''
+  rememberSigned(contentForm.attachmentUrl, res.data?.signedUrl)
+  attachmentDisplay.value = res.data?.signedUrl || ''
   ElMessage.success('文章附件上传成功')
 }
 
 const handleFullVideoUpload = async (options: any) => {
   const res: any = await uploadFile(options.file, MEMBER_UPLOAD_DIR)
   contentForm.fullVideoUrl = res.data?.url || ''
+  rememberSigned(contentForm.fullVideoUrl, res.data?.signedUrl)
   ElMessage.success('完整视频上传成功')
 }
 
 const handlePreviewVideoUpload = async (options: any) => {
   const res: any = await uploadFile(options.file, MEMBER_UPLOAD_DIR)
   contentForm.previewVideoUrl = res.data?.url || ''
+  rememberSigned(contentForm.previewVideoUrl, res.data?.signedUrl)
   ElMessage.success('预览视频上传成功')
 }
 
@@ -1106,17 +1161,26 @@ const handlePaperFileUpload = async (options: any) => {
   const res: any = await uploadFile(options.file, MEMBER_UPLOAD_DIR)
   contentForm.paperFileUrl = res.data?.url || ''
   contentForm.paperFileName = res.data?.name || options.file?.name || ''
+  rememberSigned(contentForm.paperFileUrl, res.data?.signedUrl)
+  paperDisplay.value = res.data?.signedUrl || ''
   ElMessage.success('报刊文件上传成功')
+}
+
+const clearCover = () => {
+  contentForm.cover = ''
+  coverDisplay.value = ''
 }
 
 const clearAttachment = () => {
   contentForm.attachmentUrl = ''
   contentForm.attachmentName = ''
+  attachmentDisplay.value = ''
 }
 
 const clearPaperFile = () => {
   contentForm.paperFileUrl = ''
   contentForm.paperFileName = ''
+  paperDisplay.value = ''
 }
 
 // ============================ 富文本编辑器 ============================
@@ -1135,9 +1199,8 @@ const uploadImageFile = async (
   const res: any = await uploadFile(file, MEMBER_UPLOAD_DIR)
   const url = res.data?.url || ''
   if (url) {
-    // 编辑器需要带 token 才能显示，插入带 token 的地址；提交前会由
-    // stripMemberFileTokens() 剔除，故数据库里仍是干净地址。
-    insertFn(memberFileUrl(url), '', '')
+    // 编辑器内 <img> 必须用签名地址才能显示；提交前由 stripFileSignParams() 剔除，库里仍是干净地址
+    insertFn(res.data?.signedUrl || url, '', '')
   } else {
     ElMessage.error('图片上传失败')
   }

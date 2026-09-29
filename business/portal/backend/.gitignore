@@ -4,6 +4,7 @@ logs/
 
 *.exe
 uploads/*
+private_uploads/*
 caam
 process/*
 portal

@@ -34,7 +34,9 @@ var apiPrefixExemptPaths = map[string]bool{
 	"/tags/all":              true,
 	"/columns":               true,
 	// 会员专区「对外只读接口」的栏目清单（需登录），供外部系统发现栏目（按名称调用时用于确认写法）。
-	"/member-columns/options":    true,
+	"/member-columns/options": true,
+	// 会员专区文件：签发短时效签名 URL（需登录 + 反查引用后授权）
+	"/member-files/sign":         true,
 	"/minPasswordLengthSettings": true,
 }
 

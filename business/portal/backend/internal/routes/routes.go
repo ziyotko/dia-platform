@@ -161,6 +161,8 @@ func SetupRoutes(router *gin.Engine) {
 		member.GET("/member-columns/options", memberZoneController.GetMemberColumnOptions)
 		member.GET("/member-contents/column/:key", memberZoneController.GetColumnMemberContents)
 		member.GET("/member-contents/detail/:id", memberZoneController.GetMemberContentDetail)
+		// 会员专区文件：下发【短时效签名 URL】（需登录 + 反查引用后授权），<img>/<video>/<a> 用它访问
+		member.GET("/member-files/sign", memberZoneController.SignMemberFile)
 		member.GET("/member-contents/:id", memberZoneController.GetMemberContentByID)
 		member.POST("/member-contents", memberZoneController.CreateMemberContent)
 		member.PUT("/member-contents/:id", memberZoneController.UpdateMemberContent)
@@ -177,16 +179,19 @@ func SetupRoutes(router *gin.Engine) {
 		member.POST("/upload", uploadLimiter, uploadController.UploadFile)
 	}
 
-	// === 会员专区文件（需登录）===
-	// 会员专区的文件上传落到私有目录 ./private_uploads（不在 router.Static / Nginx 静态映射内），
-	// 只能通过本组接口读取。单独成组的原因：
-	//   - <img>/<video>/下载链接无法设置 Authorization 头，故用 TokenFromQueryMiddleware 支持 ?token=<jwt>；
-	//   - 也不能挂防重放（浏览器不会带那些头）与操作日志（每张图写一条日志毫无意义）。
-	memberFiles := router.Group(apiPrefix)
-	memberFiles.Use(middleware.TokenFromQueryMiddleware(), middleware.AuthMiddleware(), ipLimiter.Limit())
+	// === 会员专区文件读取（凭短时效签名，不挂鉴权）===
+	// 文件落在私有目录 ./private_uploads（不在 router.Static / Nginx 静态映射内）。
+	// 签名地址由会员组的 GET /member-files/sign 下发（那里做了身份 + 引用判定）；本组只验签。
+	// 因此本组：不挂 AuthMiddleware（<img>/<video>/<a> 无法带 Authorization 头）、
+	// 不挂防重放与操作日志（浏览器不会带那些头；每张图写一条日志也无意义），只做限流。
+	memberFileServe := router.Group(apiPrefix)
+	memberFileServe.Use(middleware.RateLimitMiddlewareScoped("member-file",
+		config.AppConfig.Server.PublicRateLimit,
+		time.Duration(config.AppConfig.Server.PublicRateWindowSecs)*time.Second,
+	))
 	{
-		// GET /member-files/:name —— 会员专区文件（封面图/附件/报刊文件/视频），支持 Range
-		memberFiles.GET("/member-files/:name", memberZoneController.GetMemberFile)
+		// GET /member-files/:name?exp=&nonce=&sign= —— 会员专区文件，支持 Range（大视频可拖动/断点）
+		memberFileServe.GET("/member-files/:name", memberZoneController.GetMemberFile)
 	}
 
 	// === 管理员路由（需认证 + 管理员角色）===

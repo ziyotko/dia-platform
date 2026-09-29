@@ -90,6 +90,15 @@ export function getMemberContent(id: number) {
   return request.get(`/member-contents/${id}`)
 }
 
+/**
+ * 会员专区文件：获取「短时效签名访问地址」。
+ * 上传的文件落在后端私有目录（不在公开静态目录内），<img>/<video>/<a> 无法带鉴权头，
+ * 因此先调本接口签发一个 5 分钟有效的签名地址（后端会校验「文件被已发布内容引用」或「本人/管理员」）。
+ */
+export function signMemberFile(name: string) {
+  return request.get('/member-files/sign', { params: { name } })
+}
+
 export function createMemberContent(data: MemberContentForm) {
   return request.post('/member-contents', data)
 }

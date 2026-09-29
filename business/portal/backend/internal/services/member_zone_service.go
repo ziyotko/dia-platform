@@ -9,6 +9,7 @@ import (
 
 	"gorm.io/gorm"
 
+	"portal/config"
 	"portal/internal/models"
 	"portal/pkg/utils"
 )
@@ -184,6 +185,32 @@ func (s *MemberContentService) GetPublishedMemberContentByID(id uint) (*models.M
 		return nil, err
 	}
 	return &content, nil
+}
+
+// MemberFileReference 引用某私有文件的会员内容（用于「按 URL 反查」的访问判定）。
+// 只取判定所需的最小字段，避免把正文等大字段读出来。
+type MemberFileReference struct {
+	ID         uint   `gorm:"column:id"`
+	Status     int    `gorm:"column:status"`
+	AuthorCode string `gorm:"column:author_code"`
+}
+
+// FindMemberFileReferences 反查引用了指定私有文件的会员内容。
+//
+// 文件名在库中有两种出现形式：
+//   - 封面图/文章附件/完整视频/预览视频/报刊文件 → 整条 URL 存在对应列里（用等值匹配）；
+//   - 正文内联图片 → 存在 `content` 的 HTML 里（用 LIKE 匹配，无法走索引，
+//     但 member_content 量级很小且签发频率低，可接受；若日后变慢可加短 TTL 缓存）。
+func (s *MemberContentService) FindMemberFileReferences(fileName string) ([]MemberFileReference, error) {
+	canonical := config.AppConfig.Server.ApiPrefix + "/member-files/" + fileName
+	inlineLike := "%/member-files/" + fileName + "%"
+	var refs []MemberFileReference
+	err := utils.DB.Model(&models.MemberContent{}).
+		Select("id", "status", "author_code").
+		Where("cover = ? OR attachment_url = ? OR full_video_url = ? OR preview_video_url = ? OR paper_file_url = ? OR content LIKE ?",
+			canonical, canonical, canonical, canonical, canonical, inlineLike).
+		Find(&refs).Error
+	return refs, err
 }
 
 func (s *MemberContentService) CreateMemberContent(content *models.MemberContent) error {

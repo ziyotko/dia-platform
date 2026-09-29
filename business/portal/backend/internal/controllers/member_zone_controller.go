@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"portal/config"
 	"portal/internal/models"
 	"portal/internal/services"
 	"portal/pkg/utils"
@@ -468,29 +470,81 @@ func (c *MemberZoneController) DeleteMemberContent(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("删除会员内容成功", nil))
 }
 
-// ================= 会员专区文件（私有目录 + 鉴权访问） =================
+// ================= 会员专区文件（私有目录 + 短时效签名 URL） =================
 
 // memberFileNamePattern 会员专区私有文件的合法文件名：
 // `<纳秒时间戳>_<16位随机hex>.<扩展名>`（由 upload_controller 生成）。
 // 严格限定字符集与长度，杜绝 `../`、绝对路径等路径穿越写法。
 var memberFileNamePattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,80}\.[A-Za-z0-9]{1,10}$`)
 
-// GetMemberFile 会员专区文件读取接口（需登录）：从私有目录 ./private_uploads 读取并转发。
+// memberFileSignedURL 拼出带签名的文件访问地址（相对地址，与 VITE_API_BASE_URL 同源前缀）。
+func memberFileSignedURL(name string, exp int64, nonce string, sign string) string {
+	return fmt.Sprintf("%s/member-files/%s?exp=%d&nonce=%s&sign=%s",
+		config.AppConfig.Server.ApiPrefix, name, exp, nonce, sign)
+}
+
+// SignMemberFile 下发会员专区文件的「短时效签名 URL」（需登录）。
+// GET /member-files/sign?name=<文件名>
 //
-// GET /member-files/:name —— 上传时（dir=member）返回的就是这个地址。
-// 该路由单独成组：只挂 TokenFromQueryMiddleware + AuthMiddleware，**不挂**防重放与操作日志：
-//   - <img src> / <video src> / 下载链接无法设置 Authorization 头，故允许 ?token=<jwt>；
-//   - 防重放头同样无法由浏览器自动带上，挂了会导致图片全部加载失败；
-//   - 每张图片都写一条操作日志也无意义（且会迅速挤满日志表）。
+// 访问判定（按文件名反查 member_content，见 FindMemberFileReferences）：
+//   - 被【已发布】内容引用 → 任何登录用户都可取签名地址（会员内容面向已登录会员）；
+//   - 仅被【本人】的内容引用（草稿/已下线） → 作者本人可取（编辑器需要预览草稿的封面/附件）；
+//   - 仅被【他人未发布】内容引用 → 仅管理员可取；
+//   - 完全没有被任何内容引用（如上传后尚未保存） → 拒绝；这种情况请直接用上传接口当场返回的 signedUrl。
+func (c *MemberZoneController) SignMemberFile(ctx *gin.Context) {
+	name := strings.TrimSpace(ctx.Query("name"))
+	if !memberFileNamePattern.MatchString(name) {
+		ctx.JSON(http.StatusOK, utils.Error(1, "文件不存在"))
+		return
+	}
+	refs, err := c.contentService.FindMemberFileReferences(name)
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取文件访问地址失败"))
+		return
+	}
+	userID := ctx.GetUint("userID")
+	isAdmin := models.HasAdminRoleIDs(c.userService.MustGetUserRoleIds(userID))
+	authorCode := strconv.FormatUint(uint64(userID), 10)
+
+	allowed := false
+	for _, ref := range refs {
+		if ref.Status == models.MemberContentStatusPublished || isAdmin || ref.AuthorCode == authorCode {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		ctx.JSON(http.StatusOK, utils.Error(1, "无权访问该文件"))
+		return
+	}
+
+	exp, nonce, sign := utils.SignFileAccess(name, utils.FileAccessSignTTL)
+	ctx.JSON(http.StatusOK, utils.Success("获取文件访问地址成功", gin.H{
+		"url":       memberFileSignedURL(name, exp, nonce, sign),
+		"expiresIn": int(utils.FileAccessSignTTL.Seconds()),
+	}))
+}
+
+// GetMemberFile 会员专区文件读取接口：**凭短时效签名访问**（签名即凭证，不再要求登录态）。
+// GET /member-files/:name?exp=&nonce=&sign=
 //
-// 鉴权口径：**登录即可读**（与其它会员专区对外只读接口一致）。若要收紧为
-// 「仅作者/管理员」或「仅已被已发布内容引用的文件」，需在此处按 URL 反查 member_content 再判定。
+// 为什么是签名而不是 Token：
+//   - `<img src>` / `<video src>` / `<a href>` 无法设置 `Authorization` 头；
+//   - 把 Token 放在 URL 里会进入访问日志/Referer（且是整个会话凭证，泄露代价大）；
+//   - 签名地址由 GET /member-files/sign 下发（那里做了「引用 + 身份」判定）、**5 分钟过期**，
+//     即使 URL 外泄也只能短暂读取单个文件。
 func (c *MemberZoneController) GetMemberFile(ctx *gin.Context) {
 	name := ctx.Param("name")
 	if !memberFileNamePattern.MatchString(name) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "文件不存在"))
 		return
 	}
+	exp, _ := strconv.ParseInt(ctx.Query("exp"), 10, 64)
+	if err := utils.VerifyFileAccessSign(name, exp, ctx.Query("nonce"), ctx.Query("sign")); err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("读取文件失败", err)))
+		return
+	}
+
 	f, err := os.Open(filepath.Join(memberPrivateUploadDir, name))
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "文件不存在"))

@@ -215,13 +215,17 @@ ALTER TABLE `member_column` DROP COLUMN `code`;
   - 返回结构：栏目内容列表为分页结构 `{list,total,page,pageSize}`（`utils.PageData`）；栏目清单与详情为 `{list,total}`（`utils.AllData`）/ 单个对象。内容均带 `memberColumnId` / `memberColumnName`；时间字段格式 `YYYY-MM-DD HH:mm:ss`；统一「HTTP 200 + 业务码」。
   - 注意：已发布内容会被任何已登录账号读到，与「会员专属」语义一致（会员内容面向登录会员）；草稿/已下线内容不会对外暴露。
   - **新增/改名会员栏目时留意**：外部系统按**名称**调用，故对外使用中的栏目不建议改名（改名会断链）；如需「改名不影响外部调用」，可再补一个不可变的栏目编码字段（当前未启用）。
-- **会员专区上传文件改为「私有目录 + 鉴权访问」（安全加固）**：
-  - **上传**：会员专区的封面图、正文内联图片、文章附件、报刊文件、完整/预览视频统一传 `dir=member`，落到 **`backend/private_uploads/`**（在公开静态根 `./uploads` **之外**，`router.Static` 与 Nginx 都不映射）→ 不再存在「拿到/猜到 URL 即可匿名下载」的公开地址。`.mp4` 仍允许 800MB（判定为「视频类目录 + `.mp4`」，`dir=member` 已纳入该白名单）。
-  - **读取**：新增 `GET /business_portal/api/member-files/:name`（**需登录**），从私有目录读取并转发，**支持 Range**（大视频可拖动/断点续传），并按扩展名嗅探 `Content-Type`。
-  - **鉴权方式**：① 标准 `Authorization: Bearer <jwt>`（CAMIE/服务端调用用这个）；② **`?token=<jwt>`**（`<img>/<video>/<a>` 这类浏览器直接发起的请求无法设置请求头，前端渲染时自动附加）。该路由**单独成组**，只挂 `TokenFromQueryMiddleware` + `AuthMiddleware` + 单 IP 并发限制，**不挂防重放与操作日志**（浏览器不会带防重放头，挂了图片全裂；每张图写一条操作日志也无意义）。
-  - **可见性口径**：该接口**登录即可读**，与其它会员专区对外只读接口一致。若要收紧为「仅作者/管理员」或「仅已被已发布内容引用的文件」，需在 handler 内按 URL 反查 `member_content` 后判定（当前未做）。
-  - **部署要点**：`private_uploads/` **不要**加入任何 Nginx `location/alias`（否则鉴权形同虚设）；该目录需可写、**务必纳入备份**；`?token=` 会进入 Nginx 访问日志（如需更严可后续改为短时效签名，当前未做）。
-  - **入库地址**：数据库存的是 `/business_portal/api/member-files/<文件名>`，**不带 token**；正文 HTML 内联图片地址同样不带 token，消费方渲染时自行附加。
+- **会员专区上传文件改为「私有目录 + 短时效签名 URL」（安全加固）**：
+  - **上传**：会员专区的封面图、正文内联图片、文章附件、报刊文件、完整/预览视频统一传 `dir=member`，落到 **`backend/private_uploads/`**（在公开静态根 `./uploads` **之外**，`router.Static` 与 Nginx 都不映射）→ 不存在「拿到/猜到 URL 即可匿名下载」的公开地址。`.mp4` 仍允许 800MB（判定为「视频类目录 + `.mp4`」，`dir=member` 已纳入该白名单）。上传响应为 `{url, signedUrl}`：`url` 是**入库用的干净地址**，`signedUrl` 是**当场签发**的 5 分钟地址（此刻内容尚未保存、反查不到引用，供前端立即预览）。
+  - **签发**：新增 `GET /business_portal/api/member-files/sign?name=<文件名>`（**需登录**；已加入菜单豁免表，不需「会员专区」菜单）→ 返回 `{url, expiresIn: 300}`。**只有下列情形才签发**（按文件名反查 `member_content`：`cover`/`attachment_url`/`full_video_url`/`preview_video_url`/`paper_file_url` 等值命中，或正文 `content` 内含该文件名）：
+    1. 被**已发布**内容引用 → 任何登录用户都可取（会员内容面向已登录会员）；
+    2. 仅被**本人**的内容（草稿/已下线）引用 → 作者本人可取（编辑器需预览草稿的封面/附件）；
+    3. 仅被**他人未发布**内容引用 → 仅管理员可取；
+    4. 未被任何内容引用（上传后尚未保存）→ **拒绝**（「无权访问该文件」），此时应使用上传响应里的 `signedUrl`。
+  - **读取**：`GET /business_portal/api/member-files/:name?exp=&nonce=&sign=` —— **只验签**（HMAC-SHA256，密钥由 `PORTAL_JWT_SECRET` 派生，`payload = 文件名|exp|nonce`），**不再要求登录态**：签名即凭证。**支持 Range**（大视频可拖动/断点续传），按扩展名嗅探 `Content-Type`；无签名 / 签名不符 / 已过期分别返回「缺少访问签名 / 访问签名校验失败 / 访问链接已过期，请刷新后重试」。
+  - **为什么不用 Token**：`<img src>` / `<video src>` / `<a href>` 无法设置 `Authorization` 头；而把 Token 放进 URL 会进入访问日志与 Referer，且那是**整个会话的凭证**（泄露代价大）。签名 URL 只对**单个文件**有效、**5 分钟过期**、每次下发 nonce 不同。该路由组**不挂** AuthMiddleware / 防重放 / 操作日志（浏览器不会带防重放头，挂了图片全裂；每张图写一条操作日志也无意义），仅挂限流（复用 `public_rate_limit` 配置，限流 scope = `member-file`）。
+  - **部署要点**：`private_uploads/` **不要**加入任何 Nginx `location/alias`（否则绕过签名校验）；该目录需可写、**务必纳入备份**；`exp/nonce/sign` 会出现在 Nginx 访问日志中（仅是单文件、5 分钟有效的签名参数，可接受）。**更换 `PORTAL_JWT_SECRET` 会使已签发的文件 URL 立即失效**，前端重新签发即可。
+  - **入库地址**：数据库存的是 `/business_portal/api/member-files/<文件名>`（**不带任何签名参数**）；正文 HTML 内联图片地址同样不带签名参数，消费方（前端/CAMIE）渲染时先调签发接口换取带签名的地址。
   - **未受影响的其它上传**：图文管理/广告/友链/头像/系统设置等仍走公开 `./uploads/...`（本次只改会员专区），历史数据里的旧地址继续可用；如需把旧会员文件也迁入私有目录，手工移动文件并 `UPDATE` 对应 URL 列即可。
 
 #### ⚠️ 页面层合并迁移（2026-09-21，手工执行，不可逆）

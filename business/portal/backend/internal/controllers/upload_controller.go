@@ -211,11 +211,16 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 		return
 	}
 
-	// 会员专区文件：返回【鉴权接口】地址（不带 /uploads 前缀，避免被静态映射命中而绕过鉴权）；
-	// 该地址需登录访问，支持 Authorization 头或 ?token=<jwt>（见 GetMemberFile）。
+	// 会员专区文件：返回【私有文件地址】（不带 /uploads 前缀，避免被静态映射命中而绕过签名校验）；
+	//   url       = 入库用的干净地址（不带签名，存数据库的就是它）；
+	//   signedUrl = 当场签发的短时效地址（5 分钟），供前端立即预览——
+	//               此刻内容尚未保存，反查不到引用，故不能走 /member-files/sign 签发。
 	if dir == memberUploadDirAlias {
+		cleanURL := config.AppConfig.Server.ApiPrefix + "/member-files/" + filename
+		exp, nonce, sign := utils.SignFileAccess(filename, utils.FileAccessSignTTL)
 		ctx.JSON(http.StatusOK, utils.Success("上传成功", gin.H{
-			"url": config.AppConfig.Server.ApiPrefix + "/member-files/" + filename,
+			"url":       cleanURL,
+			"signedUrl": memberFileSignedURL(filename, exp, nonce, sign),
 		}))
 		return
 	}
