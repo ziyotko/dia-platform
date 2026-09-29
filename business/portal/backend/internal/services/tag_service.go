@@ -37,7 +37,8 @@ func (s *TagService) CreateTag(tag *models.Tag) error {
 	if err := ensureValueUnique(&models.Tag{}, "name", tag.Name, "标签", "名称", 0, nil); err != nil {
 		return err
 	}
-	return utils.DB.Create(tag).Error
+	// status 带 `default:1`：直接 Create 会把「新建时选禁用(0)」静默写成启用(1)
+	return utils.CreatePreservingZeroValues(utils.DB, tag, "status")
 }
 
 func (s *TagService) UpdateTag(id uint, tag *models.Tag) error {

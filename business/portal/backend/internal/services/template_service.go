@@ -133,7 +133,9 @@ func (s *TemplateService) CreateTemplate(template *models.Template) error {
 		return err
 	}
 	return utils.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(template).Error; err != nil {
+		// status 带 `default:1`：直接 Create 会把「新建时选禁用(0)」静默写成启用(1)，
+		// 而且回填后下面 `template.Status != 1` 的判断也会跟着走错（误禁用同类型其它模板）
+		if err := utils.CreatePreservingZeroValues(tx, template, "status"); err != nil {
 			return err
 		}
 		if template.Status != 1 {

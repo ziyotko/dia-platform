@@ -58,7 +58,8 @@ func (s *RoleService) GetRoleByID(id uint) (*models.Role, error) {
 }
 
 func (s *RoleService) CreateRole(role *models.Role) error {
-	return utils.DB.Create(role).Error
+	// status 带 `default:1`：直接 Create 会把「新建时选禁用(0)」静默写成启用(1)
+	return utils.CreatePreservingZeroValues(utils.DB, role, "status")
 }
 
 // UpdateRole 更新角色基本信息。updatePermissions 为 false 时不写入 permissions：

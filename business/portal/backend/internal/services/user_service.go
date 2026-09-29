@@ -204,7 +204,8 @@ func (s *UserService) CreateUser(username, account, email, password, phone strin
 	// 用户行与机构关联必须同生同死：原先先提交用户行、再加机构，
 	// 第二步失败会留下「随机初始密码已丢失、唯一键被占用」的孤儿账号（只能改库回收）。
 	err := utils.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Create(user).Error; err != nil {
+		// status 带 `default:1`：直接 Create 会把「新建时选禁用(0)」静默写成启用(1)
+		if err := utils.CreatePreservingZeroValues(tx, user, "status"); err != nil {
 			return err
 		}
 		orgService := OrganizationService{}

@@ -37,7 +37,8 @@ func (s *CategoryService) CreateCategory(category *models.Category) error {
 	if err := ensureNameCodeUnique(&models.Category{}, "分类", category.Name, category.Code, 0, nil); err != nil {
 		return err
 	}
-	return utils.DB.Create(category).Error
+	// status 带 `default:1`：直接 Create 会把「新建时选禁用(0)」静默写成启用(1)
+	return utils.CreatePreservingZeroValues(utils.DB, category, "status")
 }
 
 func (s *CategoryService) UpdateCategory(id uint, category *models.Category) error {

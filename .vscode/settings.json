@@ -71,6 +71,7 @@
         "/^cmd /c \"cd /d D:\\\\Projects\\\\dia-platform\\\\business\\\\portal\\\\frontend && npm run dev\"$/": {
             "approve": true,
             "matchCommandLine": true
-        }
+        },
+        "git -C D:\\Projects\\dia-platform": true
     }
 }

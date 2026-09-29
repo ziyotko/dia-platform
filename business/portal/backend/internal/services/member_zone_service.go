@@ -77,19 +77,8 @@ func (s *MemberColumnService) CreateMemberColumn(column *models.MemberColumn) er
 	}
 	// Status 字段带 `default:1` 标签：GORM 会把「零值」当作未设置而改用库默认值（1），
 	// 且插入后还会把库里的默认值回填进结构体 →「新建时选禁用」会被静默存成启用。
-	// 因此先记下本次要写的状态，插入后与库中不一致时显式补写一次。
-	status := column.Status
-	if err := utils.DB.Create(column).Error; err != nil {
-		return err
-	}
-	if status == column.Status {
-		return nil
-	}
-	if err := utils.DB.Model(&models.MemberColumn{}).Where("id = ?", column.ID).Update("status", status).Error; err != nil {
-		return err
-	}
-	column.Status = status
-	return nil
+	// 统一走 CreatePreservingZeroValues 补偿（原先是本文件内联实现的同一套写法）。
+	return utils.CreatePreservingZeroValues(utils.DB, column, "status")
 }
 
 func (s *MemberColumnService) UpdateMemberColumn(id uint, column *models.MemberColumn) error {

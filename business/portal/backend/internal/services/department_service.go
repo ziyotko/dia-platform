@@ -87,7 +87,8 @@ func (s *DepartmentService) CreateDepartment(dept *models.Department) error {
 	}
 	dept.UserIds = joined
 	dept.UserCount = len(kept)
-	return utils.DB.Create(dept).Error
+	// status 带 `default:1`：直接 Create 会把「新建/导入时选禁用(0)」静默写成启用(1)
+	return utils.CreatePreservingZeroValues(utils.DB, dept, "status")
 }
 
 // ensureOrganizationExists 校验部门所属机构存在：

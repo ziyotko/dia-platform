@@ -93,7 +93,9 @@ func (s *OrganizationService) CreateOrganization(org *models.Organization) error
 	}
 	org.UserIds = joined
 	org.UserCount = len(kept)
-	return utils.DB.Create(org).Error
+	// status 带 `default:1`：直接 Create 会把「新建时选禁用(0)」静默写成启用(1)
+	// （org_type/org_level 的默认值 3/1 在表单里是必填下拉/数字框，不存在 0 值语义，故不在此列）
+	return utils.CreatePreservingZeroValues(utils.DB, org, "status")
 }
 
 func (s *OrganizationService) UpdateOrganization(id uint, org *models.Organization) error {

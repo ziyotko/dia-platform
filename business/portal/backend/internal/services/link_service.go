@@ -33,7 +33,8 @@ func (s *LinkService) GetLinks(name string, templateID int, columnID int, status
 }
 
 func (s *LinkService) CreateLink(link *models.Link) error {
-	return utils.DB.Create(link).Error
+	// status 带 `default:1`：直接 Create 会把「新建时选禁用(0)」静默写成启用(1)
+	return utils.CreatePreservingZeroValues(utils.DB, link, "status")
 }
 
 func (s *LinkService) UpdateLink(id uint, link *models.Link) error {

@@ -170,7 +170,8 @@ func (s *ColumnService) CreateColumn(column *models.Column) error {
 	if err := ensureNameCodeUnique(&models.Column{}, "栏目", column.Name, column.Code, 0, &uniqueScope{Field: "template_id", Value: column.TemplateID}); err != nil {
 		return err
 	}
-	return utils.DB.Create(column).Error
+	// status / display_type 带 `default:1`：直接 Create 会把「新建时选禁用(0)」静默写成启用(1)
+	return utils.CreatePreservingZeroValues(utils.DB, column, "status", "display_type")
 }
 
 // columnWorkflowID 取栏目绑定的审核流程 ID（nil 与 0 等价，均表示未绑定流程）

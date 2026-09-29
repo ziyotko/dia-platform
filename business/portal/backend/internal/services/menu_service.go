@@ -114,7 +114,9 @@ func (s *MenuService) CreateMenu(menu *models.Menu) error {
 	if err := validateTreeParent("menu", 0, menu.ParentID); err != nil {
 		return err
 	}
-	return utils.DB.Create(menu).Error
+	// status 带 `default:1`：直接 Create 会把「新建时选禁用(0)」静默写成启用(1)
+	// （menu.type 也有 default:'directory'，但它的零值语义是「用默认值」，故不在此列）
+	return utils.CreatePreservingZeroValues(utils.DB, menu, "status")
 }
 
 func (s *MenuService) UpdateMenu(id uint, menu *models.Menu) error {

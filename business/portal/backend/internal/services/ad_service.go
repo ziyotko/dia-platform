@@ -33,7 +33,8 @@ func (s *AdService) GetAds(name string, templateID int, columnID int, status int
 }
 
 func (s *AdService) CreateAd(ad *models.Ad) error {
-	return utils.DB.Create(ad).Error
+	// status 带 `default:1`：直接 Create 会把「新建时选禁用(0)」静默写成启用(1)
+	return utils.CreatePreservingZeroValues(utils.DB, ad, "status")
 }
 
 func (s *AdService) UpdateAd(id uint, ad *models.Ad) error {
