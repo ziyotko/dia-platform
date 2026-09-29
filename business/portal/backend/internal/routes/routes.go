@@ -153,10 +153,13 @@ func SetupRoutes(router *gin.Engine) {
 		member.GET("/member-columns", memberZoneController.GetMemberColumns)
 		member.GET("/member-contents", memberZoneController.GetMemberContents)
 		// 对外只读接口（需登录，仅返回「已发布」内容）：
-		//   GET /member-contents/column/:columnId?page=&pageSize=  指定会员栏目下的已发布内容（分页，置顶优先）
-		//   GET /member-contents/detail/:id                        指定已发布内容的完整信息（含正文）
-		// 两者在 middleware/api_prefix.go 的豁免前缀内，故任意已登录用户均可调用，不再要求授予「会员专区」菜单。
-		member.GET("/member-contents/column/:columnId", memberZoneController.GetColumnMemberContents)
+		//   GET /member-columns/options                       全部会员栏目（id/名称/状态），供外部确认栏目写法
+		//   GET /member-contents/column/:key?page=&pageSize=  指定会员栏目下的已发布内容（分页，置顶优先）
+		//       :key 纯数字=栏目 ID；其它=栏目名称（名称唯一，跨环境稳定，外部无需维护 ID 映射配置）
+		//   GET /member-contents/detail/:id                   指定已发布内容的完整信息（含正文）
+		// 以上接口在 middleware/api_prefix.go 的豁免表内，故任意已登录用户均可调用，不再要求授予「会员专区」菜单。
+		member.GET("/member-columns/options", memberZoneController.GetMemberColumnOptions)
+		member.GET("/member-contents/column/:key", memberZoneController.GetColumnMemberContents)
 		member.GET("/member-contents/detail/:id", memberZoneController.GetMemberContentDetail)
 		member.GET("/member-contents/:id", memberZoneController.GetMemberContentByID)
 		member.POST("/member-contents", memberZoneController.CreateMemberContent)

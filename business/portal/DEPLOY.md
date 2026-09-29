@@ -204,11 +204,16 @@ ALTER TABLE `member_column` DROP COLUMN `code`;
   - 会员内容：`GET /member-contents`、`GET /member-contents/:id`、`POST/PUT/DELETE /member-contents*`、`PATCH /member-contents/:id/status` 在**登录用户组**；非管理员只能看到/维护 `author_code` 为本人 ID 的内容（与 `/articles` 口径一致），管理员可代管全部。
   - 发布校验（后端为准，前端同步提示）：**仅当状态置为「已发布」时**校验该类型的关键字段（新闻=文章内容或文章附件之一、数据=数据年份+单位名称、视频=完整视频、报刊=期号+出版年月+报刊文件）；草稿/已下线可先建后补。前端 `/member-contents` 列表的「发布」按钮改状态时同样受此校验保护。
   - 封面/文章附件/报刊文件复用 `POST /upload`（`dir=article` / `attachment`），完整/预览视频用 `dir=video`；该接口在菜单豁免表内并已挂 `upload` 限流。
-- **对外只读接口（需登录，仅返回「已发布」内容）**：供外部系统（门户/会员前台等）读取会员内容，两个接口均只需通过认证，**不再要求调用方被授予「会员专区」菜单**（已在 `middleware/api_prefix.go` 的 `apiPrefixExemptPrefixes` 中豁免，仅豁免这两个前缀，成员组的写路由仍受菜单前缀约束）：
-  - `GET /member-contents/column/:columnId?page=&pageSize=` —— 指定会员栏目的**已发布内容（分页）**，按 `is_top DESC, id DESC` 排序；`page`/`pageSize` 缺省为 `1`/`10`（`page < 1` 回退为 `1`）。列表**不含正文 `content`**（正文请用详情接口）。栏目不存在时返回「会员栏目不存在」。
+- **对外只读接口（需登录，仅返回「已发布」内容）**：供外部系统（CAMIE/门户/会员前台等）读取会员内容，以下接口均只需通过认证，**不再要求调用方被授予「会员专区」菜单**（`middleware/api_prefix.go`：`/member-columns/options` 在精确豁免表、两个 `/member-contents/...` 子路径在前缀豁免表；成员组的写路由仍受菜单前缀约束）：
+  - `GET /member-columns/options` —— 全部会员栏目（含禁用）的 `{id, name, status}`，供外部系统确认栏目写法或自建「名称→ID」映射。
+  - `GET /member-contents/column/:key?page=&pageSize=` —— 指定会员栏目的**已发布内容（分页）**，按 `is_top DESC, id DESC` 排序；**`page` 缺省 `1`（`<1` 回退 1）；`pageSize` 缺省 `10`，上限 `100`（`>100` 按 `100` 截断，`<1` 或非数字回退 `10`）**，响应回显实际生效的 `page`/`pageSize`。列表**不含正文 `content`**（正文请用详情接口）。
+    - **`:key` 支持两种写法（解决「各环境自增 ID 不一致」的问题）**：纯数字 → 按栏目 ID 匹配；**其它 → 按栏目名称精确匹配**（名称写入前已做唯一校验）。外部系统直接按名称调用即可，**无需维护各环境的 ID 映射**；栏目不存在统一返回「会员栏目不存在」。
+    - 注意：`GET` 请求里中文名称需 URL 编码（如 `%E6%B5%8B%E8%AF%95%E6%A0%8F%E7%9B%AE`），`axios`/`fetch` 会自动编码。
   - `GET /member-contents/detail/:id` —— 按 ID 取**已发布内容**的完整信息（含正文）；内容不存在或未发布统一返回「内容不存在或未发布」。
-  - 返回结构：栏目内容列表为分页结构 `{list,total,page,pageSize}`（`utils.PageData`），详情为单个对象；两者均带 `memberColumnId` / `memberColumnName`；时间字段格式 `YYYY-MM-DD HH:mm:ss`；统一「HTTP 200 + 业务码」。
+    - 内容的 `id` 各环境也不同，但外部系统应**先调栏目内容列表拿到 id，再用该 id 取详情**（同一环境内，无需跨环境配置）。
+  - 返回结构：栏目内容列表为分页结构 `{list,total,page,pageSize}`（`utils.PageData`）；栏目清单与详情为 `{list,total}`（`utils.AllData`）/ 单个对象。内容均带 `memberColumnId` / `memberColumnName`；时间字段格式 `YYYY-MM-DD HH:mm:ss`；统一「HTTP 200 + 业务码」。
   - 注意：已发布内容会被任何已登录账号读到，与「会员专属」语义一致（会员内容面向登录会员）；草稿/已下线内容不会对外暴露。
+  - **新增/改名会员栏目时留意**：外部系统按**名称**调用，故对外使用中的栏目不建议改名（改名会断链）；如需「改名不影响外部调用」，可再补一个不可变的栏目编码字段（当前未启用）。
 
 #### ⚠️ 页面层合并迁移（2026-09-21，手工执行，不可逆）
 

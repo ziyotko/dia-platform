@@ -3,6 +3,7 @@ package controllers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -47,13 +48,31 @@ func memberZoneQueryPage(raw string, fallback int) int {
 	return v
 }
 
+// memberZoneMaxPageSize 单页条数上限：
+// 防止外部系统/前端传超大 pageSize 一次拉全表（拖慢数据库、打满内存）。
+// 与前端分页组件的可选项 [10, 20, 50, 100] 对齐，故管理页面不受影响。
+const memberZoneMaxPageSize = 100
+
+// memberZoneQueryPageSize 解析 pageSize：< 1 回退缺省值（10），超过上限按上限截断，
+// 并保证与 utils.PageData 回显的 pageSize 一致。
+func memberZoneQueryPageSize(raw string, fallback int) int {
+	v := memberZoneQueryInt(raw, fallback)
+	if v < 1 {
+		return fallback
+	}
+	if v > memberZoneMaxPageSize {
+		return memberZoneMaxPageSize
+	}
+	return v
+}
+
 // ============================ 会员栏目（会员栏目分类） ============================
 
 func (c *MemberZoneController) GetMemberColumns(ctx *gin.Context) {
 	name := ctx.Query("name")
 	status := memberZoneQueryInt(ctx.Query("status"), -1)
 	page := memberZoneQueryPage(ctx.DefaultQuery("page", "1"), 1)
-	pageSize := memberZoneQueryPage(ctx.DefaultQuery("pageSize", "10"), 10)
+	pageSize := memberZoneQueryPageSize(ctx.DefaultQuery("pageSize", "10"), 10)
 
 	columns, total, err := c.columnService.GetMemberColumns(name, status, page, pageSize)
 	if err != nil {
@@ -215,7 +234,7 @@ func (c *MemberZoneController) GetMemberContents(ctx *gin.Context) {
 	contentType := memberZoneQueryInt(ctx.Query("type"), 0)
 	status := memberZoneQueryInt(ctx.Query("status"), -1)
 	page := memberZoneQueryPage(ctx.DefaultQuery("page", "1"), 1)
-	pageSize := memberZoneQueryPage(ctx.DefaultQuery("pageSize", "10"), 10)
+	pageSize := memberZoneQueryPageSize(ctx.DefaultQuery("pageSize", "10"), 10)
 
 	userID := ctx.GetUint("userID")
 	authorCodeScope := ""
@@ -274,32 +293,50 @@ func (c *MemberZoneController) GetMemberContentByID(ctx *gin.Context) {
 // ================= 对外只读接口（需登录，仅返回「已发布」内容） =================
 
 // GetColumnMemberContents 对外接口：分页取指定会员栏目下「已发布」的内容（置顶优先）。
-// GET /member-contents/column/:columnId?page=&pageSize= ；列表不含正文（正文请用下面的详情接口）。
+// GET /member-contents/column/:key?page=&pageSize=
+// `:key` 为「会员栏目标识」：纯数字按 ID 匹配，其它按名称精确匹配（名称唯一）。
+// 这样外部系统（如 CAMIE）按名称调用即可跨环境使用，无需维护「ID 映射配置」。
+// 列表不含正文（正文请用下面的详情接口）。
 func (c *MemberZoneController) GetColumnMemberContents(ctx *gin.Context) {
-	columnID, err := strconv.ParseUint(ctx.Param("columnId"), 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "会员栏目ID无效"))
-		return
-	}
-	page := memberZoneQueryPage(ctx.DefaultQuery("page", "1"), 1)
-	pageSize := memberZoneQueryPage(ctx.DefaultQuery("pageSize", "10"), 10)
-
-	contents, total, err := c.contentService.GetPublishedMemberContentsByColumn(uint(columnID), page, pageSize)
+	key := strings.TrimSpace(ctx.Param("key"))
+	column, err := c.columnService.GetMemberColumnByKey(key)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("获取会员栏目内容失败", err)))
 		return
 	}
-	columnNames, err := c.contentService.GetMemberColumnNames([]uint{uint(columnID)})
+	page := memberZoneQueryPage(ctx.DefaultQuery("page", "1"), 1)
+	pageSize := memberZoneQueryPageSize(ctx.DefaultQuery("pageSize", "10"), 10)
+
+	contents, total, err := c.contentService.GetPublishedMemberContentsByColumn(column.ID, page, pageSize)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "获取会员栏目内容失败"))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("获取会员栏目内容失败", err)))
 		return
 	}
-	columnName := columnNames[uint(columnID)]
 	list := make([]gin.H, 0, len(contents))
 	for _, item := range contents {
-		list = append(list, memberContentFullDTO(item, columnName, false))
+		list = append(list, memberContentFullDTO(item, column.Name, false))
 	}
 	ctx.JSON(http.StatusOK, utils.Success("获取会员栏目内容成功", utils.PageData(list, total, page, pageSize)))
+}
+
+// GetMemberColumnOptions 对外接口：返回全部会员栏目（含禁用）的 id/名称/状态，
+// 供外部系统确认栏目写法，或自行按名称→ID 映射调用。
+// GET /member-columns/options
+func (c *MemberZoneController) GetMemberColumnOptions(ctx *gin.Context) {
+	columns, err := c.columnService.GetAllMemberColumns()
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取会员栏目失败"))
+		return
+	}
+	list := make([]gin.H, 0, len(columns))
+	for _, item := range columns {
+		list = append(list, gin.H{
+			"id":     item.ID,
+			"name":   item.Name,
+			"status": item.Status,
+		})
+	}
+	ctx.JSON(http.StatusOK, utils.Success("获取会员栏目成功", utils.AllData(list, int64(len(list)))))
 }
 
 // GetMemberContentDetail 对外接口：按 ID 取「已发布」内容的完整信息（含正文）。

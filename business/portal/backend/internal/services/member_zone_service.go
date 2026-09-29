@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"gorm.io/gorm"
@@ -15,6 +16,39 @@ import (
 // ============================ 会员栏目（会员栏目分类） ============================
 
 type MemberColumnService struct{}
+
+// GetMemberColumnByKey 按「稳定标识」解析会员栏目，供对外接口使用：
+//   - 纯数字：按 ID 匹配（兼容既有按 columnId 调用的方式）；
+//   - 其它：按名称精确匹配（名称写入前已做唯一校验，故名称可作跨环境的稳定业务键）。
+//
+// 设计初衷：各环境的自增 ID 不一致，外部系统（如 CAMIE）按名称调用即可免去「ID 映射配置」。
+func (s *MemberColumnService) GetMemberColumnByKey(key string) (*models.MemberColumn, error) {
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return nil, errors.New("会员栏目标识不能为空")
+	}
+	var column models.MemberColumn
+	var err error
+	if id, parseErr := strconv.ParseUint(key, 10, 32); parseErr == nil {
+		err = utils.DB.First(&column, uint(id)).Error
+	} else {
+		err = utils.DB.Where("name = ?", key).First(&column).Error
+	}
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("会员栏目不存在")
+		}
+		return nil, err
+	}
+	return &column, nil
+}
+
+// GetAllMemberColumns 返回全部会员栏目（含禁用），供对外接口发现「有哪些栏目」。
+func (s *MemberColumnService) GetAllMemberColumns() ([]models.MemberColumn, error) {
+	var list []models.MemberColumn
+	err := utils.DB.Order("sort ASC, id DESC").Find(&list).Error
+	return list, err
+}
 
 func (s *MemberColumnService) GetMemberColumns(name string, status int, page int, pageSize int) ([]models.MemberColumn, int64, error) {
 	var list []models.MemberColumn

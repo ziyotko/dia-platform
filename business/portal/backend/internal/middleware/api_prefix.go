@@ -20,19 +20,21 @@ import (
 // 子路径（如 PUT/DELETE /templates/1）**不在**豁免范围内，须由菜单 api_prefix 覆盖（「栏目管理」= /columns,/templates）。
 // 「模板管理」菜单自带 /templates 前缀，因此广告/友链等跨模块读取模板下拉时也需要该豁免。
 var apiPrefixExemptPaths = map[string]bool{
-	"/logout":                    true,
-	"/profile":                   true,
-	"/profile/password":          true,
-	"/menus/user":                true,
-	"/menus/tree":                true,
-	"/upload":                    true,
-	"/user-options":              true,
-	"/workflow-role-options":     true,
-	"/templates":                 true,
-	"/static-pages":              true,
-	"/categories/all":            true,
-	"/tags/all":                  true,
-	"/columns":                   true,
+	"/logout":                true,
+	"/profile":               true,
+	"/profile/password":      true,
+	"/menus/user":            true,
+	"/menus/tree":            true,
+	"/upload":                true,
+	"/user-options":          true,
+	"/workflow-role-options": true,
+	"/templates":             true,
+	"/static-pages":          true,
+	"/categories/all":        true,
+	"/tags/all":              true,
+	"/columns":               true,
+	// 会员专区「对外只读接口」的栏目清单（需登录），供外部系统发现栏目（按名称调用时用于确认写法）。
+	"/member-columns/options":    true,
 	"/minPasswordLengthSettings": true,
 }
 
