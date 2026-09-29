@@ -368,11 +368,15 @@
             <el-input v-model="contentForm.unitName" placeholder="请输入单位名称" maxlength="200" />
           </el-form-item>
           <el-form-item label="所属省份及直辖市" prop="province">
-            <el-input
+            <el-select
               v-model="contentForm.province"
-              placeholder="请输入所属省份及直辖市"
-              maxlength="100"
-            />
+              placeholder="请选择所属省份及直辖市"
+              clearable
+              filterable
+              style="width: 100%"
+            >
+              <el-option v-for="item in PROVINCE_OPTIONS" :key="item" :label="item" :value="item" />
+            </el-select>
           </el-form-item>
           <el-form-item label="所属地区" prop="region">
             <el-input v-model="contentForm.region" placeholder="请输入所属地区" maxlength="100" />
@@ -531,6 +535,7 @@ import type { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor/edit
 
 import { useUserStore } from '@/stores/user'
 import { hasAdminRole } from '@/utils/permission'
+import { PROVINCE_OPTIONS } from '@/utils/regions'
 import { uploadFile } from '@/api/upload'
 import {
   createMemberColumn,

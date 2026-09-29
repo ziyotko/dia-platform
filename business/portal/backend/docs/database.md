@@ -537,7 +537,7 @@
 | attachment_url | varchar(500) | 是 | - | - | **文章附件**地址（新闻） |
 | data_year | varchar(20) | 是 | - | - | **数据年份**（数据，YYYY） |
 | unit_name | varchar(200) | 是 | - | - | **单位名称**（数据） |
-| province | varchar(100) | 是 | - | - | **所属省份及直辖市**（数据） |
+| province | varchar(100) | 是 | - | - | **所属省份及直辖市**（数据；前端为下拉选择，直接存名称，见 `frontend/src/utils/regions.ts`） |
 | region | varchar(100) | 是 | - | - | **所属地区**（数据） |
 | is_belt | bigint | 是 | 0 | - | **是否一带**（数据）：0 否 / 1 是 |
 | is_axis | bigint | 是 | 0 | - | **是否一轴**（数据）：0 否 / 1 是 |
