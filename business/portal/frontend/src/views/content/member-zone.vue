@@ -137,10 +137,12 @@
     </el-card>
 
     <!-- 会员栏目管理：栏目列表与增删改全部收在该弹窗内，主界面不再展示栏目列表 -->
+    <!-- 宽度按表格全部列的最小宽度之和（序号60 + 名称150 + 描述200 + 排序90 + 状态100 + 创建时间170 + 操作180 = 950）外加班内边距留出余量，避免横向滚动条 -->
     <el-dialog
       v-model="columnManagerVisible"
       title="会员栏目管理"
-      width="900px"
+      width="1080px"
+      align-center
       :close-on-click-modal="false"
     >
       <el-form :model="columnQuery" inline>
@@ -230,6 +232,7 @@
       v-model="columnFormVisible"
       :title="columnDialogTitle"
       width="600px"
+      align-center
       destroy-on-close
       append-to-body
       :close-on-click-modal="false"
@@ -268,6 +271,7 @@
       v-model="contentDialogVisible"
       :title="contentDialogTitle"
       width="900px"
+      align-center
       destroy-on-close
       :close-on-click-modal="false"
     >
