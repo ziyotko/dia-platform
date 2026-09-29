@@ -25,10 +25,10 @@ func GenerateToken(userID uint, email string, expiresHour int) (string, error) {
 		expiresHour = config.AppConfig.JWT.ExpireHours
 	}
 	expireTime := time.Now().Add(time.Hour * time.Duration(expiresHour))
-	// issuer 与 member / application 一样走配置（默认 caam-portal）；本服务解析时不校验 issuer
+	// issuer 与 member / application 一样走配置（默认 business-portal）；本服务解析时不校验 issuer
 	issuer := config.AppConfig.JWT.Issuer
 	if issuer == "" {
-		issuer = "caam-portal"
+		issuer = "business-portal"
 	}
 	claims := Claims{
 		UserID: userID,
@@ -71,7 +71,7 @@ func ParseToken(tokenString string) (*Claims, error) {
 // ==================== 外部会员（business/member）令牌 ====================
 
 // MemberTokenIssuerDefault member 未配置 issuer 时的兜底值（与 member config.yaml 的 jwt.issuer 一致）。
-const MemberTokenIssuerDefault = "caam-member"
+const MemberTokenIssuerDefault = "business-member"
 
 // ExternalMemberClaims 是 member 项目签发的 JWT 声明（member/pkg/jwt.MemberClaims）。
 // portal 只借它确认「请求方是一个已登录的会员」，因此除 member_id 外一律不参与判权：

@@ -54,7 +54,7 @@
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑应用' : '新增应用'" width="600px">
       <el-form :model="form" :rules="rules" ref="formRef" label-width="100px">
         <el-form-item label="应用编码" prop="code">
-          <el-input v-model="form.code" :disabled="isEdit" placeholder="唯一编码，如 caam-portal" />
+          <el-input v-model="form.code" :disabled="isEdit" placeholder="唯一编码，如 business-portal" />
         </el-form-item>
         <el-form-item label="应用名称" prop="name">
           <el-input v-model="form.name" />

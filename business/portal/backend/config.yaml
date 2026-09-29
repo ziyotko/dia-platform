@@ -86,15 +86,15 @@ jwt:
   # 请使用环境变量 PORTAL_JWT_SECRET 注入强随机密钥（>=32字符）
   secret: PORTAL_JWT_SECRET
   expire_hours: 24
-  # 令牌签发者（默认 caam-portal；解析时不校验）
-  issuer: caam-portal
+  # 令牌签发者（默认 business-portal；解析时不校验）
+  issuer: business-portal
   # 外部会员（business/member）令牌校验：**值与 member 的 MEMBER_JWT_SECRET 一致**，
   # 建议用环境变量 PORTAL_MEMBER_JWT_SECRET 注入（与上面 portal 自己的密钥分开，便于独立轮换）。
   # 留空 = 关闭该能力（会员专区对外只读接口一律返回 401），portal 自身不受影响。
   # 仅用于「会员凭会员中心的登录态只读已发布会员内容」，member 的 is_admin 不会被当作 portal 管理员。
   member_secret: PORTAL_MEMBER_JWT_SECRET
   # 只接受 member 签发的该 issuer（member config.yaml 的 jwt.issuer）
-  member_issuer: caam-member
+  member_issuer: business-member
 
 log:
   # 日志级别：debug/info/warn/error（非法值回退 info）

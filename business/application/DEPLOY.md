@@ -54,7 +54,7 @@ business/application/
 - `server.trusted_proxies`: **可信反向代理地址，生产必须填 Nginx 的 IP**（`c.ClientIP()` 取真实 IP 的依据；默认仅 `127.0.0.1`）
 - `mysql`: host / port / user / `password`（**只填占位值 `APPLICATION_DB_PASSWORD`**）/ db_name / charset(`utf8mb4`) / max_open / max_idle / `loc`（时区，默认 `Asia/Shanghai`）/ `timeout` / `read_timeout` / `write_timeout`
 - `redis`: addr / password / `captcha_db`(2) / `anti_replay_db`(3)
-- `jwt`: `secret`（占位值 `APPLICATION_JWT_SECRET`）/ `expire_hours`（默认 24）/ `issuer`（`caam-application`）
+- `jwt`: `secret`（占位值 `APPLICATION_JWT_SECRET`）/ `expire_hours`（默认 24）/ `issuer`（`business-application`）
 - `log`: `level`（debug/info/warn/error，默认 info）/ `path`（默认 `logs/application.log`）/ `max_size`(100MB) / `max_backups`(30) / `max_age`(180 天)
 
 > 注意：YAML 中不要出现重复 key（viper 解析会直接报错）。
@@ -189,7 +189,7 @@ server {
 
     # 前端静态资源（/business_application/ 下）
     location /business_application/ {
-        root /var/www/caam-application;   # 需把 dist 内容放到 /var/www/caam-application/business_application/
+        root /var/www/business-application;   # 需把 dist 内容放到 /var/www/business-application/business_application/
         try_files $uri $uri/ /business_application/index.html;
         index index.html;
     }
@@ -232,6 +232,13 @@ server {
 - 前端：替换 Nginx 目录下 `dist` 内容；改版本时建议保留旧目录以便快速回退
 - 更换 `APPLICATION_JWT_SECRET` 会使两套 Token 立即失效（在线用户需重新登录）
 - 备份建议：`mysqldump` 数据库 + `backend/uploads` 目录（申报材料、证书附件）+ `backend/config.yaml`（不含密码明文）
+
+### 升级说明（2026-09-29：JWT issuer 统一为 `business-application`，无需手工 SQL）
+
+- **`jwt.issuer` 由 `caam-application` 改为 `business-application`**（与 base 及其余业务项目统一为 `business-*` 前缀）。本仓库 `config.yaml` 已同步。
+- ⚠️ **旧 Token 全部立即失效**：`parseWithAudience` 用 `jwtlib.WithIssuer(cfg.Issuer)` 强校验签发者，改了 issuer 后旧 Token 一律验不过，**在线用户需重新登录一次**（表现等同「更换 JWT 密钥」，无需其它配置变更）。
+- 无表结构变更，`AutoMigrate` 照常启动，**无需手工 SQL**。
+- 若你自有部署的 `config.yaml` 覆盖了 `issuer`，请一并改为 `business-application`。
 
 ### 升级说明（2026-09-28 · 第二批：Token 服务端失效机制，无需手工 SQL）
 

@@ -50,7 +50,7 @@ jwt:
   # 请使用环境变量 APPLICATION_JWT_SECRET 注入强随机密钥（>=32字符）
   secret: APPLICATION_JWT_SECRET
   expire_hours: 24
-  issuer: caam-application
+  issuer: business-application
 
 log:
   # 日志级别：debug/info/warn/error（非法值回退 info）

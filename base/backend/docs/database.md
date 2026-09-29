@@ -97,7 +97,7 @@
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
-| code | varchar(64) | 是 | - | UNIQUE | 应用编码（子应用接入标识，如 `caam-portal`） |
+| code | varchar(64) | 是 | - | UNIQUE | 应用编码（子应用接入标识，如 `business-portal`） |
 | name | varchar(128) | 是 | - | - | 应用名称 |
 | icon | varchar(256) | 是 | - | - | 图标 |
 | type | varchar(32) | 是 | - | - | 接入类型：`iframe` / `proxy`（微应用已下线） |

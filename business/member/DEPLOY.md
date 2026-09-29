@@ -50,7 +50,7 @@ business/member/
 - `server.login_rate_limit` / `captcha_rate_limit` / `public_rate_limit` / `upload_rate_limit`: 固定窗口限流（次数/分钟，`<=0` 用代码默认值 10/30/300/20）
 - `mysql`: host / port / user / `password`（**只填占位值 `MEMBER_DB_PASSWORD`**）/ db_name / charset(`utf8mb4`) / max_open / max_idle / `loc`（时区，默认 `Asia/Shanghai`）/ `timeout` / `read_timeout` / `write_timeout`
 - `redis`: addr / password / `captcha_db`(4) / `anti_replay_db`(5)
-- `jwt`: `secret`（占位值 `MEMBER_JWT_SECRET`）/ `expire_hours`（默认 24）/ `issuer`（`caam-member`）
+- `jwt`: `secret`（占位值 `MEMBER_JWT_SECRET`）/ `expire_hours`（默认 24）/ `issuer`（`business-member`）
 - `log`: `level`（debug/info/warn/error，默认 info）/ `path`（默认 `logs/member.log`）/ `max_size`(100MB) / `max_backups`(30) / `max_age`(180 天)
 - `certificate.font_path`: 证书 PDF 中文字体路径，留空按系统常见路径自动查找（可用 `MEMBER_CERT_FONT` 覆盖）
 
@@ -187,7 +187,7 @@ server {
 
     # 前端静态资源（/business_member/ 下）
     location /business_member/ {
-        root /var/www/caam-member;   # 需把 dist 内容放到 /var/www/caam-member/business_member/
+        root /var/www/business-member;   # 需把 dist 内容放到 /var/www/business-member/business_member/
         try_files $uri $uri/ /business_member/index.html;
         index index.html;
     }
@@ -236,6 +236,13 @@ server {
 - 更换 `MEMBER_JWT_SECRET` 会使所有已签发 Token 立即失效（在线用户需重新登录）
 - 备份建议：`mysqldump` 数据库 + `backend/uploads` 目录（含证书 PDF、证书模板、章程 PDF、票据、文章配图）+ `backend/config.yaml`（不含密码明文）
 
+### 升级说明（2026-09-29：JWT issuer 统一为 `business-member`，无需手工 SQL）
+
+- **`jwt.issuer` 由 `caam-member` 改为 `business-member`**（与 base 及其余业务项目统一为 `business-*` 前缀）。本仓库 `config.yaml` 已同步。
+- ⚠️ **必须与门户站（portal）同批上线**：`business/portal` 的 `jwt.member_issuer`（默认值已同步改为 `business-member`）会**强校验本系统 Token 的 `issuer`**。只改一侧的话，会员访问门户「会员专区」会全部报「会员登录已过期或无效」。
+- 本系统 `ParseToken` **不校验 issuer**（只验签名 + 锁 HS256），因此**已登录会员的会话不会失效**；影响面只在「portal 读取会员专区」这条链路。
+- 无表结构变更，**无需手工 SQL**。
+
 ### 升级说明（2026-09-28 第二批：Token 服务端失效机制，无需手工 SQL）
 
 - **新增两列** `member_users.password_changed_at`、`member_users.token_invalid_before`（启动 `AutoMigrate` 自动补列，**无需手工 SQL**）。
@@ -247,7 +254,7 @@ server {
 - **JWT 算法收紧为仅 HS256**（原先接受 HS256/HS384/HS512 三类）。
 - ⚠️ 该机制依赖 Redis（`redis.captcha_db`）：**Redis 不可用时鉴权按 fail-closed 处理**（返回「服务暂时不可用」，不再放行），请确保 Redis 与后端一并探活。
 - **⚠️ 跨项目约定（2026-09-29，portal 侧新增，改这里要同步）**：门户站（`business/portal`）新增「外部会员只读会员专区」能力——会员凭**本系统签发的登录 Token** 调用 `GET /business_portal/api/member-zone/...` 读取门户的会员专区已发布内容。portal 侧的两项依赖：
-  1. `PORTAL_MEMBER_JWT_SECRET`（portal 配置项 `jwt.member_secret`）= 本系统的 `MEMBER_JWT_SECRET`；portal 还强校验 `issuer = jwt.issuer`（默认 `caam-member`）与 **HS256**，并要求 Token 带 `exp`。**更换 `MEMBER_JWT_SECRET` 时必须同步更换 portal 侧的值**，否则会员访问门户会员专区会全部失败。
+  1. `PORTAL_MEMBER_JWT_SECRET`（portal 配置项 `jwt.member_secret`）= 本系统的 `MEMBER_JWT_SECRET`；portal 还强校验 `issuer = jwt.issuer`（默认 `business-member`）与 **HS256**，并要求 Token 带 `exp`。**更换 `MEMBER_JWT_SECRET` 时必须同步更换 portal 侧的值**，否则会员访问门户会员专区会全部失败。
   2. **登出黑名单键前缀 `blacklist:` 与其所在库被 portal 读取**（portal 配置项 `redis.member_token_db` = 本系统的 `redis.captcha_db`，默认 4）。**不要改名该前缀、不要改库号**，否则「会员登出后门户侧立即失效」会失效；portal 侧该检查 fail-closed（Redis 读不通返回「服务暂时不可用」，不会静默放行）。
   3. 已知边界（有意）：本系统的「改密码 / 变更会籍状态（`token_invalid_before`）/ 禁用」写在**本系统数据库**里，portal 无法感知，这类 Token 在门户侧最多可用到自然过期（`jwt.expire_hours`，默认 24h）；如需即时生效，需另行联动（共享吊销键或内省接口）。
 

@@ -114,7 +114,7 @@ type JWTConfig struct {
 	// 值必须与 member 的 MEMBER_JWT_SECRET 一致；建议用环境变量 PORTAL_MEMBER_JWT_SECRET 注入
 	// （与 portal 自己的密钥分开配置，便于独立轮换/排障）。留空 = 关闭该能力（相关接口一律 401）。
 	MemberSecret string `mapstructure:"member_secret"`
-	// MemberIssuer 只接受 member 签发的该 issuer（member config.yaml 的 jwt.issuer，默认 caam-member）
+	// MemberIssuer 只接受 member 签发的该 issuer（member config.yaml 的 jwt.issuer，默认 business-member）
 	MemberIssuer string `mapstructure:"member_issuer"`
 }
 

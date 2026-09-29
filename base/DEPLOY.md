@@ -343,12 +343,12 @@ server {
 - Token 有效期与底座 JWT 一致（默认 8 小时），子应用需处理 401 并跳转回底座登录页。
 - 子应用本身仍需做权限校验，不可仅依赖底座请求头。
 
-### 7. 与既有系统的对接示例（以 caam-portal 为例）
+### 7. 与既有系统的对接示例（以 business-portal 为例）
 
 1. 保持 `portal` 的 frontend / backend 独立运行。
-2. 底座「应用管理」注册：`code=caam-portal`、`type=proxy`、`backendUrl=http://127.0.0.1:8092`、`API 前缀=/business_portal/api`。
+2. 底座「应用管理」注册：`code=business-portal`、`type=proxy`、`backendUrl=http://127.0.0.1:8092`、`API 前缀=/business_portal/api`。
 3. 「应用实例」中为目标租户开通该应用。
-4. 「菜单管理」新增 `appCode=caam-portal` 的菜单，打开方式设为 `IFrame` 并填写门户前端地址（或按 proxy 方式配置 API 菜单）。
+4. 「菜单管理」新增 `appCode=business-portal` 的菜单，打开方式设为 `IFrame` 并填写门户前端地址（或按 proxy 方式配置 API 菜单）。
 5. 用户即可从底座一站式进入门户。
 
 ---

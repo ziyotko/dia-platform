@@ -59,8 +59,8 @@ business/portal/
 - `mysql`: host / port / user / `password`（**只填占位值 `PORTAL_DB_PASSWORD`**）/ db_name / charset(`utf8mb4`) / `loc: Asia/Shanghai` / parse_time / 读写超时与连接池（`max_idle`、`max_open`、`conn_max_lifetime`、`conn_max_idle_time`）。**段名与 member / application 的 `mysql:` 一致**
 - `redis`: `addr`（`host:port`）/ password / **`captcha_db`=6 验证码、`anti_replay_db`=7 防重放+限流、`cache_db`=8 缓存**
 - `redis.member_token_db`（默认 `4`）+ `member_token_addr` / `member_token_password`（留空则复用上面的 `addr`/`password`）：**外部会员（business/member）令牌「登出黑名单」所在库，portal 侧只读**。member 登出时把 Token 的 `jti` 写进它自己的 captcha 库（member `config.yaml` 的 `redis.captcha_db`，键 `blacklist:<jti>`），portal 读同一个库才能做到「会员登出后 portal 立即失效」。填 `< 0` = 关闭该检查（只验签名）。**member 与本服务不在同一 Redis 实例时必须另填地址/密码**
-- `jwt.secret`（占位值 `PORTAL_JWT_SECRET`）、`jwt.expire_hours`（默认 24）、`jwt.issuer`（默认 `caam-portal`）。**注意**：登录态有效期优先取数据库设置 `setting.token_expire`（后台「系统设置 → 安全设置」，1–720 小时）；仅当该值为 0 时才用 `jwt.expire_hours`
-- `jwt.member_secret`（占位值 `PORTAL_MEMBER_JWT_SECRET`，**值必须与 member 的 `MEMBER_JWT_SECRET` 一致**）/ `jwt.member_issuer`（默认 `caam-member`，只接受 member 签发的该 issuer）：用于校验外部会员的登录令牌（仅服务「会员专区」对外只读接口）。**留空 = 关闭该能力**（相关接口一律返回「会员登录校验未启用」），不影响 portal 自身启动。两个项目的密钥**允许同值，但必须各自注入、可独立轮换**，不要把 portal 自己的密钥直接共用给 member
+- `jwt.secret`（占位值 `PORTAL_JWT_SECRET`）、`jwt.expire_hours`（默认 24）、`jwt.issuer`（默认 `business-portal`）。**注意**：登录态有效期优先取数据库设置 `setting.token_expire`（后台「系统设置 → 安全设置」，1–720 小时）；仅当该值为 0 时才用 `jwt.expire_hours`
+- `jwt.member_secret`（占位值 `PORTAL_MEMBER_JWT_SECRET`，**值必须与 member 的 `MEMBER_JWT_SECRET` 一致**）/ `jwt.member_issuer`（默认 `business-member`，只接受 member 签发的该 issuer）：用于校验外部会员的登录令牌（仅服务「会员专区」对外只读接口）。**留空 = 关闭该能力**（相关接口一律返回「会员登录校验未启用」），不影响 portal 自身启动。两个项目的密钥**允许同值，但必须各自注入、可独立轮换**，不要把 portal 自己的密钥直接共用给 member
 - `log.level`（debug/info/warn/error，非法值回退 info）/ `log.path`（**目录**，按天生成 `<path>/YYYY-MM-DD.log`）/ `log.max_size`(100MB) / `log.max_backups`(1000) / `log.max_age`(180 天，自动压缩)
 
 ### 2. 敏感信息用环境变量注入（必填）
@@ -252,12 +252,19 @@ ALTER TABLE `member_column` DROP COLUMN `code`;
   - `GET /business_portal/api/member-zone/member-files/sign?name=<文件名>` —— 会员专区文件的 5 分钟签名地址（供 `<img>`/`<video>`/`<a>` 使用；文件本体仍走 `/member-files/:name?exp=&nonce=&sign=`，无需再签发一次）。
   - **为何用 `/member-zone` 前缀**：这批接口只认外部会员令牌，与 portal 登录用户的口径完全不同，用独立前缀在 URL 上把两种身份区分开（API 文档/排错时不会误以为需要 portal 令牌）。原先 portal 登录版的同名路径已删除，避免同一批对外接口存在两套鉴权口径（Gin 也不允许同一 `method+path` 注册两次）。
   - ⚠️ **`/member-files/sign` 是唯一保留在 portal 登录组的接口**：portal 后台「会员专区」编辑页要预览已保存内容的封面/附件/报刊文件与正文内联图（前端 `ensureSignedFile` → `GET /member-files/sign`），去掉它会导致编辑页图片全裂；外部会员的同名能力是 `/member-zone/member-files/sign`（只对「对外可见内容」引用的文件签发）。文件本体仍走 `/member-files/:name?exp=&nonce=&sign=`（只验签，不分身份）。
-- **鉴权方式**：请求头 `Authorization: Bearer <member 登录 Token>`。后端用 `jwt.member_secret`（= member 的 `MEMBER_JWT_SECRET`）验签，只接受 HS256、强校验 `issuer = jwt.member_issuer`（默认 `caam-member`）、要求令牌带 `exp`，并额外读 member 的登出黑名单（`blacklist:<jti>`，见 `redis.member_token_db`）→ **会员主动登出后 portal 侧立即失效**。
+- **鉴权方式**：请求头 `Authorization: Bearer <member 登录 Token>`。后端用 `jwt.member_secret`（= member 的 `MEMBER_JWT_SECRET`）验签，只接受 HS256、强校验 `issuer = jwt.member_issuer`（默认 `business-member`）、要求令牌带 `exp`，并额外读 member 的登出黑名单（`blacklist:<jti>`，见 `redis.member_token_db`）→ **会员主动登出后 portal 侧立即失效**。
 - **该路由组刻意不挂的中间件（逐条都有原因，勿“补齐”）**：`AuthMiddleware`（按 portal 用户表校验，会员无账号）、`MenuAPIPrefixMiddleware`（会员无 portal 菜单授权）、`ReplayProtectionMiddleware`（会员前端不会带 `X-Request-Signature`，挂了会 100% 拒绝）、`OperationLog`（只读接口且操作人无 portal 账号）。仅挂「外部会员鉴权 + 按真实 IP 限流」（scope `member-zone`，复用 `public_rate_limit` / `public_rate_window_seconds`）。
 - **权限边界（重要）**：外部会员**只能读已发布内容**（已发布 + 所属栏目启用 + 发布时间已到），**不能**读草稿/已下线/未到发布时间的内容；`/member-zone/member-files/sign` 对会员只对「对外可见内容」引用的文件签发；**member 的 `is_admin` 不会获得 portal 的任何管理员权限**（会员身份写入 `externalMemberID`，不写 `userID`/`currentUser`）。
 - **已知局限（选型时已确认）**：member 的「改密码 / 被禁用」只写它自己库里的 `password_changed_at` / `token_invalid_before`，portal 无法感知 → 此类令牌最多可用到自然过期（member 默认 24h）。若需「禁用立即在 portal 生效」，需与 member 联动（共享吊销键或内省接口），属后续可选项。
 - **上线前检查**：① 注入 `PORTAL_MEMBER_JWT_SECRET`（值必须与 member 的完全一致，含末尾空格/大小写）；② `redis.member_token_db` 填 **member 的 `redis.captcha_db`**（本仓库默认 `4`），且两服务指向同一 Redis 实例（否则填 `member_token_addr`/`member_token_password`）；③ 启动日志无 `[WARN] 未配置 jwt.member_secret`。
 - **轮换影响**：更换 `MEMBER_JWT_SECRET` 后必须同步更换 `PORTAL_MEMBER_JWT_SECRET`（两侧不一致时，会员访问会员专区会得到「会员登录已过期或无效」）；只改一侧等价于“会员侧登录全部失效”。
+
+#### 升级说明（2026-09-29，无需手工 SQL）— JWT issuer 统一为 `business-*`
+
+- **`jwt.issuer` 默认值 `caam-portal` → `business-portal`；`jwt.member_issuer` 默认值 `caam-member` → `business-member`**（与 base 及其余业务项目统一为 `business-*` 前缀）。本仓库 `config.yaml` 两处、以及 `pkg/utils/jwt.go` 的两处代码兜底值均已同步。
+- **portal 自身登录态不受影响**：`ParseToken` 只校验签名与 HS256、**不校验 issuer**，故已登录的 portal 用户不会被登出（但为保持与 base 一致，建议仍填新值）。
+- ⚠️ **`jwt.member_issuer` 必须等于 `business/member` 的 `jwt.issuer`**：member 已同步改为 `business-member`，两边**必须同批上线**；若只升级 portal 而 member 未升级（或反之），`/member-zone/...` 全部返回「会员登录已过期或无效」。
+- 无表结构变更，`AutoMigrate` 照常启动，**无需手工 SQL**。
 
 #### ⚠️ 页面层合并迁移（2026-09-21，手工执行，不可逆）
 
@@ -443,7 +450,7 @@ server {
 
     # 管理后台静态资源（/xxxxx/ 下）
     location /xxxxx/ {
-        root /var/www/caam-portal;   # 与 dist 对应，保证 /xxxxx/ 命中 index.html
+        root /var/www/business-portal;   # 与 dist 对应，保证 /xxxxx/ 命中 index.html
         try_files $uri $uri/ /xxxxx/index.html;
         index index.html;
     }
