@@ -28,6 +28,16 @@ const (
 	uploadQuotaKeyPrefix = "upload:quota:"
 	// defaultUploadDailyQuotaMB 未配置（<=0）时的每日上传配额默认值（MB）
 	defaultUploadDailyQuotaMB = 4096
+
+	// memberUploadDirAlias 前端上传「会员专区」文件时传的 dir 值；
+	// 它与其它 dir 的关键区别是：**落到私有目录并返回鉴权接口地址**（不对外静态公开）。
+	memberUploadDirAlias = "member"
+
+	// memberPrivateUploadDir 会员专区上传文件的私有目录（位于公开静态根 ./uploads 之外）。
+	// 不在 router.Static 与 Nginx 的任何静态映射内 → 无法被猜 URL 直接下载，
+	// 只能通过鉴权接口 GET /member-files/:name 读取（见 member_zone_controller.go 的 GetMemberFile）。
+	// 部署时：该目录**不要**加入任何 Nginx location/alias，并记得纳入备份。
+	memberPrivateUploadDir = "./private_uploads"
 )
 
 // uploadQuotaLimitBytes 单账号当日上传配额（字节）
@@ -91,6 +101,8 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 		"": true, "article": true, "attachment": true, "video": true,
 		"covers": true, "avatars": true, "images": true, "setting": true,
 		"user": true, "ad": true, "link": true,
+		// 会员专区：落到私有目录，只能通过鉴权接口读取（见下方 memberUploadDirAlias）
+		memberUploadDirAlias: true,
 	}
 	if !allowedDirs[dir] {
 		ctx.JSON(http.StatusOK, utils.Error(1, "非法上传目录"))
@@ -110,7 +122,7 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 		".ppt": true, ".pptx": true, ".txt": true, ".zip": true, ".rar": true,
 		".7z": true, ".mp4": true, ".mp3": true,
 	}
-	if dir == "article" || dir == "attachment" || dir == "video" {
+	if dir == "article" || dir == "attachment" || dir == "video" || dir == memberUploadDirAlias {
 		if !allowedAttachmentExts[ext] {
 			ctx.JSON(http.StatusOK, utils.Error(1, "不支持的文件格式"))
 			return
@@ -127,7 +139,10 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 	// 而该分支的扩展名白名单同时包含 zip/rar/pdf/doc 等非视频类型，
 	// 等于给任意已认证账号开放了 800MB 的任意文件上传。
 	maxSize := int64(50 << 20)
-	if dir == "video" && allowedVideoExts[ext] {
+	// 仅「视频类目录 + .mp4」才放宽到 800MB：
+	// dir=video 为普通视频目录，dir=member 为会员专区私有目录（视频与附件同目录）。
+	// 两者都要求扩展名为 .mp4，避免把 800MB 额度开放给任意文件类型。
+	if (dir == "video" || dir == memberUploadDirAlias) && allowedVideoExts[ext] {
 		maxSize = 800 << 20
 	}
 	if file.Size > maxSize {
@@ -159,13 +174,21 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 		}
 	}
 
+	// 会员专区（dir=member）落到【私有目录】：不在 router.Static 与 Nginx 的任何静态映射内，
+	// 只能通过鉴权接口 GET /member-files/:name 读取（见 member_zone_controller.go 的 GetMemberFile）。
+	// 私有目录不带机构编码段：本目录不进静态发布，无需按机构分区。
 	uploadDir := "./uploads"
-	if orgCode != "" {
-		uploadDir = filepath.Join(uploadDir, orgCode)
+	if dir == memberUploadDirAlias {
+		uploadDir = memberPrivateUploadDir
+	} else {
+		if orgCode != "" {
+			uploadDir = filepath.Join(uploadDir, orgCode)
+		}
+		if dir != "" {
+			uploadDir = filepath.Join(uploadDir, dir)
+		}
 	}
-	if dir != "" {
-		uploadDir = filepath.Join(uploadDir, dir)
-	}
+
 	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
 			ctx.JSON(http.StatusOK, utils.Error(1, "创建上传目录失败"))
@@ -185,6 +208,15 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 	// Nginx/反代以自身运行用户读取，同用户可读写即可。
 	if err := ctx.SaveUploadedFile(file, dst, 0644); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "保存文件失败"))
+		return
+	}
+
+	// 会员专区文件：返回【鉴权接口】地址（不带 /uploads 前缀，避免被静态映射命中而绕过鉴权）；
+	// 该地址需登录访问，支持 Authorization 头或 ?token=<jwt>（见 GetMemberFile）。
+	if dir == memberUploadDirAlias {
+		ctx.JSON(http.StatusOK, utils.Success("上传成功", gin.H{
+			"url": config.AppConfig.Server.ApiPrefix + "/member-files/" + filename,
+		}))
 		return
 	}
 

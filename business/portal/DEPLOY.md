@@ -16,7 +16,8 @@ business/portal/
 │   ├── pkg/utils/    # 通用库：db / jwt / redis / logger / response / captcha / sm3 等
 │   ├── config.yaml   # 唯一配置文件（viper 从当前工作目录读 ./config.yaml，须在 backend 目录下启动）
 │   ├── docs/         # 数据库结构等文档（docs/database.md）
-│   ├── uploads/      # 上传文件目录（运行时需可写）
+│   ├── uploads/      # 公开上传文件目录（router.Static 与 Nginx 均映射，运行时需可写）
+│   ├── private_uploads/ # 【会员专区】私有上传文件目录（不对外静态映射，只能经鉴权接口读取，需可写 + 纳入备份）
 │   └── logs/         # 日志目录（logrus + lumberjack，按天分文件）
 └── frontend/         # 管理后台（Vue3 + Vite + Element Plus）
     └── .env          # 部署子路径 VITE_BASE_PATH 与接口前缀 VITE_API_BASE_URL
@@ -214,6 +215,14 @@ ALTER TABLE `member_column` DROP COLUMN `code`;
   - 返回结构：栏目内容列表为分页结构 `{list,total,page,pageSize}`（`utils.PageData`）；栏目清单与详情为 `{list,total}`（`utils.AllData`）/ 单个对象。内容均带 `memberColumnId` / `memberColumnName`；时间字段格式 `YYYY-MM-DD HH:mm:ss`；统一「HTTP 200 + 业务码」。
   - 注意：已发布内容会被任何已登录账号读到，与「会员专属」语义一致（会员内容面向登录会员）；草稿/已下线内容不会对外暴露。
   - **新增/改名会员栏目时留意**：外部系统按**名称**调用，故对外使用中的栏目不建议改名（改名会断链）；如需「改名不影响外部调用」，可再补一个不可变的栏目编码字段（当前未启用）。
+- **会员专区上传文件改为「私有目录 + 鉴权访问」（安全加固）**：
+  - **上传**：会员专区的封面图、正文内联图片、文章附件、报刊文件、完整/预览视频统一传 `dir=member`，落到 **`backend/private_uploads/`**（在公开静态根 `./uploads` **之外**，`router.Static` 与 Nginx 都不映射）→ 不再存在「拿到/猜到 URL 即可匿名下载」的公开地址。`.mp4` 仍允许 800MB（判定为「视频类目录 + `.mp4`」，`dir=member` 已纳入该白名单）。
+  - **读取**：新增 `GET /business_portal/api/member-files/:name`（**需登录**），从私有目录读取并转发，**支持 Range**（大视频可拖动/断点续传），并按扩展名嗅探 `Content-Type`。
+  - **鉴权方式**：① 标准 `Authorization: Bearer <jwt>`（CAMIE/服务端调用用这个）；② **`?token=<jwt>`**（`<img>/<video>/<a>` 这类浏览器直接发起的请求无法设置请求头，前端渲染时自动附加）。该路由**单独成组**，只挂 `TokenFromQueryMiddleware` + `AuthMiddleware` + 单 IP 并发限制，**不挂防重放与操作日志**（浏览器不会带防重放头，挂了图片全裂；每张图写一条操作日志也无意义）。
+  - **可见性口径**：该接口**登录即可读**，与其它会员专区对外只读接口一致。若要收紧为「仅作者/管理员」或「仅已被已发布内容引用的文件」，需在 handler 内按 URL 反查 `member_content` 后判定（当前未做）。
+  - **部署要点**：`private_uploads/` **不要**加入任何 Nginx `location/alias`（否则鉴权形同虚设）；该目录需可写、**务必纳入备份**；`?token=` 会进入 Nginx 访问日志（如需更严可后续改为短时效签名，当前未做）。
+  - **入库地址**：数据库存的是 `/business_portal/api/member-files/<文件名>`，**不带 token**；正文 HTML 内联图片地址同样不带 token，消费方渲染时自行附加。
+  - **未受影响的其它上传**：图文管理/广告/友链/头像/系统设置等仍走公开 `./uploads/...`（本次只改会员专区），历史数据里的旧地址继续可用；如需把旧会员文件也迁入私有目录，手工移动文件并 `UPDATE` 对应 URL 列即可。
 
 #### ⚠️ 页面层合并迁移（2026-09-21，手工执行，不可逆）
 
@@ -448,7 +457,7 @@ server {
 - 前端：替换 Nginx 目录下 `dist` 内容；改版本时建议保留旧目录以便快速回退
 - 更换 `PORTAL_JWT_SECRET` 会使所有已签发 Token 立即失效（在线用户需重新登录）
 - 用旧版本回滚时，新版本已新增的表/列/索引无需回退（AutoMigrate 不会删列）；确需删表回滚请先备份
-- 建议备份：`mysqldump` 数据库 + `backend/uploads` 目录 + `backend/config.yaml`（不含密码明文）
+- 建议备份：`mysqldump` 数据库 + `backend/uploads` 目录 + **`backend/private_uploads` 目录（会员专区上传的封面/附件/报刊文件/视频）** + `backend/config.yaml`（不含密码明文）
 
 ---
 

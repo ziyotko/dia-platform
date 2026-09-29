@@ -2,6 +2,9 @@ package controllers
 
 import (
 	"net/http"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -463,4 +466,43 @@ func (c *MemberZoneController) DeleteMemberContent(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("删除会员内容成功", nil))
+}
+
+// ================= 会员专区文件（私有目录 + 鉴权访问） =================
+
+// memberFileNamePattern 会员专区私有文件的合法文件名：
+// `<纳秒时间戳>_<16位随机hex>.<扩展名>`（由 upload_controller 生成）。
+// 严格限定字符集与长度，杜绝 `../`、绝对路径等路径穿越写法。
+var memberFileNamePattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,80}\.[A-Za-z0-9]{1,10}$`)
+
+// GetMemberFile 会员专区文件读取接口（需登录）：从私有目录 ./private_uploads 读取并转发。
+//
+// GET /member-files/:name —— 上传时（dir=member）返回的就是这个地址。
+// 该路由单独成组：只挂 TokenFromQueryMiddleware + AuthMiddleware，**不挂**防重放与操作日志：
+//   - <img src> / <video src> / 下载链接无法设置 Authorization 头，故允许 ?token=<jwt>；
+//   - 防重放头同样无法由浏览器自动带上，挂了会导致图片全部加载失败；
+//   - 每张图片都写一条操作日志也无意义（且会迅速挤满日志表）。
+//
+// 鉴权口径：**登录即可读**（与其它会员专区对外只读接口一致）。若要收紧为
+// 「仅作者/管理员」或「仅已被已发布内容引用的文件」，需在此处按 URL 反查 member_content 再判定。
+func (c *MemberZoneController) GetMemberFile(ctx *gin.Context) {
+	name := ctx.Param("name")
+	if !memberFileNamePattern.MatchString(name) {
+		ctx.JSON(http.StatusOK, utils.Error(1, "文件不存在"))
+		return
+	}
+	f, err := os.Open(filepath.Join(memberPrivateUploadDir, name))
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "文件不存在"))
+		return
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil || info.IsDir() {
+		ctx.JSON(http.StatusOK, utils.Error(1, "文件不存在"))
+		return
+	}
+	// ServeContent 会根据扩展名/MIME 嗅探写入 Content-Type，并原生支持 Range
+	// （大视频拖动进度条、断点续传都依赖它）与 If-Modified-Since。
+	http.ServeContent(ctx.Writer, ctx.Request, name, info.ModTime(), f)
 }

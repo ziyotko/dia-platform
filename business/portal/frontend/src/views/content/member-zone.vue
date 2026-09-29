@@ -317,7 +317,7 @@
             </el-button>
           </el-upload>
           <div v-if="contentForm.cover" class="cover-preview">
-            <el-image :src="contentForm.cover" fit="cover" />
+            <el-image :src="memberFileUrl(contentForm.cover)" fit="cover" />
             <el-button link type="danger" @click="contentForm.cover = ''">移除</el-button>
           </div>
         </el-form-item>
@@ -348,7 +348,14 @@
               </el-button>
             </el-upload>
             <span v-if="contentForm.attachmentName" class="attachment-name">
-              {{ contentForm.attachmentName }}
+              <el-link
+                type="primary"
+                :href="memberFileUrl(contentForm.attachmentUrl)"
+                target="_blank"
+                rel="noopener"
+              >
+                {{ contentForm.attachmentName }}
+              </el-link>
               <el-button link type="danger" @click="clearAttachment">移除</el-button>
             </span>
           </el-form-item>
@@ -500,7 +507,14 @@
               </el-button>
             </el-upload>
             <span v-if="contentForm.paperFileName" class="attachment-name">
-              {{ contentForm.paperFileName }}
+              <el-link
+                type="primary"
+                :href="memberFileUrl(contentForm.paperFileUrl)"
+                target="_blank"
+                rel="noopener"
+              >
+                {{ contentForm.paperFileName }}
+              </el-link>
               <el-button link type="danger" @click="clearPaperFile">移除</el-button>
             </span>
           </el-form-item>
@@ -959,7 +973,8 @@ const handleEditContent = async (row: any) => {
       status: detail.status,
       isTop: detail.isTop,
       cover: detail.cover,
-      content: detail.content || '',
+      // 编辑器内需要带 token 才能显示私有图，故载入时注入（提交时再剔除，不落库）
+      content: withMemberFileTokens(detail.content || ''),
       attachmentName: detail.attachmentName,
       attachmentUrl: detail.attachmentUrl,
       dataYear: detail.dataYear,
@@ -989,11 +1004,13 @@ const handleSubmitContent = async () => {
   if (!valid) return
   contentSubmitLoading.value = true
   try {
+    // 正文里的会员专区图片地址在提交前剔除 token，避免把凭证写进数据库
+    const payload = { ...contentForm, content: stripMemberFileTokens(contentForm.content) }
     if (contentForm.id) {
-      await updateMemberContent(contentForm.id, { ...contentForm })
+      await updateMemberContent(contentForm.id, payload)
       ElMessage.success('修改成功')
     } else {
-      await createMemberContent({ ...contentForm })
+      await createMemberContent(payload)
       ElMessage.success('发布成功')
     }
     contentDialogVisible.value = false
@@ -1034,33 +1051,59 @@ const handleDeleteContent = (row: any) => {
 }
 
 // ============================ 上传 ============================
+// 会员专区的上传统一传 dir=member：后端会落到【私有目录 ./private_uploads】，
+// 返回的 url 形如 /business_portal/api/member-files/xxx（需登录才能读取，非公开静态地址）。
+const MEMBER_UPLOAD_DIR = 'member'
+
+/**
+ * 会员专区文件地址需鉴权：<img>/<video>/下载链接无法带 Authorization 头，
+ * 故渲染时追加 ?token=<jwt>（与后端 TokenFromQueryMiddleware 对应）。
+ * 注意：只在渲染时追加，表单里保存的仍是**不带 token 的原始地址**，不会把 token 写进数据库。
+ */
+const memberFileUrl = (url?: string) => {
+  if (!url) return ''
+  if (!url.includes('/member-files/')) return url
+  const token = userStore.token || ''
+  if (!token) return url
+  return `${url}${url.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`
+}
+
+// 正文 HTML 里可能内联了会员专区图片（私有地址）：
+//   - 编辑器内需要带 token 才能显示，故载入时注入、提交前剔除；
+//   - **数据库里存的正文地址一律不带 token**（否则 token 落库、过期后整篇正文裂图）。
+const MEMBER_FILE_URL_RE = /(\/member-files\/[A-Za-z0-9._-]+)(\?token=[^"'&\s>]*)?/g
+const withMemberFileTokens = (html: string) =>
+  (html || '').replace(MEMBER_FILE_URL_RE, (_all, url: string) => memberFileUrl(url))
+const stripMemberFileTokens = (html: string) =>
+  (html || '').replace(MEMBER_FILE_URL_RE, (_all, url: string) => url)
+
 const handleCoverUpload = async (options: any) => {
-  const res: any = await uploadFile(options.file, 'article')
+  const res: any = await uploadFile(options.file, MEMBER_UPLOAD_DIR)
   contentForm.cover = res.data?.url || ''
   ElMessage.success('封面图上传成功')
 }
 
 const handleAttachmentUpload = async (options: any) => {
-  const res: any = await uploadFile(options.file, 'attachment')
+  const res: any = await uploadFile(options.file, MEMBER_UPLOAD_DIR)
   contentForm.attachmentUrl = res.data?.url || ''
   contentForm.attachmentName = res.data?.name || options.file?.name || ''
   ElMessage.success('文章附件上传成功')
 }
 
 const handleFullVideoUpload = async (options: any) => {
-  const res: any = await uploadFile(options.file, 'video')
+  const res: any = await uploadFile(options.file, MEMBER_UPLOAD_DIR)
   contentForm.fullVideoUrl = res.data?.url || ''
   ElMessage.success('完整视频上传成功')
 }
 
 const handlePreviewVideoUpload = async (options: any) => {
-  const res: any = await uploadFile(options.file, 'video')
+  const res: any = await uploadFile(options.file, MEMBER_UPLOAD_DIR)
   contentForm.previewVideoUrl = res.data?.url || ''
   ElMessage.success('预览视频上传成功')
 }
 
 const handlePaperFileUpload = async (options: any) => {
-  const res: any = await uploadFile(options.file, 'attachment')
+  const res: any = await uploadFile(options.file, MEMBER_UPLOAD_DIR)
   contentForm.paperFileUrl = res.data?.url || ''
   contentForm.paperFileName = res.data?.name || options.file?.name || ''
   ElMessage.success('报刊文件上传成功')
@@ -1089,10 +1132,12 @@ const uploadImageFile = async (
     ElMessage.error('图片大小不能超过 10MB')
     throw new Error('图片大小超出限制')
   }
-  const res: any = await uploadFile(file, 'article')
+  const res: any = await uploadFile(file, MEMBER_UPLOAD_DIR)
   const url = res.data?.url || ''
   if (url) {
-    insertFn(url, '', '')
+    // 编辑器需要带 token 才能显示，插入带 token 的地址；提交前会由
+    // stripMemberFileTokens() 剔除，故数据库里仍是干净地址。
+    insertFn(memberFileUrl(url), '', '')
   } else {
     ElMessage.error('图片上传失败')
   }

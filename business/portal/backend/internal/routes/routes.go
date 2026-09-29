@@ -177,6 +177,18 @@ func SetupRoutes(router *gin.Engine) {
 		member.POST("/upload", uploadLimiter, uploadController.UploadFile)
 	}
 
+	// === 会员专区文件（需登录）===
+	// 会员专区的文件上传落到私有目录 ./private_uploads（不在 router.Static / Nginx 静态映射内），
+	// 只能通过本组接口读取。单独成组的原因：
+	//   - <img>/<video>/下载链接无法设置 Authorization 头，故用 TokenFromQueryMiddleware 支持 ?token=<jwt>；
+	//   - 也不能挂防重放（浏览器不会带那些头）与操作日志（每张图写一条日志毫无意义）。
+	memberFiles := router.Group(apiPrefix)
+	memberFiles.Use(middleware.TokenFromQueryMiddleware(), middleware.AuthMiddleware(), ipLimiter.Limit())
+	{
+		// GET /member-files/:name —— 会员专区文件（封面图/附件/报刊文件/视频），支持 Range
+		memberFiles.GET("/member-files/:name", memberZoneController.GetMemberFile)
+	}
+
 	// === 管理员路由（需认证 + 管理员角色）===
 	// 与 member 组一致地校验菜单 api_prefix：管理员只能调用其已授权菜单对应的接口，
 	// 避免「界面按菜单隐藏、接口却全量开放」的两套权限口径。
