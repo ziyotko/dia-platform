@@ -169,19 +169,32 @@ SELECT id, title, publish_time, created_at FROM article
 - **限流类响应业务码由 1 改为 429**（`RateLimitMiddleware` / 单 IP 并发限制 / 防重放临时封禁，文案不变）；前端仍只依赖 0 与 401，无需改动。
 - 二进体内嵌 `time/tzdata`：DSN 的 `loc=Asia/Shanghai` 在没装 tzdata 的精简镜像上也能正常解析（无需系统时区库）。
 
-#### 升级说明（2026-09-29，无需手工 SQL）
+#### 升级说明（2026-09-29，含一次手工 SQL）
 
-- **新增「会员专区」（内容管理 → 会员专区）**：用于维护会员栏目（分类）并由用户发布会员专属内容（新闻/数据/视频）到指定会员栏目。
-- **新增两张表，启动时由 `AutoMigrate` 自动创建，无需手工 SQL**：
-  - `member_column`：会员栏目（名称/编码唯一，`status` 1 启用 / 0 禁用；删除前校验其下是否仍有内容）。
-  - `member_content`：会员专属内容（`member_column_id` 归属栏目；`type` 1 新闻 / 2 数据 / 3 视频；`status` 0 草稿 / 1 已发布 / 2 已下线；`author_code` 存用户 ID 字符串）。
-  - 表结构详见 `backend/docs/database.md` §二、§3.5。
+- **新增「会员专区」（内容管理 → 会员专区）**：用于维护会员栏目（分类）并由用户发布会员专属内容（新闻/数据/视频/报刊）到指定会员栏目。
+- **内容按业务类型使用不同字段组合（`member_content` 一次性建齐，未用到的类型字段留空）**：
+  - 新闻：`title` + `cover` + `content` + `attachment_name/url`；
+  - 数据：`data_year` + `unit_name` + `province` + `region` + `is_belt` + `is_axis` + `sub_field` + `main_business_income`；
+  - 视频：`cover` + `full_video_url` + `preview_video_url`；
+  - 报刊：`issue_no` + `publish_year_month` + `cover` + `summary` + `paper_file_name/url`；
+  - 共用：`member_column_id`（会员栏目）、`source`（来源）、`publish_time`（发布时间）、`status`、`is_top`。
+- **⚠️ 手工 SQL（仅「已经用初版代码建过 `member_content` 表」的环境需要）**：初版把视频地址存在 `video_url`，现更名为 `full_video_url`。AutoMigrate 只加列不删列，不处理会残留一个孤儿列（含数据）。先备份后执行：
+
+```sql
+-- 核对：是否存在旧列（返回 1 行才需要执行下面这条）
+SELECT COLUMN_NAME FROM information_schema.COLUMNS
+ WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'member_content' AND COLUMN_NAME = 'video_url';
+-- 列存在且 full_video_url 尚不存在时（会保留原数据）：
+ALTER TABLE `member_content` CHANGE COLUMN `video_url` `full_video_url` VARCHAR(500) NULL COMMENT '完整视频地址';
+```
+> 全新部署（本次才启用会员专区）无需该 SQL：`AutoMigrate` 会直接按新结构建表。其余新增列（`data_year`/`unit_name`/... /`paper_file_url` 等）由启动时的 `AutoMigrate` 自动补齐。
 - **新增菜单「会员专区」**：`/content/member-zone`（组件 `content/member-zone`），`api_prefix = /member-columns,/member-contents`，启动时幂等播种，无需手工 SQL。
 - **角色权限（需手工勾选）**：`SeedDefaultRolePermissions()` 仅在角色 `permissions` 为空时写入，既有环境的「内容作者」等角色不会被自动补上「会员专区」，需在「系统配置-角色管理-分配权限」中手工勾选该菜单。
 - **接口与权限口径**：
-  - 会员栏目：`GET /member-columns`（分页）、`GET /member-columns/all`（启用项，供下拉）；写操作 `POST/PUT/PATCH /member-columns*`、`DELETE /member-columns/:id` 在**管理员组**。
+  - 会员栏目：`GET /member-columns`（分页，含禁用项，供「所属会员栏目」下拉）；写操作 `POST/PUT/PATCH /member-columns*`、`DELETE /member-columns/:id` 在**管理员组**。
   - 会员内容：`GET /member-contents`、`GET /member-contents/:id`、`POST/PUT/DELETE /member-contents*`、`PATCH /member-contents/:id/status` 在**登录用户组**；非管理员只能看到/维护 `author_code` 为本人 ID 的内容（与 `/articles` 口径一致），管理员可代管全部。
-  - 封面/视频/附件复用 `POST /upload`（`dir=article` / `video` / `attachment`），该接口在菜单豁免表内并已挂 `upload` 限流。
+  - 发布校验（后端为准，前端同步提示）：**仅当状态置为「已发布」时**校验该类型的关键字段（新闻=文章内容或文章附件之一、数据=数据年份+单位名称、视频=完整视频、报刊=期号+出版年月+报刊文件）；草稿/已下线可先建后补。前端 `/member-contents` 列表的「发布」按钮改状态时同样受此校验保护。
+  - 封面/文章附件/报刊文件复用 `POST /upload`（`dir=article` / `attachment`），完整/预览视频用 `dir=video`；该接口在菜单豁免表内并已挂 `upload` 限流。
 
 #### ⚠️ 页面层合并迁移（2026-09-21，手工执行，不可逆）
 

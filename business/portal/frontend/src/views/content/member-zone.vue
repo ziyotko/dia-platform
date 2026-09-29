@@ -115,6 +115,7 @@
                 <el-option label="新闻" :value="1" />
                 <el-option label="数据" :value="2" />
                 <el-option label="视频" :value="3" />
+                <el-option label="报刊" :value="4" />
               </el-select>
             </el-form-item>
             <el-form-item label="状态">
@@ -142,6 +143,9 @@
               <template #default="{ row }">
                 <el-tag size="small" :type="typeTagType(row.type)">{{ typeName(row.type) }}</el-tag>
               </template>
+            </el-table-column>
+            <el-table-column label="关键信息" min-width="150" show-overflow-tooltip>
+              <template #default="{ row }">{{ keyInfo(row) }}</template>
             </el-table-column>
             <el-table-column prop="author" label="作者" width="110" />
             <el-table-column prop="publishTime" label="发布时间" width="170" />
@@ -226,7 +230,7 @@
       destroy-on-close
       :close-on-click-modal="false"
     >
-      <el-form ref="contentFormRef" :model="contentForm" :rules="contentRules" label-width="90px">
+      <el-form ref="contentFormRef" :model="contentForm" :rules="contentRules" label-width="160px">
         <el-form-item label="内容标题" prop="title">
           <el-input v-model="contentForm.title" placeholder="请输入内容标题" maxlength="200" show-word-limit />
         </el-form-item>
@@ -246,67 +250,148 @@
             <el-radio :value="1">新闻</el-radio>
             <el-radio :value="2">数据</el-radio>
             <el-radio :value="3">视频</el-radio>
+            <el-radio :value="4">报刊</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="内容摘要" prop="summary">
-          <el-input
-            v-model="contentForm.summary"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入内容摘要"
-            maxlength="500"
-            show-word-limit
-          />
-        </el-form-item>
-        <el-form-item label="封面">
-          <el-upload
-            :show-file-list="false"
-            :http-request="handleCoverUpload"
-            accept="image/*"
-          >
-            <el-button><el-icon><Upload /></el-icon>上传封面</el-button>
+
+        <!-- 封面图：新闻 / 视频 / 报刊 使用 -->
+        <el-form-item v-if="contentForm.type !== 2" label="封面图" prop="cover">
+          <el-upload :show-file-list="false" :http-request="handleCoverUpload" accept="image/*">
+            <el-button><el-icon><Upload /></el-icon>上传封面图</el-button>
           </el-upload>
           <div v-if="contentForm.cover" class="cover-preview">
             <el-image :src="contentForm.cover" fit="cover" />
             <el-button link type="danger" @click="contentForm.cover = ''">移除</el-button>
           </div>
         </el-form-item>
-        <el-form-item v-if="contentForm.type === 3" label="视频地址">
-          <el-input v-model="contentForm.videoUrl" placeholder="请输入视频地址或点击右侧上传" />
-          <el-upload
-            class="inline-upload"
-            :show-file-list="false"
-            :http-request="handleVideoUpload"
-            accept="video/mp4"
-          >
-            <el-button><el-icon><VideoCamera /></el-icon>上传视频</el-button>
-          </el-upload>
-        </el-form-item>
-        <el-form-item v-if="contentForm.type === 2" label="数据附件">
-          <el-upload :show-file-list="false" :http-request="handleAttachmentUpload">
-            <el-button><el-icon><Paperclip /></el-icon>上传附件</el-button>
-          </el-upload>
-          <span v-if="contentForm.attachmentName" class="attachment-name">
-            {{ contentForm.attachmentName }}
-            <el-button link type="danger" @click="clearAttachment">移除</el-button>
-          </span>
-        </el-form-item>
-        <el-form-item v-if="contentForm.type !== 3" label="内容正文" prop="content" class="editor-form-item">
-          <div class="editor-wrapper">
-            <Toolbar
-              style="border-bottom: 1px solid #e4e7ed"
-              :editor="editorRef"
-              :defaultConfig="toolbarConfig"
-              mode="default"
+
+        <!-- 新闻：文章内容 + 文章附件 -->
+        <template v-if="contentForm.type === 1">
+          <el-form-item label="文章内容" prop="content" class="editor-form-item">
+            <div class="editor-wrapper">
+              <Toolbar
+                style="border-bottom: 1px solid #e4e7ed"
+                :editor="editorRef"
+                :defaultConfig="toolbarConfig"
+                mode="default"
+              />
+              <Editor
+                v-model="contentForm.content"
+                :defaultConfig="editorConfig"
+                mode="default"
+                @onCreated="handleEditorCreated"
+              />
+            </div>
+          </el-form-item>
+          <el-form-item label="文章附件" prop="attachmentUrl">
+            <el-upload :show-file-list="false" :http-request="handleAttachmentUpload">
+              <el-button><el-icon><Paperclip /></el-icon>上传文章附件</el-button>
+            </el-upload>
+            <span v-if="contentForm.attachmentName" class="attachment-name">
+              {{ contentForm.attachmentName }}
+              <el-button link type="danger" @click="clearAttachment">移除</el-button>
+            </span>
+          </el-form-item>
+        </template>
+
+        <!-- 数据 -->
+        <template v-if="contentForm.type === 2">
+          <el-form-item label="数据年份" prop="dataYear">
+            <el-date-picker
+              v-model="contentForm.dataYear"
+              type="year"
+              placeholder="请选择数据年份"
+              value-format="YYYY"
             />
-            <Editor
-              v-model="contentForm.content"
-              :defaultConfig="editorConfig"
-              mode="default"
-              @onCreated="handleEditorCreated"
+          </el-form-item>
+          <el-form-item label="单位名称" prop="unitName">
+            <el-input v-model="contentForm.unitName" placeholder="请输入单位名称" maxlength="200" />
+          </el-form-item>
+          <el-form-item label="所属省份及直辖市" prop="province">
+            <el-input v-model="contentForm.province" placeholder="请输入所属省份及直辖市" maxlength="100" />
+          </el-form-item>
+          <el-form-item label="所属地区" prop="region">
+            <el-input v-model="contentForm.region" placeholder="请输入所属地区" maxlength="100" />
+          </el-form-item>
+          <el-form-item label="是否一带" prop="isBelt">
+            <el-radio-group v-model="contentForm.isBelt">
+              <el-radio :value="1">是</el-radio>
+              <el-radio :value="0">否</el-radio>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item label="是否一轴" prop="isAxis">
+            <el-radio-group v-model="contentForm.isAxis">
+              <el-radio :value="1">是</el-radio>
+              <el-radio :value="0">否</el-radio>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item label="细分领域" prop="subField">
+            <el-input v-model="contentForm.subField" placeholder="请输入细分领域" maxlength="200" />
+          </el-form-item>
+          <el-form-item label="主营业务收入（亿元）" prop="mainBusinessIncome">
+            <el-input-number
+              v-model="contentForm.mainBusinessIncome"
+              :min="0"
+              :precision="2"
+              :step="100"
+              controls-position="right"
             />
-          </div>
-        </el-form-item>
+          </el-form-item>
+        </template>
+
+        <!-- 视频：完整视频 + 预览视频 -->
+        <template v-if="contentForm.type === 3">
+          <el-form-item label="完整视频" prop="fullVideoUrl">
+            <div class="media-row">
+              <el-input v-model="contentForm.fullVideoUrl" placeholder="上传后自动填入，也可直接填写视频地址" />
+              <el-upload :show-file-list="false" :http-request="handleFullVideoUpload" accept="video/mp4">
+                <el-button><el-icon><VideoCamera /></el-icon>上传完整视频</el-button>
+              </el-upload>
+            </div>
+          </el-form-item>
+          <el-form-item label="预览视频" prop="previewVideoUrl">
+            <div class="media-row">
+              <el-input v-model="contentForm.previewVideoUrl" placeholder="上传后自动填入，也可直接填写视频地址" />
+              <el-upload :show-file-list="false" :http-request="handlePreviewVideoUpload" accept="video/mp4">
+                <el-button><el-icon><VideoCamera /></el-icon>上传预览视频</el-button>
+              </el-upload>
+            </div>
+          </el-form-item>
+        </template>
+
+        <!-- 报刊：期号 + 出版年月 + 摘要 + 报刊文件 -->
+        <template v-if="contentForm.type === 4">
+          <el-form-item label="期号" prop="issueNo">
+            <el-input v-model="contentForm.issueNo" placeholder="请输入期号" maxlength="50" />
+          </el-form-item>
+          <el-form-item label="出版年月" prop="publishYearMonth">
+            <el-date-picker
+              v-model="contentForm.publishYearMonth"
+              type="month"
+              placeholder="请选择出版年月"
+              value-format="YYYY-MM"
+            />
+          </el-form-item>
+          <el-form-item label="摘要" prop="summary">
+            <el-input
+              v-model="contentForm.summary"
+              type="textarea"
+              :rows="3"
+              placeholder="请输入摘要"
+              maxlength="500"
+              show-word-limit
+            />
+          </el-form-item>
+          <el-form-item label="报刊文件" prop="paperFileUrl">
+            <el-upload :show-file-list="false" :http-request="handlePaperFileUpload">
+              <el-button><el-icon><Paperclip /></el-icon>上传报刊文件</el-button>
+            </el-upload>
+            <span v-if="contentForm.paperFileName" class="attachment-name">
+              {{ contentForm.paperFileName }}
+              <el-button link type="danger" @click="clearPaperFile">移除</el-button>
+            </span>
+          </el-form-item>
+        </template>
         <el-form-item label="来源" prop="source">
           <el-input v-model="contentForm.source" placeholder="请输入来源" maxlength="200" />
         </el-form-item>
@@ -552,36 +637,94 @@ const contentForm = reactive({
   memberColumnId: undefined as number | undefined,
   title: '',
   type: 1,
-  summary: '',
-  content: '',
-  cover: '',
-  videoUrl: '',
-  attachmentName: '',
-  attachmentUrl: '',
   source: '',
   publishTime: '',
   status: 0,
-  isTop: 0
+  isTop: 0,
+  cover: '',
+  // 新闻
+  content: '',
+  attachmentName: '',
+  attachmentUrl: '',
+  // 数据
+  dataYear: '',
+  unitName: '',
+  province: '',
+  region: '',
+  isBelt: 0,
+  isAxis: 0,
+  subField: '',
+  mainBusinessIncome: 0,
+  // 视频
+  fullVideoUrl: '',
+  previewVideoUrl: '',
+  // 报刊
+  issueNo: '',
+  publishYearMonth: '',
+  summary: '',
+  paperFileName: '',
+  paperFileUrl: ''
 })
 
-const contentRules = {
-  title: [{ required: true, message: '请输入内容标题', trigger: 'blur' }],
-  memberColumnId: [{ required: true, message: '请选择会员栏目', trigger: 'change' }],
-  type: [{ required: true, message: '请选择内容类型', trigger: 'change' }]
-}
+/** 富文本正文转纯文本后判断是否真的填了内容（空编辑器会产出 <p><br></p>） */
+const hasRichText = (html: string) =>
+  (html || '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .trim().length > 0
+
+// 与后端 services.validateMemberContentByType 口径一致：
+// 仅当状态为「已发布」时才校验各类型的业务关键字段（草稿/已下线允许先建后补）
+const contentRules = computed(() => {
+  const rules: Record<string, any> = {
+    title: [{ required: true, message: '请输入内容标题', trigger: 'blur' }],
+    memberColumnId: [{ required: true, message: '请选择会员栏目', trigger: 'change' }],
+    type: [{ required: true, message: '请选择内容类型', trigger: 'change' }]
+  }
+  if (contentForm.status !== 1) return rules
+  if (contentForm.type === 1) {
+    rules.content = [
+      {
+        validator: (_rule: any, _value: any, callback: (error?: Error) => void) => {
+          if (hasRichText(contentForm.content) || contentForm.attachmentUrl) callback()
+          else callback(new Error('发布新闻前请填写文章内容或上传文章附件'))
+        },
+        trigger: 'blur'
+      }
+    ]
+  } else if (contentForm.type === 2) {
+    rules.dataYear = [{ required: true, message: '发布数据前请填写数据年份', trigger: 'change' }]
+    rules.unitName = [{ required: true, message: '发布数据前请填写单位名称', trigger: 'blur' }]
+  } else if (contentForm.type === 3) {
+    rules.fullVideoUrl = [{ required: true, message: '发布视频前请上传完整视频', trigger: 'blur' }]
+  } else if (contentForm.type === 4) {
+    rules.issueNo = [{ required: true, message: '发布报刊前请填写期号', trigger: 'blur' }]
+    rules.publishYearMonth = [{ required: true, message: '发布报刊前请填写出版年月', trigger: 'change' }]
+    rules.paperFileUrl = [{ required: true, message: '发布报刊前请上传报刊文件', trigger: 'blur' }]
+  }
+  return rules
+})
 
 const typeName = (type: number) => {
-  const map: Record<number, string> = { 1: '新闻', 2: '数据', 3: '视频' }
+  const map: Record<number, string> = { 1: '新闻', 2: '数据', 3: '视频', 4: '报刊' }
   return map[type] || '新闻'
 }
 
-const typeTagType = (type: number): 'primary' | 'success' | 'warning' => {
-  const map: Record<number, 'primary' | 'success' | 'warning'> = {
+const typeTagType = (type: number): 'primary' | 'success' | 'warning' | 'danger' => {
+  const map: Record<number, 'primary' | 'success' | 'warning' | 'danger'> = {
     1: 'primary',
     2: 'success',
-    3: 'warning'
+    3: 'warning',
+    4: 'danger'
   }
   return map[type] || 'primary'
+}
+
+/** 列表「关键信息」列：按类型取最能区分该条内容的字段 */
+const keyInfo = (row: any) => {
+  if (row.type === 2) return [row.dataYear, row.unitName].filter(Boolean).join(' · ') || '-'
+  if (row.type === 4) return [row.issueNo, row.publishYearMonth].filter(Boolean).join(' · ') || '-'
+  return '-'
 }
 
 const statusName = (status: number) => {
@@ -604,16 +747,29 @@ const resetContentForm = () => {
     memberColumnId: undefined,
     title: '',
     type: 1,
-    summary: '',
-    content: '',
-    cover: '',
-    videoUrl: '',
-    attachmentName: '',
-    attachmentUrl: '',
     source: '',
     publishTime: '',
     status: 0,
-    isTop: 0
+    isTop: 0,
+    cover: '',
+    content: '',
+    attachmentName: '',
+    attachmentUrl: '',
+    dataYear: '',
+    unitName: '',
+    province: '',
+    region: '',
+    isBelt: 0,
+    isAxis: 0,
+    subField: '',
+    mainBusinessIncome: 0,
+    fullVideoUrl: '',
+    previewVideoUrl: '',
+    issueNo: '',
+    publishYearMonth: '',
+    summary: '',
+    paperFileName: '',
+    paperFileUrl: ''
   })
 }
 
@@ -671,16 +827,29 @@ const handleEditContent = async (row: any) => {
       memberColumnId: detail.memberColumnId,
       title: detail.title,
       type: detail.type,
-      summary: detail.summary,
-      content: detail.content || '',
-      cover: detail.cover,
-      videoUrl: detail.videoUrl,
-      attachmentName: detail.attachmentName,
-      attachmentUrl: detail.attachmentUrl,
       source: detail.source,
       publishTime: detail.publishTime || '',
       status: detail.status,
-      isTop: detail.isTop
+      isTop: detail.isTop,
+      cover: detail.cover,
+      content: detail.content || '',
+      attachmentName: detail.attachmentName,
+      attachmentUrl: detail.attachmentUrl,
+      dataYear: detail.dataYear,
+      unitName: detail.unitName,
+      province: detail.province,
+      region: detail.region,
+      isBelt: detail.isBelt ?? 0,
+      isAxis: detail.isAxis ?? 0,
+      subField: detail.subField,
+      mainBusinessIncome: detail.mainBusinessIncome ?? 0,
+      fullVideoUrl: detail.fullVideoUrl,
+      previewVideoUrl: detail.previewVideoUrl,
+      issueNo: detail.issueNo,
+      publishYearMonth: detail.publishYearMonth,
+      summary: detail.summary,
+      paperFileName: detail.paperFileName,
+      paperFileUrl: detail.paperFileUrl
     })
     contentDialogVisible.value = true
   } catch {
@@ -741,25 +910,43 @@ const handleDeleteContent = (row: any) => {
 const handleCoverUpload = async (options: any) => {
   const res: any = await uploadFile(options.file, 'article')
   contentForm.cover = res.data?.url || ''
-  ElMessage.success('封面上传成功')
-}
-
-const handleVideoUpload = async (options: any) => {
-  const res: any = await uploadFile(options.file, 'video')
-  contentForm.videoUrl = res.data?.url || ''
-  ElMessage.success('视频上传成功')
+  ElMessage.success('封面图上传成功')
 }
 
 const handleAttachmentUpload = async (options: any) => {
   const res: any = await uploadFile(options.file, 'attachment')
   contentForm.attachmentUrl = res.data?.url || ''
   contentForm.attachmentName = res.data?.name || options.file?.name || ''
-  ElMessage.success('附件上传成功')
+  ElMessage.success('文章附件上传成功')
+}
+
+const handleFullVideoUpload = async (options: any) => {
+  const res: any = await uploadFile(options.file, 'video')
+  contentForm.fullVideoUrl = res.data?.url || ''
+  ElMessage.success('完整视频上传成功')
+}
+
+const handlePreviewVideoUpload = async (options: any) => {
+  const res: any = await uploadFile(options.file, 'video')
+  contentForm.previewVideoUrl = res.data?.url || ''
+  ElMessage.success('预览视频上传成功')
+}
+
+const handlePaperFileUpload = async (options: any) => {
+  const res: any = await uploadFile(options.file, 'attachment')
+  contentForm.paperFileUrl = res.data?.url || ''
+  contentForm.paperFileName = res.data?.name || options.file?.name || ''
+  ElMessage.success('报刊文件上传成功')
 }
 
 const clearAttachment = () => {
   contentForm.attachmentUrl = ''
   contentForm.attachmentName = ''
+}
+
+const clearPaperFile = () => {
+  contentForm.paperFileUrl = ''
+  contentForm.paperFileName = ''
 }
 
 // ============================ 富文本编辑器 ============================
@@ -849,9 +1036,16 @@ onBeforeUnmount(() => {
   border: 1px solid var(--app-brand-soft);
 }
 
-.inline-upload {
-  display: inline-block;
-  margin-left: 10px;
+.media-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.media-row .el-input {
+  flex: 1;
+  min-width: 0;
 }
 
 .attachment-name {

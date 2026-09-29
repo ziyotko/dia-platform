@@ -516,28 +516,45 @@
 
 #### `member_content` 会员专属内容表
 
-由作者本人发布的会员专属内容（新闻/数据/视频），每条归属一个会员栏目；非管理员仅能看到/维护自己的内容（与 `article` 的 `author_code` 归属口径一致）。
+由作者本人发布的会员专属内容，**按业务类型（`type`）使用不同字段组合**，未使用的类型字段留空；每条内容归属一个会员栏目。非管理员仅能看到/维护自己的内容（与 `article` 的 `author_code` 归属口径一致）。
 
 | 字段 | 类型 | 允许空 | 默认 | 键 | 说明 |
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
 | member_column_id | bigint unsigned | 否 | - | IDX | 所属会员栏目 ID（逻辑关联 `member_column.id`，不建外键） |
-| title | varchar(200) | 否 | - | - | 内容标题 |
-| type | bigint | 是 | 1 | IDX | 类型：1 新闻 / 2 数据 / 3 视频 |
-| summary | varchar(500) | 是 | - | - | 摘要 |
-| content | longtext | 是 | - | - | 正文（富文本 HTML，视频类型不使用） |
-| cover | varchar(500) | 是 | - | - | 封面图 |
-| video_url | varchar(500) | 是 | - | - | 视频地址（`type=3` 视频时使用） |
-| attachment_name | varchar(255) | 是 | - | - | 数据附件名称（`type=2` 数据时使用） |
-| attachment_url | varchar(500) | 是 | - | - | 数据附件地址 |
-| author | varchar(100) | 是 | - | - | 作者姓名（取当前登录用户，忽略请求体） |
-| author_code | varchar(100) | 是 | - | IDX | 作者编码（存用户 ID 字符串） |
-| source | varchar(200) | 是 | - | - | 来源 |
-| publish_time | datetime(3) | 是 | - | - | 发布时间（自定义 LocalTime） |
+| title | varchar(200) | 否 | - | - | 标题（所有类型必填） |
+| type | bigint | 是 | 1 | IDX | 类型：1 新闻 / 2 数据 / 3 视频 / 4 报刊 |
+| source | varchar(200) | 是 | - | - | 来源（共用） |
+| publish_time | datetime(3) | 是 | - | - | 发布时间（共用，自定义 LocalTime） |
 | status | bigint | 是 | 0 | IDX | 状态：0 草稿 / 1 已发布 / 2 已下线 |
 | is_top | bigint | 是 | 0 | - | 是否置顶（列表按 `is_top DESC, id DESC` 排序） |
+| author | varchar(100) | 是 | - | - | 作者姓名（取当前登录用户，忽略请求体） |
+| author_code | varchar(100) | 是 | - | IDX | 作者编码（存用户 ID 字符串） |
 | view_count | bigint | 是 | 0 | - | 浏览数（创建时强制归零） |
+| cover | varchar(500) | 是 | - | - | **封面图**（新闻 / 视频 / 报刊） |
+| content | longtext | 是 | - | - | **文章内容**（新闻，富文本 HTML） |
+| attachment_name | varchar(255) | 是 | - | - | **文章附件**名称（新闻） |
+| attachment_url | varchar(500) | 是 | - | - | **文章附件**地址（新闻） |
+| data_year | varchar(20) | 是 | - | - | **数据年份**（数据，YYYY） |
+| unit_name | varchar(200) | 是 | - | - | **单位名称**（数据） |
+| province | varchar(100) | 是 | - | - | **所属省份及直辖市**（数据） |
+| region | varchar(100) | 是 | - | - | **所属地区**（数据） |
+| is_belt | bigint | 是 | 0 | - | **是否一带**（数据）：0 否 / 1 是 |
+| is_axis | bigint | 是 | 0 | - | **是否一轴**（数据）：0 否 / 1 是 |
+| sub_field | varchar(200) | 是 | - | - | **细分领域**（数据） |
+| main_business_income | decimal(18,2) | 是 | 0 | - | **主营业务收入（亿元）**（数据） |
+| full_video_url | varchar(500) | 是 | - | - | **完整视频**地址（视频） |
+| preview_video_url | varchar(500) | 是 | - | - | **预览视频**地址（视频） |
+| issue_no | varchar(50) | 是 | - | - | **期号**（报刊） |
+| publish_year_month | varchar(20) | 是 | - | - | **出版年月**（报刊，YYYY-MM） |
+| summary | varchar(500) | 是 | - | - | **摘要**（报刊） |
+| paper_file_name | varchar(255) | 是 | - | - | **报刊文件**名称（报刊） |
+| paper_file_url | varchar(500) | 是 | - | - | **报刊文件**地址（报刊） |
+
+> 各类型必填口径（仅当 `status = 1 已发布` 时由服务端 `validateMemberContentByType` 校验，草稿/已下线允许先建后补）：
+> 新闻 = 文章内容（转纯文本后非空）或文章附件之一；数据 = 数据年份 + 单位名称；视频 = 完整视频；报刊 = 期号 + 出版年月 + 报刊文件。
+> `video_url`（初版字段名）已更名为 `full_video_url`，旧库需手工 `ALTER TABLE member_content CHANGE COLUMN video_url full_video_url VARCHAR(500) NULL;`（见 `DEPLOY.md` 2026-09-29 升级说明）。
 
 ### 3.6 静态化
 

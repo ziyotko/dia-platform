@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"gorm.io/gorm"
@@ -136,25 +137,47 @@ func (s *MemberContentService) UpdateMemberContent(id uint, content *models.Memb
 		return err
 	}
 	return utils.DB.Model(&old).Updates(map[string]any{
-		"member_column_id": content.MemberColumnID,
-		"title":            content.Title,
-		"type":             content.Type,
-		"summary":          content.Summary,
-		"content":          content.Content,
-		"cover":            content.Cover,
-		"video_url":        content.VideoURL,
-		"attachment_name":  content.AttachmentName,
-		"attachment_url":   content.AttachmentURL,
-		"source":           content.Source,
-		"publish_time":     content.PublishTime,
-		"status":           content.Status,
-		"is_top":           content.IsTop,
+		"member_column_id":     content.MemberColumnID,
+		"title":                content.Title,
+		"type":                 content.Type,
+		"source":               content.Source,
+		"publish_time":         content.PublishTime,
+		"status":               content.Status,
+		"is_top":               content.IsTop,
+		"cover":                content.Cover,
+		"content":              content.Content,
+		"attachment_name":      content.AttachmentName,
+		"attachment_url":       content.AttachmentURL,
+		"data_year":            content.DataYear,
+		"unit_name":            content.UnitName,
+		"province":             content.Province,
+		"region":               content.Region,
+		"is_belt":              content.IsBelt,
+		"is_axis":              content.IsAxis,
+		"sub_field":            content.SubField,
+		"main_business_income": content.MainBusinessIncome,
+		"full_video_url":       content.FullVideoURL,
+		"preview_video_url":    content.PreviewVideoURL,
+		"issue_no":             content.IssueNo,
+		"publish_year_month":   content.PublishYearMonth,
+		"summary":              content.Summary,
+		"paper_file_name":      content.PaperFileName,
+		"paper_file_url":       content.PaperFileURL,
 	}).Error
 }
 
 func (s *MemberContentService) UpdateMemberContentStatus(id uint, status int) error {
 	if status != models.MemberContentStatusDraft && status != models.MemberContentStatusPublished && status != models.MemberContentStatusOffline {
 		return errors.New("状态值无效")
+	}
+	// 切到「已发布」时同样要过该类型的业务必填项校验，避免绕过编辑保存发布空壳内容
+	var content models.MemberContent
+	if err := utils.DB.First(&content, id).Error; err != nil {
+		return err
+	}
+	content.Status = status
+	if err := validateMemberContentByType(&content); err != nil {
+		return err
 	}
 	return utils.DB.Model(&models.MemberContent{}).Where("id = ?", id).Update("status", status).Error
 }
@@ -196,6 +219,53 @@ func validateMemberContent(content *models.MemberContent, requireEnabledColumn b
 	}
 	if requireEnabledColumn && column.Status != 1 {
 		return fmt.Errorf("会员栏目「%s」已禁用，不能投放内容", column.Name)
+	}
+	return validateMemberContentByType(content)
+}
+
+// htmlTagRE 用于把富文本正文转成纯文本（空编辑器产出 <p><br></p>，直接判空会误判为有内容）
+var htmlTagRE = regexp.MustCompile(`<[^>]*>`)
+
+// memberContentPlainText 去掉 HTML 标签与 &nbsp; 后返回去掉首尾空白的纯文本
+func memberContentPlainText(html string) string {
+	plain := htmlTagRE.ReplaceAllString(html, "")
+	plain = strings.ReplaceAll(plain, "&nbsp;", " ")
+	return strings.TrimSpace(plain)
+}
+
+// validateMemberContentByType 按业务类型校验「已发布」内容的关键字段。
+// 草稿（0）与已下线（2）不做限制：允许先把内容建好、逐步补齐后再发布。
+func validateMemberContentByType(content *models.MemberContent) error {
+	if content.Status != models.MemberContentStatusPublished {
+		return nil
+	}
+	switch content.Type {
+	case models.MemberContentTypeNews:
+		// 富文本空编辑器会产出 <p><br></p>，需转纯文本后再判空
+		if memberContentPlainText(content.Content) == "" && strings.TrimSpace(content.AttachmentURL) == "" {
+			return errors.New("发布新闻前请填写文章内容或上传文章附件")
+		}
+	case models.MemberContentTypeData:
+		if strings.TrimSpace(content.DataYear) == "" {
+			return errors.New("发布数据前请填写数据年份")
+		}
+		if strings.TrimSpace(content.UnitName) == "" {
+			return errors.New("发布数据前请填写单位名称")
+		}
+	case models.MemberContentTypeVideo:
+		if strings.TrimSpace(content.FullVideoURL) == "" {
+			return errors.New("发布视频前请上传完整视频")
+		}
+	case models.MemberContentTypePaper:
+		if strings.TrimSpace(content.IssueNo) == "" {
+			return errors.New("发布报刊前请填写期号")
+		}
+		if strings.TrimSpace(content.PublishYearMonth) == "" {
+			return errors.New("发布报刊前请填写出版年月")
+		}
+		if strings.TrimSpace(content.PaperFileURL) == "" {
+			return errors.New("发布报刊前请上传报刊文件")
+		}
 	}
 	return nil
 }
