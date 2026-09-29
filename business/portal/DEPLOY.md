@@ -169,6 +169,20 @@ SELECT id, title, publish_time, created_at FROM article
 - **限流类响应业务码由 1 改为 429**（`RateLimitMiddleware` / 单 IP 并发限制 / 防重放临时封禁，文案不变）；前端仍只依赖 0 与 401，无需改动。
 - 二进体内嵌 `time/tzdata`：DSN 的 `loc=Asia/Shanghai` 在没装 tzdata 的精简镜像上也能正常解析（无需系统时区库）。
 
+#### 升级说明（2026-09-29，无需手工 SQL）
+
+- **新增「会员专区」（内容管理 → 会员专区）**：用于维护会员栏目（分类）并由用户发布会员专属内容（新闻/数据/视频）到指定会员栏目。
+- **新增两张表，启动时由 `AutoMigrate` 自动创建，无需手工 SQL**：
+  - `member_column`：会员栏目（名称/编码唯一，`status` 1 启用 / 0 禁用；删除前校验其下是否仍有内容）。
+  - `member_content`：会员专属内容（`member_column_id` 归属栏目；`type` 1 新闻 / 2 数据 / 3 视频；`status` 0 草稿 / 1 已发布 / 2 已下线；`author_code` 存用户 ID 字符串）。
+  - 表结构详见 `backend/docs/database.md` §二、§3.5。
+- **新增菜单「会员专区」**：`/content/member-zone`（组件 `content/member-zone`），`api_prefix = /member-columns,/member-contents`，启动时幂等播种，无需手工 SQL。
+- **角色权限（需手工勾选）**：`SeedDefaultRolePermissions()` 仅在角色 `permissions` 为空时写入，既有环境的「内容作者」等角色不会被自动补上「会员专区」，需在「系统配置-角色管理-分配权限」中手工勾选该菜单。
+- **接口与权限口径**：
+  - 会员栏目：`GET /member-columns`（分页）、`GET /member-columns/all`（启用项，供下拉）；写操作 `POST/PUT/PATCH /member-columns*`、`DELETE /member-columns/:id` 在**管理员组**。
+  - 会员内容：`GET /member-contents`、`GET /member-contents/:id`、`POST/PUT/DELETE /member-contents*`、`PATCH /member-contents/:id/status` 在**登录用户组**；非管理员只能看到/维护 `author_code` 为本人 ID 的内容（与 `/articles` 口径一致），管理员可代管全部。
+  - 封面/视频/附件复用 `POST /upload`（`dir=article` / `video` / `attachment`），该接口在菜单豁免表内并已挂 `upload` 限流。
+
 #### ⚠️ 页面层合并迁移（2026-09-21，手工执行，不可逆）
 
 模板即「页面」：原 `page` 表已合并进 `template`，`column`/`ad`/`link`/`article_column_publish` 改用 `template_id`。

@@ -38,6 +38,7 @@ func SetupRoutes(router *gin.Engine) {
 	staticPageController := controllers.NewStaticPageController()
 	staticMonitorController := controllers.NewStaticMonitorController()
 	staticJobController := controllers.NewStaticJobController()
+	memberZoneController := controllers.NewMemberZoneController()
 	apiPrefix := config.AppConfig.Server.ApiPrefix
 
 	public := router.Group(apiPrefix)
@@ -147,6 +148,15 @@ func SetupRoutes(router *gin.Engine) {
 		member.GET("/workflow-roles", workflowRoleController.GetWorkflowRoles)
 		member.GET("/ads", adController.GetAds)
 		member.GET("/links", linkController.GetLinks)
+
+		// 会员专区：会员栏目为只读选项（写操作在 admin 组），会员内容由作者本人维护
+		member.GET("/member-columns", memberZoneController.GetMemberColumns)
+		member.GET("/member-contents", memberZoneController.GetMemberContents)
+		member.GET("/member-contents/:id", memberZoneController.GetMemberContentByID)
+		member.POST("/member-contents", memberZoneController.CreateMemberContent)
+		member.PUT("/member-contents/:id", memberZoneController.UpdateMemberContent)
+		member.PATCH("/member-contents/:id/status", memberZoneController.UpdateMemberContentStatus)
+		member.DELETE("/member-contents/:id", memberZoneController.DeleteMemberContent)
 
 		// 文件上传（作者上传封面/附件/视频）
 		// 按真实客户端 IP 限流：/upload 在菜单豁免表内（任意已认证账号可用），
@@ -259,6 +269,12 @@ func SetupRoutes(router *gin.Engine) {
 		admin.PUT("/ads/:id", adController.UpdateAd)
 		admin.DELETE("/ads/:id", adController.DeleteAd)
 		admin.PATCH("/ads/:id/status", adController.UpdateAdStatus)
+
+		// 会员栏目管理（写操作，仅管理员）
+		admin.POST("/member-columns", memberZoneController.CreateMemberColumn)
+		admin.PUT("/member-columns/:id", memberZoneController.UpdateMemberColumn)
+		admin.PATCH("/member-columns/:id/status", memberZoneController.UpdateMemberColumnStatus)
+		admin.DELETE("/member-columns/:id", memberZoneController.DeleteMemberColumn)
 
 		// 友情链接管理（写操作）
 		admin.POST("/links", linkController.CreateLink)

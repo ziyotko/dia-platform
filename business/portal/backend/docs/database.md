@@ -62,8 +62,10 @@
 | 28 | `share_analytics` | 数据统计 | 分享统计 |
 | 29 | `operation_log` | 系统管理 | 操作日志 |
 | 30 | `login_log` | 系统管理 | 登录日志 |
+| 31 | `member_column` | 内容管理 | 会员栏目（会员专区栏目分类） |
+| 32 | `member_content` | 内容管理 | 会员专属内容（新闻/数据/视频） |
 
-> 以上 30 张表全部由 `internal/models/migrate.go` 的 `AutoMigrate` 创建；其中 `article_tag`、`article_column` 是 GORM 自动生成的连接表（无对应模型文件）。
+> 以上 32 张表全部由 `internal/models/migrate.go` 的 `AutoMigrate` 创建；其中 `article_tag`、`article_column` 是 GORM 自动生成的连接表（无对应模型文件）。
 
 ---
 
@@ -498,6 +500,45 @@
 | author | varchar(100) | 是 | - | - | 作者姓名 |
 | author_code | varchar(100) | 是 | - | - | 作者编码 |
 
+#### `member_column` 会员栏目表
+
+会员专区下用于归类会员专属内容的栏目（需求中的“会员栏目分类”），仅管理员可维护。删除前会校验其下是否仍有内容。
+
+| 字段 | 类型 | 允许空 | 默认 | 键 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
+| created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
+| name | varchar(100) | 否 | - | - | 栏目名称（唯一，写入前校验） |
+| code | varchar(100) | 否 | - | - | 栏目编码（唯一，写入前校验） |
+| description | varchar(500) | 是 | - | - | 描述 |
+| sort | bigint | 是 | 0 | - | 排序号 |
+| status | bigint | 是 | 1 | IDX | 状态：1 启用 / 0 禁用（禁用后不允许向其投放新内容） |
+
+#### `member_content` 会员专属内容表
+
+由作者本人发布的会员专属内容（新闻/数据/视频），每条归属一个会员栏目；非管理员仅能看到/维护自己的内容（与 `article` 的 `author_code` 归属口径一致）。
+
+| 字段 | 类型 | 允许空 | 默认 | 键 | 说明 |
+| --- | --- | --- | --- | --- | --- |
+| id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
+| created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
+| member_column_id | bigint unsigned | 否 | - | IDX | 所属会员栏目 ID（逻辑关联 `member_column.id`，不建外键） |
+| title | varchar(200) | 否 | - | - | 内容标题 |
+| type | bigint | 是 | 1 | IDX | 类型：1 新闻 / 2 数据 / 3 视频 |
+| summary | varchar(500) | 是 | - | - | 摘要 |
+| content | longtext | 是 | - | - | 正文（富文本 HTML，视频类型不使用） |
+| cover | varchar(500) | 是 | - | - | 封面图 |
+| video_url | varchar(500) | 是 | - | - | 视频地址（`type=3` 视频时使用） |
+| attachment_name | varchar(255) | 是 | - | - | 数据附件名称（`type=2` 数据时使用） |
+| attachment_url | varchar(500) | 是 | - | - | 数据附件地址 |
+| author | varchar(100) | 是 | - | - | 作者姓名（取当前登录用户，忽略请求体） |
+| author_code | varchar(100) | 是 | - | IDX | 作者编码（存用户 ID 字符串） |
+| source | varchar(200) | 是 | - | - | 来源 |
+| publish_time | datetime(3) | 是 | - | - | 发布时间（自定义 LocalTime） |
+| status | bigint | 是 | 0 | IDX | 状态：0 草稿 / 1 已发布 / 2 已下线 |
+| is_top | bigint | 是 | 0 | - | 是否置顶（列表按 `is_top DESC, id DESC` 排序） |
+| view_count | bigint | 是 | 0 | - | 浏览数（创建时强制归零） |
+
 ### 3.6 静态化
 
 #### `static_log` 静态化日志表
@@ -651,14 +692,15 @@ erDiagram
 | 顶级目录 | 子菜单（接口前缀） |
 | --- | --- |
 | 管理首页 | 管理首页（`/dashboard`） |
-| 内容管理 | 待审核（`/articles/my-audits`）、图文管理（`/articles`）、广告管理（`/ads`）、链接管理（`/links`）、模板管理（`/templates`）、栏目管理（`/columns,/templates`）、分类管理（`/categories`）、标签管理（`/tags`） |
+| 内容管理 | 待审核（`/articles/my-audits`）、图文管理（`/articles`）、广告管理（`/ads`）、链接管理（`/links`）、模板管理（`/templates`）、栏目管理（`/columns,/templates,/workflows`）、分类管理（`/categories`）、标签管理（`/tags`）、会员专区（`/member-columns,/member-contents`） |
 | 数据统计 | 内容数据（`/analytics/article-trend`）、文章统计（`/articles/author-stats`）、分类统计（`/categories/stats`）、标签统计（`/tags/stats`） |
 | 系统配置 | 用户管理（`/users,/organizations`）、部门管理（`/departments,/organizations,/users`）、机构管理（`/organizations,/users`）、角色管理（`/roles`）、菜单管理（`/menus`）、流程角色（`/workflow-roles,/users`）、流程管理（`/workflows,/users,/workflow-roles`）、操作日志（`/logs`）、登录日志（`/login-logs`） |
 | 基础配置 | 静态化管理（`/static,/static-logs,/static-monitor,/settings`）、系统设置（`/settings`，含“静态化设置”页签） |
 
 > 菜单结构或前缀调整后，`SeedDefaultMenus()` 会幂等补齐/升级（仅当当前值仍为旧默认值时才改写），并清理历史重复菜单：
 > 同一「父级 + 名称 + 类型 + 路径 + 组件」只保留 id 最小的一条（仍有子菜单的不动），同时把 `role.permissions` 中指向被删菜单的 ID 改指到保留的那条。
-> 默认角色权限由 `SeedDefaultRolePermissions()` 播种（仅当该角色 `permissions` 为空时写入）：内容审核 = 管理首页/待审核/图文管理，内容作者 = 管理首页/图文管理；角色 1 无需声明（`GetUserMenus` 对其无条件返回全部启用菜单）。
+> 默认角色权限由 `SeedDefaultRolePermissions()` 播种（仅当该角色 `permissions` 为空时写入）：内容审核 = 管理首页/待审核/图文管理，内容作者 = 管理首页/图文管理/会员专区；角色 1 无需声明（`GetUserMenus` 对其无条件返回全部启用菜单）。
+> **老库升级**：`permissions` 非空的既有角色不会被重新播种，需在「系统配置-角色管理-分配权限」中手工为对应角色勾选「会员专区」。
 
 ---
 

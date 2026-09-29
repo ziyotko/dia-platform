@@ -194,6 +194,8 @@ func AllModels() []any {
 		&ArticleColumnPublish{},
 		&StaticLog{},
 		&ArticleAttachment{},
+		&MemberColumn{},
+		&MemberContent{},
 	}
 }
 

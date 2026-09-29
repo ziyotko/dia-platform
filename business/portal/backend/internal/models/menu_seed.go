@@ -22,6 +22,11 @@ const staticManagementAPIPrefix = "/static,/static-logs,/static-monitor,/setting
 // 因此 api_prefix 追加 /templates 与 /workflows（/columns 已足够覆盖栏目读写）。
 const columnManagementAPIPrefix = "/columns,/templates,/workflows"
 
+// 「会员专区」页面同时维护会员栏目（/member-columns）与会员专属内容（/member-contents）两个模块，
+// 且两模块都带 /:id 写路由，故必须把两个前缀都声明上（豁免表是精确匹配，覆盖不到子路径）。
+// 内容封面/视频/附件复用 /upload（已在豁免表内）。
+const memberZoneAPIPrefix = "/member-columns,/member-contents"
+
 // 「管理首页」除仪表盘数据外，还会拉取「待我审核」列表（GET /articles/my-audits，member 组）用于「待处理」卡片，
 // 未同时授予「待审核」/「图文管理」菜单的角色否则会报「没有授权」并静默显示空列表。
 const dashboardAPIPrefix = "/dashboard,/articles/my-audits"
@@ -84,6 +89,7 @@ var defaultMenus = []menuSeedItem{
 			{Name: "栏目管理", Path: "/content/column", Component: "content/column", Icon: "Grid", Type: "menu", Sort: 6, Status: 1, APIPrefix: columnManagementAPIPrefix},
 			{Name: "分类管理", Path: "/content/category", Component: "content/category", Icon: "Folder", Type: "menu", Sort: 7, Status: 1, APIPrefix: "/categories"},
 			{Name: "标签管理", Path: "/content/tag", Component: "content/tag", Icon: "PriceTag", Type: "menu", Sort: 8, Status: 1, APIPrefix: "/tags"},
+			{Name: "会员专区", Path: "/content/member-zone", Component: "content/member-zone", Icon: "Star", Type: "menu", Sort: 9, Status: 1, APIPrefix: memberZoneAPIPrefix},
 		},
 	},
 	{
@@ -356,7 +362,7 @@ func upgradeMenuPath(name, legacyPath, newPath string) {
 // 注：原「普通管理员（admin）」角色已下线移除，其 "*"（全部菜单）配置一并删除。
 var defaultRoleMenus = map[string][]string{
 	"content_reviewer": {"管理首页", "待审核", "图文管理"},
-	"content_author":   {"管理首页", "图文管理"},
+	"content_author":   {"管理首页", "图文管理", "会员专区"},
 }
 
 // SeedDefaultRolePermissions 为内置角色初始化菜单权限：
