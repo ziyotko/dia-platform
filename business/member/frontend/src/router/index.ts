@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { loginRouteLocation } from '@/utils/returnUrl'
 
 const router = createRouter({
   // 基路径跟随 vite base（由 .env 的 VITE_BASE_PATH 决定），避免与部署子路径不一致
@@ -107,7 +108,8 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   if (!userStore.isLoggedIn) {
-    next('/login')
+    // 带上原目标地址，登录成功后自动跳回（见 @/utils/returnUrl）
+    next(loginRouteLocation(to.fullPath))
     return
   }
 
@@ -120,7 +122,7 @@ router.beforeEach(async (to, _from, next) => {
       // 复用 store 的统一清理（token/userInfo/menus + localStorage 键），
       // 避免这里漏清新增的会话键
       userStore.clearSession()
-      next('/login')
+      next(loginRouteLocation(to.fullPath))
       return
     }
   }

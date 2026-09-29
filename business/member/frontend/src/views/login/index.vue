@@ -75,7 +75,7 @@
             </el-form-item>
           </el-form>
           <div class="login-links">
-            <router-link to="/register">还没有账号？立即注册</router-link>
+            <router-link :to="registerPath">还没有账号？立即注册</router-link>
           </div>
         </div>
       </div>
@@ -84,14 +84,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useSiteStore } from '@/stores/site'
 import { authApi } from '@/api/auth'
 import { ElMessage } from 'element-plus'
 import { User, Lock, Grid, Check } from '@element-plus/icons-vue'
+import { goAfterLogin, pickReturnUrl, RETURN_URL_PARAM } from '@/utils/returnUrl'
 
+const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const siteStore = useSiteStore()
@@ -112,6 +114,12 @@ const rules = {
   captchaCode: [{ required: true, message: '请输入验证码', trigger: 'blur' }]
 }
 
+// 从被拦截的页面 / 外部系统带过来的回跳地址；注册页也沿用同一个值
+const returnUrl = computed(() => pickReturnUrl(route.query))
+const registerPath = computed(() =>
+  returnUrl.value ? { path: '/register', query: { [RETURN_URL_PARAM]: returnUrl.value } } : '/register'
+)
+
 onMounted(() => {
   loadCaptcha()
 })
@@ -131,11 +139,8 @@ async function handleLogin() {
   try {
     await userStore.login(form.username, form.password, captchaId.value, form.captchaCode)
     ElMessage.success('登录成功')
-    if (userStore.isAdmin) {
-      router.push('/admin/dashboard')
-    } else {
-      router.push('/member/dashboard')
-    }
+    // 有 returnUrl 就回原页面，否则按身份进管理后台 / 会员中心
+    goAfterLogin(router, returnUrl.value, userStore.isAdmin ? '/admin/dashboard' : '/member/dashboard')
   } catch {
     loadCaptcha()
   } finally {

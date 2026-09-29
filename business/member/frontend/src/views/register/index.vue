@@ -248,10 +248,11 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { authApi } from '@/api/auth'
 import { ElMessage } from 'element-plus'
+import { goAfterLogin, pickReturnUrl } from '@/utils/returnUrl'
 import {
   User, Lock, Phone, Message, ArrowRight, ArrowLeft,
   EditPen, Document, CircleCheck, CircleCheckFilled,
@@ -259,6 +260,7 @@ import {
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const step = ref(0)
 const submitting = ref(false)
@@ -542,9 +544,9 @@ async function handleSubmit() {
     }
 
     ElMessage.success('注册成功！')
-    // 等待 store 状态更新完成再跳转
+    // 等待 store 状态更新完成再跳转；从登录页带过来的 returnUrl 在这里继续生效
     await nextTick()
-    router.push('/member/dashboard')
+    goAfterLogin(router, pickReturnUrl(route.query), '/member/dashboard')
   } catch {
     loadCaptcha()
   } finally {

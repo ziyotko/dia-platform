@@ -76,6 +76,10 @@
         "/^Push-Location D:\\\\Projects\\\\dia-platform\\\\business\\\\portal\\\\frontend; node -e \"try\\{const y=require\\('yaml'\\);console\\.log\\('YAML_LIB_OK'\\)\\}catch\\(e\\)\\{try\\{const j=require\\('js-yaml'\\);console\\.log\\('JS_YAML_OK'\\)\\}catch\\(e2\\)\\{console\\.log\\('NO_YAML_LIB'\\)\\}\\}\"; Pop-Location$/": {
             "approve": true,
             "matchCommandLine": true
+        },
+        "/^node \"\\$env:TEMP\\\\member-mock\\\\mock\\.cjs\"$/": {
+            "approve": true,
+            "matchCommandLine": true
         }
     }
 }

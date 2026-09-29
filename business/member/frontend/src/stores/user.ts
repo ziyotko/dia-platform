@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authApi } from '@/api/auth'
+import { currentReturnUrl, loginPathWithReturnUrl } from '@/utils/returnUrl'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref<string>(localStorage.getItem('member-token') || '')
@@ -40,8 +41,9 @@ export const useUserStore = defineStore('user', () => {
   // 本地强制登出：Token 已失效（401）时使用；不再请求服务端，避免二次 401 递归
   function forceLogout() {
     clearSession()
-    // 跳登录页必须带上部署子路径（BASE_URL = vite base），否则子路径部署下会跳到不存在的 /login
-    window.location.href = `${import.meta.env.BASE_URL || '/'}login`
+    // 跳登录页必须带上部署子路径（BASE_URL = vite base），否则子路径部署下会跳到不存在的 /login；
+    // 同时带上当前页面，重新登录后回到原位置（与路由守卫同一套 returnUrl 口径）
+    window.location.href = loginPathWithReturnUrl(currentReturnUrl())
   }
 
   // 主动退出登录（用户点「退出登录」/改密后）：先让服务端把当前 Token 拉黑
