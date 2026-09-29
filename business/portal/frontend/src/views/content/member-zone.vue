@@ -295,6 +295,7 @@
       align-center
       destroy-on-close
       :close-on-click-modal="false"
+      @closed="stopResignTimer"
     >
       <el-form ref="contentFormRef" :model="contentForm" :rules="contentRules" label-width="160px">
         <el-form-item label="内容标题" prop="title">
@@ -742,18 +743,25 @@ const handleSubmitColumn = async () => {
     columnFormVisible.value = false
     fetchColumns()
     fetchColumnOptions()
+  } catch {
+    // 错误提示由 request 拦截器统一给出，此处仅兜住 rejected promise
   } finally {
     columnSubmitLoading.value = false
   }
 }
 
 const handleColumnStatusChange = async (row: any, val: number) => {
+  // 在途标记：连点会发出并发 PATCH，先失败的那次回滚会覆盖后一次的成功结果
+  if (row.switching) return
+  row.switching = true
   try {
     await updateMemberColumnStatus(row.id, val)
     ElMessage.success(`会员栏目状态已${val === 1 ? '启用' : '禁用'}`)
     fetchColumnOptions()
   } catch {
     row.status = val === 1 ? 0 : 1
+  } finally {
+    row.switching = false
   }
 }
 
@@ -1037,6 +1045,8 @@ const handleEditContent = async (row: any) => {
     attachmentDisplay.value = await ensureSignedFile(detail.attachmentUrl)
     paperDisplay.value = await ensureSignedFile(detail.paperFileUrl)
     contentDialogVisible.value = true
+    // 编辑期间定期重签正文内联图（签名 5 分钟过期，长文编辑会中途裂图）
+    startResignTimer()
   } catch {
     // 错误提示由 request 拦截器统一给出
   }
@@ -1058,6 +1068,8 @@ const handleSubmitContent = async () => {
     }
     contentDialogVisible.value = false
     fetchContents()
+  } catch {
+    // 错误提示由 request 拦截器统一给出，此处仅兜住 rejected promise
   } finally {
     contentSubmitLoading.value = false
   }
@@ -1105,13 +1117,13 @@ const SIGNED_TTL_MS = 4 * 60 * 1000
 
 const memberFileNameOf = (url: string) => url.substring(url.lastIndexOf('/') + 1).split('?')[0]
 
-/** 取（必要时重新签发）某私有文件的短时效访问地址；非私有地址原样返回 */
-const ensureSignedFile = async (url?: string) => {
+/** 取（必要时重新签发）某私有文件的短时效访问地址；非私有地址原样返回。force=true 时忽略缓存强制重签 */
+const ensureSignedFile = async (url?: string, force = false) => {
   if (!url) return ''
   if (!url.includes('/member-files/')) return url
   const name = memberFileNameOf(url)
   const cached = signedFileCache.get(name)
-  if (cached && Date.now() - cached.at < SIGNED_TTL_MS) return cached.url
+  if (!force && cached && Date.now() - cached.at < SIGNED_TTL_MS) return cached.url
   try {
     const res: any = await signMemberFile(name)
     const signed = res.data?.url || ''
@@ -1147,15 +1159,52 @@ const injectSignedFileUrls = async (html: string) => {
   const names = Array.from(
     new Set(Array.from(html.matchAll(/\/member-files\/([A-Za-z0-9._-]+)/g)).map((m) => m[1]))
   )
-  const signed = new Map<string, string>()
-  for (const name of names) {
-    const url = await ensureSignedFile(`/member-files/${name}`)
-    if (url) signed.set(name, url)
-  }
+  // 并发签发：原先逐张 await，一篇含 20~30 张内联图的正文要串行等 20~30 个往返才弹出弹窗
+  const entries = await Promise.all(
+    names.map(async (name): Promise<[string, string]> => [name, await ensureSignedFile(`/member-files/${name}`)])
+  )
+  const signed = new Map(entries.filter(([, url]) => !!url))
   return html.replace(
     MEMBER_FILE_URL_RE,
     (all, path: string) => signed.get(memberFileNameOf(path)) || all
   )
+}
+
+// 编辑弹窗打开期间定期重签正文内联图片：
+// 前端签名缓存 4 分钟、后端签名 5 分钟，用户编辑较久时图片会突然裂图且无法自救。
+// 只改 DOM 的 img.src（**不动编辑器的数据模型**）：提交时本就会 stripFileSignParams 剔除
+// 签名参数，因此入库内容不受影响，也不会打断光标/输入。
+const RESIGN_REFRESH_MS = 3 * 60 * 1000
+let resignTimer: ReturnType<typeof setInterval> | null = null
+
+const refreshInlineSignedImages = async () => {
+  try {
+    const imgs = Array.from(
+      document.querySelectorAll<HTMLImageElement>(
+        '.editor-wrapper .w-e-text-container img[src*="/member-files/"]'
+      )
+    )
+    await Promise.all(
+      imgs.map(async (img) => {
+        const url = await ensureSignedFile(img.src, true)
+        if (url) img.src = url
+      })
+    )
+  } catch {
+    // 刷新预览失败不影响编辑
+  }
+}
+
+const stopResignTimer = () => {
+  if (resignTimer) {
+    clearInterval(resignTimer)
+    resignTimer = null
+  }
+}
+
+const startResignTimer = () => {
+  stopResignTimer()
+  resignTimer = setInterval(() => void refreshInlineSignedImages(), RESIGN_REFRESH_MS)
 }
 
 const handleCoverUpload = async (options: any) => {
@@ -1277,6 +1326,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  stopResignTimer()
   editorRef.value?.destroy()
 })
 </script>

@@ -270,7 +270,7 @@
       </el-form>
       <template #footer>
         <el-button @click="showEdit=false">取消</el-button>
-        <el-button type="primary" :icon="Check" @click="saveEdit">保存</el-button>
+        <el-button type="primary" :icon="Check" :loading="editSaving" @click="saveEdit">保存</el-button>
       </template>
     </el-dialog>
 
@@ -365,6 +365,7 @@ const selectedMemberInfo = reactive({ orgId: 0, levelId: 0, orgName: '', levelNa
 const feeForm = reactive({ memberId: null as number | null, year: new Date().getFullYear(), amount: 2000, remark: '' })
 
 const showEdit = ref(false)
+const editSaving = ref(false)
 const showConfirm = ref(false)
 const confirmTarget = ref<any>(null)
 const confirmAmount = ref(0)
@@ -523,6 +524,8 @@ async function onEditLevelChange(levelId: number) {
 }
 async function saveEdit() {
   if (!editForm.levelId) { ElMessage.warning('请选择会员级别'); return }
+  if (editSaving.value) return
+  editSaving.value = true
   try {
     await adminApi.updateFee(editForm.id, {
       amount: editForm.amount,
@@ -534,7 +537,7 @@ async function saveEdit() {
     ElMessage.success('保存成功')
     showEdit.value = false
     fetchData()
-  } catch {}
+  } catch {} finally { editSaving.value = false }
 }
 function hasLevel(row: any) {
   return !!row.level_name || Number(row.level_id) > 0

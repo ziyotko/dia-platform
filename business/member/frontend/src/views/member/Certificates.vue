@@ -20,13 +20,14 @@
         </el-table-column>
         <el-table-column label="操作" min-width="260">
           <template #default="{ row }">
-            <el-button text type="primary" :disabled="!isActiveMember" @click="isActiveMember ? downloadCert(row) : undefined">
+            <el-button text type="primary" :disabled="!isActiveMember" @click="downloadCert(row)">
               <el-icon><Download /></el-icon> 下载证书
             </el-button>
             <el-button
               v-if="isActiveMember && row.status !== 'active' && !hasActiveCert"
               text
               type="warning"
+              :loading="renewing"
               @click="renewCert"
             >
               <el-icon><Refresh /></el-icon> 刷新

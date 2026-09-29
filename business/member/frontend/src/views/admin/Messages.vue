@@ -30,7 +30,7 @@
         />
         <template #footer>
           <el-button @click="replyVisible = false">取消</el-button>
-          <el-button type="primary" :disabled="!replyText.trim()" @click="submitReply">确认回复</el-button>
+          <el-button type="primary" :disabled="!replyText.trim()" :loading="replying" @click="submitReply">确认回复</el-button>
         </template>
       </el-dialog>
       <div class="pagination"><el-pagination background layout="prev, pager, next" :total="total" :page-size="size" v-model:current-page="page" @change="fetchData" /></div>
@@ -48,6 +48,7 @@ const page = ref(1); const size = ref(10); const total = ref(0)
 const replyVisible = ref(false)
 const replyTarget = ref<any>(null)
 const replyText = ref('')
+const replying = ref(false)
 
 onMounted(() => fetchData())
 async function fetchData() {
@@ -61,12 +62,14 @@ function openReply(row: any) {
 }
 async function submitReply() {
   if (!replyTarget.value || !replyText.value.trim()) return
+  if (replying.value) return
+  replying.value = true
   try {
     await adminApi.replyMessage(replyTarget.value.id, replyText.value.trim())
     ElMessage.success('已回复')
     replyVisible.value = false
     fetchData()
-  } catch {}
+  } catch {} finally { replying.value = false }
 }
 async function deleteRow(row: any) {
   try {

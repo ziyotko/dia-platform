@@ -6,7 +6,6 @@ export const dashboardApi = {
 
 export const applicationApi = {
   getMyApplications: () => request.get('/applications'),
-  getApplication: (id: number) => request.get(`/applications/${id}`),
   createApplication: (data: any) => request.post('/applications', data),
   withdraw: (id: number) => request.post(`/applications/${id}/withdraw`)
 }
@@ -19,7 +18,6 @@ export const feeApi = {
 
 export const certificateApi = {
   getMyCertificates: () => request.get('/certificates'),
-  getCertificate: (id: number) => request.get(`/certificates/${id}`),
   renewCertificate: () => request.post('/certificates/renew')
 }
 
@@ -40,7 +38,6 @@ export const messageApi = {
 export const articleApi = {
   getCategories: () => request.get('/article-categories'),
   getMyArticles: (params?: any) => request.get('/articles', { params }),
-  getArticle: (id: number) => request.get(`/articles/${id}`),
   createArticle: (data: any) => request.post('/articles', data),
   updateArticle: (id: number, data: any) => request.put(`/articles/${id}`, data),
   deleteArticle: (id: number) => request.delete(`/articles/${id}`),

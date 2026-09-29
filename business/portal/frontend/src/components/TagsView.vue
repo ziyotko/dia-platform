@@ -29,7 +29,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Close, CircleClose } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
@@ -44,12 +44,19 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
-// 首页标签跟随当前用户已授权菜单：无「管理首页」菜单（如仅授「待审核」的审核角色）时退回首个已授权菜单
-const homePath = resolveHomePath(userStore.menuList)
+// 首页标签跟随当前用户已授权菜单：无「管理首页」菜单（如仅授「待审核」的审核角色）时退回首个已授权菜单。
+// 用 computed 而非 setup 期常量：menuList 可能在登录后重新拉取时变更（Breadcrumb.vue 已是 computed）。
+const homePath = computed(() => resolveHomePath(userStore.menuList))
 
 const visitedViews = ref<TagView[]>([
-  { path: homePath, title: '首页' }
+  { path: homePath.value, title: '首页' }
 ])
+
+// menuList 变化时同步首页标签的路径（保留其它已打开的标签）
+watch(homePath, (p) => {
+  const home = visitedViews.value.find((v) => v.title === '首页')
+  if (home && home.path !== p) home.path = p
+})
 
 const isActive = (tag: TagView) => tag.path === route.path
 
@@ -77,9 +84,9 @@ const handleClose = (tag: TagView) => {
 }
 
 const handleCloseAll = () => {
-  visitedViews.value = [{ path: homePath, title: '首页' }]
-  if (route.path !== homePath) {
-    router.push(homePath)
+  visitedViews.value = [{ path: homePath.value, title: '首页' }]
+  if (route.path !== homePath.value) {
+    router.push(homePath.value)
   }
 }
 

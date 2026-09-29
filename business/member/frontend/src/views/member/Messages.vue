@@ -41,7 +41,7 @@
 
     <el-dialog v-model="showCreate" title="新建留言" width="500px">
       <el-form :model="msgForm" size="large">
-        <el-form-item label="标题" required><el-input v-model="msgForm.title" /></el-form-item>
+        <el-form-item label="标题" required><el-input v-model="msgForm.title" maxlength="200" @keyup.enter="createMsg" /></el-form-item>
         <el-form-item label="内容" required>
           <el-input v-model="msgForm.content" type="textarea" :rows="5" placeholder="请输入您的建议、诉求..." />
         </el-form-item>

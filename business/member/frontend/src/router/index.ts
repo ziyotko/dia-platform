@@ -117,8 +117,9 @@ router.beforeEach(async (to, _from, next) => {
     try {
       await userStore.fetchUserInfo()
     } catch {
-      userStore.token = ''
-      localStorage.removeItem('member-token')
+      // 复用 store 的统一清理（token/userInfo/menus + localStorage 键），
+      // 避免这里漏清新增的会话键
+      userStore.clearSession()
       next('/login')
       return
     }

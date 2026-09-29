@@ -70,9 +70,13 @@ request.interceptors.response.use(
     // 这里只处理网关/网络层异常，避免直接抛出英文 “Request failed with status code xxx”
     const status = error?.response?.status
     let msg = error?.message || '网络错误'
-    if (status === 401 || status === 403) {
+    if (status === 401) {
       msg = '登录状态已失效，请重新登录'
       useUserStore().forceLogout()
+    } else if (status === 403) {
+      // 403 只能来自反向代理/静态服务（本项目的无权限是 HTTP 200 + code=1），
+      // 不能当成登录态失效把用户踢回登录页
+      msg = '没有访问权限'
     } else if (status === 413) {
       msg = '上传内容过大，请压缩后重试'
     } else if (status === 429) {

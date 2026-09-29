@@ -81,7 +81,6 @@ export const adminApi = {
   getFeeStandards: () => request.get('/admin/fee-standards'),
   getFeeStandardsByLevel: (levelId: number) => request.get(`/admin/fee-standards/levels/${levelId}`),
   upsertFeeStandard: (data: { level_id: number; year: number; amount: number }) => request.post('/admin/fee-standards', data),
-  batchUpsertFeeStandard: (data: { level_id: number; items: { year: number; amount: number }[] }) => request.post('/admin/fee-standards/batch', data),
   deleteFeeStandard: (id: number) => request.delete(`/admin/fee-standards/${id}`),
 
   // System Configs

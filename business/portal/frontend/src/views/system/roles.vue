@@ -251,7 +251,15 @@ const handleAdd = () => {
 
 const handleEdit = (row: any) => {
   dialogTitle.value = '编辑角色'
-  Object.assign(form, row)
+  // 白名单赋值：row 还带 createdAt/permissions/userCount 等字段，
+  // 整行 Object.assign 会把脏字段留在 form 上（将来若改成 `{...form}` 提交就会误发）
+  Object.assign(form, {
+    id: row.id,
+    name: row.name,
+    code: row.code,
+    description: row.description,
+    status: row.status
+  })
   dialogVisible.value = true
 }
 

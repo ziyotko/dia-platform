@@ -125,7 +125,7 @@
 
       <template #footer>
         <el-button @click="handleCancel">取消</el-button>
-        <el-button type="primary" :disabled="!canJoin" @click="joinOrg">
+        <el-button type="primary" :disabled="!canJoin" :loading="joining" @click="joinOrg">
           确认加入
         </el-button>
       </template>
@@ -147,6 +147,7 @@ const approvedApps = ref<any[]>([])
 const paidFees = ref<any[]>([])
 const loading = ref(true)
 const showJoin = ref(false)
+const joining = ref(false)
 const selectedOrg = ref<any>(null)
 const searchQuery = ref('')
 const treeRef = ref<any>(null)
@@ -402,6 +403,9 @@ function handleCancel() {
 
 async function joinOrg() {
   if (!selectedOrg.value) return
+  // 防重复提交：双击会第二次拿到「已加入该组织」的错误提示
+  if (joining.value) return
+  joining.value = true
   try {
     await orgApi.joinOrg(selectedOrg.value.id, selectedLevelId.value)
     ElMessage.success('加入成功')
@@ -410,7 +414,7 @@ async function joinOrg() {
     selectedOrg.value = null
     const res = await orgApi.getMyOrgs()
     myOrgs.value = res.data || []
-  } catch {}
+  } catch {} finally { joining.value = false }
 }
 
 async function leaveOrg(row: any) {
