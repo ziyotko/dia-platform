@@ -246,6 +246,10 @@ server {
 - **管理员标记以数据库为准**：`is_admin` 置 0 后旧 Token 立即失去后台权限（原先 Token 里的 `is_admin` 是签发时快照，最长 24h 才生效）。
 - **JWT 算法收紧为仅 HS256**（原先接受 HS256/HS384/HS512 三类）。
 - ⚠️ 该机制依赖 Redis（`redis.captcha_db`）：**Redis 不可用时鉴权按 fail-closed 处理**（返回「服务暂时不可用」，不再放行），请确保 Redis 与后端一并探活。
+- **⚠️ 跨项目约定（2026-09-29，portal 侧新增，改这里要同步）**：门户站（`business/portal`）新增「外部会员只读会员专区」能力——会员凭**本系统签发的登录 Token** 调用 `GET /business_portal/api/member-zone/...` 读取门户的会员专区已发布内容。portal 侧的两项依赖：
+  1. `PORTAL_MEMBER_JWT_SECRET`（portal 配置项 `jwt.member_secret`）= 本系统的 `MEMBER_JWT_SECRET`；portal 还强校验 `issuer = jwt.issuer`（默认 `caam-member`）与 **HS256**，并要求 Token 带 `exp`。**更换 `MEMBER_JWT_SECRET` 时必须同步更换 portal 侧的值**，否则会员访问门户会员专区会全部失败。
+  2. **登出黑名单键前缀 `blacklist:` 与其所在库被 portal 读取**（portal 配置项 `redis.member_token_db` = 本系统的 `redis.captcha_db`，默认 4）。**不要改名该前缀、不要改库号**，否则「会员登出后门户侧立即失效」会失效；portal 侧该检查 fail-closed（Redis 读不通返回「服务暂时不可用」，不会静默放行）。
+  3. 已知边界（有意）：本系统的「改密码 / 变更会籍状态（`token_invalid_before`）/ 禁用」写在**本系统数据库**里，portal 无法感知，这类 Token 在门户侧最多可用到自然过期（`jwt.expire_hours`，默认 24h）；如需即时生效，需另行联动（共享吊销键或内省接口）。
 
 ### 升级说明（2026-09-28，无需手工 SQL）
 

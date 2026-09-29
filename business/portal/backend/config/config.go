@@ -93,12 +93,29 @@ type RedisConfig struct {
 	CaptchaDB    int    `mapstructure:"captcha_db"`
 	AntiReplayDB int    `mapstructure:"anti_replay_db"`
 	CacheDB      int    `mapstructure:"cache_db"`
+
+	// 外部会员（business/member）令牌「登出黑名单」所在库。
+	// member 登出时把 Token 的 jti 写进它自己的 captcha 库（member config.yaml 的
+	// redis.captcha_db，键 `blacklist:<jti>`），portal 只有读同一个库才能知道「该会员已登出」。
+	// MemberTokenDB < 0 表示关闭该检查（只验签名，不做吊销对齐）。
+	// 两服务不在同一 Redis 实例时，用 MemberTokenAddr / MemberTokenPassword 单独指定。
+	MemberTokenAddr     string `mapstructure:"member_token_addr"`
+	MemberTokenPassword string `mapstructure:"member_token_password"`
+	MemberTokenDB       int    `mapstructure:"member_token_db"`
 }
 
 type JWTConfig struct {
 	Secret      string `mapstructure:"secret"`
 	ExpireHours int    `mapstructure:"expire_hours"`
 	Issuer      string `mapstructure:"issuer"`
+
+	// 外部会员（business/member）令牌校验：portal 用 member 的 JWT 密钥校验 member 签发的
+	// 登录令牌，仅服务「会员专区」对外只读接口（会员凭 member 的登录态直接读取已发布内容）。
+	// 值必须与 member 的 MEMBER_JWT_SECRET 一致；建议用环境变量 PORTAL_MEMBER_JWT_SECRET 注入
+	// （与 portal 自己的密钥分开配置，便于独立轮换/排障）。留空 = 关闭该能力（相关接口一律 401）。
+	MemberSecret string `mapstructure:"member_secret"`
+	// MemberIssuer 只接受 member 签发的该 issuer（member config.yaml 的 jwt.issuer，默认 caam-member）
+	MemberIssuer string `mapstructure:"member_issuer"`
 }
 
 type LogConfig struct {
@@ -193,6 +210,11 @@ func applyEnvOverrides() {
 		AppConfig.Server.Mode = v
 	}
 
+	// 外部会员校验用的 member 密钥（可选能力，未配置只告警不退出，见下）
+	if v := os.Getenv("PORTAL_MEMBER_JWT_SECRET"); v != "" {
+		AppConfig.JWT.MemberSecret = v
+	}
+
 	if v := os.Getenv("PORTAL_JWT_SECRET"); v != "" {
 		AppConfig.JWT.Secret = v
 	}
@@ -205,5 +227,13 @@ func applyEnvOverrides() {
 	if AppConfig.MySQL.Password == "" || AppConfig.MySQL.Password == "PORTAL_DB_PASSWORD" {
 		log.Printf("[WARN] 未设置数据库密码！必须设置环境变量 PORTAL_DB_PASSWORD。")
 		log.Fatal("程序退出")
+	}
+
+	// 外部会员令牌校验是可选能力（只影响「会员专区」对外只读接口），
+	// 未配置时只告警并把值归零，由中间件返回「会员登录校验未启用」，不影响 portal 自身启动。
+	if AppConfig.JWT.MemberSecret == "" || AppConfig.JWT.MemberSecret == "PORTAL_MEMBER_JWT_SECRET" {
+		log.Printf("[WARN] 未配置 jwt.member_secret（环境变量 PORTAL_MEMBER_JWT_SECRET），" +
+			"外部会员只读接口将不可用（会员无法凭会员中心的登录态读取会员专区内容）。")
+		AppConfig.JWT.MemberSecret = ""
 	}
 }

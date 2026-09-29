@@ -25,6 +25,8 @@ func main() {
 	utils.InitRedisCaptcha()
 	utils.InitRedisCache()
 	utils.InitRedisAnti()
+	// 外部会员（member）令牌黑名单库（只读）：用于「会员登出后 portal 侧立即失效」
+	utils.InitRedisMember()
 
 	// 统一硬删：模型已不再内嵌 gorm.DeletedAt（查询不过滤 deleted_at），
 	// 先把旧库遗留的软删除数据物理清掉，否则它们会重新"出现"在列表里

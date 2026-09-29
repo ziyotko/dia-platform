@@ -194,6 +194,41 @@ func SetupRoutes(router *gin.Engine) {
 		memberFileServe.GET("/member-files/:name", memberZoneController.GetMemberFile)
 	}
 
+	// === 外部会员只读路由（凭 member 项目的登录令牌，仅「会员专区」对外只读接口）===
+	// 场景：会员在会员中心（business/member）登录后，直接读取 portal 的会员专区已发布内容，
+	// 不需要（也无法）在 portal 再登录一次。
+	//
+	// 为什么是独立前缀而不是复用上面的 /member-* 路径：Gin 不允许同一 method+path 重复注册
+	// （会 panic），而这些路径已经属于「portal 登录用户」口径，不能混合两套身份。
+	// 因此外部会员版 = 原路径加 `/member-zone` 前缀，接口语义与实现完全一致。
+	//
+	// 与 member/admin 组刻意隔离的挂载差异（逐条都有原因，勿照抄那两组）：
+	//   - 不挂 AuthMiddleware：它按 portal 的 user 表校验，会员在 portal 没有账号；
+	//   - 不挂 MenuAPIPrefixMiddleware：会员没有 portal 菜单授权；
+	//   - 不挂 ReplayProtectionMiddleware：member 前端不会带 X-Request-Signature，挂了会 100% 拒绝；
+	//   - 不挂 OperationLog：纯只读接口，逐条记日志无意义（且操作人无 portal 账号）；
+	//   - 只挂「外部会员鉴权（含登出黑名单）+ 按真实 IP 限流」。
+	externalMember := router.Group(apiPrefix)
+	externalMember.Use(middleware.AuthExternalMemberMiddleware(),
+		middleware.RateLimitMiddlewareScoped("member-zone",
+			config.AppConfig.Server.PublicRateLimit,
+			time.Duration(config.AppConfig.Server.PublicRateWindowSecs)*time.Second,
+		),
+	)
+	{
+		// 均只返回「已发布 + 所属栏目启用 + 发布时间已到」的内容（与会员专区页面同口径）：
+		//   GET /member-zone/member-columns/options                       全部会员栏目（id/名称/状态）
+		//   GET /member-zone/member-contents/column/:key?page=&pageSize=  指定栏目下的已发布内容（不含正文）
+		//       :key 纯数字=栏目 ID；其它=栏目名称（名称唯一，跨环境稳定）
+		//   GET /member-zone/member-contents/detail/:id                   指定已发布内容的完整信息（含正文）
+		//   GET /member-zone/member-files/sign?name=                      会员专区文件短时效签名地址
+		//       外部会员只对「对外可见内容」引用的文件可签（草稿/已下线一律拒绝）
+		externalMember.GET("/member-zone/member-columns/options", memberZoneController.GetMemberColumnOptions)
+		externalMember.GET("/member-zone/member-contents/column/:key", memberZoneController.GetColumnMemberContents)
+		externalMember.GET("/member-zone/member-contents/detail/:id", memberZoneController.GetMemberContentDetail)
+		externalMember.GET("/member-zone/member-files/sign", memberZoneController.SignMemberFile)
+	}
+
 	// === 管理员路由（需认证 + 管理员角色）===
 	// 与 member 组一致地校验菜单 api_prefix：管理员只能调用其已授权菜单对应的接口，
 	// 避免「界面按菜单隐藏、接口却全量开放」的两套权限口径。

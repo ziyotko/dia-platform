@@ -73,6 +73,13 @@ redis:
   captcha_db: 6      # 验证码（5 分钟 TTL）
   anti_replay_db: 7  # 防重放 nonce + 限流计数
   cache_db: 8        # 设置/静态化参数缓存
+  # 外部会员（business/member）令牌「登出黑名单」所在库：member 登出时把 Token 的 jti 写进它自己的
+  # captcha 库（member config.yaml 的 redis.captcha_db，键 `blacklist:<jti>`），portal 读同一个库
+  # 才能实现「会员登出后 portal 侧立即失效」。< 0 = 关闭该检查（只验签名）。
+  # 若 member 与本服务不在同一 Redis 实例，另填 member_token_addr / member_token_password。
+  member_token_addr: ""
+  member_token_password: ""
+  member_token_db: 4
 
 
 jwt:
@@ -81,6 +88,13 @@ jwt:
   expire_hours: 24
   # 令牌签发者（默认 caam-portal；解析时不校验）
   issuer: caam-portal
+  # 外部会员（business/member）令牌校验：**值与 member 的 MEMBER_JWT_SECRET 一致**，
+  # 建议用环境变量 PORTAL_MEMBER_JWT_SECRET 注入（与上面 portal 自己的密钥分开，便于独立轮换）。
+  # 留空 = 关闭该能力（会员专区对外只读接口一律返回 401），portal 自身不受影响。
+  # 仅用于「会员凭会员中心的登录态只读已发布会员内容」，member 的 is_admin 不会被当作 portal 管理员。
+  member_secret: PORTAL_MEMBER_JWT_SECRET
+  # 只接受 member 签发的该 issuer（member config.yaml 的 jwt.issuer）
+  member_issuer: caam-member
 
 log:
   # 日志级别：debug/info/warn/error（非法值回退 info）

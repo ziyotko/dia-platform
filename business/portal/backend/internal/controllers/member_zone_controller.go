@@ -498,11 +498,12 @@ func memberFileSignedURL(name string, exp int64, nonce string, sign string) stri
 }
 
 // SignMemberFile 下发会员专区文件的「短时效签名 URL」（需登录）。
-// GET /member-files/sign?name=<文件名>
+// GET /member-files/sign?name=<文件名>（portal 登录用户）
+// GET /member-zone/member-files/sign?name=<文件名>（外部会员，见 routes.go 的外部会员组）
 //
-// 访问判定（按文件名反查 member_content，见 FindMemberFileReferences）：
-//   - 被【对外可见】的内容引用（已发布 + 所属栏目启用 + 发布时间已到） → 任何登录用户都可取签名地址
-//     （会员内容面向已登录会员）；
+// 访问判定（按文件名反查 member_content，见 FindMemberFileReferences，具体见 canSignMemberFile）：
+//   - 被【对外可见】的内容引用（已发布 + 所属栏目启用 + 发布时间已到） → 任何登录主体都可取签名地址
+//     （会员内容面向已登录会员：portal 用户与外部会员均可）；
 //   - 仅被【本人】的内容引用（含草稿/已下线/栏目被禁用/未到发布时间） → 作者本人可取
 //     （编辑器需要预览草稿的封面/附件，故不受上述对外可见性限制）；
 //   - 仅被【他人的不可见内容】引用 → 仅管理员可取；
@@ -518,18 +519,7 @@ func (c *MemberZoneController) SignMemberFile(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取文件访问地址失败"))
 		return
 	}
-	userID := ctx.GetUint("userID")
-	isAdmin := models.HasAdminRoleIDs(c.userService.MustGetUserRoleIds(userID))
-	authorCode := strconv.FormatUint(uint64(userID), 10)
-
-	allowed := false
-	for _, ref := range refs {
-		if ref.IsVisible == 1 || isAdmin || ref.AuthorCode == authorCode {
-			allowed = true
-			break
-		}
-	}
-	if !allowed {
+	if !c.canSignMemberFile(ctx, refs) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "无权访问该文件"))
 		return
 	}
@@ -539,6 +529,33 @@ func (c *MemberZoneController) SignMemberFile(ctx *gin.Context) {
 		"url":       memberFileSignedURL(name, exp, nonce, sign),
 		"expiresIn": int(utils.FileAccessSignTTL.Seconds()),
 	}))
+}
+
+// canSignMemberFile 判断本次请求是否有权为 refs 引用的文件签发访问地址。
+// 两种身份的口径刻意分开（不要合并成一套判定）：
+//   - 外部会员（member 登录，utils.IsExternalMember）：在 portal 没有账号，也就没有
+//     「作者本人 / 管理员」这两档身份，因此**只**允许签发【对外可见】内容引用的文件；
+//     草稿/已下线/栏目禁用/未到发布时间一律拒绝（不能拿 member 的 is_admin 当 portal 管理员用）。
+//   - portal 登录用户：维持原有口径不变（可见人人可签 / 本人内容可签 / 管理员可签全部）。
+func (c *MemberZoneController) canSignMemberFile(ctx *gin.Context, refs []services.MemberFileReference) bool {
+	if utils.IsExternalMember(ctx) {
+		for _, ref := range refs {
+			if ref.IsVisible == 1 {
+				return true
+			}
+		}
+		return false
+	}
+
+	userID := ctx.GetUint("userID")
+	isAdmin := models.HasAdminRoleIDs(c.userService.MustGetUserRoleIds(userID))
+	authorCode := strconv.FormatUint(uint64(userID), 10)
+	for _, ref := range refs {
+		if ref.IsVisible == 1 || isAdmin || ref.AuthorCode == authorCode {
+			return true
+		}
+	}
+	return false
 }
 
 // GetMemberFile 会员专区文件读取接口：**凭短时效签名访问**（签名即凭证，不再要求登录态）。
