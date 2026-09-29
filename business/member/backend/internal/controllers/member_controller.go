@@ -89,14 +89,16 @@ func (ctrl *MemberController) UpdateMemberLevel(c *gin.Context) {
 	response.SuccessWithMessage(c, "等级更新成功", nil)
 }
 
-// ResetMemberPassword resets a member's password to the default (admin)
+// ResetMemberPassword resets a member's password to a random one (admin).
+// 返回的随机密码只下发一次，由管理员转告会员。
 func (ctrl *MemberController) ResetMemberPassword(c *gin.Context) {
 	id := parseUint(c.Param("id"))
-	if err := ctrl.memberService.ResetMemberPassword(id); err != nil {
+	newPassword, err := ctrl.memberService.ResetMemberPassword(id)
+	if err != nil {
 		response.BadRequestFrom(c, err)
 		return
 	}
-	response.SuccessWithMessage(c, "密码已重置为默认密码", nil)
+	response.SuccessWithMessage(c, "密码已重置", gin.H{"password": newPassword})
 }
 
 // CreateMember creates a new member directly (admin)

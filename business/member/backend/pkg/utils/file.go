@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"io"
 	"mime/multipart"
 	"os"
@@ -12,6 +13,39 @@ import (
 
 	"github.com/google/uuid"
 )
+
+// ValidateUploadPath 校验「由客户端提交、稍后写入数据库」的上传文件路径。
+//
+// 只接受本地上传目录下的地址（uploads/... 或 <部署前缀>/uploads/...），拒绝：
+//   - 外链 http(s)://（会写入库并在后台渲染成可点击链接）
+//   - 协议相对地址 //host/path（前端 fileUrl 会原样输出，浏览器按外站处理 → 钓鱼）
+//   - 反斜杠路径与 .. 穿越
+//
+// 与 LocalUploadPath 的区别：不要求文件已存在（部分流程先写记录后落盘）。
+func ValidateUploadPath(p string) error {
+	norm := strings.TrimSpace(strings.ReplaceAll(p, "\\", "/"))
+	if norm == "" {
+		return errors.New("文件路径不能为空")
+	}
+	if strings.Contains(norm, "..") || strings.Contains(norm, ":") {
+		return errors.New("文件路径不合法")
+	}
+	if strings.HasPrefix(norm, "//") {
+		return errors.New("文件路径不合法")
+	}
+	if !strings.HasPrefix(norm, "uploads/") && !strings.Contains(norm, "/uploads/") {
+		return errors.New("文件路径不合法")
+	}
+	return nil
+}
+
+// ValidateOptionalUploadPath 同 ValidateUploadPath，但允许为空（表示未上传）。
+func ValidateOptionalUploadPath(p string) error {
+	if strings.TrimSpace(p) == "" {
+		return nil
+	}
+	return ValidateUploadPath(p)
+}
 
 func SaveUploadedFile(file *multipart.FileHeader, subDir string) (string, error) {
 	uploadDir := filepath.Join("uploads", subDir, time.Now().Format("2006-01"))

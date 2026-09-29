@@ -236,6 +236,21 @@ server {
 - 更换 `MEMBER_JWT_SECRET` 会使所有已签发 Token 立即失效（在线用户需重新登录）
 - 备份建议：`mysqldump` 数据库 + `backend/uploads` 目录（含证书 PDF、证书模板、章程 PDF、票据、文章配图）+ `backend/config.yaml`（不含密码明文）
 
+### 升级说明（2026-09-29 第二批：安全加固，无需手工 SQL）
+
+- **上传请求体大小改为「解析前」限制**：`POST /upload`、`POST /upload-public`、`POST /admin/charters/file`、`POST /admin/fees/:id/issue-invoice` 现在先用 `http.MaxBytesReader` 限制**整个请求体**（10MB / 章程 20MB），超限直接报「文件大小不能超过 NMB」。原先 multipart 由解析器先把整包读完（超限部分落 `/tmp`）再判断 `file.Size`，匿名上传可据此写满磁盘；`BodyLimitMiddleware` 对 multipart 是直接放行的，所以这层必须在各上传入口自己做。
+- **上传件路径校验（行为变化）**：缴费回执 / 入会申请附件 / 资料页证件与头像只能提交**本地上传目录**下的地址（`uploads/...` 或 `<上传前缀>/uploads/...`）。提交外链或协议相对地址（如 `//evil.com/x`）会被拒绝（「…地址不合法，请重新上传」）—— 否则管理员在后台点「查看」会跳到站外。资料页的证件/头像**仅在该字段本次改动时校验**，库里的历史路径不会导致无法保存资料。
+  - 前端 `utils/fileUrl.ts` 同步加了一层：协议相对地址（`//host/x`）不再原样输出，防止历史脏数据渲染成外链。
+- **管理员账号可真正停用（行为变化）**：后台鉴权除 `is_admin` 外**新增会籍状态校验** —— 管理员账号被置为「已过期」后，其后台接口立即返回「管理员账号已停用，请联系超级管理员」。原先只看 `is_admin`，把管理员置为过期后重新登录仍是全权管理员，等于无法停用/降权（系统里也没有把 `is_admin` 置回 `false` 的入口）。
+- **重置密码 / 新增会员不再使用公开默认口令（行为变化）**：
+  - `PUT /admin/members/:id/reset-password` 改为重置为**随机 12 位强密码**，并在**本次响应**里返回（`data.password`）；后台「重置密码」会弹窗展示，请立即转告会员，页面关闭后无法再次查看。
+  - `POST /admin/members` 未填写 `password` 时同样生成随机初始密码，通过 `data.generated_password` 返回并在后台弹窗展示（原先固定用 `Abcd@1234`）。
+  - 常量 `Abcd@1234`（`service.DefaultPassword`）**现在只用于 seed 创建内置管理员**；照旧请部署后立即修改该账号口令。**若有自定义客户端/脚本依赖「重置后即 Abcd@1234」，需同步调整。**
+- **CSV 导出防公式注入**：`GET /admin/member-level-changes/export` 等导出中，以 `= + - @` 开头的字段（用户名、公司名称等用户可控内容）会前置一个 `'`，Excel 不再把它们当公式执行。
+- **JWT 校验与 portal 对齐（行为变化）**：本系统 `ParseToken` 现在也**强制校验 `issuer` 与 `exp`**，并要求 Token 带 `iat`（缺失直接 401）；`jwt.issuer` / `jwt.expire_hours` 未配置时分别回退 `business-member` / `24`（原先 issuer 留空、`expire_hours=0` 会签出「立即过期」的 Token：登录成功但每个请求都 401）。⚠️ 与 portal 的 `jwt.member_issuer` 强校验口径一致，两个系统仍须同批上线。
+- **会籍状态 / 等级变更事务化**：`会员状态 + 生效证书状态 + 会籍记录`、`会员等级 + 生效证书等级 + 会籍记录` 现在要么全成、要么全不成（原先证书/会籍记录的写入错误被静默丢弃，会留下「已过期会员 + 生效证书」「等级已改但证书等级没改」这类脏数据，接口却返回成功）。
+- 无表结构变更，**无需手工 SQL**。
+
 ### 升级说明（2026-09-29：JWT issuer 统一为 `business-member`，无需手工 SQL）
 
 - **`jwt.issuer` 由 `caam-member` 改为 `business-member`**（与 base 及其余业务项目统一为 `business-*` 前缀）。本仓库 `config.yaml` 已同步。

@@ -178,7 +178,7 @@
             <el-form-item label="用户名" prop="username"><el-input v-model="createForm.username" maxlength="32" placeholder="登录用户名" /></el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="密码" prop="password"><el-input v-model="createForm.password" type="password" show-password maxlength="32" placeholder="留空则默认 Abcd@1234" /></el-form-item>
+            <el-form-item label="密码" prop="password"><el-input v-model="createForm.password" type="password" show-password maxlength="32" placeholder="留空则自动生成随机初始密码" /></el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="手机号" prop="mobile"><el-input v-model="createForm.mobile" maxlength="11" placeholder="请输入11位手机号" /></el-form-item>
@@ -509,13 +509,28 @@ async function delMember(row: any) {
 async function resetPassword(row: any) {
   try {
     await ElMessageBox.confirm(
-      `将重置「${displayName(row)}」的登录密码为默认密码 Abcd@1234，重置后请提醒会员及时修改密码。确认继续？`,
+      `将重置「${displayName(row)}」的登录密码为随机密码，重置后请立即转告会员。确认继续？`,
       '重置密码',
       { type: 'warning', confirmButtonText: '确定重置', cancelButtonText: '取消' }
     )
-    await adminApi.resetMemberPassword(row.id)
-    ElMessage.success('密码已重置为 Abcd@1234，请提醒会员及时修改密码')
+    const res: any = await adminApi.resetMemberPassword(row.id)
+    showGeneratedPassword(res?.data?.password, '密码已重置')
   } catch {}
+}
+
+// 展示一次性下发的初始/重置密码：服务端只在本次响应里返回，页面关闭后无法再次查看。
+function showGeneratedPassword(pwd: unknown, title: string) {
+  if (!pwd || typeof pwd !== 'string') return
+  const safe = pwd.replace(
+    /[&<>"']/g,
+    (ch) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch] as string
+  )
+  ElMessageBox.alert(
+    `新的登录密码：<b>${safe}</b><br/>请立即转告会员，关闭后无法再次查看。`,
+    title,
+    { dangerouslyUseHTMLString: true, confirmButtonText: '我已保存' }
+  ).catch(() => {})
 }
 
 function openCreate() {
@@ -567,7 +582,7 @@ async function submitCreate() {
   }
   createLoading.value = true
   try {
-    await adminApi.createMember({
+    const res: any = await adminApi.createMember({
       ...createForm,
       mobile: createForm.mobile.trim(),
       email: createForm.email.trim(),
@@ -580,9 +595,10 @@ async function submitCreate() {
       org_ids: selectedOrgIds.value,
       level_id: selectedLevelId.value
     })
-    ElMessage.success('新增会员成功')
     createVisible.value = false
     fetchData()
+    // 未填写密码时服务端会生成随机初始密码，只在本次响应里下发一次
+    showGeneratedPassword(res?.data?.generated_password, '新增会员成功')
   } catch {} finally { createLoading.value = false }
 }
 

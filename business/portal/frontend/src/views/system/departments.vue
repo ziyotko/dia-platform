@@ -110,6 +110,7 @@
             clearable
             check-strictly
             style="width: 100%"
+            @change="handleOrgChange"
           />
         </el-form-item>
         <el-form-item label="上级部门">
@@ -649,6 +650,12 @@ const syncLeaderFromCode = () => {
 watch(() => form.leaderCode, syncLeaderFromCode)
 watch(() => dialogUserOptions.value, syncLeaderFromCode)
 watch(() => form.orgId, () => {
+  // 编辑态必须跳过：handleEdit 用 Object.assign 回填 form.orgId 会触发本 watch，
+  // 而此刻负责人候选（allDialogUsers）可能尚未加载完，refreshDialogUsers 会把已保存的
+  // 负责人误判为「不属于所选机构」而清空 —— 用户点「确定」就把负责人写成空。
+  // 编辑流程在用户数据到位后由 handleEdit 显式调用 refreshDialogUsers()；
+  // 用户主动切换机构走模板上的 @change="handleOrgChange"。
+  if (form.id) return
   refreshDialogUsers()
 })
 watch(viewUserSearch, () => {
@@ -721,6 +728,12 @@ const refreshDialogUsers = async () => {
       form.leader = ''
     }
   }
+}
+
+// 用户主动切换「所属机构」时刷新负责人候选（编辑态同样生效）。
+// 不能用 watch(form.orgId) 代替：Object.assign 回填也会触发 watch（见上方 watch 注释）。
+const handleOrgChange = () => {
+  refreshDialogUsers()
 }
 
 const handleAssignUsers = async (row: DeptItem) => {

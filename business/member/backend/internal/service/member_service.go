@@ -166,34 +166,41 @@ func (s *MemberService) UpdateMemberStatus(id uint64, status string, operator st
 	if m.Status == status {
 		return nil
 	}
-	// 管理员变更会籍状态时，立刻作废该会员已签发的 Token：
-	// 否则旧 Token 最长还能用满 24h（会籍已终止却仍在系统内）。
-	// 会员登录本身不限状态，故只强制「重新登录」，不做状态否决。
-	if err := db.DB.Model(&models.Member{}).Where("id = ?", id).Updates(map[string]any{
-		"status":               status,
-		"token_invalid_before": models.NewInvalidBefore(),
-	}).Error; err != nil {
-		return err
-	}
-
-	// 会籍失效 / 恢复时记录会籍变更
+	// 状态、生效证书、会籍记录必须一起成败：原先三步各自独立且证书/会籍记录的
+	// 错误被丢弃，任一步失败都会留下「已过期会员 + 生效证书」或「状态已变但无会籍记录」
+	// 这类无声脏数据，接口却返回成功。
 	levelID, levelName := resolveMemberLevel(m.MemberLevel)
 	orgID, orgName := s.primaryOrg(&m)
-	switch {
-	case status == models.MemberStatusExpired && m.Status != models.MemberStatusExpired:
-		// 会籍终止：同步作废其生效证书，避免出现“已过期会员 + 生效证书”的矛盾状态。
-		// 注：恢复会籍（expired→active）不反向复活证书，会员可在缴费后自行续证。
-		db.DB.Model(&models.Certificate{}).
-			Where("member_id = ? AND status = ?", id, models.CertStatusActive).
-			Update("status", models.CertStatusExpired)
-		_ = writeMembershipChange(&m, time.Now().Year(), orgID, orgName,
-			levelID, levelName, 0, "", models.ReasonMemberExpired, operator)
-	case status == models.MemberStatusActive && m.Status == models.MemberStatusExpired:
-		_ = writeMembershipChange(&m, time.Now().Year(), orgID, orgName,
-			0, "", levelID, levelName, models.ReasonMemberResume, operator)
-	}
+	now := time.Now()
 
-	return nil
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		// 管理员变更会籍状态时，立刻作废该会员已签发的 Token：
+		// 否则旧 Token 最长还能用满 24h（会籍已终止却仍在系统内）。
+		// 会员登录本身不限状态，故只强制「重新登录」，不做状态否决。
+		if err := tx.Model(&models.Member{}).Where("id = ?", id).Updates(map[string]any{
+			"status":               status,
+			"token_invalid_before": models.NewInvalidBefore(),
+		}).Error; err != nil {
+			return err
+		}
+
+		switch {
+		case status == models.MemberStatusExpired && m.Status != models.MemberStatusExpired:
+			// 会籍终止：同步作废其生效证书，避免出现“已过期会员 + 生效证书”的矛盾状态。
+			// 注：恢复会籍（expired→active）不反向复活证书，会员可在缴费后自行续证。
+			if err := tx.Model(&models.Certificate{}).
+				Where("member_id = ? AND status = ?", id, models.CertStatusActive).
+				Update("status", models.CertStatusExpired).Error; err != nil {
+				return err
+			}
+			return writeMembershipChangeTx(tx, &m, now.Year(), orgID, orgName,
+				levelID, levelName, 0, "", models.ReasonMemberExpired, operator)
+		case status == models.MemberStatusActive && m.Status == models.MemberStatusExpired:
+			return writeMembershipChangeTx(tx, &m, now.Year(), orgID, orgName,
+				0, "", levelID, levelName, models.ReasonMemberResume, operator)
+		}
+		return nil
+	})
 }
 
 // UpdateMemberLevel updates a member's level (admin). Only active members may change
@@ -235,25 +242,27 @@ func (s *MemberService) UpdateMemberLevel(id uint64, levelID uint64, operator st
 		return errors.New("该等级不在该会员已缴费加入的机构所支持的等级中")
 	}
 
-	if err := db.DB.Model(&models.Member{}).Where("id = ?", id).Update("member_level", lvl.ID).Error; err != nil {
-		return err
-	}
-
-	// 同步更新该会员生效证书的等级
-	db.DB.Model(&models.Certificate{}).
-		Where("member_id = ? AND status = ?", id, models.CertStatusActive).
-		Updates(map[string]interface{}{"level_id": lvl.ID, "level_name": lvl.Name})
-
 	// 主入会机构
 	orgID, orgName := s.primaryOrg(&m)
 
-	// 记录会籍变更（原因由管理员填写，不限定为常量）
-	if err := writeMembershipChange(&m, time.Now().Year(), orgID, orgName,
-		oldLevelID, oldLevelName, lvl.ID, lvl.Name, reason, operator); err != nil {
-		return err
-	}
+	// 等级、生效证书、会籍记录放在同一事务：原先证书更新的错误被丢弃，
+	// 会出现「等级已改但证书等级没改」或「等级已改但无会籍记录」的无声脏数据。
+	return db.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&models.Member{}).Where("id = ?", id).Update("member_level", lvl.ID).Error; err != nil {
+			return err
+		}
 
-	return nil
+		// 同步更新该会员生效证书的等级
+		if err := tx.Model(&models.Certificate{}).
+			Where("member_id = ? AND status = ?", id, models.CertStatusActive).
+			Updates(map[string]interface{}{"level_id": lvl.ID, "level_name": lvl.Name}).Error; err != nil {
+			return err
+		}
+
+		// 记录会籍变更（原因由管理员填写，不限定为常量）
+		return writeMembershipChangeTx(tx, &m, time.Now().Year(), orgID, orgName,
+			oldLevelID, oldLevelName, lvl.ID, lvl.Name, reason, operator)
+	})
 }
 
 // primaryOrg 返回会员的主入会机构（id + 名称）。
@@ -619,27 +628,40 @@ func (s *MemberService) DeleteMember(id uint64) error {
 	return db.DB.Delete(&m).Error
 }
 
-// DefaultPassword is the default password set when an admin resets a member's password.
+// DefaultPassword 种子管理员账号的初始密码。
+//
+// ⚠ 仅用于 seed 创建内置管理员；管理员的「重置会员密码」与新增会员的默认密码
+// 已改为随机生成（见 ResetMemberPassword / CreateMember），不要再在业务流程中使用本常量。
 const DefaultPassword = "Abcd@1234"
 
-// ResetMemberPassword resets a member's password to the default (admin).
-func (s *MemberService) ResetMemberPassword(id uint64) error {
+// ResetMemberPassword 重置会员密码为随机强密码（admin），返回新密码供管理员转告会员。
+//
+// 原先固定重置为 DefaultPassword（源码与 DEPLOY.md 里公开的常量），等于给每个被重置的
+// 账号装上公开钥匙；被盗的管理员账号也只有这唯一一种重置手段。
+func (s *MemberService) ResetMemberPassword(id uint64) (string, error) {
 	var m models.Member
 	if err := db.DB.First(&m, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return errors.New("会员不存在")
+			return "", errors.New("会员不存在")
 		}
-		return err
+		return "", err
 	}
-	hashed, err := bcrypt.GenerateFromPassword([]byte(DefaultPassword), bcrypt.DefaultCost)
+	newPassword, err := utils.RandomPassword(0)
 	if err != nil {
-		return errors.New("密码加密失败")
+		return "", errors.New("密码生成失败")
+	}
+	hashed, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return "", errors.New("密码加密失败")
 	}
 	// 重置密码必须同时记录改密时间：否则重置前签发（或被窃取）的 Token 仍可用到自然过期。
-	return db.DB.Model(&models.Member{}).Where("id = ?", id).Updates(map[string]any{
+	if err := db.DB.Model(&models.Member{}).Where("id = ?", id).Updates(map[string]any{
 		"password":            string(hashed),
 		"password_changed_at": models.NewInvalidBefore(),
-	}).Error
+	}).Error; err != nil {
+		return "", err
+	}
+	return newPassword, nil
 }
 
 // CreateMemberRequest is the admin request for creating a member directly.
@@ -762,9 +784,17 @@ func (s *MemberService) CreateMember(req CreateMemberRequest, operator string) (
 		}
 	}
 
-	password := req.Password
+	// 未填写密码时生成随机初始密码并随响应返回一次（原先固定用公开常量 DefaultPassword，
+	// 等于每个「未填密码」的新账号都有一把公开钥匙）。
+	password := strings.TrimSpace(req.Password)
+	generatedPassword := ""
 	if password == "" {
-		password = DefaultPassword
+		p, err := utils.RandomPassword(0)
+		if err != nil {
+			return nil, errors.New("密码生成失败")
+		}
+		password = p
+		generatedPassword = p
 	}
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -915,6 +945,9 @@ func (s *MemberService) CreateMember(req CreateMemberRequest, operator string) (
 			utils.LogWarn("新增会员生成证书 PDF 失败（member_id=%d, cert_id=%d）：%v", member.ID, cert.ID, err)
 		}
 	}
+
+	// 未填密码时把随机初始密码带回给管理员（仅本次响应下发，不落库）
+	member.GeneratedPassword = generatedPassword
 
 	return &member, nil
 }

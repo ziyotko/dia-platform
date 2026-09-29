@@ -1,11 +1,13 @@
 package controllers
 
 import (
+	"errors"
 	"member/config"
 	"member/internal/middleware"
 	"member/internal/service"
 	"member/pkg/response"
 	"member/pkg/utils"
+	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -140,6 +142,9 @@ func (ctrl *FeeController) DeleteFee(c *gin.Context) {
 func (ctrl *FeeController) IssueInvoice(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 
+	// 解析前先限制请求体总大小（同 /upload）
+	limitMultipartBody(c, maxUploadSize)
+
 	invoiceNo := c.PostForm("invoice_no")
 	if invoiceNo == "" {
 		response.BadRequest(c, "请输入票据号码")
@@ -148,7 +153,8 @@ func (ctrl *FeeController) IssueInvoice(c *gin.Context) {
 
 	var invoiceFile string
 	file, err := c.FormFile("file")
-	if err == nil {
+	switch {
+	case err == nil:
 		if file.Size > maxUploadSize {
 			response.BadRequest(c, "文件大小不能超过 10MB")
 			return
@@ -170,6 +176,16 @@ func (ctrl *FeeController) IssueInvoice(c *gin.Context) {
 		// 与 /upload 保持一致：返回带部署前缀的绝对路径，
 		// 否则前端（及静态挂载 <upload_dir_prefix>/uploads）会 404
 		invoiceFile = config.Cfg.Server.UploadDirPrefix + "/" + path
+	case errors.Is(err, http.ErrMissingFile):
+		// 未附发票文件，允许只更新票据号
+	default:
+		// 超限或解析失败：不能当成「没传文件」静默继续（原先会跳过文件直接开票）
+		if isBodyTooLarge(err) {
+			response.BadRequest(c, "文件大小不能超过 10MB")
+			return
+		}
+		response.BadRequest(c, "文件上传失败")
+		return
 	}
 
 	if err := ctrl.feeService.IssueInvoice(id, invoiceNo, invoiceFile); err != nil {

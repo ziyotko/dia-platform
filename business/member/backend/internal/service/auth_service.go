@@ -292,6 +292,21 @@ func (s *AuthService) UpdateProfile(memberID uint64, req UpdateProfileRequest) e
 		return err
 	}
 
+	// 上传件路径只允许本地上传目录：否则可写入外链/协议相对地址（//evil.com/x），
+	// 后台与会籍记录页的「查看」会跳到站外。
+	// 仅在「本次提交改动了该字段」时校验：兼容库里的历史路径写法，避免用户因为
+	// 一个自己没动过的旧值而无法保存资料。
+	if req.CertFile != member.CertFile {
+		if err := utils.ValidateOptionalUploadPath(req.CertFile); err != nil {
+			return errors.New("组织机构证地址不合法，请重新上传")
+		}
+	}
+	if req.Avatar != member.Avatar {
+		if err := utils.ValidateOptionalUploadPath(req.Avatar); err != nil {
+			return errors.New("头像地址不合法，请重新上传")
+		}
+	}
+
 	updates := map[string]interface{}{
 		"mobile":             req.Mobile,
 		"email":              req.Email,

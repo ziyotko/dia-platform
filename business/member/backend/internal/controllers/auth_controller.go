@@ -277,8 +277,16 @@ func (ctrl *AuthController) UploadPublicFile(c *gin.Context) {
 
 // saveUpload 上传并落盘的公共实现；forcedDir 非空时忽略请求体里的 dir。
 func (ctrl *AuthController) saveUpload(c *gin.Context, exts map[string]bool, forcedDir string) {
+	// 解析前先限制请求体总大小：FormFile 会把整个请求体读完（超限部分落 /tmp），
+	// 只靠下面的 file.Size 判断等于「先写满磁盘再报警」。
+	limitMultipartBody(c, maxUploadSize)
+
 	file, err := c.FormFile("file")
 	if err != nil {
+		if isBodyTooLarge(err) {
+			response.BadRequest(c, "文件大小不能超过 10MB")
+			return
+		}
 		response.BadRequest(c, "请选择文件")
 		return
 	}

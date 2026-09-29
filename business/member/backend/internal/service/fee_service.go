@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"member/internal/models"
 	"member/pkg/db"
+	"member/pkg/utils"
 	"strconv"
 	"strings"
 	"time"
@@ -45,10 +46,14 @@ func (s *FeeService) GetMyFees(memberID uint64, year int, status string) ([]mode
 func (s *FeeService) PayFee(memberID, feeID uint64, receiptFile, paidDate string) error {
 	receiptFile = strings.TrimSpace(receiptFile)
 	paidDate = strings.TrimSpace(paidDate)
-	// 回执与日期必填且日期格式固定：原先原样透传，可写入空回执或 paid_date="abc"，
-	// 且 receipt_file 可为任意字符串（前端 fileUrl 对 http(s) 直通）
+	// 回执与日期必填且日期格式固定：原先原样透传，可写入空回执或 paid_date="abc"。
 	if receiptFile == "" {
 		return errors.New("请上传缴费回执单")
+	}
+	// 回执路径只允许本地上传目录：否则可提交 //evil.com/x 这类协议相对地址，
+	// 管理端「查看回执」会直接跳到站外（钓鱼）。
+	if err := utils.ValidateUploadPath(receiptFile); err != nil {
+		return errors.New("缴费回执单地址不合法，请重新上传")
 	}
 	if paidDate == "" {
 		return errors.New("请选择缴费日期")

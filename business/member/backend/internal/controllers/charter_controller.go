@@ -61,8 +61,15 @@ func (ctrl *CharterController) GetCharterFile(c *gin.Context) {
 
 // UploadCharterFile 后台上传 / 替换章程 PDF
 func (ctrl *CharterController) UploadCharterFile(c *gin.Context) {
+	// 解析前先限制请求体总大小（同 /upload：FormFile 会先把整个请求体读完）
+	limitMultipartBody(c, charterMaxPdfSize)
+
 	file, err := c.FormFile("file")
 	if err != nil {
+		if isBodyTooLarge(err) {
+			response.BadRequest(c, "文件大小不能超过 20MB")
+			return
+		}
 		response.BadRequest(c, "请选择文件")
 		return
 	}

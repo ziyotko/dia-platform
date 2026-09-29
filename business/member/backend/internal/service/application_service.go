@@ -17,6 +17,11 @@ func (s *ApplicationService) CreateApplication(memberID uint64, req CreateAppReq
 	if req.OrgID == 0 {
 		return nil, errors.New("请选择入会机构")
 	}
+	// 附件路径只允许本地上传目录：否则可写入外链/协议相对地址（//evil.com/x），
+	// 管理员在后台点「查看」会跳到站外。
+	if err := utils.ValidateOptionalUploadPath(req.SignedFile); err != nil {
+		return nil, errors.New("附件地址不合法，请重新上传")
+	}
 
 	// 业务规则：不允许二次申请入会 —— 同一会员同时只能存在一条「进行中/已通过」的入会申请。
 	// 仅「已拒绝」的申请不占用名额（会员可修正资料后重新提交）。

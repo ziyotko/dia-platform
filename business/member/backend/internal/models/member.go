@@ -35,6 +35,10 @@ type Member struct {
 	// 会员通过入会申请审批/缴费加入的机构名称。
 	OrgName string `gorm:"-" json:"org_name"`
 
+	// GeneratedPassword 管理端新增会员未填密码时生成的随机初始密码（非数据库字段）。
+	// 只在创建响应里返回一次供管理员转告会员，其它接口不会带该字段。
+	GeneratedPassword string `gorm:"-" json:"generated_password,omitempty"`
+
 	// Company info (for unit members)
 	CompanyName       string `gorm:"size:255" json:"company_name"`
 	CreditCode        string `gorm:"size:64" json:"credit_code"`

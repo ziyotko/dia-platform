@@ -13,8 +13,11 @@
 export function fileUrl(path?: string | null): string {
   if (!path) return ''
   const raw = String(path).trim().replace(/\\/g, '/')
+  // 协议相对地址（//evil.com/x）会被浏览器当成外站，绝不能放行：
+  // 后端已校验用户提交的上传路径，这里再兵一层，防止历史脏数据渲染成外链。
+  if (raw.startsWith('//')) return ''
   if (/^https?:\/\//i.test(raw)) return raw
   const base = import.meta.env.BASE_URL || '/'
-  const clean = raw.replace(/^\.?\//, '')
+  const clean = raw.replace(/^\.?\/+/, '')
   return clean.startsWith('uploads/') ? `${base}${clean}` : `/${clean}`
 }
