@@ -108,7 +108,7 @@ func createSystemConfig() {
 	configs := []models.SystemConfig{
 		{Key: "site_name", Value: "XXXXXXXX协会会员系统", Description: "网站名称"},
 		{Key: "site_description", Value: "XXXXXXXXXXXXX协会官方会员服务系统", Description: "网站描述"},
-		{Key: "bank_name", Value: "中国工商银行北京分行", Description: "开户银行"},
+		{Key: "bank_name", Value: "XXXXXXXX银行", Description: "开户银行"},
 		{Key: "bank_account", Value: "XXXXXXXXXXXXX7", Description: "银行账号"},
 		{Key: "bank_account_name", Value: "XXXXXXXXXXXXX", Description: "账户名称"},
 		{Key: "contact_phone", Value: "010-ccccccccc0", Description: "联系电话"},

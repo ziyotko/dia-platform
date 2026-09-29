@@ -587,6 +587,14 @@ type ChangePasswordRequest struct {
 // publicSiteConfigKeys 允许通过公开接口 GET /site-info 暴露的配置项白名单。
 // 采用白名单而非黑名单：后台后续新增的配置（如邮件密钥、内部参数）默认不会被公开；
 // charter_content / charter_file 属内容型配置，已有各自的公开接口，不在其中。
+//
+// 该集合与 seed.createSystemConfig() 的 10 个默认键**一一对应**，新增/删除配置键时两处一起改。
+// 会费金额**不在**这里：各等级会费以「会费标准」（member_fee_standards，按等级 + 年度）为准，
+// 不存在全局会费配置项（历史上曾有 fee_amount 键，已删除）。
+//
+// 缺失的键**不再补硬编码兜底值**（原先内嵌了真实机构名/银行账号/假金额，与「配置项均由后台维护」
+// 的口径矛盾，且管理员在后台看不到、改不了这些幽灵值）：未配置即不下发该键，由管理员在
+// 后台「系统管理 → 系统配置」补录；前端对空值有自己的降级显示（如站点名回退「会员系统」）。
 var publicSiteConfigKeys = map[string]bool{
 	"site_name":         true,
 	"site_description":  true,
@@ -598,7 +606,6 @@ var publicSiteConfigKeys = map[string]bool{
 	"bank_name":         true,
 	"bank_account":      true,
 	"bank_account_name": true,
-	"fee_amount":        true,
 }
 
 func (s *AuthService) GetSiteConfig() map[string]string {
@@ -609,31 +616,6 @@ func (s *AuthService) GetSiteConfig() map[string]string {
 		if publicSiteConfigKeys[c.Key] {
 			result[c.Key] = c.Value
 		}
-	}
-	// Defaults
-	if result["site_name"] == "" {
-		result["site_name"] = "中国电器工业协会会员系统"
-	}
-	if result["bank_name"] == "" {
-		result["bank_name"] = "中国工商银行"
-	}
-	if result["bank_account"] == "" {
-		result["bank_account"] = "0200 0041 0920 1234 567"
-	}
-	if result["bank_account_name"] == "" {
-		result["bank_account_name"] = "中国电器工业协会"
-	}
-	if result["fee_amount"] == "" {
-		result["fee_amount"] = "2000"
-	}
-	if result["copyright_name"] == "" {
-		result["copyright_name"] = "中国电器工业协会"
-	}
-	if result["icp_no"] == "" {
-		result["icp_no"] = "京ICP备09041796号-1"
-	}
-	if result["beian_no"] == "" {
-		result["beian_no"] = "京公网安备11010502000000号"
 	}
 	return result
 }

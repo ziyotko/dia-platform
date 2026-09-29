@@ -380,6 +380,9 @@
 | `charter_file` | 章程 PDF 附件元信息（JSON：path/name/size/uploaded_at） | 是（专用接口下发） |
 
 > **公开范围由白名单控制**：`GET /site-info` 只返回上表中"前台是否公开 = 是"的键，`charter_content`/`charter_file` 不通过该接口下发。
+> 白名单 = 上面前 10 个键（与种子一一对应，新增键时 `publicSiteConfigKeys` 与 `seed.createSystemConfig()` 两处一起改）。
+> **缺失的键不会被凭空填充**：接口**不做任何硬编码兜底**（原先内嵌了机构名 / 银行账号 / 假会费金额，管理员在后台看不到也改不了），未配置就不下发，由管理员在后台「系统管理 → 系统配置」补录（前端对空值有自己的降级显示）。
+> **会费金额不在此表**：各等级会费以「会费标准」（`member_fee_standards`，按等级 + 年度）为准，不存在全局会费配置项。
 > `charter_content` 在后台「系统管理」页被**隐藏**（避免在纯文本框中误改 HTML），只能通过「协会章程」页维护。
 
 #### `member_operation_logs` 操作日志表

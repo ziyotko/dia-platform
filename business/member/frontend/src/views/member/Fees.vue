@@ -8,8 +8,8 @@
     </div>
 
     <el-card>
-      <!-- Bank Info -->
-      <el-alert type="info" :closable="false" show-icon class="bank-info" v-if="siteInfo">
+      <!-- Bank Info：后端不再补硬编码兜底值，未配置银行信息时不展示（避免出现空白的“协会账户信息：”行） -->
+      <el-alert type="info" :closable="false" show-icon class="bank-info" v-if="hasBankInfo">
         <template #title>
           <span>协会账户信息：{{ siteInfo.bank_name }} | 账号：{{ siteInfo.bank_account }} | 户名：{{ siteInfo.bank_account_name }}，请先联系相关单位确定最终的会员级别和缴费金额，再行汇款，汇款的时候，备注栏注明“XX 年度会费‌”及‌单位名称</span>
         </template>
@@ -170,6 +170,10 @@ const fees = ref<any[]>([])
 const loading = ref(true)
 const filterYear = ref<number | ''>('')
 const siteInfo = reactive<any>({})
+// 银行信息三者任一不为空才展示提示（后端只下发后台已配置的键）
+const hasBankInfo = computed(
+  () => !!(siteInfo.bank_name || siteInfo.bank_account || siteInfo.bank_account_name)
+)
 const years = ref<number[]>([])
 
 // 缴费弹窗
