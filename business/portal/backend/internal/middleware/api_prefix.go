@@ -108,6 +108,17 @@ func MenuAPIPrefixMiddleware() gin.HandlerFunc {
 		}
 		prefixes := access.Prefixes
 
+		// 超级管理员（角色 1）不受菜单前缀限制。
+		// 原因：GetUserMenus 只返回**启用中**的菜单，因此把某个菜单「显示/隐藏」掉，
+		// 它的 api_prefix 会随之消失 —— 连角色 1 也会被拦成「没有授权」（例如误隐藏
+		// 「图文管理」→ 全站 /articles* 报「没有授权」，且前端路由也不再注册，界面无法自救）。
+		// 角色 1 本来就由 admin 组的 AdminMiddleware 把关（同一份 GetUserAccess 缓存），
+		// 这里放行只是恢复既有语义，本中间件对管理员降为纵深防御。
+		if access.IsAdmin {
+			c.Next()
+			return
+		}
+
 		for _, prefix := range prefixes {
 			if pathMatchesAPIPrefix(path, prefix) {
 				c.Next()

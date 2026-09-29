@@ -223,8 +223,12 @@ func (s *DepartmentService) UpdateDepartment(id uint, dept *models.Department) e
 }
 
 func (s *DepartmentService) DeleteDepartment(id uint) error {
+	// Count 的错误必须处理：DB 异常时 count 恒为 0，会直接删掉仍存在子部门的部门，
+	// 子部门的 parent_id 指向不存在的行 → 从树上变成永久孤儿（口径同 menu_service.DeleteMenu）。
 	var count int64
-	utils.DB.Model(&models.Department{}).Where("parent_id = ?", id).Count(&count)
+	if err := utils.DB.Model(&models.Department{}).Where("parent_id = ?", id).Count(&count).Error; err != nil {
+		return err
+	}
 	if count > 0 {
 		return errors.New("存在子部门，无法删除")
 	}

@@ -242,6 +242,17 @@ ALTER TABLE `member_column` DROP COLUMN `code`;
   前端会员专区查询区同步新增「发布时间」（日期区间）与「栏目状态」（启用/禁用）；后端列表参数改为 `services.MemberContentQuery` 结构体承载（新增筛选条件只改该结构体与一处 `Where`）。
 - **修复：新建会员栏目时选「禁用」会被静默存成「启用」**：`member_column.status` 带 `default:1` 标签，GORM 对零值不写库（改用库默认值 1），且插入后把库默认值回填进结构体；`CreateMemberColumn` 现已在插入后按界面所选状态显式补写一次。无结构变更、无需 SQL；若历史上有被错建成「启用」的栏目需改回，按需手工执行 `UPDATE member_column SET status=0 WHERE id=?...;`。
 
+#### 升级说明（2026-09-29，无需手工 SQL）— 权限模型三处收紧
+
+- **管理员不再受接口前缀限制**：`MenuAPIPrefixMiddleware` 对**管理员（角色 1）直接放行**。
+  - 原因：`GetUserMenus` 只返回**启用中**的菜单，所以把某个菜单设为「隐藏」后，它的 `api_prefix` 会随之从授权集合里消失 —— 连角色 1 也会被拦成「没有授权」。误隐藏「图文管理」即会让全站 `/articles*` 不可用，而前端路由同时不再注册，界面上无法自救。
+  - 管理员本来就由 admin 组的 `AdminMiddleware` 把关（与菜单前缀校验共用同一份 15s 缓存 `services.GetUserAccess`），本中间件对管理员降为纵深防御。对**非管理员角色**行为完全不变（仍是「菜单可见范围 = 接口可调用范围」）。
+- **「静态化管理」菜单的 api_prefix 收窄**：`/static,/static-logs,/static-monitor,/settings,/columns,/articles` → **`/static,/static-logs,/static-monitor,/settings,/columns,/articles/column-publishes`**。
+  - 原因：前缀匹配**按路径且不分 HTTP 方法**，原先写整个 `/articles` 会让「只被授予静态化管理」的自定义角色拿到 `POST/PUT/DELETE /articles*` 的文章写权限（接口范围 ⊃ 菜单范围）。该页面实际只需要 `GET /articles/column-publishes`（只读列表）。
+  - **已加幂等升级**：启动时若该菜单的 api_prefix 仍等于旧值则自动改写为新值；自行改过该值的环境不会被覆盖（需手工调整）。对**管理员无影响**（已放行）。
+  - 口径提醒：以后给菜单配 `api_prefix` 时，优先写**精确子路径**，不要写整个模块前缀。
+- **删除部门增加错误处理**：`DELETE /departments/:id` 的「是否存在子部门」计数查询原先忽略错误（DB 异常时计数恒为 0 → 直接删掉仍有子部门的部门，子部门变成树上永久孤儿）。现改为错误即中止，口径与删菜单一致。
+
 #### 升级说明（2026-09-29，无需手工 SQL）— 外部会员（member）登录态只读会员专区
 
 - **新能力**：会员在会员中心（`business/member`）登录后，可用**会员中心签发的登录 Token** 直接读取 portal 的会员专区已发布内容，无需在 portal 再注册/登录账号（只读）。

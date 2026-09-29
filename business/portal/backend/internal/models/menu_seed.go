@@ -14,8 +14,11 @@ import (
 // 因此该菜单声明多个 api_prefix（逗号分隔，见 middleware/api_prefix.go）。
 // 另：该页面需读取全局设置（静态化输出路径 / 首页整体变灰，GET /settings 在 admin 组），故追加 /settings
 // （静态化参数已并入「基础配置-系统设置」的「静态化设置」页签，与此处 /settings 同源，不再单设菜单）；
-// 列表 Tab 还读 GET /columns/publishes 与 GET /articles/column-publishes（member 组），故追加 /columns、/articles。
-const staticManagementAPIPrefix = "/static,/static-logs,/static-monitor,/settings,/columns,/articles"
+// 列表 Tab 还读 GET /columns/publishes 与 GET /articles/column-publishes（member 组），
+// 故追加 /columns 与 **精确到子路径的** /articles/column-publishes。
+// ⚠ 不得写成整个 /articles：前缀匹配**不分 HTTP 方法**，写成 /articles 会让「只被授予
+// 静态化管理」的自定义角色拿到 POST/PUT/DELETE /articles 的写权限（接口范围 ⊃ 菜单范围）。
+const staticManagementAPIPrefix = "/static,/static-logs,/static-monitor,/settings,/columns,/articles/column-publishes"
 
 // 「栏目管理」页面除栏目本身外，还需读取模板列表（页面层已合并进模板，栏目挂 template_id），
 // 以及「栏目审核流程」下拉使用的全部流程列表（GET /workflows?all=1），
@@ -144,6 +147,9 @@ func SeedDefaultMenus() {
 	upgradeMenuAPIPrefix("静态化管理", "/static", staticManagementAPIPrefix)
 	upgradeMenuAPIPrefix("静态化管理", "/static,/static-logs,/static-monitor", staticManagementAPIPrefix)
 	upgradeMenuAPIPrefix("静态化管理", "/static,/static-logs,/static-monitor,/settings", staticManagementAPIPrefix)
+	// 历史版本把整个 /articles 写进了「静态化管理」的前缀（前缀匹配不分方法 → 角色越权拿到文章写权限），
+	// 这里收窄为精确子路径 /articles/column-publishes。
+	upgradeMenuAPIPrefix("静态化管理", "/static,/static-logs,/static-monitor,/settings,/columns,/articles", staticManagementAPIPrefix)
 	// 历史版本「栏目管理」声明的是 /columns,/pages（页面层已移除）或早期仅 /columns，这里做幂等升级。
 	upgradeMenuAPIPrefix("栏目管理", "/columns", columnManagementAPIPrefix)
 	upgradeMenuAPIPrefix("栏目管理", "/columns,/pages", columnManagementAPIPrefix)
