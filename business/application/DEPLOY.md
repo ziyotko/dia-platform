@@ -3,7 +3,7 @@
 > 分支：`caam_release`（汽车版）／ `miic_release`（中心版）｜ 项目路径：`business/application/`
 > 部署拓扑：Nginx 承载前端静态资源并反代后端 → Go 后端（默认 `0.0.0.0:8094`，配置项 `server.port`） → MySQL / Redis
 > 说明：后端 = 申报评审 API；前端 = 「申报人端 + 管理端」同一个工程（两个登录入口，见第三节）。证书为数据记录 + 附件上传，不生成 PDF。
-> 文档与代码同步至：2026-09-18（原 `README.md` 内容已并入本文档）
+> 文档与代码同步至：2026-09-29（原 `README.md` 内容已并入本文档）
 
 ## 目录结构
 
@@ -114,13 +114,13 @@ powershell -ExecutionPolicy Bypass -File .\build-backends.ps1 -Only application 
 - 上传目录：`./uploads`（**不再静态托管**，只能通过带鉴权的 `GET /member/files`、`GET /admin/files` 读取，见「二.5」）
 - 日志输出：`logs/application.log`（单文件 100MB、保留 30 个备份、180 天）
 - 健康检查（公开接口，无需 Token）：`GET /business_application/api/captcha` 返回 `{"code":0,...}` 即正常
-- 响应约定：**HTTP 状态恒为 200**，业务结果看 `code`：`0` 成功、`400` 参数错误、`401` 未登录/登录已过期、`403` 无操作权限、`404` 资源不存在、`429` 请求过于频繁、`500` 服务端错误
+- 响应约定：**HTTP 状态恒为 200**，业务结果看 `code`：`0` 成功、`1` 业务失败（参数错误 / 无权限 / 资源不存在 / 服务端异常，用文案区分）、`401` 未登录/登录已过期、`429` 请求过于频繁
 
 ### 5. 上传与限流
 
 - 上传扩展名白名单：`.pdf .doc .docx .xls .xlsx .ppt .pptx .txt .zip .rar .jpg .jpeg .png .gif`
 - 落盘路径 `uploads/YYYYMMDD/<uuid>.<ext>`，接口返回带部署前缀的 `fileUrl`
-- **后端硬限单个文件 ≤ 50MB**（`controllers/upload_controller.go`，超出返回 `code=400`「文件大小不能超过 50MB」）。Nginx `client_max_body_size` 需 ≥ 60m，留出 multipart 开销；配得比 50m 小会先在网关返回 413，看不到后端的业务提示
+- **后端硬限单个文件 ≤ 50MB**（`controllers/upload_controller.go`，超出返回 `code=1`「文件大小不能超过 50MB」）。Nginx `client_max_body_size` 需 ≥ 60m，留出 multipart 开销；配得比 50m 小会先在网关返回 413，看不到后端的业务提示
 - 限流（Redis db 3 固定窗口，按真实客户端 IP 计数；不同接口使用不同 `scope`，额度互不影响；Redis 异常时退化为进程内限流 fail-closed）：
 
 | 接口 | 额度 |
@@ -134,7 +134,7 @@ powershell -ExecutionPolicy Bypass -File .\build-backends.ps1 -Only application 
 | `GET /member/files`、`GET /admin/files`（文件下载） | 120 次/分钟 |
 
 - 另有单 IP 并发请求上限 `server.max_concurrent_ips`（默认 100，**必须 > 0**：配成 0 会让所有请求都返回 429）；上述限制超限均返回 `code=429`「请求过于频繁，请稍后再试」
-- **材料数量配额**：单份申报最多 **20 份**材料（`service.MaxMaterialsPerApplication`，超出返回 `code=500`「材料数量不能超过 20 份」）；单文件大小与扩展名限制见上
+- **材料数量配额**：单份申报最多 **20 份**材料（`service.MaxMaterialsPerApplication`，超出返回 `code=1`「材料数量不能超过 20 份」）；单文件大小与扩展名限制见上
 
 ### 上传文件的下载（鉴权，2026-09-23 第三批改动）
 
@@ -142,7 +142,7 @@ powershell -ExecutionPolicy Bypass -File .\build-backends.ps1 -Only application 
 
 - 申报人：`GET /member/files?url=<fileUrl>`（带申报人 JWT），只能读**自己申报的材料**与**自己证书的附件**；
 - 管理端：`GET /admin/files?url=<fileUrl>`（带管理端 JWT），管理人/超管可读任意文件，**评审人只能读分配给自己的申报的材料**；
-- 越权返回 `code=403`「无操作权限」，路径不在 `uploads/` 内返回 `code=404`；`.zip/.rar` 以附件形式下发，其余内联预览；响应带 `X-Content-Type-Options: nosniff`。
+- 越权返回 `code=1`「无操作权限」，路径不在 `uploads/` 内返回 `code=1`「文件不存在」；`.zip/.rar` 以附件形式下发，其余内联预览；响应带 `X-Content-Type-Options: nosniff`。
 - 前端已改为「带 token 的 blob 请求 + objectURL」打开文件（`utils/file.ts`），原来的 `window.open(fileUrl)` 不再使用。
 - **Nginx 若还配了 `/uploads/` 直接指向磁盘目录，必须删除**：否则绕过上述鉴权（见「四、Nginx 反向代理示例」）。
 
@@ -172,7 +172,7 @@ powershell -ExecutionPolicy Bypass -File .\build-frontends.ps1 -Only business_ap
 - 若部署路径变化，改 `VITE_BASE_PATH` 后重新构建；同时同步 `backend/config.yaml` 的 `server.api_prefix`（`/xxxx/api`）与 `server.upload_dir_prefix`（`/xxxx`）
 - dev 端口 `3003`；dev 代理键由 `.env` 推导（`[apiBase]` 与 `[basePath]/uploads`），**代理目标写死在 `frontend/vite.config.ts`**（当前 `http://127.0.0.1:8094`），改后端端口必须同步改这里
 - 申报人端与管理端是**同一个工程**：申报人页面走 `PublicLayout`，管理端页面在 `/admin/*` 路由下并有独立登录页；两套 Token 分别存 `localStorage` 的 `application-member-token` / `application-admin-token`（`utils/request.ts` 按请求路径自动选择），返回 `code=401` 时按请求角色跳对应登录页（申报人 `/login`、管理端 `/admin/login`）并只清理本应用的键
-- 依赖：Vue 3.4 / TypeScript 5.4 / Element Plus 2.6 / Pinia 2.1 / Vue Router 4.3 / ECharts 6 / Vite 5.2
+- 依赖：Vue 3.4 / TypeScript 5.4 / Element Plus 2.6 / Pinia 2.1 / Vue Router 4.3 / Vite 5.2
 
 ### 3. 部署
 
@@ -273,7 +273,7 @@ server {
 
 1. **Token 立即失效**：JWT 现在带 `aud`（申报人 / 管理端两套互不通用）、校验签发者并锁定 HS256。旧版本签发的 Token 全部失效，所有在线用户需重新登录（等同「更换 JWT 密钥」的表现，无需改配置）。
 2. **管理端鉴权收紧**：`/admin/*` 每次请求回查账号是否仍存在且启用，角色码为空直接 `401`；`GET /admin/dashboard` 需 `dashboard:view`，`POST /admin/upload` 需 `application:preliminary` 或 `certificate:manage`（评审人无上传权限，属预期）。
-3. **注册强制验证码**：`POST /member/register` 新增必填 `captcha_id` + `captcha_code`（前端注册页已同步；旧前端或脚本调用会返回 `code=400`「请填写完整信息（含验证码）」）。
+3. **注册强制验证码**：`POST /member/register` 新增必填 `captcha_id` + `captcha_code`（前端注册页已同步；旧前端或脚本调用会返回「请填写完整信息（含验证码）」——当时为 `code=400`，2026-09-28 业务码统一后为 `code=1`）。
 4. **新增限流**：注册 / 登录 / 上传见「二.5」表格；联调压测若遇 `429`，属限流生效，换 IP 或等待窗口结束即可。
 5. **结果公示字段变化**：`GET /member/results` 返回条目改为白名单 `{id, title, status, batchId, batch{id,title}, userRealName, publishedAt}`，不再返回 `user` 对象（原先会把全体申报人的身份证号、手机号、邮箱一起下发）。自定义前端若读过 `user.realName`，请改用 `userRealName`。
 6. **申报创建字段白名单**：`POST /member/applications` 只接受 `batchId / categoryId / title / projectBrief / content`，请求体里的 `status`、`publishedAt`、`totalScore`、`finalOpinion`、`id` 一律忽略（原先把整个模型绑定进请求体，可把伪造条目直接塞进结果公示）。

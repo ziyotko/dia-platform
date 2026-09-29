@@ -4,7 +4,7 @@
 > 数据库类型：MySQL ≥ 8.0
 > 建表方式：后端启动时通过 GORM `AutoMigrate` 自动建表（见 `backend/pkg/db/db.go` 的 `migrate()`）
 > 数据初始化：启动时幂等写入超级管理员、默认菜单与接口权限点（见 `backend/internal/seed/` 与 `service/auth_service.go`）
-> 文档与代码同步至：2026-09-24
+> 文档与代码同步至：2026-09-29
 
 ---
 
@@ -228,7 +228,7 @@
 - 读取可见性：`tenant_id = 自身 OR tenant_id = 0`；平台预置菜单（`tenant_id = 0`）对租户**只读**。
 - 菜单是**动态路由唯一来源**：前端 `GET /auth/menus` → `generateRoutes()`；没有菜单 = 没有页面。
 - 删除保护：存在子菜单时拒绝删除；删除时清理 `base_role_menu`。
-- 启动时 `seed.cleanupObsoleteMenus()` 会物理删除 4 个历史占位菜单（组件 `base/workflow/{model,instance,task,designer}/index.vue`）并清理关联。
+- 启动时 `seed.cleanupObsoleteMenus()` 会物理删除 2 个历史占位菜单（组件 `base/workflow/model/index.vue`、`base/workflow/designer/index.vue`）并清理关联（`instance` / `task` 为正式菜单，绝不在清理列表内）。
 
 ### 3.3 组织架构
 
@@ -638,7 +638,7 @@ erDiagram
 
 - 补种口径：按 `(app_code, parent_id, name)` 匹配，**已存在不覆盖**（保留管理员改名/调整），只补齐缺失项。
 - 个人中心 `/profile` 由前端硬编码追加，不来自菜单表。
-- 启动时会清理 4 个历史占位菜单（见 3.2 节说明）。
+- 启动时会清理 2 个历史占位菜单（见 3.2 节说明）。
 
 ### 权限点（`seed.basePermissionSeeds`，共 112 条）
 

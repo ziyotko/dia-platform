@@ -13,7 +13,7 @@
 | --- | --- | --- |
 | 库名 | `caam_member` | 见 `backend/config.yaml` 的 `mysql.db_name` |
 | 字符集 | `utf8mb4` | 支持完整中文与 Emoji |
-| 时区 | 宿主机本地时区（DSN `loc=Local`） | `parseTime=True&loc=Local` |
+| 时区 | `Asia/Shanghai`（配置 `mysql.loc`，DSN `loc=Asia%2FShanghai`） | 显式指定、不依赖部署机时区；`loc` 留空才回退 `Local`（见 `pkg/db/db.go`）。DSN 同时带 `timeout/readTimeout/writeTimeout` |
 | 地址 / 端口 | `10.3.1.95:63400` | 当前仓库配置值，生产按实际调整 |
 | 账号 | `root` | 当前配置值；**生产建议改用最小权限专用账号** |
 | 密码 | 环境变量 `MEMBER_DB_PASSWORD` | 勿提交真实密码 |
@@ -28,7 +28,7 @@
 - **主键**：所有表主键为 `id`，类型 `bigint unsigned AUTO_INCREMENT`（由 `models.BaseModel` 提供）。
 - **时间字段**：GORM `time.Time` 映射为 `datetime(3)`（毫秒精度）；模型内显式声明 `type:datetime` 的字段（`*models.LocalTime`）为 `datetime`。
 - **时间序列化**：`models.LocalTime` 统一按 `2006-01-02 15:04:05` 输出（如 `2026-09-23 10:20:30`），前端无需再格式化。
-- **物理删除（硬删）**：模型**不再**内嵌 `gorm.DeletedAt`，各表**没有** `deleted_at` 列，删除即 `DELETE`（无回收站、无恢复语义）。旧库残留的 `deleted_at` 列与历史软删数据需按 `business/member/DEPLOY.md` 手工清理（否则历史被删数据会重新"出现"在列表中）。
+- **物理删除（硬删）**：模型**不再**内嵌 `gorm.DeletedAt`，各表**没有** `deleted_at` 列，删除即 `DELETE`（无回收站、无恢复语义）。若沿用更早的历史库且库里仍残留 `deleted_at` 列/历史软删行，需手工清理（见 §七 注意事项 1），否则历史被删数据会重新“出现”在列表中。
 - **无外键约束**：`pkg/db/db.go` 配置了 `DisableForeignKeyConstraintWhenMigrating: true`，模型里的关联字段（`Member`、`Org`、`Level` 等）**不会**生成外键约束，也不会额外建列——引用完整性完全由 service 层保证。
 - **布尔字段**：MySQL 中映射为 `tinyint(1)`（`boolean`）。
 - **Go `int` 字段**：映射为 `bigint`（如 `year`、`sort`、`view_count`、`employee_count`）。
@@ -105,7 +105,7 @@
 | password_changed_at | datetime | 是 | - | - | 最后一次修改密码时间（秒级；本人改密/管理员重置密码时写入，不出参 JSON） |
 | token_invalid_before | datetime | 是 | - | - | 该时间之前签发的 Token 一律作废（秒级；管理员变更会籍状态时写入，不出参 JSON） |
 
-> **密码策略**：注册页要求 8~20 位且含小写字母、大写字母、数字、特殊字符（**后端 `RegisterRequest` 仅强制 `required,min=6`**，复杂度校验在前端）；「修改密码」后端强制 `min=8`；管理员「新增会员」密码留空、以及后台「重置密码」时使用默认密码常量 `Abcd@1234`。密码以 **bcrypt** 哈希存储（与 portal 的 SM3 不同）。
+> **密码策略**：注册页要求 8~20 位且含小写字母、大写字母、数字、特殊字符（**后端 `RegisterRequest` 仅强制 `required,min=6`**，复杂度校验在前端）；「修改密码」后端强制 `min=8`；管理员「新增会员」密码留空、以及后台「重置密码」时都会**随机生成强密码**（随接口返回、弹窗展示一次），默认密码常量 `Abcd@1234` **仅用于种子管理员账号**。密码以 **bcrypt** 哈希存储（与 portal 的 SM3 不同）。
 > 关联字段 `org_name`（入会机构名）是 `gorm:"-"` 的**非数据库字段**，由 service 在查询时填充。
 
 #### `member_profile_changes` 资料变更记录表
@@ -346,7 +346,7 @@
 | published_at | datetime | 是 | - | - | 发布时间，为空表示未发布 |
 | created_by | varchar(64) | 是 | - | - | 创建人 |
 
-> 前台列表只返回 `published_at IS NOT NULL AND published_at <= NOW()` 的公告；**详情接口当前未做该过滤**（属已知待修项：可直接枚举 id 读取未发布公告）。
+> 前台列表与**详情**都只返回 `published_at IS NOT NULL AND published_at <= NOW()` 的公告（比较时留 1 秒容差）；未发布/未到发布时间的公告按「公告不存在」处理。
 
 ---
 
@@ -394,8 +394,8 @@
 | method | varchar(10) | 是 | - | - | HTTP 方法 |
 | path | varchar(255) | 是 | - | IDX | 请求路径 |
 | ip | varchar(64) | 是 | - | - | 客户端 IP |
-| params | text | 是 | - | - | 请求参数（截断 2000 字节） |
-| result | text | 是 | - | - | 响应结果（截断 2000 字节） |
+| params | text | 是 | - | - | 请求参数（按**字符**截断 2000） |
+| result | text | 是 | - | - | 响应结果（按**字符**截断 2000） |
 | status | bigint | 是 | 1 | - | 1 成功 / 0 失败（见 §七） |
 | duration | bigint | 是 | 0 | - | 耗时（毫秒） |
 | operation_at | datetime(3) | 是 | - | - | 操作时间 |
@@ -576,7 +576,7 @@ erDiagram
 | --- | --- | --- |
 | `admin` | `Abcd@1234` | `is_admin = true`、状态 `active`、单位会员、公司名「XXX协会」；**上线后必须立即修改密码** |
 
-> 后台「重置密码」与「新增会员（密码留空）」也使用同一默认密码常量 `service.DefaultPassword`。
+> 后台「重置密码」与「新增会员（密码留空）」现在都会**随机生成强密码**（随接口返回、弹窗展示一次）；`service.DefaultPassword`（`Abcd@1234`）仅用于种子创建内置管理员。
 
 ### 默认机构（3 条）
 
@@ -611,9 +611,9 @@ erDiagram
 
 ## 七、注意事项
 
-1. **必须手工执行的旧库清理**：本项目已改为物理删除，`AutoMigrate` **只加列不删列**。若沿用历史库，需按 `business/member/DEPLOY.md` 执行：
-   - 删除各表 `deleted_at IS NOT NULL` 的历史软删行（否则这些数据会重新出现在列表/公开树中）；
-   - 再 `ALTER TABLE ... DROP COLUMN deleted_at`（旧库残留列）。
+1. **旧库若残留软删列需手工清理**：本项目已是物理删除（硬删），`AutoMigrate` **只加列不删列**。若沿用更早的历史库、库里仍有 `deleted_at` 列，需手工执行（本仓库未提供脚本；`DEPLOY.md` 的「手工 SQL」章节只有会费唯一索引与遗留表两项）：
+   - 先删历史软删行，否则这些数据会重新出现在列表/公开树中：`DELETE FROM <表> WHERE deleted_at IS NOT NULL;`
+   - 再删残留列：`ALTER TABLE <表> DROP COLUMN deleted_at;`
    - 图片/证书/发票等**历史路径**（如 `/uploads\files\...` 反斜杠形式）需按需归一化为带前缀的正斜杠路径。
    - 遗留表 `member_password_resets`（自助找回密码功能已下线，代码不再引用、也不在 AutoMigrate 列表内）：可执行 `DROP TABLE IF EXISTS member_password_resets;` 清理，语句见 `DEPLOY.md`「手工 SQL ②」。
 2. **无外键约束**：所有引用关系（`member_id`、`org_id`、`level_id`、`category_id`、`fee_standard_id` 等）都没有数据库级外键，删除被引用数据时会由 service 层拦截（机构被会员/申请/费用引用时不可删除等），**直接改库时需自行保证一致性**。

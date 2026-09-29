@@ -233,7 +233,7 @@ async function regenerate(row: any) {
   } catch {} finally { generatingId.value = null }
 }
 
-// 批量补生成历史存量中 file_path 为空的证书文件（后端单次最多 200 张）
+  // 批量补生成历史存量中 file_path 为空的证书文件（本次固定传 200 张；后端上限 500）
 async function regenerateMissing() {
   generatingMissing.value = true
   try {

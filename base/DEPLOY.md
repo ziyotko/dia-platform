@@ -3,7 +3,7 @@
 > 项目路径：`base/`｜前端部署子路径：`/business_base/`｜接口前缀：`/business_base/api`
 > 部署拓扑：Nginx 承载前端静态资源并反代后端 → Go 后端（`0.0.0.0:8091`，配置项 `server.port`） → MySQL / Redis
 > 定位：Base 是「管理后台底座」，自身不含业务；业务系统（门户、会员、应用等）以 **IFrame** 或 **API 代理** 方式接入。
-> 文档与代码同步至：2026-09-24（数据库结构见 [backend/docs/database.md](backend/docs/database.md)，操作说明见 [frontend/docs/用户使用手册.md](frontend/docs/用户使用手册.md)）
+> 文档与代码同步至：2026-09-29（数据库结构见 [backend/docs/database.md](backend/docs/database.md)，操作说明见 [frontend/docs/用户使用手册.md](frontend/docs/用户使用手册.md)）
 
 ## 目录结构
 
@@ -175,7 +175,7 @@ POST /business_base/api/auth/init
 ### 8. 升级说明（无需手工 SQL）
 
 - **菜单 / 权限点幂等补种**：新版本新增的菜单与权限点会在启动时自动补齐；平台超管角色自动获得新增权限点，升级后平台管理员不会被新权限点挡住。
-- **废弃占位菜单自动清理**：历史遗留的 4 个工作流占位菜单（组件 `base/workflow/{model,instance,task,designer}/index.vue`）会被物理删除并解除角色菜单关联，避免点击落到 404。日志出现 `已清理 N 个历史遗留的占位菜单` 即已生效。
+- **废弃占位菜单自动清理**：历史遗留的 2 个占位菜单（组件 `base/workflow/model/index.vue`、`base/workflow/designer/index.vue`）会被物理删除并解除角色菜单关联，避免点击落到 404（`instance` / `task` 是正式菜单，**不在**清理列表内）。日志出现 `已清理 N 个历史遗留的占位菜单` 即已生效。
 - **历史软删数据自动清理**：日志形如 `[migrate] <表> 表物理删除 N 条历史软删除记录`；**首次启动可能触发多轮重试**（父表被外键引用时需等子表先清空），最多 3 轮，仍失败只告警不阻断启动。
 - **用户名去重 + 唯一索引**：启动时 `dedupeUserUsernames()` 先整理重复用户名（改名 `<原名>_dup<id>` 并打日志），再建唯一索引 `uk_base_user_tenant_username (tenant_id, username)`。
 - **机构外键列**：`AutoMigrate` 会给 `base_user` 补 `organization_id` 列，无需手工处理。
@@ -383,7 +383,7 @@ server {
 | 启动即退出，日志 `加载配置失败` | 未在 `backend` 目录下启动（viper 读的是 `./config.yaml`） |
 | 启动即退出，日志 `初始化Redis失败` | Redis 地址/密码/DB 不通或未启动；`redis.db` 需与其它模块区分（当前为 1） |
 | 启动即退出，日志 `初始化数据库失败` | MySQL 不通、库不存在、账号无权限；日志若出现 `1451`（外键约束）说明历史软删清理某表失败，属告警级，可继续观察 |
-| 服务起不来且日志提示唯一索引/重复用户 | 历史用户名重复导致建唯一索引失败；确认日志中的 `已重命名重复用户名` 行，再次启动即可完成建索引 |
+| 服务起不来且日志提示唯一索引/重复用户 | 历史用户名重复导致建唯一索引失败；查日志中 `租户 N 存在同名的重复账号，已保留 id=…，其余 … 条改名为 …_dup<id>，请人工确认` 行（`dedupeUserUsernames()` 在 `AutoMigrate` 之前执行，*同一次启动*即完成改名+建索引），确认改名结果后在「用户管理」中处理 |
 | 登录/验证码返回「请求过于频繁，请稍后再试」（`code=429`） | 命中固定窗口限流（Redis `ratelimit:<路由>:<IP>:<窗口段>`）。优先确认 `server.trusted_proxies` 是否填了 Nginx IP，否则全站共用一个 IP 会被一起限流 |
 | 多用户同时被登出、接口返回 `code=401` | Token 过期（`jwt.expire_hours`）或被吊销（登出 / 改密 / 更换 `jwt.secret`）；前端收到 401 自动跳登录页 |
 | 用户「改完密码后其他设备被登出」 | 属正常安全机制：改密后写入 `auth:user:revoked-before:<uid>`，此前的 Token 全部失效 |
@@ -534,7 +534,7 @@ if tenantID > 0 {
 
 实现：`internal/service/captcha_service.go`（与 portal / member / application 一致）。
 
-- **样式**：`base64Captcha.NewDriverString`，5 位数字 + 大写字母，字符集 `234679ACDEFGHJKMNPQRTUVWXY`（已剔除 0/O、1/I/L、2/Z、5/S、8/B 等易混字符），带空心线/粘连线/正弦线干扰；图片 300×100，对应前端 150×50 容器 + `object-fit: cover`。
+- **样式**：`base64Captcha.NewDriverString`，5 位数字 + 大写字母，字符集 `234679ACDEFGHJKMNPQRTUVWXY`（已剔除 0/O、1/I/L、5/S、8/B、Z 等易混字符），仅保留最轻的 1px 细斜干扰线（空心线/正弦线已移除）；图片 300×100，对应前端 150×50 容器 + `object-fit: cover`。
 - **存储**：仅 Redis（key `captcha:<id>`，TTL 5 分钟），多实例部署校验一致。
 - **校验**：一次性（无论对错校验后立即删除）、大小写不敏感、忽略首尾空格；`id` 或 `code` 为空直接失败。
 - **接口**：`GET /business_base/api/auth/captcha` 返回 `{captcha_id, captcha_img}`；登录体使用 `captcha_id` + `captcha_code`。
@@ -700,7 +700,7 @@ if tenantID > 0 {
 
 ### A.16 已知遗留（未实现 / 需注意）
 
-- 短信 / 企业微信渠道无 sender（用 HTTP 网关 / 群机器人替代）；无 refresh token（8h JWT + 吊销已够）。
+- 短信 / 企业微信渠道无 sender（用 HTTP 网关 / 群机器人替代）；**子应用票据兑换只发 access token、不发 refresh token**（refresh 仅供登录用户续期，见附录 A.8）。
 - 前端部分动作没有权限码（依赖后端归属校验或白名单）：文件页「预览」、消息页「查看」、流程实例页「发起流程」/「撤销」/「详情」、我的待办页「通过/驳回/加签/转办」、字典项「新增项」。
 - `base_message_template` 的「短信 / 企微」渠道在前端模板表单未开放（渠道下拉仅 `in-app` / `email`）。
 - 列表页统一固定每页 10 条，无每页条数选择与排序。
@@ -718,6 +718,8 @@ if tenantID > 0 {
 | POST | `/auth/login` | 登录（支持租户编码、验证码），10 次/分钟 |
 | POST | `/auth/init` | 首次部署创建超级管理员（已存在则报错），5 次/分钟 |
 | GET | `/auth/captcha` | 图形验证码，返回 `captcha_id` / `captcha_img`，30 次/分钟 |
+| POST | `/auth/refresh` | 用 refresh token 换发新的 access + refresh（每次轮换），60 次/分钟 |
+| POST | `/auth/app-ticket/exchange` | 子应用一次性接入票据兑换会话（只发 access token），60 次/分钟 |
 | GET | `/site-info` | 站点公开配置（`captchaEnabled` + 平台名称/Logo/版权），30 次/分钟 |
 | GET | `/files/*key` | 文件公开访问（key 含日期目录，如 `20260101/xxx.png`） |
 
@@ -725,7 +727,7 @@ if tenantID > 0 {
 
 | 分组 | 方法 | 路径 | 说明 |
 | --- | --- | --- | --- |
-| 认证 | GET/POST | `/auth/info`、`/auth/menus`、`/auth/permissions`、`/auth/change-password`、`/auth/logout` | 当前用户、菜单、权限标识、改密（旧 token 失效）、登出（token 进黑名单） |
+| 认证 | GET/POST | `/auth/info`、`/auth/menus`、`/auth/permissions`、`/auth/change-password`、`/auth/logout`、`/auth/app-ticket` | 当前用户、菜单、权限标识、改密（旧 token 失效）、登出（token 进黑名单）、为自己签发子应用接入票据 |
 | 仪表盘 | GET | `/dashboard/stats` | 资源概览 + 今日统计 + 「我的」+ 近 7 天趋势 |
 | 租户 | CRUD | `/tenants` | 仅平台超管（路由级 `SuperAdminOnly`） |
 | 系统设置 | GET/PUT/POST | `/settings`、`/settings/email/test` | 仅平台超管；保存后立即重载通知渠道 |

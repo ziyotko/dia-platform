@@ -18,7 +18,8 @@ const defaultMaxJSONBodyMB = 64
 // BodyLimitMiddleware 限制非 multipart 请求体大小（可通过 server.max_json_body_mb 调整）。
 //
 // 只针对非 multipart：
-//   - 文件上传由 upload_controller 限制单文件大小（10MB/20MB 等）并由 Nginx 兜底；
+//   - 文件上传由各上传入口在解析前限制（controllers/auth_controller.go 与 fee_controller.go 10MB、
+//     charter_controller.go 20MB，见 controllers/upload_limit.go）并由 Nginx 兜底；
 //   - 而 JSON 请求体会被操作日志中间件（middleware.OperationLog）整体读入内存，
 //     无上限时任意已认证账号发一个超大 body 即可把进程内存打满。
 //

@@ -10,7 +10,9 @@ import (
 	"application/config"
 )
 
-// uploadRoot 是上传目录名（磁盘上的目录），外部访问前缀 = server.upload_dir_prefix + "/uploads"（见 main.go 的 r.Static）。
+// uploadRoot 是上传目录名（磁盘上的目录）；入库地址形如 server.upload_dir_prefix + "/uploads/..."。
+// 注意：上传目录**不再静态托管**（原先 main.go 的 r.Static 已移除），读取一律走带鉴权的
+// GET /member/files 与 GET /admin/files（internal/controllers/file_controller.go）。
 const uploadRoot = "uploads"
 
 // LocalPath maps a stored file URL to a path on disk, reporting whether the URL is

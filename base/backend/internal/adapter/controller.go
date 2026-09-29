@@ -11,8 +11,9 @@ import (
 // AdapterController 子应用统一代理入口
 // 路由：/business_base/api/app/:appCode/*path（前缀来自 config.yaml 的 server.api_prefix）
 //
-// 鉴权口径：入口只挂了 JWT（子应用的接口权限由子应用自己控制），
-// 但必须校验「调用方租户已开通并启用该应用」，避免任意登录用户直接穿透到子应用后端。
+// 鉴权口径：入口挂 JWT + 租户开通校验，并按应用启用的接口权限点做二次校验
+// （`service.PermissionService.HasAppAccess`：应用未登记权限点时放行，交由子应用自行控制；
+// 登记了则未授权的调用返回 403「无权限访问该子应用接口」）。
 // 平台超管（tenantID = 0）用于联调与管理，直接放行。
 func AdapterController(c *gin.Context) {
 	appCode := c.Param("appCode")

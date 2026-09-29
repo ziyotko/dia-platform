@@ -20,7 +20,7 @@ const (
 // 数字 + 字母验证码字符集：5 位，仅使用大写字母（与 portal / member / application 保持一致）。
 // 注意：
 //   - 元素个数必须大于 Length，否则库会回退为默认字符集；
-//   - 已剔除易混字符 0/O、1/I/L、2/Z、5/S、8/B，降低识别成本；
+//   - 已剔除易混字符 0/O、1/I/L、5/S、8/B、Z（数字 2 保留在字符集内），降低识别成本；
 //   - 校验时大小写不敏感，用户输入小写字母同样可通过。
 const captchaSource = "234679ACDEFGHJKMNPQRTUVWXY"
 
@@ -56,7 +56,7 @@ func (s redisCaptchaStore) Verify(id, answer string, clear bool) bool {
 
 // Generate 生成验证码：5 位数字 + 大写字母，仅保留少量噪点与细干扰线（与 portal 保持一致的样式与字符集）。
 func (s CaptchaService) Generate() (id string, b64s string, err error) {
-	// 尺寸保持 100x300（宽:高 = 3:1），契合前端 150x50 的 object-fit 容器，避免裁切。
+	// 尺寸 高 100 × 宽 300（3:1），契合前端 150x50 的 object-fit 容器，避免裁切。
 	driver := base64Captcha.NewDriverString(
 		100, 300, // height, width
 		// noiseCount 噪点（拉丁字符笔画细，噪点过多会明显影响可读性）

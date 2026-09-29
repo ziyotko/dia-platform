@@ -3,7 +3,7 @@
 > 分支：`caam_release`（汽车版）／ `miic_release`（中心版）｜ 项目路径：`business/member/`
 > 部署拓扑：Nginx 承载前端静态资源并反代后端 → Go 后端（默认 `0.0.0.0:8093`，配置项 `server.port`） → MySQL / Redis
 > 说明：本仓库含「会员中心（对外公开页 + 会员专区）」与「管理后台（`/admin/*` 路由，同一个前端工程）」以及后端 API；证书 PDF 由后端纯 Go 生成（需中文字体）。
-> 文档与代码同步至：2026-09-18
+> 文档与代码同步至：2026-09-29
 
 ## 目录结构
 
@@ -105,11 +105,11 @@ powershell -ExecutionPolicy Bypass -File .\build-backends.ps1 -Only member -Vet
 
 - 启动流程：读 `./config.yaml` → 注入环境变量（缺失直接退出） → 连 MySQL（**不建库**） → 连 Redis 两个库（Ping 失败直接退出） → 初始化 IP 并发限制器 → `AutoMigrate` 建表（会员/申请/证书/会费/机构/公告/文章/系统配置/会员等级/变更记录/操作日志等） → 补建 `member_fee_records(member_id, year)` 唯一索引（幂等，必要时先清理历史重复行） → 写入种子数据 → 监听端口
 - 种子数据（幂等，均只在「缺失」时写入，不会覆盖已有配置）：管理员账号、默认机构（总会 + 分会 + 代表处）、文章分类、系统配置（站点名称/银行账户/联系方式/备案号等 10 项）、示例公告、4 个默认会员等级（会员单位/理事单位/副理事长单位/理事长单位）、**机构的关联等级**（为未配置等级的机构关联全部等级）、**当年的会费标准**（每个等级一条，金额为占位值 **2000 元**，需在后台「会费标准」改成实际金额）。
-- 默认管理员：用户名 `admin`，初始密码 **`Abcd@1234`**，**上线后立即修改**；后台重置他人密码也重置为该默认密码
+- 默认管理员：用户名 `admin`，初始密码 **`Abcd@1234`**（仅用于种子创建内置管理员），**上线后立即修改**；后台「重置密码」与「新增会员（密码留空）」现在都**随机生成强密码**并通过接口返回、在弹窗中展示一次（不再固定为默认常量）
 - 静态资源上传目录：`./uploads`（后端以 `/business_member/uploads` 提供，危险扩展名强制以附件下载）
 - 日志输出：`logs/member.log`（单文件 100MB、保留 30 个备份、180 天）
 - 健康检查（公开接口）：`GET /business_member/api/site-info`
-- 响应约定：**HTTP 状态恒为 200**，业务结果看 `code`：`0` 成功、`400` 参数错误、`401` 未登录/Token 失效、`403` 需要管理员权限、`404` 不存在、`429` 请求过于频繁、`500` 服务端错误
+- 响应约定：**HTTP 状态恒为 200**，业务结果看 `code`：`0` 成功、`1` 业务失败（参数错误 / 无权限 / 记录不存在 / 服务端异常，用文案区分）、`401` 未登录/Token 失效、`429` 请求过于频繁
 
 ### 5. 证书 PDF 中文字体（Linux 部署必做）
 
@@ -168,7 +168,7 @@ powershell -ExecutionPolicy Bypass -File .\build-frontends.ps1 -Only business_me
 - 若部署路径变化，改 `VITE_BASE_PATH` 后重新构建；同时同步 `backend/config.yaml` 的 `server.api_prefix`（`/xxxx/api`）与 `server.upload_dir_prefix`（`/xxxx`）
 - dev 代理键由 `.env` 推导（`[apiBase]` 与 `[basePath]/uploads`），**代理目标写死在 `frontend/vite.config.ts`**（当前 `http://127.0.0.1:8093`），改后端端口必须同步改这里
 - dev 端口：`3001`（`vite.config.ts` 的 `server.port`）
-- 前端依赖：Vue 3.4 / Element Plus 2.6 / Pinia / ECharts 6 / wangEditor 5（章程富文本）
+- 前端依赖：Vue 3.4 / Element Plus 2.6 / Pinia / ECharts 5 / wangEditor 5（章程富文本）
 - 会员中心与管理后台是**同一个工程**：对外页面走 `PublicLayout`，后台页面路由以 `/admin/*` 开头（登录后按 `is_admin` 显示入口），不需要部署两个站点
 - 现象说明：应用内路由 path 仍以 `/member/...` 开头（如 `/member/dashboard`），叠加 base 后实际 URL 为 `/business_member/member/dashboard`，属既有约定，不影响使用
 
@@ -267,7 +267,7 @@ server {
 
 - **`jwt.issuer` 由 `caam-member` 改为 `business-member`**（与 base 及其余业务项目统一为 `business-*` 前缀）。本仓库 `config.yaml` 已同步。
 - ⚠️ **必须与门户站（portal）同批上线**：`business/portal` 的 `jwt.member_issuer`（默认值已同步改为 `business-member`）会**强校验本系统 Token 的 `issuer`**。只改一侧的话，会员访问门户「会员专区」会全部报「会员登录已过期或无效」。
-- 本系统 `ParseToken` **不校验 issuer**（只验签名 + 锁 HS256），因此**已登录会员的会话不会失效**；影响面只在「portal 读取会员专区」这条链路。
+- 本系统 `ParseToken` **也强制校验 issuer 与 exp**（并要求 Token 带 `iat`，缺失直接 401），与上一条“与 portal 对齐”一致——**升级后，旧 issuer `caam-member` 签发的 Token 会立即失效，已登录会员需重新登录**（影响面同时包括 portal 读取会员专区那条链路）。
 - 无表结构变更，**无需手工 SQL**。
 
 ### 升级说明（2026-09-28 第二批：Token 服务端失效机制，无需手工 SQL）
@@ -341,7 +341,7 @@ server {
 
 ### 手工 SQL（一般不需要，仅排障/审计用）
 
-> 以下三项中 ① ② 已被程序自动化：启动时 `db.EnsureUniqueMemberFeeIndex()` 会幂等地清理重复行并创建 `uk_member_year`。只有在启动日志显示创建失败（如数据库账号无 ALTER 权限），或希望手工核对后才执行时，才需要下面的语句。
+> 以下三项中 ① 已被程序自动化：启动时 `db.EnsureUniqueMemberFeeIndex()` 会幂等地清理重复行并创建 `uk_member_year`。②（遗留表 `member_password_resets`）与 ③（`member_user_orgs` 可选唯一索引）**都需手工执行**。只有在启动日志显示创建失败（如数据库账号无 ALTER 权限），或希望手工核对后才执行时，才需要下面的语句。
 
 **① `member_fee_records(member_id, year)` 唯一索引**（并发双击的数据库级兜底；不建也能跑，服务层有事务 + 行锁查重）
 
@@ -396,11 +396,11 @@ ALTER TABLE member_user_orgs ADD UNIQUE INDEX uk_member_org (member_id, org_id);
 | --- | --- |
 | 启动即退出，日志 `Failed to connect to captcha Redis / anti-replay Redis` | Redis 未启动或 `redis.addr`/`captcha_db`/`anti_replay_db` 配置错误；本服务**强依赖 Redis**，Ping 失败直接退出 |
 | 启动即退出并打印 `[WARN] 未设置数据库密码/JWT 密钥` + `程序退出` | 未注入 `MEMBER_DB_PASSWORD` / `MEMBER_JWT_SECRET`，或仍是占位值 |
-| `Failed to connect to database` | 数据库不存在（程序不建库）、账号权限不足或网络不通；DSN 未设置 connect timeout，网络不通时会等待较久才报错 |
+| `Failed to connect to database` | 数据库不存在（程序不建库）、账号权限不足或网络不通；DSN 已带 `timeout:30s` / `read_timeout:100s` / `write_timeout:100s`（可在 `mysql.*` 调整），网络不通时约 30 秒内报错 |
 | 证书生成失败：`未找到可用的中文证书字体（TTF/OTF）` | 安装 CJK 字体（`fonts-noto-cjk` / `wqy-microhei-fonts`）或配置 `certificate.font_path` / `MEMBER_CERT_FONT`；`.ttc` 不支持 |
 | 接口返回 `code=429`「请求过于频繁，请稍后再试」 | 命中登录/注册/上传等固定窗口限流，或单 IP 并发超过 `max_concurrent_ips` |
 | 页面能打开但接口 404 / 跨域失败 | `server.api_prefix` 与 `VITE_API_BASE_URL` 不一致；或 Nginx 反代路径写错（`proxy_pass` 带了 URI）；或来源不在 `server.allowed_origins` |
 | 所有用户被限流/封禁、日志里 IP 都是同一个 | `server.trusted_proxies` 未填 Nginx 地址，或 Nginx 未转发 `X-Real-IP` / `X-Forwarded-For` |
 | 上传返回「文件大小不能超过 10MB」 | 会员中心上传上限 10MB（章程 PDF 为 20MB）；同时确认 Nginx `client_max_body_size` ≥ 该值 |
-| 忘记 admin 密码 | 用另一管理员账号在后台重置（重置为默认密码 `Abcd@1234`），或直接处理数据库（密码为 bcrypt 哈希，无法反推） |
+| 忘记 admin 密码 | 用另一管理员账号在后台重置（会生成随机新密码并在弹窗中展示一次，请妥善转告），或直接处理数据库（密码为 bcrypt 哈希，无法反推） |
 | 改了后端端口后 dev 前端请求不通 | `frontend/vite.config.ts` 的 proxy target 与 `server.port` 必须一致（当前 8093 / 3001） |

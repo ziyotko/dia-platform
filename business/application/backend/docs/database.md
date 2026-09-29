@@ -4,7 +4,7 @@
 > 数据库类型：MySQL ≥ 8.0
 > 建表方式：后端启动时通过 GORM `AutoMigrate` 自动建表（见 `main.go` 第 7 步）
 > 数据初始化：启动时自动写入默认角色 / 默认管理账号 / 默认系统配置（幂等，见 `internal/seed/seed.go`）
-> 文档与代码同步至：2026-09-23
+> 文档与代码同步至：2026-09-29
 
 ---
 
@@ -14,7 +14,7 @@
 | --- | --- | --- |
 | 库名 | `caam_application` | 见 `backend/config.yaml` 的 `mysql.db_name` |
 | 字符集 | `utf8mb4` | 支持完整中文与 Emoji |
-| 时区 | 本机时区（`loc=Local`） | DSN 由 `pkg/db/db.go` 拼接：`...&parseTime=True&loc=Local` |
+| 时区 | `Asia/Shanghai`（配置 `mysql.loc`，DSN `loc=Asia%2FShanghai`） | DSN 由 `pkg/db/db.go` 拼接：`mysql.loc` 留空才回退 `Local`；同时带 `timeout/readTimeout/writeTimeout` |
 | 默认端口 | `63400` | 以 `backend/config.yaml` 的 `mysql.port` 为准 |
 | 密码 | 环境变量 `APPLICATION_DB_PASSWORD` | 勿提交真实密码；未注入或仍是占位值时程序启动即退出 |
 | 连接池 | `max_open: 50` / `max_idle: 10` | 连接最长存活 1 小时（`SetConnMaxLifetime(time.Hour)`） |
@@ -163,7 +163,7 @@
 | review_deadline | datetime(3) | 是 | - | - | 评审截止时间（为空表示不限制） |
 | status | varchar(32) | 是 | `draft` | - | 批次状态，见 §五 |
 
-> **发布后冻结**：`status != draft` 时禁止修改 `category_id` / `apply_start` / `apply_end`（否则已提交的申报会与批次口径不一致）。
+> **发布后冻结**：`status != draft` 时禁止修改 `category_id`（否则已提交的申报会与批次口径不一致）；`open` 状态下 `apply_start` / `apply_end` 均可调整；`reviewing` / `closed` 只允许把 `apply_end` 延长到将来（配合「重开申报」）。
 > **自动转评审**：后台任务每 10 分钟执行一次 `AutoCloseExpired()`，把 `status = open` 且 `apply_end < now` 的批次改为 `reviewing`。
 > **删除拦截**：批次下存在申报记录或结果公示时拒绝删除。
 

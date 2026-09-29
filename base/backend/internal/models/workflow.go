@@ -148,7 +148,7 @@ type WorkflowLog struct {
 	NodeName     string `gorm:"size:128;comment:节点名称" json:"nodeName"`
 	OperatorID   uint64 `gorm:"comment:操作人ID" json:"operatorId"`
 	OperatorName string `gorm:"size:64;comment:操作人" json:"operatorName"`
-	Action       string `gorm:"size:32;comment:动作 start/approve/reject/cancel/auto-pass/finish" json:"action"`
+	Action       string `gorm:"size:32;comment:动作 start/approve/reject/cancel/auto-pass/finish/transfer/add-approver/remind" json:"action"`
 	Comment      string `gorm:"size:512;comment:意见/说明" json:"comment"`
 }
 

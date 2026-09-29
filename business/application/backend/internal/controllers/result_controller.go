@@ -88,7 +88,8 @@ func (ctrl *ResultController) AnnouncementPreview(c *gin.Context) {
 }
 
 // ListPublishedResults lists the per-application results already made public.
-// Managers see every batch; applicants use the /member endpoint below.
+// Managers see every batch; applicants reach the same data through GET /member/results
+// (see internal/routes/routes.go).
 func (ctrl *ResultController) ListPublishedResults(c *gin.Context) {
 	page, size := getPage(c)
 	batchID := parseUint(c.Query("batchId"))

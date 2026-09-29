@@ -6,7 +6,7 @@ type App struct {
 	Code        string `gorm:"size:64;uniqueIndex;comment:应用编码" json:"code"`
 	Name        string `gorm:"size:128;comment:应用名称" json:"name"`
 	Icon        string `gorm:"size:256;comment:图标" json:"icon"`
-	Type        string `gorm:"size:32;comment:接入类型 iframe/proxy/micro" json:"type"`
+	Type        string `gorm:"size:32;comment:接入类型 iframe/proxy" json:"type"`
 	FrontendURL string `gorm:"size:512;comment:前端入口地址" json:"frontendUrl"`
 	BackendURL  string `gorm:"size:512;comment:后端入口地址，用于代理" json:"backendUrl"`
 	ApiPrefix   string `gorm:"size:128;comment:API前缀" json:"apiPrefix"`

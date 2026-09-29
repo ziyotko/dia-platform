@@ -417,7 +417,7 @@ func (s *ApplicationService) PreliminaryReview(id uint64, pass bool, opinion str
 // RevokePreliminary sends an application that already entered the review stage
 // back to 待初审（可由接口操作，不必改库）。
 //
-// 只有还没人评分时才允许：否则那些分数会从平均分里惄惄消失（与「移除已评分的
+// 只有还没人评分时才允许：否则那些分数会从平均分里悄悄消失（与「移除已评分的
 // 评审人」同一个道理）。事务内一并清掉尚未评分的评审任务，避免重新初审后
 // 专家还看得到过期任务。
 func (s *ApplicationService) RevokePreliminary(id uint64) error {

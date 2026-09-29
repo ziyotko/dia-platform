@@ -176,7 +176,7 @@ func messageVisibleTo(m *models.Message, userID uint64) bool {
 }
 
 // Delete 删除消息。权限口径：
-//   - 未发送的草稿：只有发送者（或管理员）可删（旧实现允许「草稿指定的接收人」把尚未发送的草稿删掉）；
+//   - 未发送的草稿：只有发送者本人可删（草稿连管理员都读不到；旧实现允许「草稿指定的接收人」把尚未发送的草稿删掉）；
 //   - 已发送的定向消息：发送者或接收者本人可删；
 //   - 已发送的广播消息：库中只有一行、租户内共享，普通接收者不可删，仅发送者或管理员可删。
 func (s MessageService) Delete(id, userID uint64, isAdmin bool, tenantID uint64) error {
