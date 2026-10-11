@@ -218,14 +218,16 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 		}
 	}
 
-	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
-		if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
-			ctx.JSON(http.StatusOK, utils.Error(1, "创建上传目录失败"))
-			return
-		}
-	} else if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "检查上传目录失败"))
+	// 目录权限固定 0755（静态资源目录需可进入/可遍历）。
+	// 注意：MkdirAll 的模式会受进程 umask 影响（os.ModePerm=0777 & umask 未必等于 0755），
+	// 且历史版本曾把目录 Chmod 成 0644（去掉可执行位导致无法遍历），
+	// 故无论目录是否已存在都显式校正一次（每次上传仅一次廉价 syscall）。
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "创建上传目录失败"))
 		return
+	}
+	if err := os.Chmod(uploadDir, 0755); err != nil {
+		utils.Logger.Warnf("设置上传目录权限失败: %s", err)
 	}
 
 	// 文件名 = 纳秒时间戳 + 随机串：同一纳秒内并发上传（或系统时钟回拨）时仅靠时间戳会重名，
