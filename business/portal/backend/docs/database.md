@@ -348,8 +348,8 @@
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
 | created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
-| name | varchar(100) | 否 | - | - | 栏目名称 |
-| code | varchar(100) | 否 | - | - | 栏目编码 |
+| name | varchar(100) | 否 | - | - | 栏目名称（**全局唯一**，写入前校验） |
+| code | varchar(100) | 否 | - | - | 栏目编码（**全局唯一**，写入前校验） |
 | template_id | bigint unsigned | 否 | - | IDX | 所属模板 ID |
 | parent_id | bigint unsigned | 是 | 0 | IDX | 父栏目 ID（0 为顶级） |
 | route_path | varchar(200) | 是 | - | - | 路由路径 |
