@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -76,6 +78,33 @@ func randomHexToken(nBytes int) string {
 		return ""
 	}
 	return hex.EncodeToString(buf)
+}
+
+// saveUploadedFile0755 将上传文件写入 dst，并把文件权限显式固定为 0755。
+//
+// 不能直接用 gin 的 ctx.SaveUploadedFile(file, dst, 0755)：该方法的 perm 仅作用于
+// 【目录】（MkdirAll + Chmod(dir)），文件本体由 os.Create 创建（0666 & umask → 644），
+// 因此传 0755 也不会改变上传文件的权限。
+func saveUploadedFile0755(file *multipart.FileHeader, dst string) error {
+	src, err := file.Open()
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+
+	out, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(out, src); err != nil {
+		out.Close()
+		return err
+	}
+	if err := out.Close(); err != nil {
+		return err
+	}
+	// 同名文件已存在时 O_CREATE 不会改动旧权限位，需 Chmod 兜底确保 0755。
+	return os.Chmod(dst, 0755)
 }
 
 func NewUploadController() *UploadController {
@@ -189,14 +218,16 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 		}
 	}
 
-	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
-		if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
-			ctx.JSON(http.StatusOK, utils.Error(1, "创建上传目录失败"))
-			return
-		}
-	} else if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "检查上传目录失败"))
+	// 目录权限固定 0755（静态资源目录需可进入/可遍历）。
+	// 注意：MkdirAll 的模式会受进程 umask 影响（os.ModePerm=0777 & umask 未必等于 0755），
+	// 且历史版本曾把目录 Chmod 成 0644（去掉可执行位导致无法遍历），
+	// 故无论目录是否已存在都显式校正一次（每次上传仅一次廉价 syscall）。
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "创建上传目录失败"))
 		return
+	}
+	if err := os.Chmod(uploadDir, 0755); err != nil {
+		utils.Logger.Warnf("设置上传目录权限失败: %s", err)
 	}
 
 	// 文件名 = 纳秒时间戳 + 随机串：同一纳秒内并发上传（或系统时钟回拨）时仅靠时间戳会重名，
@@ -204,9 +235,11 @@ func (c *UploadController) UploadFile(ctx *gin.Context) {
 	filename := fmt.Sprintf("%d_%s%s", time.Now().UnixNano(), randomHexToken(8), ext)
 	dst := filepath.Join(uploadDir, filename)
 
-	// 0644（而非 0755）：上传目录里都是静态资源，不应带可执行位；
-	// Nginx/反代以自身运行用户读取，同用户可读写即可。
-	if err := ctx.SaveUploadedFile(file, dst, 0644); err != nil {
+	// 显式以 0755 落盘。
+	// 注意：gin 的 ctx.SaveUploadedFile(file, dst, perm) 只把 perm 用于【目录】
+	// （MkdirAll / Chmod(dir)），文件本体仍走 os.Create → 0666 & umask = 0644，
+	// 传 0755 也不会生效。此处改为手动写入并 Chmod，确保静态文件为 0755。
+	if err := saveUploadedFile0755(file, dst); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "保存文件失败"))
 		return
 	}
