@@ -126,7 +126,7 @@ function search() { page.value = 1; fetchData() }
 .el-card { border-radius: 10px; }
 .pagination { display: flex; justify-content: center; padding: 20px 0; }
 .dim { color: #98a2b3; }
-.changed { color: #002fa7; font-weight: 600; }
+.changed { color: #366d28; font-weight: 600; }
 
 .profile-changes-table :deep(.profile-changes-row) {
   cursor: pointer;

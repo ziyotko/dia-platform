@@ -115,7 +115,7 @@ const feeMap = reactive<Record<number, FeeItem[]>>({})
 
 const maxYear = computed(() => new Date().getFullYear() + 10)
 
-const levelColors = ['#002fa7', '#67c23a', '#e6a23c', '#f56c6c', '#909399', '#b37feb']
+const levelColors = ['#366d28', '#67c23a', '#e6a23c', '#f56c6c', '#909399', '#b37feb']
 
 function levelColor(level: number) {
   return levelColors[level % levelColors.length]

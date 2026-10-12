@@ -2,7 +2,7 @@
   <el-container class="admin-layout">
     <el-aside :width="collapsed ? '64px' : '160px'" class="sidebar">
       <div class="sidebar-header" @click="$router.push('/admin/dashboard')">
-        <el-icon :size="24" color="#002fa7"><Setting /></el-icon>
+        <el-icon :size="24" color="#366d28"><Setting /></el-icon>
         <span v-show="!collapsed" class="title">管理后台</span>
       </div>
       <el-menu
@@ -12,7 +12,7 @@
         :default-active="route.path"
         background-color="transparent"
         text-color="#344054"
-        active-text-color="#002fa7"
+        active-text-color="#366d28"
         class="sidebar-menu"
       >
         <el-menu-item index="/admin/dashboard"><el-icon><DataAnalysis /></el-icon><span>管理首页</span></el-menu-item>

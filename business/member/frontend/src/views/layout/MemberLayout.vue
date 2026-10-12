@@ -12,7 +12,7 @@
         router
         background-color="transparent"
         text-color="#344054"
-        active-text-color="#002fa7"
+        active-text-color="#366d28"
         class="sidebar-menu"
       >
         <el-menu-item index="/member/dashboard">

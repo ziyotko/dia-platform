@@ -150,9 +150,9 @@ async function handleLogin() {
 </script>
 
 <style scoped lang="scss">
-$primary: #002fa7;
-$primary-dark: #001b5e;
-$primary-gradient: linear-gradient(160deg, #2f5ed6 0%, #001b5e 100%);
+$primary: #366d28;
+$primary-dark: #1c3d12;
+$primary-gradient: linear-gradient(160deg, #4f9a3a 0%, #1c3d12 100%);
 
 .login-container {
   min-height: calc(100vh - 180px);
@@ -160,7 +160,7 @@ $primary-gradient: linear-gradient(160deg, #2f5ed6 0%, #001b5e 100%);
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #e6eaf6 0%, #f5f9ff 50%, #e6eaf6 100%);
+  background: linear-gradient(135deg, #ebf0ea 0%, #f5f9f4 50%, #ebf0ea 100%);
   position: relative;
   overflow: hidden;
   padding: 40px 24px;
@@ -170,7 +170,7 @@ $primary-gradient: linear-gradient(160deg, #2f5ed6 0%, #001b5e 100%);
     position: absolute;
     width: 800px;
     height: 800px;
-    background: radial-gradient(circle, rgba(0, 47, 167, 0.08) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(54, 109, 40, 0.08) 0%, transparent 70%);
     top: -200px;
     left: -200px;
   }
@@ -180,7 +180,7 @@ $primary-gradient: linear-gradient(160deg, #2f5ed6 0%, #001b5e 100%);
     position: absolute;
     width: 600px;
     height: 600px;
-    background: radial-gradient(circle, rgba(0, 47, 167, 0.06) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(54, 109, 40, 0.06) 0%, transparent 70%);
     bottom: -100px;
     right: -100px;
   }
@@ -192,7 +192,7 @@ $primary-gradient: linear-gradient(160deg, #2f5ed6 0%, #001b5e 100%);
   min-height: 520px;
   background: #fff;
   border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 47, 167, 0.16);
+  box-shadow: 0 8px 32px rgba(54, 109, 40, 0.16);
   overflow: hidden;
   z-index: 1;
 }
@@ -317,13 +317,13 @@ $primary-gradient: linear-gradient(160deg, #2f5ed6 0%, #001b5e 100%);
   font-size: 16px;
   font-weight: 500;
   border-radius: 8px;
-  background: linear-gradient(135deg, #002fa7 0%, #002fa7 100%);
+  background: linear-gradient(135deg, #366d28 0%, #366d28 100%);
   border: none;
 
   &:hover {
-    background: linear-gradient(135deg, #2050cf 0%, #002fa7 100%);
+    background: linear-gradient(135deg, #4f9a3a 0%, #366d28 100%);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 47, 167, 0.3);
+    box-shadow: 0 4px 12px rgba(54, 109, 40, 0.3);
   }
 }
 
@@ -357,7 +357,7 @@ $primary-gradient: linear-gradient(160deg, #2f5ed6 0%, #001b5e 100%);
     display: inline-block;
     width: 3px;
     height: 3px;
-    background: #b0c4de;
+    background: #b8ceb2;
     border-radius: 50%;
     margin: 0 10px;
     vertical-align: middle;
