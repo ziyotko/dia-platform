@@ -208,18 +208,23 @@ func (s *ArticleService) CreateArticle(article *models.Article, tagIDs []uint, c
 	})
 }
 
-func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs []uint, categoryIDs []uint) error {
-	return utils.DB.Transaction(func(tx *gorm.DB) error {
+func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs []uint, categoryIDs []uint, isAdmin bool) error {
+	wasPublished := false
+	err := utils.DB.Transaction(func(tx *gorm.DB) error {
 		var old models.Article
 		if err := tx.First(&old, id).Error; err != nil {
 			return err
 		}
 		// 审核中/已发布（audit_status != 0）的文章不允许通过编辑接口改内容：
-		// 否则作者可在审核人查看后替换正文（上线的是未审内容），或对已发布文章做无需审核的修改。
+		// 否则作者可在审核人查看后替换正文（上线的是未审内容）。
+		// 例外：已发布的文章仅管理员可直接编辑（无需重新审核，改动即时生效）；
 		// 已下线文章（takeOffline 已把 audit_status 归零）不受此限制。
 		if old.AuditStatus != 0 && old.Status != models.ArticleStatusOffline {
-			return fmt.Errorf("文章正在审核或已发布，不能编辑；如需修改请先撤回审核或将文章下线")
+			if !(isAdmin && old.Status == models.ArticleStatusPublished) {
+				return fmt.Errorf("文章正在审核或已发布，不能编辑；如需修改请先撤回审核或将文章下线")
+			}
 		}
+		wasPublished = old.Status == models.ArticleStatusPublished
 		// 发布/审核状态不由本接口（编辑内容）变更，防止作者用 PUT {"status":1} 绕过审核：
 		//   - 文章当前为「已下线」：编辑动作将其转回草稿，并清理栏目/审核/发布等关联数据；
 		//   - 其余情况：一律沿用数据库中的当前值（请求体中的 status/auditStatus 被忽略）。
@@ -313,6 +318,15 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	// 管理员直接编辑已发布文章不重新走审核，需同步刷新该文章的静态详情页，
+	// 否则公开站点仍展示编辑前的旧内容（尽力而为，失败仅记录日志，不影响主流程）。
+	if wasPublished {
+		NewStaticJobService().GenerateArticleStaticByID(context.Background(), strconv.FormatUint(uint64(id), 10))
+	}
+	return nil
 }
 
 // takeOffline 文章下线时统一清理发布/审核/栏目关联数据：

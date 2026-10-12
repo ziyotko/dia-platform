@@ -362,17 +362,28 @@ func (c *ArticleController) UpdateArticle(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "文章不存在"))
 		return
 	}
-	if strconv.FormatUint(uint64(userID), 10) != article.AuthorCode {
+	isAuthor := strconv.FormatUint(uint64(userID), 10) == article.AuthorCode
+	roleIds, _ := c.userService.GetUserRoleIds(userID)
+	isAdmin := models.HasAdminRoleIDs(roleIds)
+	// 权限：作者本人可编辑自己的文章；非作者时仅管理员可编辑「已发布」的文章
+	// （作者要改已发布文章仍需先下线，避免绕过审核直接改动线上内容）。
+	if !isAuthor && !(isAdmin && article.Status == models.ArticleStatusPublished) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "无权操作"))
 		return
 	}
-	user, err := c.userService.GetUserByID(userID)
-	if err == nil && user != nil {
-		req.Article.Author = user.Username
-		req.Article.AuthorCode = strconv.FormatUint(uint64(user.ID), 10)
+	if isAuthor {
+		user, err := c.userService.GetUserByID(userID)
+		if err == nil && user != nil {
+			req.Article.Author = user.Username
+			req.Article.AuthorCode = strconv.FormatUint(uint64(user.ID), 10)
+		}
+	} else {
+		// 管理员代改他人文章时保留原作者，避免编辑动作把文章归属转给管理员。
+		req.Article.Author = article.Author
+		req.Article.AuthorCode = article.AuthorCode
 	}
 
-	err = c.articleService.UpdateArticle(uint(id), &req.Article, req.TagIds, req.CategoryIds)
+	err = c.articleService.UpdateArticle(uint(id), &req.Article, req.TagIds, req.CategoryIds, isAdmin)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("更新文章失败", err)))
 		return
