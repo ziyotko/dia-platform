@@ -138,7 +138,7 @@
           >
             <div class="upload-area">
               <template v-if="form.templateFile">
-                <el-icon size="28" color="#002fa7"><Document /></el-icon>
+                <el-icon size="28" color="#366d28"><Document /></el-icon>
                 <span>已上传模板</span>
                 <el-button text size="small" type="primary" @click.stop="previewPdf">预览</el-button>
               </template>
@@ -354,7 +354,7 @@ async function deleteTemplate(row: any) {
   }
 }
 .file-link {
-  display: inline-flex; align-items: center; gap: 4px; color: #002fa7; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 4px; color: #366d28; text-decoration: none;
   &:hover { text-decoration: underline; }
 }
 .filters { display: flex; gap: 12px; margin-bottom: 16px; }
@@ -365,7 +365,7 @@ async function deleteTemplate(row: any) {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   padding: 24px; border: 2px dashed #dcdfe6; border-radius: 8px;
   cursor: pointer; transition: border-color .2s; color: #666;
-  &:hover { border-color: #002fa7; color: #002fa7; }
+  &:hover { border-color: #366d28; color: #366d28; }
   .upload-hint { font-size: 12px; color: #999; }
 }
 .level-tip { font-size: 12px; color: #999; margin-top: 4px; }

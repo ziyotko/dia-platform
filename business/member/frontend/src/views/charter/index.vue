@@ -130,9 +130,9 @@ function downloadPdf() {
 </script>
 
 <style scoped lang="scss">
-$primary: #002fa7;
-$primary-deep: #001b5e;
-$primary-light: #2050cf;
+$primary: #366d28;
+$primary-deep: #1c3d12;
+$primary-light: #4f9a3a;
 
 .charter-page {
   padding-bottom: 64px;
@@ -316,14 +316,14 @@ $primary-light: #2050cf;
   gap: 14px;
   padding: 14px 18px;
   margin-bottom: 32px;
-  background: linear-gradient(135deg, #f7f9ff, #eef2fd);
+  background: linear-gradient(135deg, #f7faf6, #eef5ec);
   border: 1px solid var(--app-border);
   border-radius: 12px;
   transition: border-color 0.25s ease, box-shadow 0.25s ease;
 
   &:hover {
     border-color: var(--el-color-primary-light-7);
-    box-shadow: 0 6px 18px rgba(0, 47, 167, 0.08);
+    box-shadow: 0 6px 18px rgba(54, 109, 40, 0.08);
   }
 
   .file-icon {
@@ -336,7 +336,7 @@ $primary-light: #2050cf;
     color: var(--el-color-primary);
     background: #fff;
     border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0, 47, 167, 0.12);
+    box-shadow: 0 2px 8px rgba(54, 109, 40, 0.12);
   }
 
   .file-info {
@@ -439,12 +439,12 @@ $primary-light: #2050cf;
   border: none;
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: 0 6px 18px rgba(0, 47, 167, 0.32);
+  box-shadow: 0 6px 18px rgba(54, 109, 40, 0.32);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 24px rgba(0, 47, 167, 0.38);
+    box-shadow: 0 10px 24px rgba(54, 109, 40, 0.38);
   }
 }
 

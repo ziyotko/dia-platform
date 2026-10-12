@@ -245,7 +245,7 @@ async function deleteRow(row: any) {
   font-size: 14px;
   line-height: 1.7;
   background: #f8fafc;
-  border-left: 3px solid #002fa7;
+  border-left: 3px solid #366d28;
   padding: 10px 14px;
   border-radius: 4px;
   margin-bottom: 16px;

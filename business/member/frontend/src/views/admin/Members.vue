@@ -892,7 +892,7 @@ function fmtMoney(n: any) {
     font-weight: 600;
     color: #1d2739;
     padding-left: 10px;
-    border-left: 4px solid #002fa7;
+    border-left: 4px solid #366d28;
     margin-bottom: 12px;
     line-height: 1.2;
   }

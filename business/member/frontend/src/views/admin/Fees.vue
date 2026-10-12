@@ -287,7 +287,7 @@
           备注：{{ invoiceTarget.invoice_remark || '-' }}
           <template v-if="invoiceTarget.invoice_status === 'issued'">
             <br>当前票据号码：{{ invoiceTarget.invoice_no || '-' }}
-            <br>当前发票文件：<a v-if="invoiceTarget.invoice_file" :href="fileUrl(invoiceTarget.invoice_file)" target="_blank" style="color:#002fa7">查看</a><span v-else>-</span>
+            <br>当前发票文件：<a v-if="invoiceTarget.invoice_file" :href="fileUrl(invoiceTarget.invoice_file)" target="_blank" style="color:#366d28">查看</a><span v-else>-</span>
           </template>
         </div>
       </div>
@@ -648,7 +648,7 @@ async function deleteFee(row: any) {
       align-items: center;
       gap: 8px;
       margin: 0;
-      .el-icon { color: #4361ee; }
+      .el-icon { color: #4f9a3a; }
     }
     .header-subtitle {
       font-size: 14px;
@@ -685,7 +685,7 @@ async function deleteFee(row: any) {
     .stat-label { font-size: 13px; color: #94a3b8; margin-bottom: 4px; }
     .stat-value { font-size: 22px; font-weight: 700; color: #1d2739; }
   }
-  &--total .stat-icon { background: #eef2ff; color: #4361ee; }
+  &--total .stat-icon { background: #eef5ec; color: #4f9a3a; }
   &--paid .stat-icon { background: #ecfdf5; color: #10b981; }
   &--unpaid .stat-icon { background: #fffbeb; color: #f59e0b; }
   &--pending .stat-icon { background: #fef3c7; color: #d97706; }

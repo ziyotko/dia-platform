@@ -1,18 +1,18 @@
 /* =========================================================
-   会员系统全局设计系统（与 Portal 前端保持统一，品牌色 #002FA7）
+   会员系统全局设计系统（与 Portal 前端保持统一，CAMIE 品牌色 #366D28）
    通过覆盖 Element Plus CSS 变量 + 通用组件样式，
    让所有页面统一获得现代、清爽的视觉风格。
    ========================================================= */
 
 :root {
-  /* 主色（Element Plus 变量）- 品牌色 #002FA7 */
-  --el-color-primary: #002fa7;
-  --el-color-primary-light-3: #4d6dc1;
-  --el-color-primary-light-5: #8097d3;
-  --el-color-primary-light-7: #b3c1e5;
-  --el-color-primary-light-8: #ccd5ed;
-  --el-color-primary-light-9: #e6eaf6;
-  --el-color-primary-dark-2: #002686;
+  /* 主色（Element Plus 变量）- CAMIE 品牌色 #366D28 */
+  --el-color-primary: #366d28;
+  --el-color-primary-light-3: #729968;
+  --el-color-primary-light-5: #9bb694;
+  --el-color-primary-light-7: #c3d3bf;
+  --el-color-primary-light-8: #d7e2d4;
+  --el-color-primary-light-9: #ebf0ea;
+  --el-color-primary-dark-2: #2b5720;
 
   /* 圆角 */
   --el-border-radius-base: 8px;
@@ -89,7 +89,7 @@ body {
 }
 
 .el-button--primary {
-  box-shadow: 0 2px 6px rgba(0, 47, 167, 0.25);
+  box-shadow: 0 2px 6px rgba(54, 109, 40, 0.25);
 }
 
 .el-button--primary:active {
@@ -139,7 +139,7 @@ body {
   --el-table-border-color: var(--app-border);
   --el-table-header-bg-color: #f8fafd;
   --el-table-header-text-color: #667085;
-  --el-table-row-hover-bg-color: #f5f9ff;
+  --el-table-row-hover-bg-color: #f5f9f4;
   --el-table-text-color: #344054;
   --el-table-bg-color: transparent;
   border-radius: 10px;

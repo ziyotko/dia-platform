@@ -131,7 +131,7 @@ function levelText(id: any) {
 
   .el-dialog__header {
     padding: 22px 24px 16px;
-    background: linear-gradient(135deg, #f4f7ff 0%, #eef1ff 100%);
+    background: linear-gradient(135deg, #f4f8f2 0%, #eef5ec 100%);
     border-bottom: 1px solid #eef0f3;
     margin-right: 0;
   }
@@ -146,7 +146,7 @@ function levelText(id: any) {
     padding-right: 40px;
   }
   .detail-avatar {
-    background: linear-gradient(135deg, #002fa7, #002686);
+    background: linear-gradient(135deg, #366d28, #2b5720);
     color: #fff;
     font-size: 24px;
     font-weight: 600;
@@ -170,7 +170,7 @@ function levelText(id: any) {
       font-weight: 600;
       color: #1d2739;
       padding-left: 10px;
-      border-left: 4px solid #002fa7;
+      border-left: 4px solid #366d28;
       margin-bottom: 14px;
       line-height: 1.2;
     }

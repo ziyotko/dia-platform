@@ -143,8 +143,8 @@ async function delRow(row: any) {
   border-radius: 10px;
 }
 .key-text {
-  background: #f5f9ff;
-  color: #002fa7;
+  background: #f5f9f4;
+  color: #366d28;
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 13px;

@@ -463,7 +463,7 @@ function itemLevelName(item: any) {
       top: 2px;
       bottom: 2px;
       width: 4px;
-      background: #002fa7;
+      background: #366d28;
       border-radius: 2px;
     }
   }
@@ -522,7 +522,7 @@ function itemLevelName(item: any) {
   padding: 0;
   border: none;
   background: none;
-  color: #002fa7;
+  color: #366d28;
   font-size: 13px;
   line-height: 1;
   cursor: pointer;
@@ -545,9 +545,9 @@ function itemLevelName(item: any) {
 .selected {
   margin-top: 16px;
   padding: 12px 16px;
-  background: #ecf5ff;
+  background: #ebf0ea;
   border-radius: 8px;
-  color: #002fa7;
+  color: #366d28;
   display: flex;
   align-items: center;
   gap: 6px;
