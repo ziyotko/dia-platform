@@ -35,12 +35,10 @@
       <el-table :data="tableData" v-loading="loading" border stripe>
         <el-table-column type="index" width="60" align="center" />
         <el-table-column prop="name" label="标签名称" min-width="150" />
-        <el-table-column prop="color" label="标签颜色" width="200" align="center">
+        <el-table-column prop="color" label="标签颜色" width="100" align="center">
           <template #default="{ row }">
-            <div class="color-preview">
-              <span class="color-dot" :style="{ backgroundColor: row.color }"></span>
-              <span>{{ row.color }}</span>
-            </div>
+            <span v-if="row.color" class="color-dot" :style="{ backgroundColor: row.color }"></span>
+            <span v-else>-</span>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100" align="center">
@@ -276,17 +274,12 @@ onMounted(() => {
      styles/global.scss 的 .page-container 规则，此处不再重复定义（2026-09-22） */
 }
 
-.color-preview {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: center;
-
-  .color-dot {
-    width: 16px;
-    height: 16px;
-    border-radius: 4px;
-    border: 1px solid #dcdfe6;
-  }
+.color-dot {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid #dcdfe6;
+  vertical-align: middle;
 }
 </style>
