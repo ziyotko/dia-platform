@@ -58,6 +58,13 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 			columnID = id
 		}
 	}
+	// 模板筛选：筛选区「发布栏目」只选到模板一层时下发（该模板下的任意栏目）
+	templateID := 0
+	if templateIDStr := ctx.Query("templateId"); templateIDStr != "" {
+		if id, err := strconv.Atoi(templateIDStr); err == nil {
+			templateID = id
+		}
+	}
 	status := -1
 	if statusStr != "" {
 		if s, err := strconv.Atoi(statusStr); err == nil {
@@ -92,7 +99,7 @@ func (c *ArticleController) GetArticles(ctx *gin.Context) {
 		authorCodeScope = strconv.FormatUint(uint64(currentUserID), 10)
 	}
 
-	articles, total, err := c.articleService.GetArticles(title, categoryID, tagID, columnID, status, auditStatus, articleType, author, authorCodeScope, source, page, pageSize)
+	articles, total, err := c.articleService.GetArticles(title, categoryID, tagID, columnID, templateID, status, auditStatus, articleType, author, authorCodeScope, source, page, pageSize)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "获取文章列表失败"))
 		return

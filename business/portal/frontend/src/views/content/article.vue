@@ -9,7 +9,7 @@
           <el-cascader
             v-model="queryForm.columnPath"
             :options="columnCascaderOptions"
-            :props="{ expandTrigger: 'hover' }"
+            :props="{ expandTrigger: 'hover', checkStrictly: true }"
             placeholder="请选择模板/栏目/子栏目"
             clearable
             filterable
@@ -1442,25 +1442,22 @@ const fetchColumns = async () => {
   }
 }
 
-// 栏目级联选项：模板 → 栏目 → 子栏目
+// 栏目级联选项：模板 → 栏目 → 子栏目 → …（递归展开所有层级）。
+// 栏目树层级不受限（栏目管理里可一直"新增子栏目"），故这里必须递归生成，
+// 否则第 4 级及更深的栏目在筛选里选不到。层数上限用于兜底脏数据（父子成环）导致的死循环。
 const columnCascaderOptions = computed(() => {
-  return templateList.value.map((tpl: any) => {
-    const cols = columnList.value.filter((col: any) => col.templateId === tpl.id)
-    const rootCols = cols.filter((col: any) => !col.parentId || col.parentId === 0)
-    return {
-      value: tpl.id,
-      label: tpl.name,
-      children: rootCols.map((rootCol: any) => {
-        const children = cols.filter((col: any) => col.parentId === rootCol.id)
-        return {
-          value: rootCol.id,
-          label: rootCol.name,
-          children: children.length
-            ? children.map((child: any) => ({ value: child.id, label: child.name }))
-            : undefined
-        }
+  const buildColumns = (templateId: number, parentId: number, depth: number): any[] => {
+    if (depth > 10) return []
+    return columnList.value
+      .filter((col: any) => col.templateId === templateId && (col.parentId || 0) === parentId)
+      .map((col: any) => {
+        const children = buildColumns(templateId, col.id, depth + 1)
+        return { value: col.id, label: col.name, children: children.length ? children : undefined }
       })
-    }
+  }
+  return templateList.value.map((tpl: any) => {
+    const children = buildColumns(tpl.id, 0, 1)
+    return { value: tpl.id, label: tpl.name, children: children.length ? children : undefined }
   })
 })
 
@@ -1759,7 +1756,14 @@ const fetchData = async () => {
     if (queryForm.categoryId !== undefined) params.categoryId = queryForm.categoryId
     if (queryForm.tagId !== undefined) params.tagId = queryForm.tagId
     if (queryForm.columnPath && queryForm.columnPath.length > 0) {
-      params.columnId = queryForm.columnPath[queryForm.columnPath.length - 1]
+      // 路径首项是模板、其后依次是各层栏目：
+      // 只选了模板（长度 1）→ 按"该模板下的任意栏目"筛（templateId）；
+      // 选了具体栏目（长度 ≥2）→ 取最末级栏目精确匹配（columnId，不含其下级）。
+      if (queryForm.columnPath.length === 1) {
+        params.templateId = queryForm.columnPath[0]
+      } else {
+        params.columnId = queryForm.columnPath[queryForm.columnPath.length - 1]
+      }
     }
     if (queryForm.status !== undefined) params.status = queryForm.status
     if (queryForm.auditStatus !== undefined) params.auditStatus = queryForm.auditStatus
