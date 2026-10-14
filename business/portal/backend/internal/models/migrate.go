@@ -181,6 +181,8 @@ func AllModels() []any {
 		&Tag{},
 		&Article{},
 		&ArticleCategory{},
+		&ArticleTag{},
+		&ArticleColumn{},
 		&Ad{},
 		&Link{},
 		&Department{},

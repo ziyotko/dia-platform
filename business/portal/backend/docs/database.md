@@ -389,14 +389,14 @@
 | 字段 | 类型 | 允许空 | 默认 | 键 | 说明 |
 | --- | --- | --- | --- | --- | --- |
 | id | bigint unsigned | 否 | AUTO_INCREMENT | PK | 主键 |
-| created_at / updated_at | datetime(3) | 是 | - | - | 时间戳 |
+| created_at / updated_at | datetime(3) | 是 | - | IDX(created_at 属 idx_article_top_created) | 时间戳（created_at 与 is_top 组成列表排序复合索引） |
 | title | varchar(200) | 否 | - | - | 标题 |
 | type | bigint | 是 | 1 | IDX | 类型：1 图文 / 2 视频 / 3 数据 / 4 报刊（非法值创建时回退图文） |
 | summary | varchar(500) | 是 | - | - | 摘要 |
 | content | longtext | 是 | - | - | 正文内容（富文本/HTML） |
 | status | bigint | 是 | 0 | IDX(idx_article_status_audit_created) / IDX(idx_article_author_status_created) | 状态：0 草稿 / 1 已发布 / 2 已下线 |
 | audit_status | bigint | 是 | 0 | IDX(idx_article_status_audit_created) | 审核状态：0 未提交 / 1 审核中 / 2 已审核 |
-| is_top | bigint | 是 | 0 | IDX | 是否置顶 |
+| is_top | bigint | 是 | 0 | IDX + IDX(is_top,created_at) | 是否置顶（与 created_at 组成 `idx_article_top_created`，支撑列表 `ORDER BY is_top DESC, created_at DESC`） |
 | is_bold | bigint | 是 | 0 | - | 标题是否加粗 |
 | default_color | varchar(20) | 是 | - | - | 标题默认颜色 |
 | cover | varchar(500) | 是 | - | - | 封面图 |
@@ -425,28 +425,33 @@
 
 #### 关联表（多对多）
 
-**`article_category` 文章-分类关联表**（显式模型，同时是 many2many 连接表）
+**`article_category` 文章-分类关联表**（显式模型 `ArticleCategory`，同时是 many2many 连接表）
 
 | 字段 | 类型 | 允许空 | 键 | 说明 |
 | --- | --- | --- | --- | --- |
 | article_id | bigint unsigned | 否 | PK(article_id,category_id) + FK | 文章 ID |
 | category_id | bigint unsigned | 否 | PK(article_id,category_id) + IDX + FK | 分类 ID |
 
-> 附加索引 `idx_article_category_category_id`；外键指向 `article(id)`、`category(id)`。
+> 附加索引 `idx_article_category_category_id` 支撑「按分类筛文章」（`WHERE category_id = ?`）；外键指向 `article(id)`、`category(id)`。
+> 连接表主键是 (article_id, xxx_id)，只支撑「按文章查关联」；反向筛选必须靠第二列的独立索引（项目 `SingularTable: true`，模型名正好对应连接表名）。
 
-**`article_tag` 文章-标签关联表**（自动生成）
+**`article_tag` 文章-标签关联表**（显式模型 `ArticleTag`，同时是 many2many 连接表）
 
 | 字段 | 类型 | 允许空 | 键 | 说明 |
 | --- | --- | --- | --- | --- |
 | article_id | bigint unsigned | 否 | PK(article_id,tag_id) + FK | 文章 ID |
-| tag_id | bigint unsigned | 否 | PK(article_id,tag_id) + FK | 标签 ID |
+| tag_id | bigint unsigned | 否 | PK(article_id,tag_id) + IDX + FK | 标签 ID |
 
-**`article_column` 文章-栏目关联表**（自动生成）
+> 反向索引 `idx_article_tag_tag_id` 支撑「按标签筛文章」（`WHERE tag_id = ?`），否则全表扫描连接表。
+
+**`article_column` 文章-栏目关联表**（显式模型 `ArticleColumn`，同时是 many2many 连接表）
 
 | 字段 | 类型 | 允许空 | 键 | 说明 |
 | --- | --- | --- | --- | --- |
 | article_id | bigint unsigned | 否 | PK(article_id,column_id) + FK | 文章 ID |
-| column_id | bigint unsigned | 否 | PK(article_id,column_id) + FK | 栏目 ID |
+| column_id | bigint unsigned | 否 | PK(article_id,column_id) + IDX + FK | 栏目 ID |
+
+> 反向索引 `idx_article_column_column_id` 支撑图文管理的「发布栏目」筛选（`WHERE column_id = ?`）。
 
 #### `article_column_publish` 栏目发布记录表
 

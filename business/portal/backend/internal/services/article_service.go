@@ -79,11 +79,12 @@ func (s *ArticleService) GetArticles(title string, categoryID int, tagID int, co
 	}
 
 	var articles []models.Article
-	// 列表不返回正文（longtext）：Omit 避免逐行加载大字段，详情接口再单独加载
+	// 列表不返回正文（longtext）：Omit 避免逐行加载大字段，详情接口再单独加载。
+	// 列表接口只用到栏目与附件（分类/标签不在响应里），故不做 Categories/Tags 的 Preload——每次请求省 2 条查询。
 	err := utils.DB.Omit("Content").
 		Where("id IN ?", ids).
 		Order("is_top DESC, created_at DESC").
-		Preload("Categories").Preload("Tags").Preload("Columns").Preload("Attachments").
+		Preload("Columns").Preload("Attachments").
 		Find(&articles).Error
 	return articles, total, err
 }

@@ -69,8 +69,10 @@ func (LocalTime) GORMDataType() string {
 }
 
 type Article struct {
-	ID           uint                `gorm:"primarykey" json:"id"`
-	CreatedAt    time.Time           `json:"createdAt"`
+	ID uint `gorm:"primarykey" json:"id"`
+	// CreatedAt 参与列表排序（见下），与 is_top 组成复合索引支撑
+	// `ORDER BY is_top DESC, created_at DESC`，避免每次列表请求对全表做 filesort。
+	CreatedAt    time.Time           `gorm:"index:idx_article_top_created,priority:2" json:"createdAt"`
 	UpdatedAt    time.Time           `json:"updatedAt"`
 	Title        string              `gorm:"size:200;not null" json:"title"`
 	Type         int                 `gorm:"default:1;index" json:"type"` // 1图文 2视频 3数据 4报刊
@@ -78,7 +80,7 @@ type Article struct {
 	Content      string              `gorm:"type:longtext" json:"content"`
 	Status       int                 `gorm:"default:0;index:idx_article_status_audit_created;index:idx_article_author_status_created" json:"status"` // 0草稿 1已发布 2已下线
 	AuditStatus  int                 `gorm:"default:0;index:idx_article_status_audit_created" json:"auditStatus"`                                    // 0待审核 1审核中 2已审核
-	IsTop        int                 `gorm:"default:0;index" json:"isTop"`
+	IsTop        int                 `gorm:"default:0;index;index:idx_article_top_created,priority:1" json:"isTop"`
 	IsBold       int                 `gorm:"default:0" json:"isBold"`
 	DefaultColor string              `gorm:"size:20" json:"defaultColor"`
 	Cover        string              `gorm:"size:500" json:"cover"`
