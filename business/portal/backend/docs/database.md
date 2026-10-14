@@ -465,6 +465,10 @@
 | color | varchar(20) | 是 | - | - | 标题颜色 |
 
 > 用于栏目列表渲染与列表/详情静态化，保存文章在栏目中的展示属性快照。
+>
+> 写入口径：① 文章各栏目审核全部通过时由 `CompleteArticleAudit` 按审核通过的栏目批量重建；
+> ② **已发布**文章调整投放栏目时由 `SetArticleColumns` 增量同步——新增栏目立即写入本表（改动即时生效），
+> 移除栏目删除对应记录（否则栏目列表与静态化仍会命中该文章）。
 
 #### `ad` 广告表
 
@@ -649,7 +653,7 @@ erDiagram
 - 文章 ↔ 分类/标签/栏目：多对多，通过 `article_category`、`article_tag`、`article_column` 关联表。
 - 模板 → 栏目：`template` 1:N `column`（`column.template_id`）；栏目可父子嵌套（`column.parent_id`）。模板即页面（原 `page` 表已合并），`column`/`ad`/`link`/`article_column_publish` 均引用 `template_id`。
 - 流程：`workflow` 1:N `workflow_node`（级联删除）；`column.workflow_id` 可指向流程；送审走 `article_column_audit` + `article_column_audit_history`。
-- 发布：文章通过栏目审核后写入 `article_column_publish`，供栏目列表与静态化使用。
+- 发布：文章通过栏目审核后写入 `article_column_publish`，供栏目列表与静态化使用；**已发布**文章调整投放栏目时（作者或管理员）同表增量同步：新增栏目直接记为已通过并写入发布记录、移除栏目删除记录。
 - 部门：`department.org_id` 指向 `organization.id`。
 
 ---

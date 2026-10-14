@@ -367,33 +367,41 @@ func (s *ArticleService) UpdateArticleStatus(id uint, status int) error {
 	})
 }
 
-func (s *ArticleService) SetArticleColumns(id uint, columnIDs []uint) error {
+// SetArticleColumns 设置文章投放的栏目（operatorName 仅用于已发布文章栏目的审核记录留痕）。
+// 已下线/草稿文章按原口径直接改写绑定；已发布文章允许调整栏目，
+// 但需同步审核/投放记录（见 syncPublishedColumnRecords），否则会出现
+// 「已发布但没有投放记录」或「已解绑栏目仍被命中」的脏数据。
+func (s *ArticleService) SetArticleColumns(id uint, columnIDs []uint, operatorName string) error {
 	return utils.DB.Transaction(func(tx *gorm.DB) error {
 		var article models.Article
-		if err := tx.First(&article, id).Error; err != nil {
+		if err := tx.Preload("Columns").First(&article, id).Error; err != nil {
 			return err
 		}
-		// 审核中/已审核（已发布）时禁止改栏目：
-		// 否则会残留已解绑栏目的审核记录、新栏目无审核记录，后续“全部通过”时会错误发布。
-		if article.AuditStatus != 0 {
-			return fmt.Errorf("文章正在审核或已发布，不能修改栏目；如需调整请先撤回审核或将文章下线")
+		// 审核中禁止改栏目：否则会残留已解绑栏目的审核记录、新栏目无审核记录，后续“全部通过”时会错误发布。
+		if article.AuditStatus == 1 {
+			return fmt.Errorf("文章正在审核中，不能修改栏目；如需调整请先撤回审核")
 		}
-		if len(columnIDs) > 0 {
-			// 先去重（保持顺序）：前端下拉只会给启用栏目，但直调 API 可传任意 ID；
-			// 关联表 FK 只保证「存在」，禁用栏目不应再被投放（否则会排到静态化列表里）。
-			unique := make([]uint, 0, len(columnIDs))
-			seen := make(map[uint]bool, len(columnIDs))
-			for _, cid := range columnIDs {
-				if cid == 0 || seen[cid] {
-					continue
-				}
-				seen[cid] = true
-				unique = append(unique, cid)
+		// 变更前的栏目绑定：已发布文章据此算出「新增/移除」的栏目
+		oldColumnIDs := make([]uint, 0, len(article.Columns))
+		for _, col := range article.Columns {
+			oldColumnIDs = append(oldColumnIDs, col.ID)
+		}
+		// 先去重（保持顺序）：前端下拉只会给启用栏目，但直调 API 可传任意 ID；
+		// 关联表 FK 只保证「存在」，禁用栏目不应再被投放（否则会排到静态化列表里）。
+		unique := make([]uint, 0, len(columnIDs))
+		seen := make(map[uint]bool, len(columnIDs))
+		for _, cid := range columnIDs {
+			if cid == 0 || seen[cid] {
+				continue
 			}
-			if len(unique) == 0 {
-				return fmt.Errorf("请选择至少一个有效栏目")
-			}
-			var columns []models.Column
+			seen[cid] = true
+			unique = append(unique, cid)
+		}
+		if len(columnIDs) > 0 && len(unique) == 0 {
+			return fmt.Errorf("请选择至少一个有效栏目")
+		}
+		var columns []models.Column
+		if len(unique) > 0 {
 			if err := tx.Where("id IN ?", unique).Find(&columns).Error; err != nil {
 				return err
 			}
@@ -417,8 +425,89 @@ func (s *ArticleService) SetArticleColumns(id uint, columnIDs []uint) error {
 				return err
 			}
 		}
+		// 已发布文章：栏目变更必须同步审核与投放记录（新增栏目即时生效、移除栏目即时停止投放）
+		if article.Status == models.ArticleStatusPublished {
+			if err := syncPublishedColumnRecords(tx, &article, oldColumnIDs, columns, operatorName); err != nil {
+				return err
+			}
+		}
 		return nil
 	})
+}
+
+// syncPublishedColumnRecords 同步「已发布」文章的栏目审核与投放记录。
+//
+// 已发布文章的栏目在发布时已全部通过审核（CompleteArticleAudit 会为每个通过的栏目写 article_column_publish），
+// 因此调整栏目时按同一口径维护数据：
+//   - 新增栏目：直接记为「已通过」并写入投放记录，改动即时生效（与「管理员可直接编辑已发布文章、
+//     无需重新审核」的既有口径一致）；
+//   - 移除栏目：删除其审核记录与投放记录，否则栏目列表与静态化仍会命中这篇文章。
+//
+// 说明：审核历史（article_column_audit_history）保留，便于追溯；文章状态保持「已发布」，audit_status 不变。
+func syncPublishedColumnRecords(tx *gorm.DB, article *models.Article, oldColumnIDs []uint, columns []models.Column, operatorName string) error {
+	bound := make(map[uint]bool, len(columns))
+	for _, col := range columns {
+		bound[col.ID] = true
+	}
+	old := make(map[uint]bool, len(oldColumnIDs))
+	removed := make([]uint, 0, len(oldColumnIDs))
+	for _, cid := range oldColumnIDs {
+		old[cid] = true
+		if !bound[cid] {
+			removed = append(removed, cid)
+		}
+	}
+	if len(removed) > 0 {
+		if err := tx.Where("article_id = ? AND column_id IN ?", article.ID, removed).Delete(&models.ArticleColumnAudit{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("article_id = ? AND column_id IN ?", article.ID, removed).Delete(&models.ArticleColumnPublish{}).Error; err != nil {
+			return err
+		}
+	}
+	if len(columns) == 0 {
+		return nil
+	}
+	now := time.Now()
+	for i := range columns {
+		col := columns[i]
+		// 原有栏目：保持其审核/投放记录不变
+		if old[col.ID] {
+			continue
+		}
+		workflowID := uint(0)
+		if col.WorkflowID != nil {
+			workflowID = *col.WorkflowID
+		}
+		audit := models.ArticleColumnAudit{
+			ArticleID:       article.ID,
+			ColumnID:        col.ID,
+			WorkflowID:      workflowID,
+			CurrentNodeID:   0,
+			Status:          1,
+			ApproveRemark:   "文章已发布，栏目变更即时生效",
+			ApproveUserName: operatorName,
+			ApproveTime:     &now,
+		}
+		if err := tx.Create(&audit).Error; err != nil {
+			return err
+		}
+		publish := models.ArticleColumnPublish{
+			TemplateID:   col.TemplateID,
+			ColumnID:     col.ID,
+			ArticleID:    article.ID,
+			ArticleTitle: article.Title,
+			Author:       article.Author,
+			Source:       article.Source,
+			IsTop:        article.IsTop,
+			IsBold:       article.IsBold,
+			Color:        article.DefaultColor,
+		}
+		if err := tx.Create(&publish).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *ArticleService) DeleteArticle(id uint) error {

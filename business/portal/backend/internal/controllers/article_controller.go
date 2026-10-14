@@ -657,13 +657,23 @@ func (c *ArticleController) SetArticleColumns(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "文章不存在"))
 		return
 	}
-	if strconv.FormatUint(uint64(userID), 10) != article.AuthorCode {
+	// 权限：作者本人可设置自己文章的栏目；管理员可为他人「已发布」的文章调整栏目
+	//（与「编辑」接口同口径——非作者的管理员只能操作已发布文章）。
+	isAuthor := strconv.FormatUint(uint64(userID), 10) == article.AuthorCode
+	roleIds, _ := c.userService.GetUserRoleIds(userID)
+	isAdmin := models.HasAdminRoleIDs(roleIds)
+	if !isAuthor && !(isAdmin && article.Status == models.ArticleStatusPublished) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "无权操作"))
 		return
 	}
-	err = c.articleService.SetArticleColumns(uint(id), req.ColumnIds)
+	// 已发布文章的新增栏目会直接记为「已通过」，用操作人姓名留痕
+	operatorName := ""
+	if user, userErr := c.userService.GetUserByID(userID); userErr == nil && user != nil {
+		operatorName = user.Username
+	}
+	err = c.articleService.SetArticleColumns(uint(id), req.ColumnIds, operatorName)
 	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "设置文章栏目失败"))
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SafeErrText(err)))
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("设置文章栏目成功", nil))

@@ -163,7 +163,7 @@
             >
               <el-icon><Edit /></el-icon>编辑
             </el-button>
-            <el-button v-if="isAuthor(row) && row.auditStatus !== 2" link type="success" @click="row.auditStatus === 1 ? ElMessage.warning('审核中的文章不能修改栏目') : handleSetColumns(row)">
+            <el-button v-if="(isAuthor(row) && row.auditStatus !== 2) || (row.status === 1 && (isAuthor(row) || isAdmin))" link type="success" @click="row.auditStatus === 1 ? ElMessage.warning('审核中的文章不能修改栏目') : handleSetColumns(row)">
               <el-icon><FolderOpened /></el-icon>栏目
             </el-button>
             <el-button v-if="isAuthor(row) && row.status === 0 && row.columnCount > 0 && row.auditStatus === 0" link type="warning" @click="handleAudit(row)">
@@ -787,6 +787,10 @@
           <template v-else-if="currentArticleType === 4">仅展示「报刊展示」类栏目。</template>
           <template v-else>不展示「视频展示」「数据展示」和「报刊展示」类栏目。</template>
           请先选择模板，再勾选该模板下的栏目；支持跨模板多选。
+          <template v-if="currentArticleStatus === 1">
+            <br />
+            文章已发布，栏目变更即时生效：新增栏目立即投放，移除栏目立即取消投放。
+          </template>
         </span>
       </div>
       <el-row :gutter="16" class="column-setting-body">
@@ -1127,6 +1131,8 @@ const selectedColumnTemplateId = ref<number | undefined>(undefined)
 const columnSubmitLoading = ref(false)
 const currentArticleId = ref<number | undefined>(undefined)
 const currentArticleType = ref<number | undefined>(undefined)
+// 已发布文章改栏目时改动即时生效（新增栏目立即投放、移除栏目立即取消投放），弹窗内据此给出提示
+const currentArticleStatus = ref<number | undefined>(undefined)
 const templateList = ref<any[]>([])
 const columnList = ref<any[]>([])
 
@@ -2170,6 +2176,7 @@ const handleOffShelf = (row: any) => {
 const handleSetColumns = async (row: any) => {
   currentArticleId.value = row.id
   currentArticleType.value = row.type
+  currentArticleStatus.value = row.status
   columnDialogTitle.value = row.title
   selectedColumnIds.value = row.columnIds || []
   selectedColumnTemplateId.value = undefined
