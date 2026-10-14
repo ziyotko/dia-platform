@@ -322,7 +322,10 @@ const formRules = {
   name: [{ required: true, message: '请输入广告名称', trigger: 'blur' }],
   templateId: [{ required: true, message: '请选择广告位置', trigger: 'change' }],
   columnId: [{ required: true, message: '请选择栏目', trigger: 'change' }],
-  link: [{ required: true, message: '请输入跳转链接', trigger: 'blur' }],
+  link: [
+    { required: true, message: '请输入跳转链接', trigger: 'blur' },
+    { pattern: /^https?:\/\/.+/, message: '链接格式不正确', trigger: 'blur' }
+  ],
   startTime: [{ validator: validateTimeRange, trigger: 'change' }],
   endTime: [{ validator: validateTimeRange, trigger: 'change' }]
 }
