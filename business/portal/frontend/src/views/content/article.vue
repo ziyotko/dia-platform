@@ -1239,9 +1239,16 @@ const form = reactive({
 })
 
 const isValidUrl = (url: string) => /^https?:\/\/.+/i.test(url)
+// 仅含媒体的内容（如上传的图片、视频、音频、嵌入页）同样算作有效内容
+const MEDIA_TAG_RE = /<(img|video|audio|iframe|embed|object|source)\b/i
 const hasRealContent = (html: string) => {
   if (!html) return false
-  const text = html.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, '').trim()
+  if (MEDIA_TAG_RE.test(html)) return true
+  const text = html
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;|&#160;|&#xa0;/gi, '')
+    .replace(/\u00a0/g, '')
+    .trim()
   return text.length > 0
 }
 
