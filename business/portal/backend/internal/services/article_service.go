@@ -727,6 +727,258 @@ func (s *ArticleService) GetArticleAuditProgress(articleID uint) ([]models.Artic
 	return audits, err
 }
 
+// GetArticleBasicByID 仅加载判定/展示所需的基础字段（不含 Categories/Tags/Columns/Attachments 的 Preload）。
+// 「栏目审核流程」等只关心 author_code/status 的场景用它，可省掉 4 条无用的关联查询。
+func (s *ArticleService) GetArticleBasicByID(id uint) (*models.Article, error) {
+	var article models.Article
+	if err := utils.DB.Select("id", "status", "audit_status", "author_code").First(&article, id).Error; err != nil {
+		return nil, err
+	}
+	return &article, nil
+}
+
+// AuditProgressItem 栏目审核进度项：审核记录 + 当前用户能否审批 + 当前节点审批人展示名
+type AuditProgressItem struct {
+	models.ArticleColumnAudit
+	CanApprove          bool   `json:"canApprove"`
+	CurrentApproverName string `json:"currentApproverName"`
+}
+
+// GetArticleAuditProgressForUser 返回文章各栏目的审核进度（含权限与审批人名称），allowed 表示当前用户是否有权查看。
+//
+// 性能口径：原实现在 controller 里逐栏目调用 CanApproveArticleColumn + GetWorkflowNodeByID + GetApproverName，
+// 每个「审核中」栏目要发 6~10 条 SQL（同一节点、同一文章、同一用户被反复查询，部门负责人节点还要扫 department 表）。
+// 这里改为「一次预加载 + 内存判定」：文章、审核记录、当前节点各查一次，
+// 审批上下文（用户/流程角色/部门）与审批人名称按类型批量解析，SQL 条数不再随栏目数量增长。
+func (s *ArticleService) GetArticleAuditProgressForUser(article *models.Article, userID uint) ([]AuditProgressItem, bool, error) {
+	var audits []models.ArticleColumnAudit
+	if err := utils.DB.Where("article_id = ?", article.ID).Find(&audits).Error; err != nil {
+		return nil, false, err
+	}
+	// 当前节点一次性取出（原实现每个栏目各查一次，且与权限判定里的节点查询重复）
+	nodeIDs := make([]uint, 0, len(audits))
+	for _, audit := range audits {
+		if audit.Status == 0 && audit.CurrentNodeID != 0 {
+			nodeIDs = append(nodeIDs, audit.CurrentNodeID)
+		}
+	}
+	nodeByID := make(map[uint]models.WorkflowNode, len(nodeIDs))
+	if len(nodeIDs) > 0 {
+		var nodes []models.WorkflowNode
+		if err := utils.DB.Where("id IN ?", nodeIDs).Find(&nodes).Error; err != nil {
+			return nil, false, err
+		}
+		for _, node := range nodes {
+			nodeByID[node.ID] = node
+		}
+	}
+	// 审批上下文只解析一次（原实现每个栏目都重建：查用户 → 流程角色 → 部门扫描）
+	ac, err := s.newApprovalContext(userID)
+	if err != nil {
+		return nil, false, err
+	}
+	// 可见性口径与 controller.canViewArticle 一致：管理员、作者本人，或该文章存在「待我审批」的栏目
+	allowed := models.HasAdminRoleStr(ac.user.RoleIds) || strconv.FormatUint(uint64(userID), 10) == article.AuthorCode
+	if !allowed {
+		for _, audit := range audits {
+			if audit.Status != 0 {
+				continue
+			}
+			node, ok := nodeByID[audit.CurrentNodeID]
+			if !ok {
+				continue
+			}
+			can, err := s.canApprove(ac, &node, article.AuthorCode)
+			if err != nil {
+				// 与旧实现同结果（旧实现由 CanApproveAnyColumn 上抛错误，controller 判为无权查看）
+				utils.Logger.Warnf("判断文章[%d]栏目[%d]的审批权限失败: %s", article.ID, audit.ColumnID, err)
+				continue
+			}
+			if can {
+				allowed = true
+				break
+			}
+		}
+	}
+	if !allowed {
+		return nil, false, nil
+	}
+	// 审批人展示名批量解析：用户/流程角色各一次查询，部门负责人按作者解析一次
+	resolver := newApproverNameResolver(s, article.AuthorCode)
+	if err := resolver.prefetch(pendingAuditNodes(audits, nodeByID)); err != nil {
+		utils.Logger.Warnf("解析文章[%d]的审批人名称失败: %s", article.ID, err)
+	}
+	list := make([]AuditProgressItem, 0, len(audits))
+	for _, audit := range audits {
+		item := AuditProgressItem{ArticleColumnAudit: audit}
+		if audit.Status == 0 {
+			if node, ok := nodeByID[audit.CurrentNodeID]; ok {
+				// 节点存在但审批人类型非法时 canApprove 报错：与旧实现一致，降级为「不可审批」
+				if can, err := s.canApprove(ac, &node, article.AuthorCode); err == nil {
+					item.CanApprove = can
+				}
+				item.CurrentApproverName = resolver.nameOf(node)
+			}
+		}
+		list = append(list, item)
+	}
+	return list, true, nil
+}
+
+// pendingAuditNodes 收集「审核中」栏目对应的当前节点（去重）
+func pendingAuditNodes(audits []models.ArticleColumnAudit, nodeByID map[uint]models.WorkflowNode) []models.WorkflowNode {
+	nodes := make([]models.WorkflowNode, 0, len(audits))
+	seen := make(map[uint]bool, len(audits))
+	for _, audit := range audits {
+		if audit.Status != 0 || seen[audit.CurrentNodeID] {
+			continue
+		}
+		node, ok := nodeByID[audit.CurrentNodeID]
+		if !ok {
+			continue
+		}
+		seen[audit.CurrentNodeID] = true
+		nodes = append(nodes, node)
+	}
+	return nodes
+}
+
+// approverNameResolver 批量解析审批人展示名：把「每个栏目 1~3 条 SQL」压成「每类一次」。
+// 文案与 GetApproverName 完全一致；nameOf 在未预取时按需加载，保证单节点调用同样正确。
+type approverNameResolver struct {
+	svc        *ArticleService
+	authorCode string
+	userNames  map[uint]string
+	roleNames  map[uint]string
+	deptHead   *string
+}
+
+func newApproverNameResolver(svc *ArticleService, authorCode string) *approverNameResolver {
+	return &approverNameResolver{svc: svc, authorCode: authorCode}
+}
+
+// normalizeApproverType 空值按 user 处理（与 canApprove/GetApproverName 同口径）
+func normalizeApproverType(approverType string) string {
+	if approverType == "" {
+		return "user"
+	}
+	return approverType
+}
+
+func (r *approverNameResolver) prefetch(nodes []models.WorkflowNode) error {
+	userIDs := make([]uint, 0, len(nodes))
+	roleIDs := make([]uint, 0, len(nodes))
+	needDeptHead := false
+	for _, node := range nodes {
+		switch normalizeApproverType(node.ApproverType) {
+		case "user":
+			if node.ApproverID != 0 {
+				userIDs = append(userIDs, node.ApproverID)
+			}
+		case "role":
+			if node.ApproverID != 0 {
+				roleIDs = append(roleIDs, node.ApproverID)
+			}
+		case "dept_head":
+			needDeptHead = true
+		}
+	}
+	r.userNames = make(map[uint]string, len(userIDs))
+	if len(userIDs) > 0 {
+		var users []models.User
+		if err := utils.DB.Select("id", "username").Where("id IN ?", userIDs).Find(&users).Error; err != nil {
+			return err
+		}
+		for _, user := range users {
+			r.userNames[user.ID] = user.Username
+		}
+	}
+	r.roleNames = make(map[uint]string, len(roleIDs))
+	if len(roleIDs) > 0 {
+		var roles []models.WorkflowRole
+		if err := utils.DB.Select("id", "name").Where("id IN ?", roleIDs).Find(&roles).Error; err != nil {
+			return err
+		}
+		for _, role := range roles {
+			r.roleNames[role.ID] = role.Name
+		}
+	}
+	if needDeptHead {
+		name := r.svc.deptHeadApproverName(r.authorCode)
+		r.deptHead = &name
+	}
+	return nil
+}
+
+func (r *approverNameResolver) nameOf(node models.WorkflowNode) string {
+	switch normalizeApproverType(node.ApproverType) {
+	case "user":
+		if node.ApproverID == 0 {
+			return "指定成员（未指定）"
+		}
+		if r.userNames == nil {
+			if err := r.prefetch([]models.WorkflowNode{node}); err != nil {
+				return "指定成员（未知）"
+			}
+		}
+		if name, ok := r.userNames[node.ApproverID]; ok {
+			return name
+		}
+		return "指定成员（未知）"
+	case "role":
+		if node.ApproverID == 0 {
+			return "流程角色（未指定）"
+		}
+		if r.roleNames == nil {
+			if err := r.prefetch([]models.WorkflowNode{node}); err != nil {
+				return "流程角色（未知）"
+			}
+		}
+		if name, ok := r.roleNames[node.ApproverID]; ok {
+			return name
+		}
+		return "流程角色（未知）"
+	case "dept_head":
+		if r.deptHead == nil {
+			name := r.svc.deptHeadApproverName(r.authorCode)
+			r.deptHead = &name
+		}
+		return *r.deptHead
+	default:
+		return ""
+	}
+}
+
+// deptHeadApproverName 解析「部门负责人」审批人的展示名（按作者所属部门取负责人姓名）
+func (s *ArticleService) deptHeadApproverName(authorCode string) string {
+	authorID, err := strconv.ParseUint(authorCode, 10, 32)
+	if err != nil {
+		return "部门负责人（作者ID无效）"
+	}
+	var author models.User
+	if err := utils.DB.Select("id").First(&author, authorID).Error; err != nil {
+		return "部门负责人（作者未知）"
+	}
+	deptIDs, err := s.getUserDepartmentIDs(author.ID)
+	if err != nil || len(deptIDs) == 0 {
+		return "部门负责人（未找到作者部门）"
+	}
+	var departments []models.Department
+	if err := utils.DB.Where("id IN ?", deptIDs).Find(&departments).Error; err != nil {
+		return "部门负责人（查询失败）"
+	}
+	names := make([]string, 0, len(departments))
+	for _, dept := range departments {
+		if dept.Leader != "" {
+			names = append(names, dept.Leader)
+		}
+	}
+	if len(names) == 0 {
+		return "部门负责人（未设置负责人）"
+	}
+	return strings.Join(names, "、")
+}
+
 func (s *ArticleService) getUserName(userID uint) string {
 	var user models.User
 	if err := utils.DB.First(&user, userID).Error; err != nil {
@@ -904,64 +1156,12 @@ func (s *ArticleService) CanApproveArticleColumn(articleID uint, columnID uint, 
 	return s.canUserApproveNode(&currentNode, userID, article.AuthorCode)
 }
 
-// GetApproverName 根据节点和文章作者解析审批人显示名称（调试用）
+// GetApproverName 根据节点和文章作者解析审批人显示名称（单节点场景；批量场景用 approverNameResolver.prefetch）
 func (s *ArticleService) GetApproverName(node *models.WorkflowNode, authorCode string) string {
 	if node == nil {
 		return ""
 	}
-	approverType := node.ApproverType
-	if approverType == "" {
-		approverType = "user"
-	}
-	switch approverType {
-	case "user":
-		if node.ApproverID == 0 {
-			return "指定成员（未指定）"
-		}
-		var user models.User
-		if err := utils.DB.First(&user, node.ApproverID).Error; err != nil {
-			return "指定成员（未知）"
-		}
-		return user.Username
-	case "role":
-		if node.ApproverID == 0 {
-			return "流程角色（未指定）"
-		}
-		var role models.WorkflowRole
-		if err := utils.DB.First(&role, node.ApproverID).Error; err != nil {
-			return "流程角色（未知）"
-		}
-		return role.Name
-	case "dept_head":
-		authorID, err := strconv.ParseUint(authorCode, 10, 32)
-		if err != nil {
-			return "部门负责人（作者ID无效）"
-		}
-		var author models.User
-		if err := utils.DB.First(&author, authorID).Error; err != nil {
-			return "部门负责人（作者未知）"
-		}
-		deptIDs, err := s.getUserDepartmentIDs(author.ID)
-		if err != nil || len(deptIDs) == 0 {
-			return "部门负责人（未找到作者部门）"
-		}
-		var departments []models.Department
-		if err := utils.DB.Where("id IN ?", deptIDs).Find(&departments).Error; err != nil {
-			return "部门负责人（查询失败）"
-		}
-		names := make([]string, 0, len(departments))
-		for _, d := range departments {
-			if d.Leader != "" {
-				names = append(names, d.Leader)
-			}
-		}
-		if len(names) == 0 {
-			return "部门负责人（未设置负责人）"
-		}
-		return strings.Join(names, "、")
-	default:
-		return ""
-	}
+	return newApproverNameResolver(s, authorCode).nameOf(*node)
 }
 
 // AdvanceArticleAudit 推进指定文章栏目的审核到下一节点

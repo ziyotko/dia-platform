@@ -13,7 +13,7 @@ type Department struct {
 	Name        string    `gorm:"size:50;not null" json:"name"`
 	Code        string    `gorm:"unique;size:50;not null" json:"code"`
 	Leader      string    `gorm:"size:50" json:"leader"`
-	LeaderCode  string    `gorm:"size:50" json:"leaderCode"`
+	LeaderCode  string    `gorm:"size:50;index" json:"leaderCode"`
 	Sort        int       `gorm:"default:0" json:"sort"`
 	Status      int       `gorm:"default:1;index:idx_department_org_status" json:"status"`
 	Description string    `gorm:"size:255" json:"description"`

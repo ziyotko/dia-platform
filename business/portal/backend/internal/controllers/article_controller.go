@@ -16,7 +16,6 @@ import (
 type ArticleController struct {
 	articleService      *services.ArticleService
 	userService         *services.UserService
-	workflowService     *services.WorkflowService
 	staticJobController *StaticJobController
 }
 
@@ -24,7 +23,6 @@ func NewArticleController() *ArticleController {
 	return &ArticleController{
 		articleService:      &services.ArticleService{},
 		userService:         &services.UserService{},
-		workflowService:     &services.WorkflowService{},
 		staticJobController: NewStaticJobController(),
 	}
 }
@@ -523,37 +521,21 @@ func (c *ArticleController) GetArticleAuditProgress(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, "文章ID无效"))
 		return
 	}
-	audits, err := c.articleService.GetArticleAuditProgress(uint(id))
-	if err != nil {
-		ctx.JSON(http.StatusOK, utils.Error(1, "获取审核进度失败"))
-		return
-	}
-	article, err := c.articleService.GetArticleByID(uint(id))
+	// 只取判定所需的文章基础字段：原 GetArticleByID 会额外 Preload 分类/标签/栏目/附件（4 条多余 SQL）
+	article, err := c.articleService.GetArticleBasicByID(uint(id))
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, "文章不存在"))
 		return
 	}
-	userID := ctx.GetUint("userID")
-	if !c.canViewArticle(article, userID) {
-		ctx.JSON(http.StatusOK, utils.Error(1, "无权查看该文章"))
+	// 进度、权限、审批人名称一次算完（原实现逐栏目查询，SQL 条数随栏目数线性增长）
+	list, allowed, err := c.articleService.GetArticleAuditProgressForUser(article, ctx.GetUint("userID"))
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, "获取审核进度失败"))
 		return
 	}
-	type auditProgressItem struct {
-		models.ArticleColumnAudit
-		CanApprove          bool   `json:"canApprove"`
-		CurrentApproverName string `json:"currentApproverName"`
-	}
-	list := make([]auditProgressItem, 0, len(audits))
-	for _, audit := range audits {
-		item := auditProgressItem{ArticleColumnAudit: audit}
-		if audit.Status == 0 {
-			item.CanApprove, _ = c.articleService.CanApproveArticleColumn(uint(id), audit.ColumnID, userID)
-			node, err := c.workflowService.GetWorkflowNodeByID(audit.CurrentNodeID)
-			if err == nil {
-				item.CurrentApproverName = c.articleService.GetApproverName(node, article.AuthorCode)
-			}
-		}
-		list = append(list, item)
+	if !allowed {
+		ctx.JSON(http.StatusOK, utils.Error(1, "无权查看该文章"))
+		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("获取审核进度成功", list))
 }

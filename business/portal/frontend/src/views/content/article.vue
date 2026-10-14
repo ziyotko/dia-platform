@@ -2019,6 +2019,25 @@ const formatAuditTime = (timeStr: string) => {
   return `${y}-${m}-${d} ${h}:${min}:${s}`
 }
 
+// 审批人名称展示所需的选项（组件级缓存，仅首次打开弹窗时加载）
+const loadAuditFlowUserOptions = async () => {
+  try {
+    const res: any = await getUserOptions()
+    auditFlowUserList.value = res.data || []
+  } catch {
+    auditFlowUserList.value = []
+  }
+}
+
+const loadAuditFlowRoleOptions = async () => {
+  try {
+    const res: any = await getWorkflowRoleOptions()
+    auditFlowRoleList.value = res.data || []
+  } catch {
+    auditFlowRoleList.value = []
+  }
+}
+
 const handleShowAuditFlow = async (row: any) => {
   auditFlowDialogVisible.value = true
   auditFlowLoading.value = true
@@ -2029,43 +2048,42 @@ const handleShowAuditFlow = async (row: any) => {
     if (columnList.value.length === 0) {
       await fetchColumns()
     }
+    const columnIds = row.columnIds || []
+    const columns = columnList.value.filter((col: any) => columnIds.includes(col.id))
+
     // 加载用户/角色选项，用于显示审批人名称
     // 使用菜单豁免的轻量选项接口（仅 id/名称）：非管理员没有「用户管理/流程角色」菜单，
     // 若改回 getAllUsers/getAllWorkflowRoles 会因缺少授权而报「没有授权」。
-    if (auditFlowUserList.value.length === 0) {
-      try {
-        const userRes: any = await getUserOptions()
-        auditFlowUserList.value = userRes.data || []
-      } catch {
-        auditFlowUserList.value = []
-      }
-    }
-    if (auditFlowRoleList.value.length === 0) {
-      try {
-        const roleRes: any = await getWorkflowRoleOptions()
-        auditFlowRoleList.value = roleRes.data || []
-      } catch {
-        auditFlowRoleList.value = []
-      }
-    }
-    const columnIds = row.columnIds || []
-    const columns = columnList.value.filter((col: any) => columnIds.includes(col.id))
-    // 获取审核进度
-    let progressRes: any = { data: [] }
-    if (row.auditStatus === 1 || row.auditStatus === 2) {
-      try {
-        progressRes = await getArticleAuditProgress(row.id)
-      } catch {
-        progressRes = { data: [] }
-      }
-    }
-    const progressList: any[] = progressRes.data || []
+    const optionTasks: Promise<void>[] = []
+    if (auditFlowUserList.value.length === 0) optionTasks.push(loadAuditFlowUserOptions())
+    if (auditFlowRoleList.value.length === 0) optionTasks.push(loadAuditFlowRoleOptions())
+
+    // 四个数据源彼此独立：全部并行发起，避免「逐栏目串行 await」把 N 段网络往返叠加成总耗时
+    // （弹窗需要 1 条进度 + 每个栏目 1 条流程 + 每个栏目 1 条历史；串行时总耗时是它们的和，并行时约为最慢的一条）
+    const workflowIds = Array.from(
+      new Set(columns.map((col: any) => col.workflowId).filter((id: any) => !!id))
+    ) as number[]
+    const [, progressRes, workflowResList, historyResList] = await Promise.all([
+      Promise.all(optionTasks),
+      (row.auditStatus === 1 || row.auditStatus === 2)
+        ? getArticleAuditProgress(row.id).catch(() => ({ data: [] }))
+        : Promise.resolve({ data: [] }),
+      Promise.all(workflowIds.map((id: number) => getWorkflowByID(id).catch(() => null))),
+      Promise.all(columns.map((col: any) => getArticleAuditHistory(row.id, col.id).catch(() => null)))
+    ])
+    // 同一流程被多个栏目共用时只请求一次，这里按 id 回填
+    const workflowMap = new Map<number, any>()
+    workflowIds.forEach((id: number, index: number) => {
+      const res: any = workflowResList[index]
+      workflowMap.set(id, res?.data || null)
+    })
+    const progressList: any[] = (progressRes as any).data || []
     const list: any[] = []
-    for (const col of columns) {
+    columns.forEach((col: any, index: number) => {
       const item: any = {
         columnId: col.id,
         columnName: col.name,
-        workflow: null,
+        workflow: col.workflowId ? workflowMap.get(col.workflowId) || null : null,
         currentNodeId: 0,
         auditStatus: -1,
         currentApproverId: 0,
@@ -2087,30 +2105,17 @@ const handleShowAuditFlow = async (row: any) => {
         item.rejectRemark = progress.rejectRemark || ''
         item.canApprove = !!progress.canApprove
       }
-      if (col.workflowId) {
-        try {
-          const res: any = await getWorkflowByID(col.workflowId)
-          item.workflow = res.data || null
-          if (item.workflow && item.workflow.nodes && item.currentNodeId) {
-            const node = item.workflow.nodes.find((n: any) => n.id === item.currentNodeId)
-            if (node) {
-              item.currentApproverId = node.approverId || 0
-              item.currentApproverType = node.approverType || 'user'
-            }
-          }
-        } catch {
-          item.workflow = null
+      if (item.workflow && item.workflow.nodes && item.currentNodeId) {
+        const node = item.workflow.nodes.find((n: any) => n.id === item.currentNodeId)
+        if (node) {
+          item.currentApproverId = node.approverId || 0
+          item.currentApproverType = node.approverType || 'user'
         }
       }
-      // 获取审核历史
-      try {
-        const historyRes: any = await getArticleAuditHistory(row.id, col.id)
-        item.histories = historyRes.data || []
-      } catch {
-        item.histories = []
-      }
+      const historyRes: any = historyResList[index]
+      item.histories = historyRes?.data || []
       list.push(item)
-    }
+    })
     auditFlowList.value = list
   } finally {
     auditFlowLoading.value = false

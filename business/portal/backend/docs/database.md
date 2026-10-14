@@ -173,7 +173,7 @@
 | name | varchar(50) | 否 | - | - | 部门名称 |
 | code | varchar(50) | 否 | - | UNIQUE | 部门编码 |
 | leader | varchar(50) | 是 | - | - | 负责人姓名 |
-| leader_code | varchar(50) | 是 | - | - | 负责人标识：**存用户 ID**（dept_head 审批节点按此解析；历史脏值可能为账号，后端已兼容两种取值） |
+| leader_code | varchar(50) | 是 | - | IDX | 负责人标识：**存用户 ID**（dept_head 审批节点按此解析；历史脏值可能为账号，后端已兼容两种取值）。索引 `idx_department_leader_code` 支撑 `leader_code IN (...)` 的「我担任负责人的部门」查询 |
 | sort | bigint | 是 | 0 | - | 排序号 |
 | status | bigint | 是 | 1 | IDX(org_id,status) | 状态 |
 | description | varchar(255) | 是 | - | - | 描述 |
