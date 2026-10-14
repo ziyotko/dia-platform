@@ -132,7 +132,19 @@
             {{ row.publishTime ? (row.type === 4 ? row.publishTime.slice(0, 7) : row.publishTime.slice(0, 10)) : '-' }}
           </template>
         </el-table-column>
-        <el-table-column prop="columnCount" label="发布栏目数量" width="120" align="center" />
+        <el-table-column label="发布栏目" width="100" align="center">
+          <template #default="{ row }">
+            <el-link
+              v-if="row.columnCount > 0"
+              type="primary"
+              :underline="'never'"
+              @click="handleShowColumnView(row)"
+            >
+              {{ row.columnCount }}
+            </el-link>
+            <span v-else>0</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="发布状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : row.status === 0 ? 'info' : 'danger'" size="small">
@@ -163,7 +175,7 @@
             >
               <el-icon><Edit /></el-icon>编辑
             </el-button>
-            <el-button v-if="(isAuthor(row) && row.auditStatus !== 2) || (row.status === 1 && (isAuthor(row) || isAdmin))" link type="success" @click="row.auditStatus === 1 ? ElMessage.warning('审核中的文章不能修改栏目') : handleSetColumns(row)">
+            <el-button v-if="canSetColumns(row)" link type="success" @click="row.auditStatus === 1 ? ElMessage.warning('审核中的文章不能修改栏目') : handleSetColumns(row)">
               <el-icon><FolderOpened /></el-icon>栏目
             </el-button>
             <el-button v-if="isAuthor(row) && row.status === 0 && row.columnCount > 0 && row.auditStatus === 0" link type="warning" @click="handleAudit(row)">
@@ -890,6 +902,49 @@
       <template #footer>
         <el-button @click="columnDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="columnSubmitLoading" @click="handleSubmitColumns">确定</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 发布栏目（只读查看该文章投放到哪些模板的哪些栏目下） -->
+    <el-dialog
+      v-model="columnViewVisible"
+      title="发布栏目"
+      width="600px"
+      destroy-on-close
+      class="column-view-dialog"
+    >
+      <div v-if="columnViewArticleTitle" class="column-view-subtitle">
+        文章：{{ columnViewArticleTitle }}
+      </div>
+      <div v-if="columnViewArticleStatus !== 1" class="column-view-hint">
+        <el-icon><InfoFilled /></el-icon>
+        <span>文章当前为{{ columnViewArticleStatus === 2 ? '已下线' : '草稿' }}，以下为已选择的栏目，发布后才会展示在对应栏目下。</span>
+      </div>
+      <el-skeleton v-if="columnViewLoading" :rows="4" animated />
+      <el-empty v-else-if="columnViewGroups.length === 0" description="该文章未投放任何栏目" :image-size="80" />
+      <div v-else class="column-view-list">
+        <div v-for="group in columnViewGroups" :key="group.templateId" class="column-view-group">
+          <div class="column-view-template">
+            <el-icon><Monitor /></el-icon>
+            <span class="column-view-template-name">{{ group.templateName }}</span>
+            <span class="column-view-count">{{ group.columns.length }} 个栏目</span>
+          </div>
+          <div class="column-view-columns">
+            <el-tag
+              v-for="col in group.columns"
+              :key="col.id"
+              :type="col.status === 1 ? 'primary' : 'info'"
+              effect="light"
+              size="small"
+              class="column-view-tag"
+            >
+              {{ col.path }}
+            </el-tag>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="columnViewVisible = false">关闭</el-button>
       </template>
     </el-dialog>
 
@@ -1786,6 +1841,15 @@ const isAuthor = (row: any) => {
   return String(currentUserId.value) === String(row.authorCode)
 }
 
+// 「栏目」按钮显示规则（与后端 SetArticleColumns 的校验口径一致）：
+//   - 草稿（status=0）：仅作者本人（未完成审核时可设置/修改投放栏目）；
+//   - 已发布（status=1）：作者本人与管理员均可调整（改动即时生效）；
+//   - 已下线（status=2）：均不显示——下线已清空栏目绑定，需先「编辑」转为草稿后再设置栏目。
+const canSetColumns = (row: any) => {
+  if (row.status === 1) return isAuthor(row) || isAdmin.value
+  return row.status === 0 && isAuthor(row) && row.auditStatus !== 2
+}
+
 const handleEdit = async (row: any) => {
   if (row.auditStatus === 1) {
     ElMessage.warning('审核中的文章不能编辑')
@@ -2206,6 +2270,69 @@ const handleSubmitColumns = async () => {
     fetchData()
   } finally {
     columnSubmitLoading.value = false
+  }
+}
+
+// 发布栏目（只读查看）：按「模板 → 栏目」展示文章投放到哪些栏目下
+const columnViewVisible = ref(false)
+const columnViewLoading = ref(false)
+const columnViewArticleTitle = ref('')
+const columnViewArticleStatus = ref<number | undefined>(undefined)
+const columnViewColumnIds = ref<number[]>([])
+
+// 栏目层级路径：多级子栏目逐级向上拼接（限制层数，避免脏数据造成死循环）
+const getColumnFullPath = (columnId: number) => {
+  const names: string[] = []
+  let current: any = columnList.value.find((col: any) => col.id === columnId)
+  for (let depth = 0; current && depth < 10; depth++) {
+    names.unshift(current.name)
+    current = current.parentId ? columnList.value.find((col: any) => col.id === current.parentId) : undefined
+  }
+  return names.join(' / ')
+}
+
+const columnViewGroups = computed(() => {
+  const groups: any[] = []
+  const groupMap = new Map<number, any>()
+  const groupOf = (templateId: number, templateName: string) => {
+    let group = groupMap.get(templateId)
+    if (!group) {
+      group = { templateId, templateName, columns: [] as any[] }
+      groupMap.set(templateId, group)
+      groups.push(group)
+    }
+    return group
+  }
+  for (const id of columnViewColumnIds.value) {
+    const col = columnList.value.find((c: any) => c.id === id)
+    if (!col) {
+      // 栏目可能已被删除：仍展示占位，避免明细与「发布栏目」数量对不上
+      groupOf(0, '栏目已删除').columns.push({ id, path: `栏目 #${id}（已删除）`, status: 0 })
+      continue
+    }
+    const template = templateList.value.find((tpl: any) => tpl.id === col.templateId)
+    groupOf(col.templateId, template?.name || `模板 #${col.templateId}`).columns.push({
+      id: col.id,
+      path: getColumnFullPath(col.id) || col.name,
+      status: col.status
+    })
+  }
+  return groups
+})
+
+const handleShowColumnView = async (row: any) => {
+  columnViewArticleTitle.value = row.title
+  columnViewArticleStatus.value = row.status
+  columnViewColumnIds.value = row.columnIds || []
+  columnViewVisible.value = true
+  if (templateList.value.length === 0 || columnList.value.length === 0) {
+    columnViewLoading.value = true
+    try {
+      if (templateList.value.length === 0) await fetchTemplates()
+      if (columnList.value.length === 0) await fetchColumns()
+    } finally {
+      columnViewLoading.value = false
+    }
   }
 }
 
@@ -3424,6 +3551,78 @@ onMounted(() => {
     }
 
     .column-selected-tag {
+      font-size: 13px;
+    }
+  }
+}
+
+.column-view-dialog {
+  :deep(.el-dialog__body) {
+    padding: 20px;
+  }
+
+  .column-view-subtitle {
+    font-size: 13px;
+    color: var(--app-text-secondary);
+    margin-bottom: 12px;
+  }
+
+  .column-view-hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    background: #fdf6ec;
+    border: 1px solid #f5dab1;
+    border-radius: 8px;
+    color: #e6a23c;
+    font-size: 13px;
+  }
+
+  .column-view-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 420px;
+    overflow-y: auto;
+  }
+
+  .column-view-group {
+    padding: 10px 12px;
+    background: #fafbfc;
+    border: 1px solid var(--app-brand-soft);
+    border-radius: var(--app-card-radius);
+  }
+
+  .column-view-template {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--app-text-heading);
+
+    .el-icon {
+      color: var(--el-color-primary);
+      font-size: 16px;
+    }
+
+    .column-view-count {
+      margin-left: auto;
+      font-size: 12px;
+      font-weight: 400;
+      color: #909399;
+    }
+  }
+
+  .column-view-columns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    .column-view-tag {
       font-size: 13px;
     }
   }

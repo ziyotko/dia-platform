@@ -368,9 +368,9 @@ func (s *ArticleService) UpdateArticleStatus(id uint, status int) error {
 }
 
 // SetArticleColumns 设置文章投放的栏目（operatorName 仅用于已发布文章栏目的审核记录留痕）。
-// 已下线/草稿文章按原口径直接改写绑定；已发布文章允许调整栏目，
-// 但需同步审核/投放记录（见 syncPublishedColumnRecords），否则会出现
-// 「已发布但没有投放记录」或「已解绑栏目仍被命中」的脏数据。
+// 草稿由作者本人直接改写绑定；已发布文章允许调整栏目，但需同步审核/投放记录
+// （见 syncPublishedColumnRecords），否则会出现「已发布但没有投放记录」或「已解绑栏目仍被命中」的脏数据；
+// 审核中与已下线文章一律拒绝（见下方校验）。
 func (s *ArticleService) SetArticleColumns(id uint, columnIDs []uint, operatorName string) error {
 	return utils.DB.Transaction(func(tx *gorm.DB) error {
 		var article models.Article
@@ -380,6 +380,11 @@ func (s *ArticleService) SetArticleColumns(id uint, columnIDs []uint, operatorNa
 		// 审核中禁止改栏目：否则会残留已解绑栏目的审核记录、新栏目无审核记录，后续“全部通过”时会错误发布。
 		if article.AuditStatus == 1 {
 			return fmt.Errorf("文章正在审核中，不能修改栏目；如需调整请先撤回审核")
+		}
+		// 已下线禁止改栏目：下线时已清空栏目绑定与投放记录，此时改栏目不会生效（投放在送审通过时才重建），
+		// 作者需先「编辑」把文章转回草稿，再设置栏目并重新送审。
+		if article.Status == models.ArticleStatusOffline {
+			return fmt.Errorf("已下线的文章不能修改栏目；请先编辑文章（转为草稿）后再设置栏目")
 		}
 		// 变更前的栏目绑定：已发布文章据此算出「新增/移除」的栏目
 		oldColumnIDs := make([]uint, 0, len(article.Columns))
