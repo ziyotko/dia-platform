@@ -1,6 +1,10 @@
 package models
 
 import (
+	"fmt"
+	"os"
+	"strings"
+
 	"gorm.io/gorm"
 
 	"portal/pkg/utils"
@@ -60,8 +64,12 @@ func SeedDefaultRoles() {
 }
 
 // 系统内置默认用户（与默认角色一一对应）。
-// 初始密码统一为 1qaz@WSX，写入时由 User.BeforeCreate 自动进行 SM3 加盐加密。
 // ID 显式固定，与内置角色 ID 一一对应（ID 2 随「普通管理员」一并下线，不再创建 operator 账号）。
+//
+// 初始口令不再硬编码：优先取环境变量 PORTAL_INIT_PASSWORD（同一值下发给三个内置账号，便于一次性初始化）；
+// 未设置时各自生成随机强口令，并把口令打印到启动控制台（仅一次，不写入 logs/*.log）。
+// 历史实现使用固定弱口令 1qaz@WSX，等同于「后台默认凭据」，任何拿到源码或文档的人都能登录，
+// 且账号被删后重启即会被重建为同一弱口令，因此必须去掉硬编码。
 var defaultUsers = []User{
 	{
 		// 内置管理员账号固定为 ID=1，与前端 users.vue 的内置用户保护逻辑保持一致
@@ -69,7 +77,6 @@ var defaultUsers = []User{
 		Username: "管理员",
 		Account:  "admin",
 		Email:    "admin@example.com",
-		Password: "1qaz@WSX",
 		Mobile:   "1",
 		RoleIds:  "1",
 		Status:   1,
@@ -80,7 +87,6 @@ var defaultUsers = []User{
 		Username: "内容审核",
 		Account:  "reviewer",
 		Email:    "reviewer@example.com",
-		Password: "1qaz@WSX",
 		Mobile:   "3",
 		RoleIds:  "3",
 		Status:   1,
@@ -91,14 +97,24 @@ var defaultUsers = []User{
 		Username: "内容作者",
 		Account:  "author",
 		Email:    "author@example.com",
-		Password: "1qaz@WSX",
 		Mobile:   "4",
 		RoleIds:  "4",
 		Status:   1,
 	},
 }
 
+// initialPassword 返回内置账号的初始口令：
+//   - 环境变量 PORTAL_INIT_PASSWORD 非空时统一使用该值（要求至少 8 位，否则忽略并回退随机口令）；
+//   - 否则生成随机口令，由调用方打印到启动控制台（仅此一次）。
+func initialPassword() (string, string) {
+	if v := strings.TrimSpace(os.Getenv("PORTAL_INIT_PASSWORD")); len([]rune(v)) >= 8 {
+		return v, ""
+	}
+	return utils.GenerateRandomPassword(12), "随机生成"
+}
+
 // SeedDefaultUsers 启动时检查默认用户是否存在，不存在则自动创建（幂等，按 account 判定）。
+// 初始口令见 initialPassword：**只落库为 SM3 哈希并打印一次明文提示**，不再使用固定弱口令。
 func SeedDefaultUsers() {
 	for i := range defaultUsers {
 		user := defaultUsers[i]
@@ -112,10 +128,16 @@ func SeedDefaultUsers() {
 			utils.Logger.Warnf("检查默认用户[%s]失败: %v", user.Account, err)
 			continue
 		}
+		password, source := initialPassword()
+		user.Password = password
 		if createErr := utils.DB.Create(&user).Error; createErr != nil {
 			utils.Logger.Warnf("创建默认用户[%s]失败: %v", user.Account, createErr)
 			continue
 		}
-		utils.Logger.Infof("已自动创建默认用户: %s (%s)", user.Username, user.Account)
+		utils.Logger.Warnf("已自动创建默认用户: %s (%s)，初始密码已输出到启动控制台（仅本次显示），请立即登录并修改",
+			user.Username, user.Account)
+		// 初始口令只打印到标准输出（不落 logs/*.log，避免明文口令长期留存在日志文件中）
+		fmt.Printf("[init] 默认账号 %s (%s) 初始密码（%s，仅本次显示，请立即修改）: %s\n",
+			user.Username, user.Account, source, password)
 	}
 }

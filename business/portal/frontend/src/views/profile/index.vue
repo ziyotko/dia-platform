@@ -138,14 +138,16 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Message, Phone, Location, Clock, Plus, Delete } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
-import { getUserInfo, updateProfile, changePassword } from '@/api/auth'
+import { getUserInfo, updateProfile, changePassword, logout as logoutApi } from '@/api/auth'
 import type { ProfileUser } from '@/api/auth'
 import { uploadFile } from '@/api/upload'
 
+const router = useRouter()
 const userStore = useUserStore()
 const appStore = useAppStore()
 const defaultAvatar = new URL('../../assets/avatar-default.svg', import.meta.url).href
@@ -288,10 +290,20 @@ const handleChangePassword = async () => {
       oldPassword: pwdForm.oldPassword,
       newPassword: pwdForm.newPassword
     })
-    ElMessage.success('密码修改成功')
+    ElMessage.success('密码修改成功，请使用新密码重新登录')
     pwdForm.oldPassword = ''
     pwdForm.newPassword = ''
     pwdForm.confirmPassword = ''
+    // 改密后后端会立即作废旧 Token（AuthMiddleware 按 iat 比对），若继续停留在页面上，
+    // 用户下一次点击才会被动弹回登录页；这里主动清理本地登录态并跳转，行为更可预期。
+    // 注意：此时 Token 已失效，登出接口必然失败（401），本地清理不受影响，故忽略其错误。
+    try {
+      await logoutApi()
+    } catch {
+      // 忽略：Token 已失效
+    }
+    userStore.logout()
+    router.replace('/login')
   } catch {
     // request interceptor 已处理错误提示
   } finally {

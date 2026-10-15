@@ -96,6 +96,8 @@
 | password_changed_at | datetime(3) | 是 | - | - | 最后一次修改密码时间（改密/重置后使旧 Token 失效） |
 
 > 密码通过 `BeforeCreate` / `BeforeUpdate` 钩子自动使用国密 **SM3** 加盐哈希，不存明文。
+> 存储格式为 `salt:iterations:hash`（盐值 + 迭代次数 + 摘要），迭代次数默认 10 万（见 `pkg/utils/sm3.go`），
+> 以工作因子抬高离线爆破成本；`salt:hash` 的历史（单轮）哈希仍可正常校验，并在用户下次登录成功时自动升级为新格式。
 
 #### `menu` 菜单表
 
@@ -701,13 +703,17 @@ erDiagram
 > 原 `2` 普通管理员（`admin`）已下线移除，不再播种；ID `3`/`4` 保持原值不重排。
 > 角色 1 名称于 2026-09-21 由「超级管理员」更名为「管理员」（`code` 仍为 `super_admin`）。仅影响**新库播种**（`internal/models/seed.go`）：启动流程不会改写存量库，如需同步可手工执行 `UPDATE role SET name = '管理员' WHERE code = 'super_admin' AND name = '超级管理员';`（内置账号 `id = 1` 的 `username` 同理）。
 
-### 默认用户（`internal/models/seed.go`，初始密码 `1qaz@WSX`，SM3 加密存储）
+### 默认用户（`internal/models/seed.go`，初始密码见下，SM3 加盐 + 迭代存储）
 
 | ID | 用户名 | 账号 | 角色 |
 | --- | --- | --- | --- |
 | 1 | 管理员 | `admin` | 1 |
 | 3 | 内容审核 | `reviewer` | 3 |
 | 4 | 内容作者 | `author` | 4 |
+
+初始密码不再硬编码：设了环境变量 `PORTAL_INIT_PASSWORD`（≥ 8 位）时三个账号统一使用该值；
+未设置时各自生成随机强密码并打印到**启动控制台（仅一次，不写日志文件）**。
+种子逻辑按 `account` 判定，仅在账号不存在时创建，不会改写存量库的密码。
 
 > 用户 ID 与内置角色 ID 一一对应，`2` 随「普通管理员」一并下线保留空缺。
 

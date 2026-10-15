@@ -279,6 +279,9 @@ func (s *MemberContentService) FindMemberFileReferences(fileName string) ([]Memb
 
 func (s *MemberContentService) CreateMemberContent(content *models.MemberContent) error {
 	content.ID = 0
+	// 正文入库前消毒：该内容会经外部会员接口（/member-zone/.../detail）与会员中心页面（v-html）渲染，
+	// 不消毒时具备会员专区发文权限的账号可注入脚本，影响所有外部会员。
+	content.Content = utils.SanitizeRichText(content.Content)
 	// 新建时必须投放到「启用中」的会员栏目
 	if err := validateMemberContent(content, true); err != nil {
 		return err
@@ -286,11 +289,13 @@ func (s *MemberContentService) CreateMemberContent(content *models.MemberContent
 	return utils.DB.Create(content).Error
 }
 
+// UpdateMemberContent 更新会员内容。正文与封面等字段与创建保持同一套校验/消毒口径。
 func (s *MemberContentService) UpdateMemberContent(id uint, content *models.MemberContent) error {
 	var old models.MemberContent
 	if err := utils.DB.First(&old, id).Error; err != nil {
 		return err
 	}
+	content.Content = utils.SanitizeRichText(content.Content)
 	// 仅在「更换了会员栏目」时要求新栏目处于启用状态；原栏目被禁用后仍允许继续编辑内容
 	if err := validateMemberContent(content, content.MemberColumnID != old.MemberColumnID); err != nil {
 		return err

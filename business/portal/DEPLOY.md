@@ -87,6 +87,12 @@ set PORTAL_JWT_SECRET=<≥32位随机密钥>
 
 **可选**：`PORTAL_MEMBER_JWT_SECRET`（外部会员令牌校验用，值 = member 的 `MEMBER_JWT_SECRET`）。未注入时只打一条 `[WARN]` 告警，portal 可正常启动，但「会员专区」的外部会员只读接口会返回「会员登录校验未启用」。
 
+**可选**：`PORTAL_INIT_PASSWORD`（内置账号 `admin` / `reviewer` / `author` 的初始密码）。
+
+- 设了该变量（长度 ≥ 8 位）时，首次启动创建这三个账号会统一使用该密码；
+- 未设置时**每个账号各生成一个随机强密码**，并打印到启动控制台（**只打印一次**，不写入 `logs/*.log`），请从控制台或 `journalctl`/重定向输出中获取并立即登录修改；
+- 历史版本使用固定弱口令 `1qaz@WSX`，已于本次加固中移除。**已在用的存量库不受影响**（种子逻辑只在账号不存在时创建），但若库中仍有弱口令账号，请立即修改。
+
 ### 3. 编译
 
 ```bash
@@ -493,6 +499,19 @@ server {
         root /var/www/business-portal;   # 与 dist 对应，保证 /xxxxx/ 命中 index.html
         try_files $uri $uri/ /xxxxx/index.html;
         index index.html;
+
+        # SPA 的 index.html 由 Nginx 托管（后端只返回 JSON 与 uploads 静态文件），
+        # 因此 CSP/HSTS 必须在这里下发，否则管理后台页面没有脚本来源限制。
+        # 只限制脚本来源、不设 default-src：图片/媒体/内联样式不受影响，
+        # 避免误伤富文本内联 base64 图片、私有签名文件（<video>）等既有功能。
+        # 注意：若后续引入运行时模板编译（new Function）或 CDN 脚本的组件，需按实际报错放宽
+        # （追加 'unsafe-eval' 或对应来源），不要直接删除本行。
+        add_header Content-Security-Policy "script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'" always;
+        add_header X-Content-Type-Options nosniff always;
+        add_header X-Frame-Options SAMEORIGIN always;
+        add_header Referrer-Policy strict-origin-when-cross-origin always;
+        # 仅在 HTTPS 站点启用（纯 HTTP 访问时浏览器会忽略该头）
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
     }
 
     # 后端 API（proxy_pass 后不要带 URI，否则会丢掉 /xxxxx/api 前缀）

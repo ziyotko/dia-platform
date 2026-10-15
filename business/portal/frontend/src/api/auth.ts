@@ -1,7 +1,9 @@
 import request from '@/utils/request'
 
 export interface LoginData {
-  account: string
+  /** 用户名或邮箱：两者都传时后端优先按邮箱匹配，登录页按是否含 @ 只填其中一个 */
+  account?: string
+  email?: string
   password: string
   captcha_id: string
   captcha_code: string

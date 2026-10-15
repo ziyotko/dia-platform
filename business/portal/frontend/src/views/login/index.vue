@@ -51,7 +51,7 @@
             <el-form-item prop="username">
               <el-input
                 v-model="form.username"
-                placeholder="请输入用户名"
+                placeholder="请输入用户名或邮箱"
                 :prefix-icon="User"
                 clearable
               />
@@ -136,7 +136,6 @@ const logoError = ref(false)
 const form = reactive({
   username: '',
   password: '',
-  captchaId: '',
   captchaCode: ''
 })
 
@@ -176,7 +175,7 @@ const loadSiteInfo = async () => {
 
 
 const rules = computed(() => ({
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  username: [{ required: true, message: '请输入用户名或邮箱', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
   ...(captchaEnabled.value
     ? { captchaCode: [{ required: true, message: '请输入验证码', trigger: 'blur' }] }
@@ -189,7 +188,6 @@ const refreshCaptcha = async () => {
     const res: any = await getCaptcha()
     captchaId.value = res.data.captcha_id
     captchaImage.value = res.data.captcha_img
-    form.captchaId = res.data.captcha_id
   } catch {
     ElMessage.warning('验证码加载失败，请稍后重试')
   }
@@ -201,8 +199,13 @@ const handleLogin = async () => {
 
   loading.value = true
   try {
+    // 账号或邮箱均可登录：后端 Login 对非空的 email/account 分别按列匹配，
+    // 因此这里按「是否含 @」只填其中一个，避免两个字段同时命中不同用户。
+    const identifier = form.username.trim()
+    const isEmail = identifier.includes('@')
     const res: any = await login({
-      account: form.username,
+      account: isEmail ? '' : identifier,
+      email: isEmail ? identifier : '',
       password: form.password,
       captcha_id: captchaEnabled.value ? captchaId.value : '',
       captcha_code: captchaEnabled.value ? form.captchaCode : ''
@@ -388,12 +391,6 @@ onMounted(() => {
     font-size: 14px;
     color: #98a2b3;
     margin-bottom: 32px;
-  }
-}
-
-.login-form {
-  .el-form-item {
-    margin-bottom: 22px;
   }
 }
 

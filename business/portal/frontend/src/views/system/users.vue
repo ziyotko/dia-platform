@@ -30,12 +30,15 @@
         <div class="card-header">
           <span>用户列表</span>
           <div class="header-actions">
-            <el-button type="success" @click="handleImport">
-              <el-icon><Upload /></el-icon>导入用户
-            </el-button>
-            <el-button type="primary" @click="handleAdd">
-              <el-icon><Plus /></el-icon>新增用户
-            </el-button>
+            <!-- 导入/新增/编辑/删除/状态变更均为管理员接口（admin 组），非管理员只读展示，避免点了必然报「无权限」 -->
+            <template v-if="isAdmin">
+              <el-button type="success" @click="handleImport">
+                <el-icon><Upload /></el-icon>导入用户
+              </el-button>
+              <el-button type="primary" @click="handleAdd">
+                <el-icon><Plus /></el-icon>新增用户
+              </el-button>
+            </template>
           </div>
         </div>
       </template>
@@ -62,7 +65,7 @@
               v-model="row.status"
               :active-value="1"
               :inactive-value="0"
-              :disabled="row.id === 1"
+              :disabled="!isAdmin || row.id === 1"
               @change="(val: number) => handleStatusChange(row, val)"
             />
           </template>
@@ -70,12 +73,15 @@
         <el-table-column prop="createdAt" label="创建时间" width="170" />
         <el-table-column label="操作" width="180" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleEdit(row)">
-              <el-icon><Edit /></el-icon>编辑
-            </el-button>
-            <el-button v-if="row.id !== 1" link type="danger" @click="handleDelete(row)">
-              <el-icon><Delete /></el-icon>删除
-            </el-button>
+            <template v-if="isAdmin">
+              <el-button link type="primary" @click="handleEdit(row)">
+                <el-icon><Edit /></el-icon>编辑
+              </el-button>
+              <el-button v-if="row.id !== 1" link type="danger" @click="handleDelete(row)">
+                <el-icon><Delete /></el-icon>删除
+              </el-button>
+            </template>
+            <span v-else>-</span>
           </template>
         </el-table-column>
       </el-table>
@@ -252,6 +258,7 @@ import { getAllRoles } from '@/api/role'
 import { getOrgList, type OrgItem } from '@/api/org'
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
+import { hasAdminRole } from '@/utils/permission'
 
 const appStore = useAppStore()
 
@@ -379,6 +386,11 @@ const roleOptions = ref<any[]>([])
 const orgOptions = ref<OrgItem[]>([])
 
 const userStore = useUserStore()
+
+// 管理员判定（角色 1），与后端 models.HasAdminRoleIDs / AdminMiddleware 保持一致。
+// 「用户管理」菜单可被授予自定义角色（GET /users 在 member 组），但增删改、机构/角色下拉
+// 都是 admin 组接口，因此非管理员进入本页时一律按只读处理。
+const isAdmin = computed(() => hasAdminRole(userStore.userInfo?.roleIds))
 
 // 当前登录用户可分配的最高角色序号（角色序号越小角色越高，取当前用户角色中序号最小的）
 const currentMinRoleId = computed(() => {
@@ -612,8 +624,11 @@ const handleCurrentChange = (val: number) => {
 
 onMounted(() => {
   fetchData()
-  fetchRoles()
-  fetchOrgs()
+  // 角色/机构下拉是管理员接口：非管理员请求只会拿到「无权限执行该操作」并弹错误提示，故不请求
+  if (isAdmin.value) {
+    fetchRoles()
+    fetchOrgs()
+  }
 })
 </script>
 

@@ -93,6 +93,19 @@ func (s *UserService) Login(email, account, mobile, password, captchaID, captcha
 		}
 	}
 
+	// 旧格式口令哈希（单轮 SM3）在校验通过后透明升级为带工作因子的新格式：
+	// 只有此刻才拿得到明文口令，且用户无感。不写 password_changed_at（口令本身没变），
+	// 否则本次登录刚签发的 Token 会被判定为改密前签发而立即失效。
+	if utils.PasswordHashNeedsUpgrade(user.Password) {
+		upgraded := utils.SM3HashPassword(password)
+		if err := utils.DB.Model(&models.User{}).Where("id = ?", user.ID).
+			Update("password", upgraded).Error; err != nil {
+			utils.Logger.Warnf("升级用户[%d]口令哈希失败: %s", user.ID, err)
+		} else {
+			user.Password = upgraded
+		}
+	}
+
 	expiresHour := 0
 	if settings != nil && settings.TokenExpire > 0 {
 		expiresHour = settings.TokenExpire

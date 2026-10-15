@@ -155,6 +155,21 @@ func (s *ArticleService) GetArticleByID(id uint) (*models.Article, error) {
 	return &article, nil
 }
 
+// sanitizeArticleInput 富文本 / 链接类字段入库前统一消毒（创建与更新共用）。
+//
+// 必要性：正文会经由后台预览（v-html）、静态化产物与对外搜索接口呈现，
+// 不消毒时任何具备发文权限的账号都能写入 <img src=x onerror=...>，在管理员浏览器内执行脚本
+// （Token 存于 localStorage，等同账号接管）；跳转链接字段同理，javascript: 协议被点击即执行。
+// 只处理正文与跳转链接：标题/摘要等为纯文本、经 Vue 插值渲染，且消毒会误删
+// 「关于<数据安全>的通知」这类合法尖括号内容。
+func sanitizeArticleInput(article *models.Article) {
+	article.Content = utils.SanitizeRichText(article.Content)
+	if !utils.IsSafeLinkTarget(article.URL) {
+		utils.Logger.Warnf("文章跳转链接协议不受支持，已清空: %q", article.URL)
+		article.URL = ""
+	}
+}
+
 func (s *ArticleService) CreateArticle(article *models.Article, tagIDs []uint, categoryIDs []uint) error {
 	return utils.DB.Transaction(func(tx *gorm.DB) error {
 		// 发布/审核状态只能由审核流程或状态接口变更，忽略请求体携带的值，
@@ -165,6 +180,7 @@ func (s *ArticleService) CreateArticle(article *models.Article, tagIDs []uint, c
 		if !models.IsValidArticleType(article.Type) {
 			article.Type = models.ArticleTypeGraphic
 		}
+		sanitizeArticleInput(article)
 		// 先暂存附件，避免 GORM Create 自动关联插入导致重复
 		if err := validateAttachmentLimit(article.Attachments); err != nil {
 			return err
@@ -236,6 +252,7 @@ func (s *ArticleService) UpdateArticle(id uint, article *models.Article, tagIDs 
 		//   - 文章当前为「已下线」：编辑动作将其转回草稿，并清理栏目/审核/发布等关联数据；
 		//   - 其余情况：一律沿用数据库中的当前值（请求体中的 status/auditStatus 被忽略）。
 		isOffline := old.Status == models.ArticleStatusOffline
+		sanitizeArticleInput(article)
 		if isOffline {
 			article.Status = models.ArticleStatusDraft
 			article.AuditStatus = 0

@@ -760,10 +760,10 @@
         <div class="preview-summary" v-if="previewData.summary">
           <strong>摘要：</strong>{{ previewData.summary }}
         </div>
-        <div class="preview-url" v-if="previewData.url">
-          <strong>跳转链接：</strong><a :href="previewData.url" target="_blank">{{ previewData.url }}</a>
+        <div class="preview-url" v-if="safePreviewUrl">
+          <strong>跳转链接：</strong><a :href="safePreviewUrl" target="_blank" rel="noopener noreferrer">{{ safePreviewUrl }}</a>
         </div>
-        <div class="preview-body" v-html="previewData.content" />
+        <div class="preview-body" v-html="sanitizedPreviewContent" />
         <div class="preview-attachments" v-if="previewData.attachments && previewData.attachments.length > 0">
           <strong>附件：</strong>
           <div class="attachment-list">
@@ -1110,6 +1110,7 @@ import { getAllTags } from '@/api/tag'
 import { getAllTemplates } from '@/api/template'
 import { getColumns } from '@/api/column'
 import { uploadFile } from '@/api/upload'
+import { sanitizeHtml } from '@/utils/sanitizeHtml'
 
 const userStore = useUserStore()
 const currentUserId = computed(() => userStore.userInfo?.id || 0)
@@ -2357,6 +2358,12 @@ const previewData = reactive({
   cover: '',
   attachments: [] as any[]
 })
+
+// 预览正文统一走 DOMPurify：后端写入时已消毒，这里兜底历史脏数据（后端策略上线前入库的内容），
+// 也是唯一被 v-html 渲染的位置，消毒后 on* 事件属性/script/javascript: 链接一律被剥离。
+const sanitizedPreviewContent = computed(() => sanitizeHtml(previewData.content))
+// 跳转链接同样只允许 http(s) 与站内相对路径：javascript: 在 <a href> 上被点击即执行脚本
+const safePreviewUrl = computed(() => (/^(https?:\/\/|\/)/i.test(previewData.url || '') ? previewData.url : ''))
 
 const handlePreview = async (row: any) => {
   // 列表不再返回正文（大字段），预览时按需拉取详情

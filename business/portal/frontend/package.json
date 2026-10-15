@@ -16,6 +16,7 @@
     "@wangeditor/editor-for-vue": "^5.1.12",
     "axios": "^1.6.8",
     "crypto-js": "^4.2.0",
+    "dompurify": "^3.4.17",
     "echarts": "^5.1.0",
     "echarts-wordcloud": "^2.1.0",
     "element-plus": "^2.6.3",

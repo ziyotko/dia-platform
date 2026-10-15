@@ -262,6 +262,13 @@ func (c *UserController) UpdateUser(ctx *gin.Context) {
 		return
 	}
 
+	// 与 UpdateUserStatus 保持同一口径：编辑自己的资料时不能把状态改成禁用，
+	// 否则一次误操作就把自己锁在系统外（内置管理员另有保护，但自定义管理员无兜底）。
+	if uint(id) == ctx.GetUint("userID") && req.Status != 1 {
+		ctx.JSON(http.StatusOK, utils.Error(1, "不能禁用当前登录账号"))
+		return
+	}
+
 	err = c.userService.UpdateUser(uint(id), req.Username, req.Account, req.Email, req.Password, req.Phone, req.Status, req.Sex, req.RoleIds, req.OrgIds)
 	if err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("更新用户失败", err)))
