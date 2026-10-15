@@ -78,7 +78,6 @@ export const useUserStore = defineStore('user', () => {
     hasFetchedMenus.value = false
     localStorage.removeItem('token')
     localStorage.removeItem(USER_INFO_KEY)
-    localStorage.removeItem('app-theme')
     localStorage.removeItem('app-security')
   }
 
@@ -91,6 +90,6 @@ export const useUserStore = defineStore('user', () => {
     setToken,
     setUserInfo,
     fetchUserMenusAndGenerateRoutes,
-    logout
+    logout,
   }
 })

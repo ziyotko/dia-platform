@@ -14,20 +14,20 @@ export const constantRoutes = [
     path: '/login',
     name: 'Login',
     component: () => import('@/views/login/index.vue'),
-    meta: { public: true }
-  }
+    meta: { public: true },
+  },
 ]
 
 // 404 路由，等动态路由加载完再注册，避免优先匹配到根路径 /
 const notFoundRoute = {
   path: '/:pathMatch(.*)*',
   name: 'NotFound',
-  component: () => import('@/views/error/404.vue')
+  component: () => import('@/views/error/404.vue'),
 }
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes: constantRoutes
+  routes: constantRoutes,
 })
 
 /**
@@ -52,7 +52,11 @@ function loadComponent(componentPath: string) {
   }
 
   const aliasPath = path.replace('/src/', '@/')
-  const module = componentModules[path] || componentModulesAlias[path] || componentModules[aliasPath] || componentModulesAlias[aliasPath]
+  const module =
+    componentModules[path] ||
+    componentModulesAlias[path] ||
+    componentModules[aliasPath] ||
+    componentModulesAlias[aliasPath]
 
   if (!module) {
     devWarn(`[动态路由] 组件未找到: ${componentPath} (尝试: ${path}, ${aliasPath})`)
@@ -77,8 +81,8 @@ export function generateRoutes(menus: MenuItem[]): any[] {
       meta: {
         title: menu.name,
         icon: menu.icon,
-        type: menu.type
-      }
+        type: menu.type,
+      },
     }
 
     if (menu.type === 'directory') {
@@ -122,7 +126,7 @@ function findFirstValidRoute(routes: any[], parentPath = ''): string | undefined
 
 export function addDynamicRoutes(menus: MenuItem[]) {
   // 先移除旧的动态路由（如果存在）
-  const oldLayout = router.getRoutes().find(r => r.name === 'Layout')
+  const oldLayout = router.getRoutes().find((r) => r.name === 'Layout')
   if (oldLayout) {
     router.removeRoute('Layout')
   }
@@ -134,7 +138,7 @@ export function addDynamicRoutes(menus: MenuItem[]) {
     path: '/profile',
     name: 'Profile',
     component: () => import('@/views/profile/index.vue'),
-    meta: { title: '个人中心', icon: 'User' }
+    meta: { title: '个人中心', icon: 'User' },
   })
 
   const redirectPath = findFirstValidRoute(children)
@@ -143,7 +147,7 @@ export function addDynamicRoutes(menus: MenuItem[]) {
     path: '/',
     name: 'Layout',
     component: () => import('@/views/layout/index.vue'),
-    children
+    children,
   }
 
   if (redirectPath) {
@@ -153,7 +157,7 @@ export function addDynamicRoutes(menus: MenuItem[]) {
   router.addRoute(layoutRoute)
 
   // 动态路由注册完成后再注册 404，确保 / 能匹配到 Layout 的 redirect
-  const oldNotFound = router.getRoutes().find(r => r.name === 'NotFound')
+  const oldNotFound = router.getRoutes().find((r) => r.name === 'NotFound')
   if (oldNotFound) {
     router.removeRoute('NotFound')
   }

@@ -1,9 +1,14 @@
 <template>
-  <div class="page-container" v-loading="deleting" :element-loading-text="deletingText">
+  <div v-loading="deleting" class="page-container" :element-loading-text="deletingText">
     <el-card shadow="hover" class="search-card">
       <el-form :model="queryForm" inline>
         <el-form-item label="文章标题">
-          <el-input v-model="queryForm.title" placeholder="请输入文章标题" clearable @keyup.enter="handleSearch" />
+          <el-input
+            v-model="queryForm.title"
+            placeholder="请输入文章标题"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </el-form-item>
         <el-form-item label="发布栏目">
           <el-cascader
@@ -17,7 +22,12 @@
           />
         </el-form-item>
         <el-form-item label="文章分类">
-          <el-select v-model="queryForm.categoryId" placeholder="全部分类" clearable style="width: 140px">
+          <el-select
+            v-model="queryForm.categoryId"
+            placeholder="全部分类"
+            clearable
+            style="width: 140px"
+          >
             <el-option
               v-for="item in categoryList"
               :key="item.id"
@@ -27,24 +37,34 @@
           </el-select>
         </el-form-item>
         <el-form-item label="文章标签">
-          <el-select v-model="queryForm.tagId" placeholder="全部标签" clearable style="width: 140px">
-            <el-option
-              v-for="item in tagList"
-              :key="item.id"
-              :label="item.name"
-              :value="item.id"
-            />
+          <el-select
+            v-model="queryForm.tagId"
+            placeholder="全部标签"
+            clearable
+            style="width: 140px"
+          >
+            <el-option v-for="item in tagList" :key="item.id" :label="item.name" :value="item.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="发布状态">
-          <el-select v-model="queryForm.status" placeholder="全部状态" clearable style="width: 120px">
+          <el-select
+            v-model="queryForm.status"
+            placeholder="全部状态"
+            clearable
+            style="width: 120px"
+          >
             <el-option label="已发布" :value="1" />
             <el-option label="草稿" :value="0" />
             <el-option label="已下线" :value="2" />
           </el-select>
         </el-form-item>
         <el-form-item label="审核状态">
-          <el-select v-model="queryForm.auditStatus" placeholder="全部状态" clearable style="width: 120px">
+          <el-select
+            v-model="queryForm.auditStatus"
+            placeholder="全部状态"
+            clearable
+            style="width: 120px"
+          >
             <el-option label="待审核" :value="0" />
             <el-option label="审核中" :value="1" />
             <el-option label="已审核" :value="2" />
@@ -59,17 +79,29 @@
           </el-select>
         </el-form-item>
         <el-form-item label="作者">
-          <el-input v-model="queryForm.author" placeholder="请输入作者" clearable @keyup.enter="handleSearch" />
+          <el-input
+            v-model="queryForm.author"
+            placeholder="请输入作者"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </el-form-item>
         <el-form-item label="来源">
-          <el-input v-model="queryForm.source" placeholder="请输入来源" clearable @keyup.enter="handleSearch" />
+          <el-input
+            v-model="queryForm.source"
+            placeholder="请输入来源"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>查询
+            <el-icon><Search /></el-icon>
+            查询
           </el-button>
           <el-button @click="resetQuery">
-            <el-icon><RefreshRight /></el-icon>重置
+            <el-icon><RefreshRight /></el-icon>
+            重置
           </el-button>
         </el-form-item>
       </el-form>
@@ -81,37 +113,63 @@
           <span>文章列表</span>
           <div class="header-actions">
             <el-button type="primary" @click="handleAdd">
-              <el-icon><Plus /></el-icon>新增文章
+              <el-icon><Plus /></el-icon>
+              新增文章
             </el-button>
             <el-button type="primary" @click="handleAddVideo">
-              <el-icon><VideoCamera /></el-icon>新增视频
+              <el-icon><VideoCamera /></el-icon>
+              新增视频
             </el-button>
             <el-button type="primary" @click="handleAddData">
-              <el-icon><DataLine /></el-icon>新增数据
+              <el-icon><DataLine /></el-icon>
+              新增数据
             </el-button>
             <el-button type="primary" @click="handleAddPaper">
-              <el-icon><Files /></el-icon>新增报刊
+              <el-icon><Files /></el-icon>
+              新增报刊
             </el-button>
           </div>
         </div>
       </template>
 
-      <el-table :data="tableData" v-loading="loading" border stripe>
+      <el-table v-loading="loading" :data="tableData" border stripe>
         <el-table-column type="index" width="60" align="center" />
         <el-table-column label="文章标题" min-width="200" show-overflow-tooltip>
           <template #default="{ row }">
             <span class="title-with-type">
-              <el-tag v-if="row.type === 2" type="danger" effect="light" size="small" class="type-tag">
-                <el-icon><VideoCamera /></el-icon>视频
+              <el-tag
+                v-if="row.type === 2"
+                type="danger"
+                effect="light"
+                size="small"
+                class="type-tag"
+              >
+                <el-icon><VideoCamera /></el-icon>
+                视频
               </el-tag>
-              <el-tag v-else-if="row.type === 3" type="warning" effect="light" size="small" class="type-tag">
-                <el-icon><DataLine /></el-icon>数据
+              <el-tag
+                v-else-if="row.type === 3"
+                type="warning"
+                effect="light"
+                size="small"
+                class="type-tag"
+              >
+                <el-icon><DataLine /></el-icon>
+                数据
               </el-tag>
-              <el-tag v-else-if="row.type === 4" type="success" effect="light" size="small" class="type-tag">
-                <el-icon><Files /></el-icon>报刊
+              <el-tag
+                v-else-if="row.type === 4"
+                type="success"
+                effect="light"
+                size="small"
+                class="type-tag"
+              >
+                <el-icon><Files /></el-icon>
+                报刊
               </el-tag>
               <el-tag v-else type="primary" effect="light" size="small" class="type-tag">
-                <el-icon><Document /></el-icon>图文
+                <el-icon><Document /></el-icon>
+                图文
               </el-tag>
               <el-link
                 v-if="row.status === 1"
@@ -119,9 +177,19 @@
                 :underline="'never'"
                 @click="handlePreview(row)"
               >
-                {{ (row.type === 3 || row.type === 4) && row.summary ? `${row.summary}${row.title}` : row.title }}
+                {{
+                  (row.type === 3 || row.type === 4) && row.summary
+                    ? `${row.summary}${row.title}`
+                    : row.title
+                }}
               </el-link>
-              <span v-else>{{ (row.type === 3 || row.type === 4) && row.summary ? `${row.summary}${row.title}` : row.title }}</span>
+              <span v-else>
+                {{
+                  (row.type === 3 || row.type === 4) && row.summary
+                    ? `${row.summary}${row.title}`
+                    : row.title
+                }}
+              </span>
             </span>
           </template>
         </el-table-column>
@@ -129,7 +197,13 @@
         <el-table-column prop="source" label="来源" width="140" show-overflow-tooltip />
         <el-table-column prop="publishTime" label="发布时间" width="120" align="center">
           <template #default="{ row }">
-            {{ row.publishTime ? (row.type === 4 ? row.publishTime.slice(0, 7) : row.publishTime.slice(0, 10)) : '-' }}
+            {{
+              row.publishTime
+                ? row.type === 4
+                  ? row.publishTime.slice(0, 7)
+                  : row.publishTime.slice(0, 10)
+                : '-'
+            }}
           </template>
         </el-table-column>
         <el-table-column label="发布栏目" width="100" align="center">
@@ -147,7 +221,10 @@
         </el-table-column>
         <el-table-column prop="status" label="发布状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : row.status === 0 ? 'info' : 'danger'" size="small">
+            <el-tag
+              :type="row.status === 1 ? 'success' : row.status === 0 ? 'info' : 'danger'"
+              size="small"
+            >
               {{ row.status === 1 ? '已发布' : row.status === 0 ? '草稿' : '已下线' }}
             </el-tag>
           </template>
@@ -156,39 +233,89 @@
           <template #default="{ row }">
             <el-tag
               :type="row.auditStatus === 2 ? 'success' : row.auditStatus === 1 ? 'warning' : 'info'"
-              :class="{ 'audit-status-clickable': row.columnCount > 0 && (row.auditStatus === 0 || row.auditStatus === 1 || row.auditStatus === 2) }"
-              @click="row.columnCount > 0 && (row.auditStatus === 0 || row.auditStatus === 1 || row.auditStatus === 2) && handleShowAuditFlow(row)"
+              :class="{
+                'audit-status-clickable':
+                  row.columnCount > 0 &&
+                  (row.auditStatus === 0 || row.auditStatus === 1 || row.auditStatus === 2),
+              }"
+              @click="
+                row.columnCount > 0 &&
+                (row.auditStatus === 0 || row.auditStatus === 1 || row.auditStatus === 2) &&
+                handleShowAuditFlow(row)
+              "
             >
               {{ row.auditStatus === 2 ? '已审核' : row.auditStatus === 1 ? '审核中' : '待审核' }}
             </el-tag>
           </template>
         </el-table-column>
-      
+
         <el-table-column prop="createdAt" label="创建时间" width="170" />
         <el-table-column label="操作" width="300" align="center" fixed="right">
           <template #default="{ row }">
             <el-button
-              v-if="(isAuthor(row) && row.auditStatus !== 1 && (row.auditStatus !== 2 || row.status === 2)) || (isAdmin && row.status === 1)"
+              v-if="
+                (isAuthor(row) &&
+                  row.auditStatus !== 1 &&
+                  (row.auditStatus !== 2 || row.status === 2)) ||
+                (isAdmin && row.status === 1)
+              "
               link
               type="primary"
               @click="handleEdit(row)"
             >
-              <el-icon><Edit /></el-icon>编辑
+              <el-icon><Edit /></el-icon>
+              编辑
             </el-button>
-            <el-button v-if="canSetColumns(row)" link type="success" @click="row.auditStatus === 1 ? ElMessage.warning('审核中的文章不能修改栏目') : handleSetColumns(row)">
-              <el-icon><FolderOpened /></el-icon>栏目
+            <el-button
+              v-if="canSetColumns(row)"
+              link
+              type="success"
+              @click="
+                row.auditStatus === 1
+                  ? ElMessage.warning('审核中的文章不能修改栏目')
+                  : handleSetColumns(row)
+              "
+            >
+              <el-icon><FolderOpened /></el-icon>
+              栏目
             </el-button>
-            <el-button v-if="isAuthor(row) && row.status === 0 && row.columnCount > 0 && row.auditStatus === 0" link type="warning" @click="handleAudit(row)">
-              <el-icon><CircleCheck /></el-icon>提交审核
+            <el-button
+              v-if="
+                isAuthor(row) && row.status === 0 && row.columnCount > 0 && row.auditStatus === 0
+              "
+              link
+              type="warning"
+              @click="handleAudit(row)"
+            >
+              <el-icon><CircleCheck /></el-icon>
+              提交审核
             </el-button>
-            <el-button v-if="isAuthor(row) && row.auditStatus === 1" link type="warning" @click="handleWithdrawAudit(row)">
-              <el-icon><CircleClose /></el-icon>撤回审核
+            <el-button
+              v-if="isAuthor(row) && row.auditStatus === 1"
+              link
+              type="warning"
+              @click="handleWithdrawAudit(row)"
+            >
+              <el-icon><CircleClose /></el-icon>
+              撤回审核
             </el-button>
-            <el-button v-if="(isAuthor(row) || isAdmin) && row.status === 1" link type="danger" @click="handleOffShelf(row)">
-              <el-icon><CircleClose /></el-icon>下线
+            <el-button
+              v-if="(isAuthor(row) || isAdmin) && row.status === 1"
+              link
+              type="danger"
+              @click="handleOffShelf(row)"
+            >
+              <el-icon><CircleClose /></el-icon>
+              下线
             </el-button>
-            <el-button v-if="isAuthor(row) || isAdmin" link type="danger" @click="handleDelete(row)">
-              <el-icon><Delete /></el-icon>删除
+            <el-button
+              v-if="isAuthor(row) || isAdmin"
+              link
+              type="danger"
+              @click="handleDelete(row)"
+            >
+              <el-icon><Delete /></el-icon>
+              删除
             </el-button>
           </template>
         </el-table-column>
@@ -229,7 +356,12 @@
           <el-row :gutter="20">
             <el-col :xs="24" :sm="12" :md="8">
               <el-form-item label="所属分类" prop="categoryIds">
-                <el-select v-model="form.categoryIds" multiple placeholder="请选择分类" style="width: 100%">
+                <el-select
+                  v-model="form.categoryIds"
+                  multiple
+                  placeholder="请选择分类"
+                  style="width: 100%"
+                >
                   <el-option
                     v-for="item in categoryList"
                     :key="item.id"
@@ -241,7 +373,12 @@
             </el-col>
             <el-col :xs="24" :sm="12" :md="8">
               <el-form-item label="文章标签" prop="tagIds">
-                <el-select v-model="form.tagIds" multiple placeholder="请选择标签" style="width: 100%">
+                <el-select
+                  v-model="form.tagIds"
+                  multiple
+                  placeholder="请选择标签"
+                  style="width: 100%"
+                >
                   <el-option
                     v-for="item in tagList"
                     :key="item.id"
@@ -253,7 +390,9 @@
             </el-col>
             <el-col :xs="24" :sm="12" :md="8">
               <el-form-item label="发布状态">
-                <el-tag :type="form.status === 1 ? 'success' : form.status === 0 ? 'info' : 'danger'">
+                <el-tag
+                  :type="form.status === 1 ? 'success' : form.status === 0 ? 'info' : 'danger'"
+                >
                   {{ form.status === 1 ? '已发布' : form.status === 0 ? '草稿' : '已下线' }}
                 </el-tag>
               </el-form-item>
@@ -378,16 +517,16 @@
               <Toolbar
                 style="border-bottom: 1px solid #e4e7ed"
                 :editor="editorRef"
-                :defaultConfig="toolbarConfig"
+                :default-config="toolbarConfig"
                 mode="default"
               />
               <Editor
                 v-model="form.content"
-                :defaultConfig="editorConfig"
+                :default-config="editorConfig"
                 mode="default"
-                @onCreated="handleCreated"
-                @onChange="handleEditorChange"
-                @customPaste="handleCustomPaste"
+                @on-created="handleCreated"
+                @on-change="handleEditorChange"
+                @custom-paste="handleCustomPaste"
               />
             </div>
           </el-form-item>
@@ -410,11 +549,13 @@
               class="attachment-uploader"
             >
               <el-button type="primary" plain>
-                <el-icon><Plus /></el-icon>上传附件
+                <el-icon><Plus /></el-icon>
+                上传附件
               </el-button>
               <template #tip>
                 <div class="attachment-tip">
-                  支持 PDF、Word、Excel、PPT、TXT、ZIP、RAR、7Z、MP4、MP3 等常见格式，单个文件不超过 50MB，最多上传 10 个附件
+                  支持 PDF、Word、Excel、PPT、TXT、ZIP、RAR、7Z、MP4、MP3 等常见格式，单个文件不超过
+                  50MB，最多上传 10 个附件
                 </div>
               </template>
             </el-upload>
@@ -427,7 +568,13 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="videoDialogVisible" :title="videoDialogTitle" width="680px" destroy-on-close :close-on-click-modal="false">
+    <el-dialog
+      v-model="videoDialogVisible"
+      :title="videoDialogTitle"
+      width="680px"
+      destroy-on-close
+      :close-on-click-modal="false"
+    >
       <el-form ref="videoFormRef" :model="videoForm" :rules="videoFormRules" label-width="90px">
         <el-form-item label="视频标题" prop="title">
           <el-input v-model="videoForm.title" placeholder="请输入视频标题" clearable />
@@ -435,7 +582,12 @@
         <el-row :gutter="20">
           <el-col :xs="24" :sm="12">
             <el-form-item label="所属分类" prop="categoryIds">
-              <el-select v-model="videoForm.categoryIds" multiple placeholder="请选择分类" style="width: 100%">
+              <el-select
+                v-model="videoForm.categoryIds"
+                multiple
+                placeholder="请选择分类"
+                style="width: 100%"
+              >
                 <el-option
                   v-for="item in categoryList"
                   :key="item.id"
@@ -447,7 +599,12 @@
           </el-col>
           <el-col :xs="24" :sm="12">
             <el-form-item label="文章标签" prop="tagIds">
-              <el-select v-model="videoForm.tagIds" multiple placeholder="请选择标签" style="width: 100%">
+              <el-select
+                v-model="videoForm.tagIds"
+                multiple
+                placeholder="请选择标签"
+                style="width: 100%"
+              >
                 <el-option
                   v-for="item in tagList"
                   :key="item.id"
@@ -518,7 +675,8 @@
             class="video-uploader"
           >
             <el-button type="primary" plain :disabled="!!videoForm.videoUrl">
-              <el-icon><Plus /></el-icon>上传视频
+              <el-icon><Plus /></el-icon>
+              上传视频
             </el-button>
             <template #tip>
               <div class="video-tip">仅支持 MP4 格式，单个文件不超过 800MB</div>
@@ -531,17 +689,29 @@
             </template>
           </el-upload>
           <div v-if="videoForm.videoUrl" class="video-preview">
-            <video :src="videoForm.videoUrl" controls style="max-width: 100%; max-height: 240px; border-radius: 8px" />
+            <video
+              :src="videoForm.videoUrl"
+              controls
+              style="max-width: 100%; max-height: 240px; border-radius: 8px"
+            />
           </div>
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="videoDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="videoSubmitLoading" @click="handleSubmitVideo">确定</el-button>
+        <el-button type="primary" :loading="videoSubmitLoading" @click="handleSubmitVideo">
+          确定
+        </el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="dataDialogVisible" :title="dataDialogTitle" width="680px" destroy-on-close :close-on-click-modal="false">
+    <el-dialog
+      v-model="dataDialogVisible"
+      :title="dataDialogTitle"
+      width="680px"
+      destroy-on-close
+      :close-on-click-modal="false"
+    >
       <el-form ref="dataFormRef" :model="dataForm" :rules="dataFormRules" label-width="90px">
         <el-form-item label="数据标题" prop="title">
           <el-input v-model="dataForm.title" placeholder="请输入数据标题" clearable />
@@ -549,7 +719,12 @@
         <el-row :gutter="20">
           <el-col :xs="24" :sm="12">
             <el-form-item label="所属分类" prop="categoryIds">
-              <el-select v-model="dataForm.categoryIds" multiple placeholder="请选择分类" style="width: 100%">
+              <el-select
+                v-model="dataForm.categoryIds"
+                multiple
+                placeholder="请选择分类"
+                style="width: 100%"
+              >
                 <el-option
                   v-for="item in categoryList"
                   :key="item.id"
@@ -561,7 +736,12 @@
           </el-col>
           <el-col :xs="24" :sm="12">
             <el-form-item label="文章标签" prop="tagIds">
-              <el-select v-model="dataForm.tagIds" multiple placeholder="请选择标签" style="width: 100%">
+              <el-select
+                v-model="dataForm.tagIds"
+                multiple
+                placeholder="请选择标签"
+                style="width: 100%"
+              >
                 <el-option
                   v-for="item in tagList"
                   :key="item.id"
@@ -614,11 +794,19 @@
       </el-form>
       <template #footer>
         <el-button @click="dataDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="dataSubmitLoading" @click="handleSubmitData">确定</el-button>
+        <el-button type="primary" :loading="dataSubmitLoading" @click="handleSubmitData">
+          确定
+        </el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="paperDialogVisible" :title="paperDialogTitle" width="680px" destroy-on-close :close-on-click-modal="false">
+    <el-dialog
+      v-model="paperDialogVisible"
+      :title="paperDialogTitle"
+      width="680px"
+      destroy-on-close
+      :close-on-click-modal="false"
+    >
       <el-form ref="paperFormRef" :model="paperForm" :rules="paperFormRules" label-width="90px">
         <el-form-item label="报刊标题" prop="title">
           <el-input v-model="paperForm.title" placeholder="请输入报刊标题" clearable />
@@ -626,7 +814,12 @@
         <el-row :gutter="20">
           <el-col :xs="24" :sm="12">
             <el-form-item label="所属分类" prop="categoryIds">
-              <el-select v-model="paperForm.categoryIds" multiple placeholder="请选择分类" style="width: 100%">
+              <el-select
+                v-model="paperForm.categoryIds"
+                multiple
+                placeholder="请选择分类"
+                style="width: 100%"
+              >
                 <el-option
                   v-for="item in categoryList"
                   :key="item.id"
@@ -638,7 +831,12 @@
           </el-col>
           <el-col :xs="24" :sm="12">
             <el-form-item label="文章标签" prop="tagIds">
-              <el-select v-model="paperForm.tagIds" multiple placeholder="请选择标签" style="width: 100%">
+              <el-select
+                v-model="paperForm.tagIds"
+                multiple
+                placeholder="请选择标签"
+                style="width: 100%"
+              >
                 <el-option
                   v-for="item in tagList"
                   :key="item.id"
@@ -722,7 +920,8 @@
             class="paper-uploader"
           >
             <el-button type="primary" plain :disabled="!!paperForm.pdf">
-              <el-icon><Plus /></el-icon>上传 PDF 报刊文件
+              <el-icon><Plus /></el-icon>
+              上传 PDF 报刊文件
             </el-button>
             <template #tip>
               <div class="paper-tip">支持 PDF 格式报刊文件，单个文件不超过 50MB</div>
@@ -736,7 +935,9 @@
       </el-form>
       <template #footer>
         <el-button @click="paperDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="paperSubmitLoading" @click="handleSubmitPaper">确定</el-button>
+        <el-button type="primary" :loading="paperSubmitLoading" @click="handleSubmitPaper">
+          确定
+        </el-button>
       </template>
     </el-dialog>
 
@@ -748,7 +949,7 @@
           <span>来源：{{ previewData.source }}</span>
           <span>时间：{{ previewData.createdAt }}</span>
         </div>
-        <div class="preview-cover" v-if="previewData.cover">
+        <div v-if="previewData.cover" class="preview-cover">
           <el-image
             :src="previewData.cover"
             fit="cover"
@@ -757,14 +958,23 @@
             class="preview-cover-image"
           />
         </div>
-        <div class="preview-summary" v-if="previewData.summary">
-          <strong>摘要：</strong>{{ previewData.summary }}
+        <div v-if="previewData.summary" class="preview-summary">
+          <strong>摘要：</strong>
+          {{ previewData.summary }}
         </div>
-        <div class="preview-url" v-if="safePreviewUrl">
-          <strong>跳转链接：</strong><a :href="safePreviewUrl" target="_blank" rel="noopener noreferrer">{{ safePreviewUrl }}</a>
+        <div v-if="safePreviewUrl" class="preview-url">
+          <strong>跳转链接：</strong>
+          <a :href="safePreviewUrl" target="_blank" rel="noopener noreferrer">
+            {{ safePreviewUrl }}
+          </a>
         </div>
+        <!-- 正文已消毒：后端写入时 bluemonday 清洗，渲染前再过 DOMPurify 兜底历史数据 -->
+        <!-- eslint-disable-next-line vue/no-v-html -->
         <div class="preview-body" v-html="sanitizedPreviewContent" />
-        <div class="preview-attachments" v-if="previewData.attachments && previewData.attachments.length > 0">
+        <div
+          v-if="previewData.attachments && previewData.attachments.length > 0"
+          class="preview-attachments"
+        >
           <strong>附件：</strong>
           <div class="attachment-list">
             <a
@@ -793,7 +1003,9 @@
       <div class="column-setting-hint">
         <el-icon><InfoFilled /></el-icon>
         <span>
-          当前文章类型：<el-tag size="small" type="primary" effect="light">{{ articleTypeName }}</el-tag>；
+          当前文章类型：
+          <el-tag size="small" type="primary" effect="light">{{ articleTypeName }}</el-tag>
+          ；
           <template v-if="currentArticleType === 2">仅展示「视频展示」类栏目。</template>
           <template v-else-if="currentArticleType === 3">仅展示「数据展示」类栏目。</template>
           <template v-else-if="currentArticleType === 4">仅展示「报刊展示」类栏目。</template>
@@ -825,7 +1037,9 @@
               >
                 <div class="page-item-name">{{ tpl.name }}</div>
                 <div class="page-item-meta">{{ getColumnCountByTemplate(tpl.id) }} 个栏目</div>
-                <el-icon v-if="selectedColumnTemplateId === tpl.id" class="page-item-check"><Check /></el-icon>
+                <el-icon v-if="selectedColumnTemplateId === tpl.id" class="page-item-check">
+                  <Check />
+                </el-icon>
               </div>
             </el-scrollbar>
           </div>
@@ -841,32 +1055,69 @@
                 v-model="selectedTemplateAllSelected"
                 class="column-select-all"
                 @change="toggleSelectAllTemplateColumns"
-              >全选</el-checkbox>
+              >
+                全选
+              </el-checkbox>
             </div>
             <el-scrollbar height="420px" class="column-setting-scroll">
               <div v-if="!selectedColumnTemplateId" class="column-setting-empty">
                 <el-empty description="请先选择左侧模板" :image-size="80" />
               </div>
-              <div v-else-if="selectedColumnTemplateColumns.length === 0" class="column-setting-empty">
+              <div
+                v-else-if="selectedColumnTemplateColumns.length === 0"
+                class="column-setting-empty"
+              >
                 <el-empty description="该模板下暂无符合当前文章类型的栏目" :image-size="80" />
               </div>
               <el-checkbox-group v-else v-model="selectedColumnIds" class="column-checkbox-group">
                 <div
                   v-for="col in selectedColumnTemplateColumns"
                   :key="col.id"
-                  :class="['column-card', { checked: selectedColumnIds.includes(col.id), 'is-child': col.parentId && col.parentId > 0 }]"
+                  :class="[
+                    'column-card',
+                    {
+                      checked: selectedColumnIds.includes(col.id),
+                      'is-child': col.parentId && col.parentId > 0,
+                    },
+                  ]"
                   @click="toggleColumnSelection(col.id)"
                 >
                   <el-checkbox :label="col.id" @click.stop>
                     <div class="column-card-info">
                       <span class="column-card-name">
-                        <el-icon v-if="col.parentId && col.parentId > 0" class="child-column-icon"><ArrowRight /></el-icon>
+                        <el-icon v-if="col.parentId && col.parentId > 0" class="child-column-icon">
+                          <ArrowRight />
+                        </el-icon>
                         {{ col.name }}
                       </span>
                       <div class="column-card-tags">
-                        <el-tag v-if="col.parentId && col.parentId > 0" size="small" type="warning" effect="light" class="column-card-tag">子栏目</el-tag>
-                        <el-tag v-if="col.workflowId" size="small" type="success" effect="light" class="column-card-tag">需审核</el-tag>
-                        <el-tag v-else size="small" type="info" effect="light" class="column-card-tag">免审核</el-tag>
+                        <el-tag
+                          v-if="col.parentId && col.parentId > 0"
+                          size="small"
+                          type="warning"
+                          effect="light"
+                          class="column-card-tag"
+                        >
+                          子栏目
+                        </el-tag>
+                        <el-tag
+                          v-if="col.workflowId"
+                          size="small"
+                          type="success"
+                          effect="light"
+                          class="column-card-tag"
+                        >
+                          需审核
+                        </el-tag>
+                        <el-tag
+                          v-else
+                          size="small"
+                          type="info"
+                          effect="light"
+                          class="column-card-tag"
+                        >
+                          免审核
+                        </el-tag>
                       </div>
                     </div>
                     <div v-if="col.parentId && col.parentId > 0" class="column-card-parent">
@@ -884,7 +1135,9 @@
           <span>已选栏目</span>
           <span class="column-setting-count">{{ selectedColumnIds.length }} 个</span>
         </div>
-        <div v-if="selectedColumnIds.length === 0" class="column-setting-selected-empty">暂未选择任何栏目</div>
+        <div v-if="selectedColumnIds.length === 0" class="column-setting-selected-empty">
+          暂未选择任何栏目
+        </div>
         <div v-else class="column-setting-selected-list">
           <el-tag
             v-for="item in selectedColumnSummary"
@@ -901,7 +1154,9 @@
       </div>
       <template #footer>
         <el-button @click="columnDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="columnSubmitLoading" @click="handleSubmitColumns">确定</el-button>
+        <el-button type="primary" :loading="columnSubmitLoading" @click="handleSubmitColumns">
+          确定
+        </el-button>
       </template>
     </el-dialog>
 
@@ -918,10 +1173,18 @@
       </div>
       <div v-if="columnViewArticleStatus !== 1" class="column-view-hint">
         <el-icon><InfoFilled /></el-icon>
-        <span>文章当前为{{ columnViewArticleStatus === 2 ? '已下线' : '草稿' }}，以下为已选择的栏目，发布后才会展示在对应栏目下。</span>
+        <span>
+          文章当前为{{
+            columnViewArticleStatus === 2 ? '已下线' : '草稿'
+          }}，以下为已选择的栏目，发布后才会展示在对应栏目下。
+        </span>
       </div>
       <el-skeleton v-if="columnViewLoading" :rows="4" animated />
-      <el-empty v-else-if="columnViewGroups.length === 0" description="该文章未投放任何栏目" :image-size="80" />
+      <el-empty
+        v-else-if="columnViewGroups.length === 0"
+        description="该文章未投放任何栏目"
+        :image-size="80"
+      />
       <div v-else class="column-view-list">
         <div v-for="group in columnViewGroups" :key="group.templateId" class="column-view-group">
           <div class="column-view-template">
@@ -962,7 +1225,11 @@
         文章：{{ auditFlowArticleTitle }}
       </div>
       <el-skeleton v-if="auditFlowLoading" :rows="6" animated />
-      <el-empty v-else-if="auditFlowList.length === 0" description="暂无栏目或未绑定审核流程" :image-size="80" />
+      <el-empty
+        v-else-if="auditFlowList.length === 0"
+        description="暂无栏目或未绑定审核流程"
+        :image-size="80"
+      />
       <div v-else class="audit-flow-list">
         <div
           v-for="(item, index) in auditFlowList"
@@ -973,20 +1240,31 @@
           <div class="audit-flow-card-header">
             <div class="audit-flow-index">{{ index + 1 }}</div>
             <div class="audit-flow-column-name">{{ item.columnName }}</div>
-            <el-tag v-if="item.auditStatus === 2" size="small" type="danger" effect="light">已驳回</el-tag>
-            <el-tag v-else-if="item.auditStatus === 1" size="small" type="success" effect="light">已通过</el-tag>
-            <el-tag v-else-if="item.workflow && item.auditStatus === 0" size="small" type="warning" effect="light">审核中</el-tag>
+            <el-tag v-if="item.auditStatus === 2" size="small" type="danger" effect="light">
+              已驳回
+            </el-tag>
+            <el-tag v-else-if="item.auditStatus === 1" size="small" type="success" effect="light">
+              已通过
+            </el-tag>
+            <el-tag
+              v-else-if="item.workflow && item.auditStatus === 0"
+              size="small"
+              type="warning"
+              effect="light"
+            >
+              审核中
+            </el-tag>
             <el-tag v-else-if="item.workflow" size="small" type="primary" effect="light">
               {{ item.workflow.name }}
             </el-tag>
             <el-tag v-else size="small" type="info" effect="light">未绑定流程</el-tag>
           </div>
           <div v-if="item.workflow" class="audit-flow-card-body">
-            <div v-if="item.workflow.nodes && item.workflow.nodes.length > 0" class="audit-flow-steps">
-              <el-steps
-                :active="getStepActive(item)"
-                align-center
-              >
+            <div
+              v-if="item.workflow.nodes && item.workflow.nodes.length > 0"
+              class="audit-flow-steps"
+            >
+              <el-steps :active="getStepActive(item)" align-center>
                 <el-step
                   v-for="node in item.workflow.nodes"
                   :key="node.id"
@@ -994,19 +1272,34 @@
                   :status="getNodeStatus(item, node.id)"
                 >
                   <template #description>
-                    <div v-if="getNodeHistory(item, node.id)" class="audit-step-desc" :class="getNodeHistory(item, node.id).action === 2 ? 'audit-step-reject' : ''">
-                      <el-icon :color="getNodeHistory(item, node.id).action === 2 ? '#f56c6c' : '#67c23a'" size="12">
+                    <div
+                      v-if="getNodeHistory(item, node.id)"
+                      class="audit-step-desc"
+                      :class="getNodeHistory(item, node.id).action === 2 ? 'audit-step-reject' : ''"
+                    >
+                      <el-icon
+                        :color="getNodeHistory(item, node.id).action === 2 ? '#f56c6c' : '#67c23a'"
+                        size="12"
+                      >
                         <CircleCheck v-if="getNodeHistory(item, node.id).action === 1" />
                         <CircleClose v-else />
                       </el-icon>
-                      <span>{{ getNodeHistory(item, node.id).operatorName }} {{ formatAuditTime(getNodeHistory(item, node.id).createdAt) }}</span>
+                      <span>
+                        {{ getNodeHistory(item, node.id).operatorName }}
+                        {{ formatAuditTime(getNodeHistory(item, node.id).createdAt) }}
+                      </span>
                     </div>
                   </template>
                 </el-step>
               </el-steps>
             </div>
             <el-empty v-else description="该流程未配置节点" :image-size="80" />
-            <div v-if="item.auditStatus === 0 && item.workflow && item.workflow.nodes && item.currentNodeId" class="audit-current-node">
+            <div
+              v-if="
+                item.auditStatus === 0 && item.workflow && item.workflow.nodes && item.currentNodeId
+              "
+              class="audit-current-node"
+            >
               <el-icon><User /></el-icon>
               <span>当前节点审批人：{{ formatApprover(item) }}</span>
             </div>
@@ -1014,11 +1307,21 @@
               <el-icon color="#67c23a"><CircleCheck /></el-icon>
               <span>已通过：{{ item.approveRemark || '-' }}</span>
             </div>
-            <div v-if="item.auditStatus === 2 && item.rejectRemark" class="audit-flow-result audit-flow-reject-result">
+            <div
+              v-if="item.auditStatus === 2 && item.rejectRemark"
+              class="audit-flow-result audit-flow-reject-result"
+            >
               <el-icon color="#f56c6c"><CircleClose /></el-icon>
               <span>已驳回：{{ item.rejectRemark }}</span>
             </div>
-            <div v-if="item.auditStatus === 0 && item.workflow && item.workflow.nodes && item.workflow.nodes.length > 0">
+            <div
+              v-if="
+                item.auditStatus === 0 &&
+                item.workflow &&
+                item.workflow.nodes &&
+                item.workflow.nodes.length > 0
+              "
+            >
               <div v-if="item.canApprove" class="audit-flow-actions">
                 <el-button
                   type="primary"
@@ -1027,7 +1330,8 @@
                   :loading="isAuditActionLoading(item.columnId, 'advance')"
                   @click="handleAdvanceAuditNode(item.columnId)"
                 >
-                  <el-icon><CircleCheck /></el-icon>通过当前节点
+                  <el-icon><CircleCheck /></el-icon>
+                  通过当前节点
                 </el-button>
                 <el-button
                   type="danger"
@@ -1037,7 +1341,8 @@
                   :loading="isAuditActionLoading(item.columnId, 'reject')"
                   @click="handleRejectAuditNode(item.columnId)"
                 >
-                  <el-icon><CircleClose /></el-icon>驳回
+                  <el-icon><CircleClose /></el-icon>
+                  驳回
                 </el-button>
               </div>
               <div v-else class="audit-flow-no-auth">
@@ -1049,7 +1354,9 @@
         </div>
       </div>
       <template #footer>
-        <el-button :disabled="auditFlowSubmitting" @click="auditFlowDialogVisible = false">关闭</el-button>
+        <el-button :disabled="auditFlowSubmitting" @click="auditFlowDialogVisible = false">
+          关闭
+        </el-button>
       </template>
     </el-dialog>
   </div>
@@ -1078,7 +1385,7 @@ import {
   Check,
   ArrowRight,
   User,
-  Files
+  Files,
 } from '@element-plus/icons-vue'
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
@@ -1100,7 +1407,7 @@ import {
   getArticleAuditProgress,
   advanceArticleAudit,
   rejectArticleAudit,
-  getArticleAuditHistory
+  getArticleAuditHistory,
 } from '@/api/article'
 import { getWorkflowByID } from '@/api/workflow'
 import { getUserOptions } from '@/api/user'
@@ -1139,7 +1446,7 @@ const videoForm = reactive({
   cover: '',
   videoUrl: '',
   videoName: '',
-  videoSize: 0
+  videoSize: 0,
 })
 
 const videoDialogTitle = ref('新增视频')
@@ -1157,7 +1464,7 @@ const dataForm = reactive({
   source: '',
   publishTime: '',
   yearMonth: '',
-  content: ''
+  content: '',
 })
 
 const dataDialogTitle = ref('新增数据')
@@ -1175,7 +1482,7 @@ const paperForm = reactive({
   abstract: '',
   categoryIds: [] as number[],
   tagIds: [] as number[],
-  pdf: null as any
+  pdf: null as any,
 })
 
 const paperDialogTitle = ref('新增报刊')
@@ -1209,7 +1516,9 @@ const selectedColumnTemplateColumns = computed(() => {
   } else if (type === 4) {
     cols = cols.filter((col: any) => col.displayType === 6)
   } else {
-    cols = cols.filter((col: any) => col.displayType !== 6 && col.displayType !== 7 && col.displayType !== 8)
+    cols = cols.filter(
+      (col: any) => col.displayType !== 6 && col.displayType !== 7 && col.displayType !== 8
+    )
   }
   return cols.sort((a: any, b: any) => {
     const aIsRoot = !a.parentId || a.parentId === 0
@@ -1238,7 +1547,7 @@ const selectedTemplateAllSelected = computed({
     } else {
       selectedColumnIds.value = selectedColumnIds.value.filter((id: number) => !ids.includes(id))
     }
-  }
+  },
 })
 
 const selectedColumnSummary = computed(() => {
@@ -1277,7 +1586,7 @@ const queryForm = reactive({
   type: undefined as number | undefined,
   author: '',
   source: '',
-  columnPath: [] as number[]
+  columnPath: [] as number[],
 })
 
 const form = reactive({
@@ -1297,7 +1606,7 @@ const form = reactive({
   source: '',
   publishTime: '',
   url: '',
-  attachments: [] as any[]
+  attachments: [] as any[],
 })
 
 const isValidUrl = (url: string) => /^https?:\/\/.+/i.test(url)
@@ -1331,8 +1640,8 @@ const formRules = {
           callback()
         }
       },
-      trigger: 'blur'
-    }
+      trigger: 'blur',
+    },
   ],
   content: [
     {
@@ -1346,27 +1655,27 @@ const formRules = {
           callback()
         }
       },
-      trigger: 'change'
-    }
-  ]
+      trigger: 'change',
+    },
+  ],
 }
 
 const videoFormRules = {
   title: [{ required: true, message: '请输入视频标题', trigger: 'blur' }],
   publishTime: [{ required: true, message: '请选择发布时间', trigger: 'change' }],
-  videoUrl: [{ required: true, message: '请上传视频', trigger: 'change' }]
+  videoUrl: [{ required: true, message: '请上传视频', trigger: 'change' }],
 }
 
 const dataFormRules = {
   title: [{ required: true, message: '请输入数据标题', trigger: 'blur' }],
   publishTime: [{ required: true, message: '请选择发布时间', trigger: 'change' }],
   yearMonth: [{ required: true, message: '请选择年月', trigger: 'change' }],
-  content: [{ required: true, message: '请输入数据内容', trigger: 'blur' }]
+  content: [{ required: true, message: '请输入数据内容', trigger: 'blur' }],
 }
 
 const paperFormRules = {
   title: [{ required: true, message: '请输入报刊标题', trigger: 'blur' }],
-  yearMonth: [{ required: true, message: '请选择出版年月', trigger: 'change' }]
+  yearMonth: [{ required: true, message: '请选择出版年月', trigger: 'change' }],
 }
 
 const route = useRoute()
@@ -1395,7 +1704,9 @@ const getColumnCountByTemplate = (templateId: number) => {
   } else if (type === 4) {
     return cols.filter((col: any) => col.displayType === 6).length
   } else {
-    return cols.filter((col: any) => col.displayType !== 6 && col.displayType !== 7 && col.displayType !== 8).length
+    return cols.filter(
+      (col: any) => col.displayType !== 6 && col.displayType !== 7 && col.displayType !== 8
+    ).length
   }
 }
 
@@ -1493,7 +1804,7 @@ const uploadImageFile = async (
   formData.append('dir', 'article')
   try {
     const res: any = await request.post('/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
     })
     const url = res.data?.url || ''
     if (url) {
@@ -1530,9 +1841,9 @@ const editorConfig: Partial<IEditorConfig> = {
       },
       async customUpload(file: File, insertFn: (url: string, alt: string, href: string) => void) {
         await uploadImageFile(file, insertFn)
-      }
-    }
-  }
+      },
+    },
+  },
 }
 
 const handleCreated = (editor: IDomEditor) => {
@@ -1615,10 +1926,10 @@ const extractImagesFromRTF = (rtf: string): Blob[] => {
         bytes[j / 2] = parseInt(hexStr.substring(j, j + 2), 16)
       }
       let type = 'image/png'
-      if (bytes[0] === 0xFF && bytes[1] === 0xD8) type = 'image/jpeg'
+      if (bytes[0] === 0xff && bytes[1] === 0xd8) type = 'image/jpeg'
       else if (bytes[0] === 0x47 && bytes[1] === 0x49) type = 'image/gif'
       else if (bytes[0] === 0x89 && bytes[1] === 0x50) type = 'image/png'
-      else if (bytes[0] === 0x42 && bytes[1] === 0x4D) type = 'image/bmp'
+      else if (bytes[0] === 0x42 && bytes[1] === 0x4d) type = 'image/bmp'
       blobs.push(new Blob([bytes], { type }))
     }
     pos = pictIdx + 1
@@ -1648,7 +1959,7 @@ const handleCustomPaste = (editor: IDomEditor, event: ClipboardEvent) => {
             const formData = new FormData()
             formData.append('file', file)
             const res: any = await request.post('/upload', formData, {
-              headers: { 'Content-Type': 'multipart/form-data' }
+              headers: { 'Content-Type': 'multipart/form-data' },
             })
             const url = res.data?.url || ''
             if (url) {
@@ -1677,7 +1988,7 @@ const handleCustomPaste = (editor: IDomEditor, event: ClipboardEvent) => {
           const formData = new FormData()
           formData.append('file', file)
           return request.post('/upload', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
+            headers: { 'Content-Type': 'multipart/form-data' },
           })
         })
       ).then((results: any[]) => {
@@ -1718,20 +2029,22 @@ const handleCustomPaste = (editor: IDomEditor, event: ClipboardEvent) => {
       imageFiles.forEach((file) => {
         const formData = new FormData()
         formData.append('file', file)
-        request.post('/upload', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        }).then((res: any) => {
-          const url = res.data?.url || ''
-          if (url) {
-            editor.insertNode({
-              type: 'image',
-              src: url,
-              alt: '',
-              href: '',
-              children: [{ text: '' }]
-            } as any)
-          }
-        })
+        request
+          .post('/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          })
+          .then((res: any) => {
+            const url = res.data?.url || ''
+            if (url) {
+              editor.insertNode({
+                type: 'image',
+                src: url,
+                alt: '',
+                href: '',
+                children: [{ text: '' }],
+              } as any)
+            }
+          })
       })
       return false
     }
@@ -1751,7 +2064,7 @@ const fetchData = async () => {
   try {
     const params: any = {
       page: queryForm.page,
-      pageSize: queryForm.pageSize
+      pageSize: queryForm.pageSize,
     }
     if (queryForm.title) params.title = queryForm.title
     if (queryForm.categoryId !== undefined) params.categoryId = queryForm.categoryId
@@ -1883,7 +2196,7 @@ const handleEdit = async (row: any) => {
       cover: detail.cover || '',
       videoUrl: att.url || '',
       videoName: att.name || '',
-      videoSize: att.size || 0
+      videoSize: att.size || 0,
     })
     videoDialogVisible.value = true
     return
@@ -1899,7 +2212,7 @@ const handleEdit = async (row: any) => {
       source: detail.source || '',
       publishTime: detail.publishTime || '',
       yearMonth: detail.summary || '',
-      content: detail.content || ''
+      content: detail.content || '',
     })
     dataDialogVisible.value = true
     return
@@ -1917,7 +2230,7 @@ const handleEdit = async (row: any) => {
       abstract: detail.content || '',
       categoryIds: detail.categoryIds || [],
       tagIds: detail.tagIds || [],
-      pdf: detail.attachments?.[0] || null
+      pdf: detail.attachments?.[0] || null,
     })
     paperDialogVisible.value = true
     return
@@ -1944,8 +2257,8 @@ const handleEdit = async (row: any) => {
     attachments: (detail.attachments || []).map((att: any) => ({
       ...att,
       uid: att.uid || Date.now() + Math.random().toString(36).slice(2),
-      status: 'success'
-    }))
+      status: 'success',
+    })),
   })
   dialogVisible.value = true
 }
@@ -1954,18 +2267,20 @@ const handleDelete = (row: any) => {
   ElMessageBox.confirm(`确定要删除文章 「${row.title}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    deletingText.value = '文章删除中...'
-    deleting.value = true
-    try {
-      await deleteArticle(row.id)
-      ElMessage.success('删除成功')
-      fetchData()
-    } finally {
-      deleting.value = false
-    }
-  }).catch(() => {})
+    type: 'warning',
+  })
+    .then(async () => {
+      deletingText.value = '文章删除中...'
+      deleting.value = true
+      try {
+        await deleteArticle(row.id)
+        ElMessage.success('删除成功')
+        fetchData()
+      } finally {
+        deleting.value = false
+      }
+    })
+    .catch(() => {})
 }
 
 const currentAuditRow = ref<any>(null)
@@ -2070,11 +2385,13 @@ const handleShowAuditFlow = async (row: any) => {
     ) as number[]
     const [, progressRes, workflowResList, historyResList] = await Promise.all([
       Promise.all(optionTasks),
-      (row.auditStatus === 1 || row.auditStatus === 2)
+      row.auditStatus === 1 || row.auditStatus === 2
         ? getArticleAuditProgress(row.id).catch(() => ({ data: [] }))
         : Promise.resolve({ data: [] }),
       Promise.all(workflowIds.map((id: number) => getWorkflowByID(id).catch(() => null))),
-      Promise.all(columns.map((col: any) => getArticleAuditHistory(row.id, col.id).catch(() => null)))
+      Promise.all(
+        columns.map((col: any) => getArticleAuditHistory(row.id, col.id).catch(() => null))
+      ),
     ])
     // 同一流程被多个栏目共用时只请求一次，这里按 id 回填
     const workflowMap = new Map<number, any>()
@@ -2098,7 +2415,7 @@ const handleShowAuditFlow = async (row: any) => {
         approveTime: '',
         approveRemark: '',
         rejectRemark: '',
-        histories: []
+        histories: [],
       }
       const progress = progressList.find((p: any) => p.columnId === col.id)
       if (progress) {
@@ -2136,7 +2453,7 @@ const handleAdvanceAuditNode = async (columnId: number) => {
       confirmButtonText: '确定通过',
       cancelButtonText: '取消',
       inputPattern: /^.{0,500}$/,
-      inputErrorMessage: '原因最多500字'
+      inputErrorMessage: '原因最多500字',
     })
     remark = value || ''
   } catch {
@@ -2167,7 +2484,7 @@ const handleRejectAuditNode = async (columnId: number) => {
       confirmButtonText: '确定驳回',
       cancelButtonText: '取消',
       inputPattern: /\S+/,
-      inputErrorMessage: '驳回原因不能为空'
+      inputErrorMessage: '驳回原因不能为空',
     })
     remark = value || ''
   } catch {
@@ -2203,48 +2520,54 @@ const handleAudit = async (row: any) => {
   ElMessageBox.confirm(message, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    deletingText.value = '提交审核中...'
-    deleting.value = true
-    try {
-      await auditArticle(row.id, 1)
-      ElMessage.success('提交审核成功')
-      fetchData()
-    } finally {
-      deleting.value = false
-    }
-  }).catch(() => {})
+    type: 'warning',
+  })
+    .then(async () => {
+      deletingText.value = '提交审核中...'
+      deleting.value = true
+      try {
+        await auditArticle(row.id, 1)
+        ElMessage.success('提交审核成功')
+        fetchData()
+      } finally {
+        deleting.value = false
+      }
+    })
+    .catch(() => {})
 }
 
 const handleWithdrawAudit = (row: any) => {
   ElMessageBox.confirm(`确定要撤回文章 「${row.title}」 的审核吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    await withdrawArticleAudit(row.id)
-    ElMessage.success('撤回审核成功')
-    fetchData()
-  }).catch(() => {})
+    type: 'warning',
+  })
+    .then(async () => {
+      await withdrawArticleAudit(row.id)
+      ElMessage.success('撤回审核成功')
+      fetchData()
+    })
+    .catch(() => {})
 }
 
 const handleOffShelf = (row: any) => {
   ElMessageBox.confirm(`确定要下线文章 「${row.title}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    deletingText.value = '文章下线中...'
-    deleting.value = true
-    try {
-      await updateArticleStatus(row.id, 2)
-      ElMessage.success('下线成功')
-      fetchData()
-    } finally {
-      deleting.value = false
-    }
-  }).catch(() => {})
+    type: 'warning',
+  })
+    .then(async () => {
+      deletingText.value = '文章下线中...'
+      deleting.value = true
+      try {
+        await updateArticleStatus(row.id, 2)
+        ElMessage.success('下线成功')
+        fetchData()
+      } finally {
+        deleting.value = false
+      }
+    })
+    .catch(() => {})
 }
 
 const handleSetColumns = async (row: any) => {
@@ -2296,7 +2619,9 @@ const getColumnFullPath = (columnId: number) => {
   let current: any = columnList.value.find((col: any) => col.id === columnId)
   for (let depth = 0; current && depth < 10; depth++) {
     names.unshift(current.name)
-    current = current.parentId ? columnList.value.find((col: any) => col.id === current.parentId) : undefined
+    current = current.parentId
+      ? columnList.value.find((col: any) => col.id === current.parentId)
+      : undefined
   }
   return names.join(' / ')
 }
@@ -2324,7 +2649,7 @@ const columnViewGroups = computed(() => {
     groupOf(col.templateId, template?.name || `模板 #${col.templateId}`).columns.push({
       id: col.id,
       path: getColumnFullPath(col.id) || col.name,
-      status: col.status
+      status: col.status,
     })
   }
   return groups
@@ -2356,14 +2681,16 @@ const previewData = reactive({
   content: '',
   url: '',
   cover: '',
-  attachments: [] as any[]
+  attachments: [] as any[],
 })
 
 // 预览正文统一走 DOMPurify：后端写入时已消毒，这里兜底历史脏数据（后端策略上线前入库的内容），
 // 也是唯一被 v-html 渲染的位置，消毒后 on* 事件属性/script/javascript: 链接一律被剥离。
 const sanitizedPreviewContent = computed(() => sanitizeHtml(previewData.content))
 // 跳转链接同样只允许 http(s) 与站内相对路径：javascript: 在 <a href> 上被点击即执行脚本
-const safePreviewUrl = computed(() => (/^(https?:\/\/|\/)/i.test(previewData.url || '') ? previewData.url : ''))
+const safePreviewUrl = computed(() =>
+  /^(https?:\/\/|\/)/i.test(previewData.url || '') ? previewData.url : ''
+)
 
 const handlePreview = async (row: any) => {
   // 列表不再返回正文（大字段），预览时按需拉取详情
@@ -2385,7 +2712,7 @@ const handlePreview = async (row: any) => {
     content: noReferrerContent(content),
     url: row.url || '',
     cover: row.cover || '',
-    attachments: row.attachments || []
+    attachments: row.attachments || [],
   })
   previewVisible.value = true
 }
@@ -2410,7 +2737,7 @@ const handleSubmit = async () => {
       source: form.source,
       publishTime: form.publishTime,
       url: form.url,
-      attachments: buildAttachmentPayload(form.attachments)
+      attachments: buildAttachmentPayload(form.attachments),
     }
     if (form.id) {
       await updateArticle(form.id, data)
@@ -2472,7 +2799,7 @@ const handleAttachmentUpload = async (options: any) => {
   formData.append('dir', 'attachment')
   try {
     const res: any = await request.post('/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
     })
     const url = res.data?.url || ''
     if (url) {
@@ -2507,7 +2834,7 @@ const buildAttachmentPayload = (attachments: any[]) => {
     .map((att: any) => ({
       name: att.name,
       url: att.url || att.response?.url || '',
-      size: att.size || 0
+      size: att.size || 0,
     }))
     .filter((att: any) => {
       if (!att.url || seen.has(att.url)) return false
@@ -2592,7 +2919,7 @@ const handleVideoUpload = async (options: any) => {
           const pct = Math.round((evt.loaded / evt.total) * 100)
           videoUploadProgress.value = pct
         }
-      }
+      },
     })
     const url = res.data?.url || ''
     if (url) {
@@ -2643,9 +2970,9 @@ const handleSubmitVideo = async () => {
         {
           name: videoForm.videoName || 'video',
           url: videoForm.videoUrl,
-          size: videoForm.videoSize || 0
-        }
-      ]
+          size: videoForm.videoSize || 0,
+        },
+      ],
     }
     if (videoForm.id) {
       await updateArticle(videoForm.id, data)
@@ -2682,7 +3009,7 @@ const handleSubmitData = async () => {
       source: dataForm.source,
       publishTime: dataForm.publishTime,
       url: '',
-      attachments: [] as any[]
+      attachments: [] as any[],
     }
     if (dataForm.id) {
       await updateArticle(dataForm.id, data)
@@ -2745,7 +3072,7 @@ const handlePaperAttachmentUpload = async (options: any) => {
   formData.append('dir', 'attachment')
   try {
     const res: any = await request.post('/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: { 'Content-Type': 'multipart/form-data' },
     })
     const url = res.data?.url || ''
     if (url) {
@@ -2787,9 +3114,10 @@ const handleSubmitPaper = async () => {
       source: paperForm.source,
       publishTime: paperForm.yearMonth ? `${paperForm.yearMonth}-01 00:00:00` : '',
       url: '',
-      attachments: paperForm.pdf && paperForm.pdf.url
-        ? [{ name: paperForm.pdf.name, url: paperForm.pdf.url, size: paperForm.pdf.size || 0 }]
-        : []
+      attachments:
+        paperForm.pdf && paperForm.pdf.url
+          ? [{ name: paperForm.pdf.name, url: paperForm.pdf.url, size: paperForm.pdf.size || 0 }]
+          : [],
     }
     if (paperForm.id) {
       await updateArticle(paperForm.id, data)

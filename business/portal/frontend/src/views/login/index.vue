@@ -15,7 +15,7 @@
           <p>统一管理平台</p>
         </div>
         <div class="login-features">
-           <div class="feature-item">
+          <div class="feature-item">
             <el-icon><Check /></el-icon>
             <span>复杂组织机构管理</span>
           </div>
@@ -41,13 +41,7 @@
         <div class="login-form-wrapper">
           <h2>欢迎回来</h2>
           <p class="login-subtitle">登录一体化统一管理后台</p>
-          <el-form
-            ref="formRef"
-            :model="form"
-            :rules="rules"
-            size="large"
-            class="login-form"
-          >
+          <el-form ref="formRef" :model="form" :rules="rules" size="large" class="login-form">
             <el-form-item prop="username">
               <el-input
                 v-model="form.username"
@@ -84,12 +78,7 @@
               </div>
             </el-form-item>
             <el-form-item>
-              <el-button
-                type="primary"
-                class="login-btn"
-                :loading="loading"
-                @click="handleLogin"
-              >
+              <el-button type="primary" class="login-btn" :loading="loading" @click="handleLogin">
                 登录
               </el-button>
             </el-form-item>
@@ -136,14 +125,14 @@ const logoError = ref(false)
 const form = reactive({
   username: '',
   password: '',
-  captchaCode: ''
+  captchaCode: '',
 })
 
 const siteInfo = reactive({
   siteName: '门户一体化统一管理后台',
   logo: 'computer.svg',
   icp: '',
-  copyright: '机械工业信息中心数智应用处 版权所有'
+  copyright: '机械工业信息中心数智应用处 版权所有',
 })
 
 const loadSiteInfo = async () => {
@@ -172,14 +161,12 @@ const loadSiteInfo = async () => {
   }
 }
 
-
-
 const rules = computed(() => ({
   username: [{ required: true, message: '请输入用户名或邮箱', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
   ...(captchaEnabled.value
     ? { captchaCode: [{ required: true, message: '请输入验证码', trigger: 'blur' }] }
-    : {})
+    : {}),
 }))
 
 const refreshCaptcha = async () => {
@@ -208,7 +195,7 @@ const handleLogin = async () => {
       email: isEmail ? identifier : '',
       password: form.password,
       captcha_id: captchaEnabled.value ? captchaId.value : '',
-      captcha_code: captchaEnabled.value ? form.captchaCode : ''
+      captcha_code: captchaEnabled.value ? form.captchaCode : '',
     })
     userStore.setToken(res.data.token)
     userStore.setUserInfo(res.data.user)
@@ -285,7 +272,8 @@ onMounted(() => {
     content: '';
     position: absolute;
     inset: 0;
-    background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
       linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
     background-size: 34px 34px;
   }
@@ -448,7 +436,11 @@ onMounted(() => {
   letter-spacing: 4px;
 
   &:hover {
-    background: linear-gradient(135deg, var(--el-color-primary-light-3) 0%, var(--el-color-primary) 100%);
+    background: linear-gradient(
+      135deg,
+      var(--el-color-primary-light-3) 0%,
+      var(--el-color-primary) 100%
+    );
     box-shadow: 0 8px 20px rgba(0, 47, 167, 0.4);
   }
 }

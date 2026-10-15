@@ -9,11 +9,7 @@
         @click="handleClick(tag)"
       >
         {{ tag.title }}
-        <el-icon
-          v-if="tag.path !== homePath"
-          class="close-icon"
-          @click.stop="handleClose(tag)"
-        >
+        <el-icon v-if="tag.path !== homePath" class="close-icon" @click.stop="handleClose(tag)">
           <Close />
         </el-icon>
       </div>
@@ -48,9 +44,7 @@ const userStore = useUserStore()
 // 用 computed 而非 setup 期常量：menuList 可能在登录后重新拉取时变更（Breadcrumb.vue 已是 computed）。
 const homePath = computed(() => resolveHomePath(userStore.menuList))
 
-const visitedViews = ref<TagView[]>([
-  { path: homePath.value, title: '首页' }
-])
+const visitedViews = ref<TagView[]>([{ path: homePath.value, title: '首页' }])
 
 // menuList 变化时同步首页标签的路径（保留其它已打开的标签）
 watch(homePath, (p) => {
@@ -62,7 +56,7 @@ const isActive = (tag: TagView) => tag.path === route.path
 
 const addView = () => {
   const { path, meta } = route
-  if (visitedViews.value.some(v => v.path === path)) return
+  if (visitedViews.value.some((v) => v.path === path)) return
   if (meta?.title) {
     visitedViews.value.push({ path, title: meta.title as string })
   }
@@ -75,7 +69,7 @@ const handleClick = (tag: TagView) => {
 }
 
 const handleClose = (tag: TagView) => {
-  const index = visitedViews.value.findIndex(v => v.path === tag.path)
+  const index = visitedViews.value.findIndex((v) => v.path === tag.path)
   visitedViews.value.splice(index, 1)
   if (isActive(tag) && visitedViews.value.length > 0) {
     const lastTag = visitedViews.value[visitedViews.value.length - 1]

@@ -14,8 +14,8 @@ export default defineConfig(({ mode }) => {
     plugins: [vue()],
     resolve: {
       alias: {
-        '@': fileURLToPath(new URL('./src', import.meta.url))
-      }
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
+      },
     },
     server: {
       host: true,
@@ -26,14 +26,14 @@ export default defineConfig(({ mode }) => {
         [apiBase]: {
           target: 'http://127.0.0.1:8092',
           changeOrigin: true,
-          secure: false
+          secure: false,
         },
         [uploadsBase]: {
           target: 'http://127.0.0.1:8092',
           changeOrigin: true,
-          secure: false
-        }
-      }
-    }
+          secure: false,
+        },
+      },
+    },
   }
 })

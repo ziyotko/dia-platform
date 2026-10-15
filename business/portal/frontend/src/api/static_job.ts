@@ -47,7 +47,9 @@ export async function startStaticJob(
 
 // 查询任务状态：返回 HTTP 200 及任务结构（仅发起任务时返回 202）
 // queued 等待执行 / running 正在执行 / succeeded 执行成功 / failed 执行失败 / interrupted 被取消或超时中断
-export async function getStaticJob(id: string): Promise<{ status: number; data: StaticJobResponse }> {
+export async function getStaticJob(
+  id: string
+): Promise<{ status: number; data: StaticJobResponse }> {
   const res: any = await request.get(`/static/jobs/${id}`, { raw: true } as any)
   return { status: res.status, data: res.data }
 }
@@ -74,24 +76,39 @@ export interface StaticPageResponse {
 // 单页操作-首页重新生成：POST /static/page?name={页面名}
 // 后端代理转发至静态化程序（自动附带 Authorization 验证令牌头），同步返回 HTTP 200 及生成结果；
 // 输出目录与首页整体变灰由后端全局变量决定，前端仅需传页面名。
-export async function startStaticPage(name: string): Promise<{ status: number; data: StaticPageResponse }> {
-  const res: any = await request.post('/static/page', undefined, { params: { name }, raw: true } as any)
+export async function startStaticPage(
+  name: string
+): Promise<{ status: number; data: StaticPageResponse }> {
+  const res: any = await request.post('/static/page', undefined, {
+    params: { name },
+    raw: true,
+  } as any)
   return { status: res.status, data: res.data }
 }
 
 // 单页操作-栏目页重新生成：POST /static/list?column_name={栏目名称}
 // 后端代理转发至静态化程序（自动附带 Authorization 验证令牌头），同步返回 HTTP 200 及生成结果；
 // 输出目录由后端全局变量决定，前端仅需传栏目名称。
-export async function startStaticList(columnName: string): Promise<{ status: number; data: StaticPageResponse }> {
-  const res: any = await request.post('/static/list', undefined, { params: { column_name: columnName }, raw: true } as any)
+export async function startStaticList(
+  columnName: string
+): Promise<{ status: number; data: StaticPageResponse }> {
+  const res: any = await request.post('/static/list', undefined, {
+    params: { column_name: columnName },
+    raw: true,
+  } as any)
   return { status: res.status, data: res.data }
 }
 
 // 单页操作-详情页重新生成：POST /static/article?id={文章ID}
 // 后端代理转发至静态化程序（自动附带 Authorization 验证令牌头），同步返回 HTTP 200 及生成结果；
 // 输出目录由后端全局变量决定，前端仅需传文章ID。
-export async function startStaticArticle(id: number | string): Promise<{ status: number; data: StaticPageResponse }> {
-  const res: any = await request.post('/static/article', undefined, { params: { id }, raw: true } as any)
+export async function startStaticArticle(
+  id: number | string
+): Promise<{ status: number; data: StaticPageResponse }> {
+  const res: any = await request.post('/static/article', undefined, {
+    params: { id },
+    raw: true,
+  } as any)
   return { status: res.status, data: res.data }
 }
 
@@ -102,15 +119,23 @@ export async function deleteStaticArticle(
   id: number | string,
   path: string
 ): Promise<{ status: number; data: StaticPageResponse }> {
-  const res: any = await request.delete('/static/article', { params: { id, path }, raw: true } as any)
+  const res: any = await request.delete('/static/article', {
+    params: { id, path },
+    raw: true,
+  } as any)
   return { status: res.status, data: res.data }
 }
 
 // 单页操作-专题页重新生成：POST /static/topic?id={专题ID}
 // 后端代理转发至静态化程序（自动附带 Authorization 验证令牌头），同步返回 HTTP 200 及生成结果；
 // 输出目录由后端全局变量决定，前端仅需传专题ID。
-export async function startStaticTopic(id: number | string): Promise<{ status: number; data: StaticPageResponse }> {
-  const res: any = await request.post('/static/topic', undefined, { params: { id }, raw: true } as any)
+export async function startStaticTopic(
+  id: number | string
+): Promise<{ status: number; data: StaticPageResponse }> {
+  const res: any = await request.post('/static/topic', undefined, {
+    params: { id },
+    raw: true,
+  } as any)
   return { status: res.status, data: res.data }
 }
 

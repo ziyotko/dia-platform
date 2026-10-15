@@ -3,26 +3,43 @@
     <el-card shadow="hover" class="search-card">
       <el-form :model="queryForm" inline>
         <el-form-item label="机构名称">
-          <el-input v-model="queryForm.name" placeholder="请输入机构名称" clearable @keyup.enter="handleSearch" />
+          <el-input
+            v-model="queryForm.name"
+            placeholder="请输入机构名称"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </el-form-item>
         <el-form-item label="机构类型">
-          <el-select v-model="queryForm.orgType" placeholder="全部类型" clearable style="width: 140px">
+          <el-select
+            v-model="queryForm.orgType"
+            placeholder="全部类型"
+            clearable
+            style="width: 140px"
+          >
             <el-option label="机构" :value="1" />
             <el-option label="分支机构" :value="2" />
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="queryForm.status" placeholder="全部状态" clearable style="width: 120px">
+          <el-select
+            v-model="queryForm.status"
+            placeholder="全部状态"
+            clearable
+            style="width: 120px"
+          >
             <el-option label="启用" :value="1" />
             <el-option label="禁用" :value="0" />
           </el-select>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>查询
+            <el-icon><Search /></el-icon>
+            查询
           </el-button>
           <el-button @click="resetQuery">
-            <el-icon><RefreshRight /></el-icon>重置
+            <el-icon><RefreshRight /></el-icon>
+            重置
           </el-button>
         </el-form-item>
       </el-form>
@@ -33,14 +50,15 @@
         <div class="card-header">
           <span>机构列表</span>
           <el-button type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon>新增机构
+            <el-icon><Plus /></el-icon>
+            新增机构
           </el-button>
         </div>
       </template>
 
       <el-table
-        :data="filteredTableData"
         v-loading="loading"
+        :data="filteredTableData"
         row-key="id"
         border
         stripe
@@ -49,7 +67,9 @@
       >
         <el-table-column prop="name" label="机构名称" min-width="200">
           <template #default="{ row }">
-            <el-icon style="margin-right: 6px; color: var(--el-color-primary);"><OfficeBuilding /></el-icon>
+            <el-icon style="margin-right: 6px; color: var(--el-color-primary)">
+              <OfficeBuilding />
+            </el-icon>
             <span>{{ row.name }}</span>
           </template>
         </el-table-column>
@@ -99,16 +119,20 @@
         <el-table-column label="操作" width="360" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleAddDept(row)">
-              <el-icon><CirclePlus /></el-icon>内设机构
+              <el-icon><CirclePlus /></el-icon>
+              内设机构
             </el-button>
             <el-button link type="primary" @click="handleAssignUsers(row)">
-              <el-icon><User /></el-icon>人员分配
+              <el-icon><User /></el-icon>
+              人员分配
             </el-button>
             <el-button link type="primary" @click="handleEdit(row)">
-              <el-icon><Edit /></el-icon>编辑
+              <el-icon><Edit /></el-icon>
+              编辑
             </el-button>
             <el-button link type="danger" @click="handleDelete(row)">
-              <el-icon><Delete /></el-icon>删除
+              <el-icon><Delete /></el-icon>
+              删除
             </el-button>
           </template>
         </el-table-column>
@@ -123,12 +147,7 @@
       destroy-on-close
       :close-on-click-modal="false"
     >
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="formRules"
-        label-width="90px"
-      >
+      <el-form ref="formRef" :model="form" :rules="formRules" label-width="90px">
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="上级机构">
@@ -197,9 +216,14 @@
                   :label="user.username"
                   :value="String(user.id)"
                 >
-                  <span style="display: flex; align-items: center; justify-content: space-between;">
+                  <span style="display: flex; align-items: center; justify-content: space-between">
                     <span>{{ user.username }} ({{ user.account }})</span>
-                    <el-icon v-if="form.managerCode === String(user.id)" color="var(--el-color-primary)"><Check /></el-icon>
+                    <el-icon
+                      v-if="form.managerCode === String(user.id)"
+                      color="var(--el-color-primary)"
+                    >
+                      <Check />
+                    </el-icon>
                   </span>
                 </el-option>
               </el-select>
@@ -254,12 +278,7 @@
       destroy-on-close
       :close-on-click-modal="false"
     >
-      <el-form
-        ref="deptFormRef"
-        :model="deptForm"
-        :rules="deptFormRules"
-        label-width="90px"
-      >
+      <el-form ref="deptFormRef" :model="deptForm" :rules="deptFormRules" label-width="90px">
         <el-form-item label="上级部门">
           <el-tree-select
             v-model="deptForm.parentId"
@@ -291,9 +310,14 @@
               :label="user.username"
               :value="String(user.id)"
             >
-              <span style="display: flex; align-items: center; justify-content: space-between;">
+              <span style="display: flex; align-items: center; justify-content: space-between">
                 <span>{{ user.username }} ({{ user.account }})</span>
-                <el-icon v-if="deptForm.leaderCode === String(user.id)" color="var(--el-color-primary)"><Check /></el-icon>
+                <el-icon
+                  v-if="deptForm.leaderCode === String(user.id)"
+                  color="var(--el-color-primary)"
+                >
+                  <Check />
+                </el-icon>
               </span>
             </el-option>
           </el-select>
@@ -308,12 +332,19 @@
           </el-radio-group>
         </el-form-item>
         <el-form-item label="描述">
-          <el-input v-model="deptForm.description" type="textarea" :rows="3" placeholder="请输入描述" />
+          <el-input
+            v-model="deptForm.description"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入描述"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="deptDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="deptSubmitLoading" @click="handleDeptSubmit">确定</el-button>
+        <el-button type="primary" :loading="deptSubmitLoading" @click="handleDeptSubmit">
+          确定
+        </el-button>
       </template>
     </el-dialog>
 
@@ -336,8 +367,8 @@
         />
       </div>
       <el-table
-        :data="paginatedUserOptions"
         v-loading="userLoading"
+        :data="paginatedUserOptions"
         border
         stripe
         height="320"
@@ -381,7 +412,9 @@
       </div>
       <template #footer>
         <el-button @click="userDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="userSubmitLoading" @click="handleSaveOrgUsers">保存</el-button>
+        <el-button type="primary" :loading="userSubmitLoading" @click="handleSaveOrgUsers">
+          保存
+        </el-button>
       </template>
     </el-dialog>
   </div>
@@ -399,7 +432,7 @@ import {
   CirclePlus,
   User,
   OfficeBuilding,
-  Check
+  Check,
 } from '@element-plus/icons-vue'
 import {
   getOrgList,
@@ -409,12 +442,9 @@ import {
   getOrgUsers,
   assignOrgUsers,
   type OrgItem,
-  type OrgForm
+  type OrgForm,
 } from '@/api/org'
-import {
-  createDepartment,
-  type DepartmentForm
-} from '@/api/department'
+import { createDepartment, type DepartmentForm } from '@/api/department'
 import { getAllUsers } from '@/api/user'
 import { hasAdminRole } from '@/utils/permission'
 
@@ -457,19 +487,19 @@ const deptForm = reactive({
   leaderCode: '',
   sort: 0,
   status: 1,
-  description: ''
+  description: '',
 })
 
 const deptFormRules = {
   name: [{ required: true, message: '请输入部门名称', trigger: 'blur' }],
   code: [{ required: true, message: '请输入部门编码', trigger: 'blur' }],
-  sort: [{ required: true, message: '请输入排序', trigger: 'blur' }]
+  sort: [{ required: true, message: '请输入排序', trigger: 'blur' }],
 }
 
 const queryForm = reactive({
   name: '',
   orgType: undefined as number | undefined,
-  status: undefined as number | undefined
+  status: undefined as number | undefined,
 })
 
 const form = reactive<OrgForm>({
@@ -488,7 +518,7 @@ const form = reactive<OrgForm>({
   managerCode: '',
   sort: 0,
   status: 1,
-  description: ''
+  description: '',
 })
 
 const formRules = {
@@ -496,7 +526,7 @@ const formRules = {
   code: [{ required: true, message: '请输入机构编码', trigger: 'blur' }],
   orgType: [{ required: true, message: '请选择机构类型', trigger: 'change' }],
   orgLevel: [{ required: true, message: '请输入机构层级', trigger: 'blur' }],
-  sort: [{ required: true, message: '请输入排序', trigger: 'blur' }]
+  sort: [{ required: true, message: '请输入排序', trigger: 'blur' }],
 }
 
 const userOptions = ref<UserItem[]>([])
@@ -515,9 +545,9 @@ const orgTypeTagType = (value: number) => {
   return orgTypeOptions.find((item) => item.value === value)?.tagType || ''
 }
 
-const managerLabel = computed(() => ('管理员'))
+const managerLabel = computed(() => '管理员')
 
-const managerPlaceholder = computed(() => ('请选择管理员'))
+const managerPlaceholder = computed(() => '请选择管理员')
 
 // 负责人须为管理员（角色 1，与后端管理员判定一致）
 const managerUserOptions = computed(() => {
@@ -534,9 +564,7 @@ const filteredUserOptions = computed(() => {
   if (!userSearch.value) return userOptions.value
   const keyword = userSearch.value.toLowerCase()
   return userOptions.value.filter(
-    (u) =>
-      u.username.toLowerCase().includes(keyword) ||
-      u.account.toLowerCase().includes(keyword)
+    (u) => u.username.toLowerCase().includes(keyword) || u.account.toLowerCase().includes(keyword)
   )
 })
 
@@ -648,12 +676,13 @@ const fetchData = async () => {
     const res: any = await getOrgList({
       name: queryForm.name || undefined,
       orgType: queryForm.orgType,
-      status: queryForm.status
+      status: queryForm.status,
     })
     if (res && res.code === 0) {
       tableData.value = res.data.list || []
     }
-  } catch {} finally {
+  } catch {
+  } finally {
     loading.value = false
   }
 }
@@ -696,7 +725,7 @@ const handleEdit = async (row: OrgItem) => {
     managerCode: row.managerCode,
     sort: row.sort,
     status: row.status,
-    description: row.description
+    description: row.description,
   })
   await fetchDialogUsers()
   dialogVisible.value = true
@@ -710,16 +739,18 @@ const handleDelete = (row: OrgItem) => {
   ElMessageBox.confirm(`确定要删除机构 「${row.name}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    try {
-      const res: any = await deleteOrg(row.id)
-      if (res && res.code === 0) {
-        ElMessage.success('删除成功')
-        fetchData()
-      }
-    } catch {}
-  }).catch(() => {})
+    type: 'warning',
+  })
+    .then(async () => {
+      try {
+        const res: any = await deleteOrg(row.id)
+        if (res && res.code === 0) {
+          ElMessage.success('删除成功')
+          fetchData()
+        }
+      } catch {}
+    })
+    .catch(() => {})
 }
 
 const handleSubmit = async () => {
@@ -746,7 +777,7 @@ const handleSubmit = async () => {
       managerCode: form.managerCode,
       sort: form.sort,
       status: form.status,
-      description: form.description
+      description: form.description,
     }
     let res: any
     if (form.id) {
@@ -759,7 +790,8 @@ const handleSubmit = async () => {
       dialogVisible.value = false
       fetchData()
     }
-  } catch {} finally {
+  } catch {
+  } finally {
     submitLoading.value = false
   }
 }
@@ -778,7 +810,7 @@ const handleDeptSubmit = async () => {
       leaderCode: deptForm.leaderCode,
       sort: deptForm.sort,
       status: deptForm.status,
-      description: deptForm.description
+      description: deptForm.description,
     }
     const res: any = await createDepartment(payload)
     if (res && res.code === 0) {
@@ -786,7 +818,8 @@ const handleDeptSubmit = async () => {
       deptDialogVisible.value = false
       fetchData()
     }
-  } catch {} finally {
+  } catch {
+  } finally {
     deptSubmitLoading.value = false
   }
 }
@@ -850,17 +883,20 @@ const syncDeptLeaderFromCode = () => {
   }
 }
 
-watch(() => form.parentId, (newParentId) => {
-  if (form.id) return
-  if (!newParentId || newParentId === 0) {
-    form.orgLevel = 1
-    return
+watch(
+  () => form.parentId,
+  (newParentId) => {
+    if (form.id) return
+    if (!newParentId || newParentId === 0) {
+      form.orgLevel = 1
+      return
+    }
+    const parent = findOrgById(tableData.value, newParentId)
+    if (parent) {
+      form.orgLevel = (parent.orgLevel || 1) + 1
+    }
   }
-  const parent = findOrgById(tableData.value, newParentId)
-  if (parent) {
-    form.orgLevel = (parent.orgLevel || 1) + 1
-  }
-})
+)
 
 watch(() => form.managerCode, syncManagerFromCode)
 watch(() => dialogUserOptions.value, syncManagerFromCode)
@@ -879,7 +915,7 @@ const fetchDialogUsers = async () => {
         username: u.username,
         account: u.account,
         phone: u.phone || u.mobile || '',
-        roleIds: u.roleIds || []
+        roleIds: u.roleIds || [],
       }))
     }
   } catch {}
@@ -895,10 +931,7 @@ const handleAssignUsers = async (row: OrgItem) => {
   selectedUserIds.value = []
   userOptions.value = []
   try {
-    const [usersRes, orgUsersRes]: any[] = await Promise.all([
-      getAllUsers(),
-      getOrgUsers(row.id)
-    ])
+    const [usersRes, orgUsersRes]: any[] = await Promise.all([getAllUsers(), getOrgUsers(row.id)])
     const allUsers = usersRes?.data?.list || []
     selectedUserIds.value = (orgUsersRes?.data || []).map((id: any) => Number(id))
     // 展示全部用户并勾选已有成员，保存时整体覆盖该机构成员
@@ -906,9 +939,10 @@ const handleAssignUsers = async (row: OrgItem) => {
       id: u.id,
       username: u.username,
       account: u.account,
-      phone: u.phone || u.mobile || ''
+      phone: u.phone || u.mobile || '',
     }))
-  } catch {} finally {
+  } catch {
+  } finally {
     userLoading.value = false
   }
 }

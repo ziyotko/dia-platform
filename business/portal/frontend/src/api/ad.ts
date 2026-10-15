@@ -13,7 +13,14 @@ export interface AdForm {
   endTime?: string
 }
 
-export function getAds(params: { name?: string; templateId?: number; columnId?: number; status?: number; page?: number; pageSize?: number }) {
+export function getAds(params: {
+  name?: string
+  templateId?: number
+  columnId?: number
+  status?: number
+  page?: number
+  pageSize?: number
+}) {
   return request.get('/ads', { params })
 }
 

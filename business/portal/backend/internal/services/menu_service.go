@@ -156,7 +156,8 @@ func (s *MenuService) DeleteMenu(id uint) error {
 	if err := utils.DB.Delete(&models.Menu{}, id).Error; err != nil {
 		return err
 	}
-	// 菜单被删除后，role.permissions 中会残留该 ID：\n	// 它在权限树里已无对应节点，既无法再次勾选也无法取消，只能靠重新保存角色清理。
+	// 菜单被删除后，role.permissions 中会残留该 ID：
+	// 它在权限树里已无对应节点，既无法再次勾选也无法取消，只能靠重新保存角色清理。
 	// 这里在删除后同步剔除各角色对该菜单的引用（保留顺序、去重）。
 	var roles []models.Role
 	if err := utils.DB.Find(&roles).Error; err != nil {

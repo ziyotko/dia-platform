@@ -12,10 +12,16 @@ export interface LinkForm {
   status: number
 }
 
-export function getLinks(params: { name?: string; templateId?: number; columnId?: number; status?: number; page?: number; pageSize?: number }) {
+export function getLinks(params: {
+  name?: string
+  templateId?: number
+  columnId?: number
+  status?: number
+  page?: number
+  pageSize?: number
+}) {
   return request.get('/links', { params })
 }
-
 
 export function createLink(data: LinkForm) {
   return request.post('/links', data)

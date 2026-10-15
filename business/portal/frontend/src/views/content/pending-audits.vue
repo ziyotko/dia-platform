@@ -4,7 +4,8 @@
       <el-form inline>
         <el-form-item>
           <el-button type="primary" @click="fetchData">
-            <el-icon><RefreshRight /></el-icon>刷新
+            <el-icon><RefreshRight /></el-icon>
+            刷新
           </el-button>
         </el-form-item>
       </el-form>
@@ -17,7 +18,7 @@
         </div>
       </template>
 
-      <el-table :data="tableData" v-loading="loading" border stripe>
+      <el-table v-loading="loading" :data="tableData" border stripe>
         <el-table-column type="index" width="60" align="center" />
         <el-table-column prop="title" label="文章标题" min-width="300" show-overflow-tooltip>
           <template #default="{ row }">
@@ -29,7 +30,8 @@
         <el-table-column label="操作" width="100" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleAudit(row)">
-              <el-icon><View /></el-icon>审核
+              <el-icon><View /></el-icon>
+              审核
             </el-button>
           </template>
         </el-table-column>
@@ -64,7 +66,7 @@ const total = ref(0)
 
 const queryForm = reactive({
   page: 1,
-  pageSize: 10
+  pageSize: 10,
 })
 
 const tableData = ref<any[]>([])
@@ -74,13 +76,14 @@ const fetchData = async () => {
   try {
     const res: any = await getMyAuditArticles({
       page: queryForm.page,
-      pageSize: queryForm.pageSize
+      pageSize: queryForm.pageSize,
     })
     if (res.code === 0) {
       tableData.value = res.data.list || []
       total.value = res.data.total || 0
     }
-  } catch {} finally {
+  } catch {
+  } finally {
     loading.value = false
   }
 }
@@ -93,7 +96,7 @@ const handleAudit = (row: any) => {
   }
   router.push({
     path: '/content/article',
-    query: { auditArticleId: String(row.id) }
+    query: { auditArticleId: String(row.id) },
   })
 }
 

@@ -3,14 +3,21 @@
     <el-card shadow="hover" class="search-card">
       <el-form :model="queryForm" inline>
         <el-form-item label="角色名称">
-          <el-input v-model="queryForm.name" placeholder="请输入角色名称" clearable @keyup.enter="handleSearch" />
+          <el-input
+            v-model="queryForm.name"
+            placeholder="请输入角色名称"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>查询
+            <el-icon><Search /></el-icon>
+            查询
           </el-button>
           <el-button @click="resetQuery">
-            <el-icon><RefreshRight /></el-icon>重置
+            <el-icon><RefreshRight /></el-icon>
+            重置
           </el-button>
         </el-form-item>
       </el-form>
@@ -21,12 +28,13 @@
         <div class="card-header">
           <span>角色列表</span>
           <el-button type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon>新增角色
+            <el-icon><Plus /></el-icon>
+            新增角色
           </el-button>
         </div>
       </template>
 
-      <el-table :data="tableData" v-loading="loading" border stripe>
+      <el-table v-loading="loading" :data="tableData" border stripe>
         <el-table-column type="index" width="60" align="center" />
         <el-table-column prop="name" label="角色名称" min-width="140" />
         <el-table-column prop="code" label="角色编码" min-width="140" />
@@ -42,13 +50,26 @@
         <el-table-column label="操作" width="220" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handlePermission(row)">
-              <el-icon><Key /></el-icon>{{ row.id === 1 || Number(row.id) < currentMinRoleId ? '查看' : '权限' }}
+              <el-icon><Key /></el-icon>
+              {{ row.id === 1 || Number(row.id) < currentMinRoleId ? '查看' : '权限' }}
             </el-button>
-            <el-button v-if="!protectedRoleIds.includes(row.id)" link type="primary" @click="handleEdit(row)">
-              <el-icon><Edit /></el-icon>编辑
+            <el-button
+              v-if="!protectedRoleIds.includes(row.id)"
+              link
+              type="primary"
+              @click="handleEdit(row)"
+            >
+              <el-icon><Edit /></el-icon>
+              编辑
             </el-button>
-            <el-button v-if="!protectedRoleIds.includes(row.id)" link type="danger" @click="handleDelete(row)">
-              <el-icon><Delete /></el-icon>删除
+            <el-button
+              v-if="!protectedRoleIds.includes(row.id)"
+              link
+              type="danger"
+              @click="handleDelete(row)"
+            >
+              <el-icon><Delete /></el-icon>
+              删除
             </el-button>
           </template>
         </el-table-column>
@@ -74,12 +95,7 @@
       destroy-on-close
       :close-on-click-modal="false"
     >
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="formRules"
-        label-width="90px"
-      >
+      <el-form ref="formRef" :model="form" :rules="formRules" label-width="90px">
         <el-form-item label="角色名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入角色名称" />
         </el-form-item>
@@ -119,7 +135,14 @@
       />
       <template #footer>
         <el-button @click="permissionVisible = false">关闭</el-button>
-        <el-button v-if="!isPermissionReadonly" type="primary" :loading="permissionLoading" @click="handlePermissionSubmit">确定</el-button>
+        <el-button
+          v-if="!isPermissionReadonly"
+          type="primary"
+          :loading="permissionLoading"
+          @click="handlePermissionSubmit"
+        >
+          确定
+        </el-button>
       </template>
     </el-dialog>
   </div>
@@ -129,14 +152,7 @@
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { formatDateTime } from '@/utils/format'
-import {
-  Search,
-  RefreshRight,
-  Plus,
-  Edit,
-  Delete,
-  Key
-} from '@element-plus/icons-vue'
+import { Search, RefreshRight, Plus, Edit, Delete, Key } from '@element-plus/icons-vue'
 import {
   getRoleList,
   createRole,
@@ -144,7 +160,7 @@ import {
   deleteRole,
   getMenuTree,
   getRolePermissions,
-  updateRolePermissions
+  updateRolePermissions,
 } from '@/api/role'
 import { useUserStore } from '@/stores/user'
 
@@ -160,7 +176,10 @@ const currentMinRoleId = computed(() => {
   const roleIds = Array.isArray(raw)
     ? raw.map(Number).filter((n) => !Number.isNaN(n))
     : typeof raw === 'string' && raw.trim()
-      ? raw.split(',').map((s) => Number(s.trim())).filter((n) => !Number.isNaN(n))
+      ? raw
+          .split(',')
+          .map((s) => Number(s.trim()))
+          .filter((n) => !Number.isNaN(n))
       : []
   if (roleIds.length === 0) return 0
   return Math.min(...roleIds)
@@ -181,7 +200,7 @@ const currentRoleId = ref<number>(0)
 const queryForm = reactive({
   page: 1,
   pageSize: 10,
-  name: ''
+  name: '',
 })
 
 const form = reactive({
@@ -189,12 +208,12 @@ const form = reactive({
   name: '',
   code: '',
   description: '',
-  status: 1
+  status: 1,
 })
 
 const formRules = {
   name: [{ required: true, message: '请输入角色名称', trigger: 'blur' }],
-  code: [{ required: true, message: '请输入角色编码', trigger: 'blur' }]
+  code: [{ required: true, message: '请输入角色编码', trigger: 'blur' }],
 }
 
 const tableData = ref<any[]>([])
@@ -234,11 +253,12 @@ const fetchData = async () => {
       const list = res.data.list || []
       tableData.value = list.map((item: any) => ({
         ...item,
-        createdAt: formatDateTime(item.createdAt)
+        createdAt: formatDateTime(item.createdAt),
       }))
       total.value = res.data.total || 0
     }
-  } catch {} finally {
+  } catch {
+  } finally {
     loading.value = false
   }
 }
@@ -258,7 +278,7 @@ const handleEdit = (row: any) => {
     name: row.name,
     code: row.code,
     description: row.description,
-    status: row.status
+    status: row.status,
   })
   dialogVisible.value = true
 }
@@ -267,16 +287,18 @@ const handleDelete = (row: any) => {
   ElMessageBox.confirm(`确定要删除角色 「${row.name}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    try {
-      const res: any = await deleteRole(row.id)
-      if (res && res.code === 0) {
-        ElMessage.success('删除成功')
-        fetchData()
-      }
-    } catch {}
-  }).catch(() => {})
+    type: 'warning',
+  })
+    .then(async () => {
+      try {
+        const res: any = await deleteRole(row.id)
+        if (res && res.code === 0) {
+          ElMessage.success('删除成功')
+          fetchData()
+        }
+      } catch {}
+    })
+    .catch(() => {})
 }
 
 const handlePermission = async (row: any) => {
@@ -285,10 +307,7 @@ const handlePermission = async (row: any) => {
   isPermissionReadonly.value = row.id === 1 || Number(row.id) < currentMinRoleId.value
   permissionVisible.value = true
   try {
-    const [menuRes, permRes]: any[] = await Promise.all([
-      getMenuTree(),
-      getRolePermissions(row.id)
-    ])
+    const [menuRes, permRes]: any[] = await Promise.all([getMenuTree(), getRolePermissions(row.id)])
     if (menuRes && menuRes.code === 0) {
       permissionData.value = menuRes.data || []
     }
@@ -317,7 +336,8 @@ const handlePermissionSubmit = async () => {
       ElMessage.success('权限分配成功')
       permissionVisible.value = false
     }
-  } catch {} finally {
+  } catch {
+  } finally {
     permissionLoading.value = false
   }
 }
@@ -331,7 +351,7 @@ const handleSubmit = async () => {
       name: form.name,
       code: form.code,
       description: form.description,
-      status: form.status
+      status: form.status,
     }
     let res: any
     if (form.id) {
@@ -344,7 +364,8 @@ const handleSubmit = async () => {
       dialogVisible.value = false
       fetchData()
     }
-  } catch {} finally {
+  } catch {
+  } finally {
     submitLoading.value = false
   }
 }

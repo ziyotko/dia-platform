@@ -4,7 +4,9 @@ import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 
 // 扩展 axios 请求配置：raw 模式跳过统一响应校验，原样返回整个响应（含状态码）
+// 类型参数 D 必须保留：声明合并要求与 axios 原始接口的泛型签名一致，本扩展并不使用它。
 declare module 'axios' {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   export interface AxiosRequestConfig<D = any> {
     raw?: boolean
   }
@@ -14,8 +16,8 @@ const request = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   timeout: 30000,
   headers: {
-    'Content-Type': 'application/json'
-  }
+    'Content-Type': 'application/json',
+  },
 })
 
 // 静态化代理请求超时：后端服务端等待上游的上限是 120s（services/static_program_client.go），
@@ -116,7 +118,9 @@ async function hashBlob(blob: Blob, hasher: any): Promise<void> {
 // 仅对小于阈值（默认 50MB）的上传计算文件内容哈希；超大文件回退为空串哈希，兼容旧逻辑
 const MAX_MULTIPART_HASH_BYTES = 50 * 1024 * 1024
 
-async function computeFormDataHash(formData: FormData): Promise<{ hash: string; hasFile: boolean }> {
+async function computeFormDataHash(
+  formData: FormData
+): Promise<{ hash: string; hasFile: boolean }> {
   const hasher = CryptoJS.algo.SHA256.create()
   let total = 0
   let hasFile = false

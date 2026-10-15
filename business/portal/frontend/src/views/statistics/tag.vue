@@ -4,7 +4,10 @@
       <el-col :xs="24" :sm="12" :md="8">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
+            <div
+              class="stat-icon"
+              style="background: var(--el-color-primary-light-9); color: var(--el-color-primary)"
+            >
               <el-icon size="28"><PriceTag /></el-icon>
             </div>
             <div class="stat-info">
@@ -17,7 +20,10 @@
       <el-col :xs="24" :sm="12" :md="8">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
+            <div
+              class="stat-icon"
+              style="background: var(--el-color-primary-light-9); color: var(--el-color-primary)"
+            >
               <el-icon size="28"><DocumentChecked /></el-icon>
             </div>
             <div class="stat-info">
@@ -30,7 +36,10 @@
       <el-col :xs="24" :sm="12" :md="8">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
+            <div
+              class="stat-icon"
+              style="background: var(--el-color-primary-light-9); color: var(--el-color-primary)"
+            >
               <el-icon size="28"><Trophy /></el-icon>
             </div>
             <div class="stat-info">
@@ -78,7 +87,7 @@ const stats = computed(() => {
   return {
     tagCount,
     taggedArticleCount,
-    topTagName: topTag?.name || '-'
+    topTagName: topTag?.name || '-',
   }
 })
 
@@ -98,10 +107,22 @@ const fetchData = async () => {
 }
 
 const defaultColors = [
-  BRAND_THEME_COLOR, '#67c23a', '#e6a23c', '#f56c6c',
-  '#a855f7', '#6366f1', '#14b8a6', '#f472b6',
-  '#8b5cf6', '#22c55e', '#0ea5e9', '#ef4444',
-  '#3b82f6', '#10b981', '#f59e0b', '#ec4899'
+  BRAND_THEME_COLOR,
+  '#67c23a',
+  '#e6a23c',
+  '#f56c6c',
+  '#a855f7',
+  '#6366f1',
+  '#14b8a6',
+  '#f472b6',
+  '#8b5cf6',
+  '#22c55e',
+  '#0ea5e9',
+  '#ef4444',
+  '#3b82f6',
+  '#10b981',
+  '#f59e0b',
+  '#ec4899',
 ]
 
 const updateChart = () => {
@@ -113,52 +134,55 @@ const updateChart = () => {
       name: item.name,
       value: item.count || 0,
       textStyle: { color },
-      original: item
+      original: item,
     }
   })
 
-  chartInstance.setOption({
-    tooltip: {
-      show: true,
-      formatter: (params: any) => {
-        return `<div style="font-weight:600;margin-bottom:4px">${params.name}</div>
+  chartInstance.setOption(
+    {
+      tooltip: {
+        show: true,
+        formatter: (params: any) => {
+          return `<div style="font-weight:600;margin-bottom:4px">${params.name}</div>
                 <div>绑定文章：${Number(params.value || 0).toLocaleString()} 篇</div>`
+        },
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderColor: 'var(--app-brand-soft)',
+        borderWidth: 1,
+        textStyle: { color: 'var(--app-text-heading)' },
+        extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 8px;',
       },
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      borderColor: 'var(--app-brand-soft)',
-      borderWidth: 1,
-      textStyle: { color: 'var(--app-text-heading)' },
-      extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 8px;'
-    },
-    series: [
-      {
-        type: 'wordCloud' as any,
-        shape: 'circle',
-        left: 'center',
-        top: 'center',
-        width: '95%',
-        height: '95%',
-        sizeRange: [14, 72],
-        rotationRange: [-30, 30],
-        rotationStep: 15,
-        gridSize: 10,
-        drawOutOfBound: false,
-        layoutAnimation: true,
-        textStyle: {
-          fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif',
-          fontWeight: 'bold'
-        },
-        emphasis: {
-          focus: 'self',
+      series: [
+        {
+          type: 'wordCloud' as any,
+          shape: 'circle',
+          left: 'center',
+          top: 'center',
+          width: '95%',
+          height: '95%',
+          sizeRange: [14, 72],
+          rotationRange: [-30, 30],
+          rotationStep: 15,
+          gridSize: 10,
+          drawOutOfBound: false,
+          layoutAnimation: true,
           textStyle: {
-            shadowBlur: 10,
-            shadowColor: 'rgba(0,0,0,0.15)'
-          }
+            fontFamily: '"PingFang SC", "Microsoft YaHei", sans-serif',
+            fontWeight: 'bold',
+          },
+          emphasis: {
+            focus: 'self',
+            textStyle: {
+              shadowBlur: 10,
+              shadowColor: 'rgba(0,0,0,0.15)',
+            },
+          },
+          data,
         },
-        data
-      }
-    ]
-  }, true)
+      ],
+    },
+    true
+  )
 }
 
 // 具名 resize 回调：匿名函数无法被 removeEventListener 移除，反复进出页面会不断堆积监听器

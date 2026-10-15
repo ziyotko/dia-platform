@@ -3,7 +3,12 @@
     <el-card shadow="hover" class="search-card">
       <el-form :model="queryForm" inline>
         <el-form-item label="操作人">
-          <el-input v-model="queryForm.username" placeholder="请输入操作人" clearable @keyup.enter="handleSearch" />
+          <el-input
+            v-model="queryForm.username"
+            placeholder="请输入操作人"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </el-form-item>
         <el-form-item label="操作类型">
           <el-select v-model="queryForm.type" placeholder="全部类型" clearable style="width: 140px">
@@ -26,10 +31,12 @@
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>查询
+            <el-icon><Search /></el-icon>
+            查询
           </el-button>
           <el-button @click="resetQuery">
-            <el-icon><RefreshRight /></el-icon>重置
+            <el-icon><RefreshRight /></el-icon>
+            重置
           </el-button>
         </el-form-item>
       </el-form>
@@ -40,32 +47,43 @@
         <div class="card-header">
           <span>操作日志</span>
           <el-button type="danger" plain @click="handleClear">
-            <el-icon><Delete /></el-icon>清空历史日志
+            <el-icon><Delete /></el-icon>
+            清空历史日志
           </el-button>
         </div>
       </template>
 
-      <el-table :data="tableData" v-loading="loading" border stripe>
+      <el-table v-loading="loading" :data="tableData" border stripe>
         <el-table-column type="index" width="60" align="center" />
         <el-table-column prop="username" label="操作人" width="120" />
         <el-table-column prop="type" label="操作类型" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="getTypeColor(row.type)" size="small">{{ getTypeLabel(row.type) }}</el-tag>
+            <el-tag :type="getTypeColor(row.type)" size="small">
+              {{ getTypeLabel(row.type) }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="module" label="操作模块" width="120" />
-        <el-table-column prop="description" label="操作描述" min-width="200" show-overflow-tooltip />
+        <el-table-column
+          prop="description"
+          label="操作描述"
+          min-width="200"
+          show-overflow-tooltip
+        />
         <el-table-column prop="ip" label="IP地址" width="140" />
         <el-table-column prop="duration" label="耗时" width="90" align="center">
           <template #default="{ row }">
-            <span :class="row.duration > 1000 ? 'text-danger' : 'text-success'">{{ row.duration }}ms</span>
+            <span :class="row.duration > 1000 ? 'text-danger' : 'text-success'">
+              {{ row.duration }}ms
+            </span>
           </template>
         </el-table-column>
         <el-table-column prop="createdAt" label="操作时间" width="170" />
         <el-table-column label="操作" width="100" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleDetail(row)">
-              <el-icon><View /></el-icon>详情
+              <el-icon><View /></el-icon>
+              详情
             </el-button>
           </template>
         </el-table-column>
@@ -88,7 +106,9 @@
       <el-descriptions :column="1" border>
         <el-descriptions-item label="操作人">{{ detailData.username }}</el-descriptions-item>
         <el-descriptions-item label="操作类型">
-          <el-tag :type="getTypeColor(detailData.type)" size="small">{{ getTypeLabel(detailData.type) }}</el-tag>
+          <el-tag :type="getTypeColor(detailData.type)" size="small">
+            {{ getTypeLabel(detailData.type) }}
+          </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="操作模块">{{ detailData.module }}</el-descriptions-item>
         <el-descriptions-item label="操作描述">{{ detailData.description }}</el-descriptions-item>
@@ -121,7 +141,7 @@ const queryForm = reactive({
   pageSize: 10,
   username: '',
   type: '',
-  dateRange: [] as string[]
+  dateRange: [] as string[],
 })
 
 const detailData = reactive({
@@ -134,7 +154,7 @@ const detailData = reactive({
   params: '',
   ip: '',
   ua: '',
-  createdAt: ''
+  createdAt: '',
 })
 
 const tableData = ref<any[]>([])
@@ -144,7 +164,7 @@ const typeMap: Record<string, { label: string; color: string }> = {
   UPDATE: { label: '修改', color: 'warning' },
   DELETE: { label: '删除', color: 'danger' },
   READ: { label: '查询', color: 'info' },
-  LOGIN: { label: '登录', color: 'primary' }
+  LOGIN: { label: '登录', color: 'primary' },
 }
 
 const getTypeLabel = (type: string) => typeMap[type]?.label || type
@@ -170,7 +190,7 @@ const fetchData = async () => {
       page: queryForm.page,
       pageSize: queryForm.pageSize,
       username: queryForm.username,
-      type: queryForm.type
+      type: queryForm.type,
     }
     if (queryForm.dateRange && queryForm.dateRange.length === 2) {
       params.startDate = queryForm.dateRange[0]
@@ -181,7 +201,8 @@ const fetchData = async () => {
       tableData.value = res.data.list || []
       total.value = res.data.total || 0
     }
-  } catch {} finally {
+  } catch {
+  } finally {
     loading.value = false
   }
 }
@@ -190,16 +211,18 @@ const handleClear = () => {
   ElMessageBox.confirm(buildClearLogsConfirmText(), '警告', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    try {
-      const res: any = await clearLogs()
-      if (res.code === 0) {
-        ElMessage.success(buildClearLogsSuccessText(res.data?.count ?? 0))
-        fetchData()
-      }
-    } catch {}
-  }).catch(() => {})
+    type: 'warning',
+  })
+    .then(async () => {
+      try {
+        const res: any = await clearLogs()
+        if (res.code === 0) {
+          ElMessage.success(buildClearLogsSuccessText(res.data?.count ?? 0))
+          fetchData()
+        }
+      } catch {}
+    })
+    .catch(() => {})
 }
 
 const handleDetail = (row: any) => {

@@ -4,7 +4,10 @@
       <el-col :xs="24" :sm="12" :md="8">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
+            <div
+              class="stat-icon"
+              style="background: var(--el-color-primary-light-9); color: var(--el-color-primary)"
+            >
               <el-icon size="28"><Star /></el-icon>
             </div>
             <div class="stat-info">
@@ -17,7 +20,10 @@
       <el-col :xs="24" :sm="12" :md="8">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
+            <div
+              class="stat-icon"
+              style="background: var(--el-color-primary-light-9); color: var(--el-color-primary)"
+            >
               <el-icon size="28"><Share /></el-icon>
             </div>
             <div class="stat-info">
@@ -30,7 +36,10 @@
       <el-col :xs="24" :sm="12" :md="8">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
+            <div
+              class="stat-icon"
+              style="background: var(--el-color-primary-light-9); color: var(--el-color-primary)"
+            >
               <el-icon size="28"><View /></el-icon>
             </div>
             <div class="stat-info">
@@ -106,13 +115,16 @@ const periodText = computed(() => {
 const seriesMeta = [
   { name: '点赞量', color: '#f56c6c', key: 'like' },
   { name: '分享量', color: '#e6a23c', key: 'share' },
-  { name: '浏览量', color: BRAND_THEME_COLOR, key: 'visit' }
+  { name: '浏览量', color: BRAND_THEME_COLOR, key: 'visit' },
 ]
 
 const fetchData = async () => {
   loading.value = true
   try {
-    const res: any = await getArticleAnalyticsTrend(period.value, period.value === 'year' ? year.value : undefined)
+    const res: any = await getArticleAnalyticsTrend(
+      period.value,
+      period.value === 'year' ? year.value : undefined
+    )
     if (res && res.data) {
       labels.value = res.data.labels || []
       likeData.value = (res.data.like || []).map(Number)
@@ -130,10 +142,15 @@ const fetchData = async () => {
 const updateChart = () => {
   if (!chartInstance) return
 
-  const series = seriesMeta.map(meta => ({
+  const series = seriesMeta.map((meta) => ({
     name: meta.name,
     type: 'line' as const,
-    data: meta.key === 'like' ? likeData.value : meta.key === 'share' ? shareData.value : visitData.value,
+    data:
+      meta.key === 'like'
+        ? likeData.value
+        : meta.key === 'share'
+          ? shareData.value
+          : visitData.value,
     smooth: true,
     symbol: 'circle',
     symbolSize: 8,
@@ -142,73 +159,76 @@ const updateChart = () => {
     areaStyle: {
       color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
         { offset: 0, color: `${meta.color}4d` },
-        { offset: 1, color: `${meta.color}0d` }
-      ])
-    }
+        { offset: 1, color: `${meta.color}0d` },
+      ]),
+    },
   }))
 
-  chartInstance.setOption({
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'line' },
-      formatter: (params: any) => {
-        const list = Array.isArray(params) ? params : [params]
-        const first = list[0]
-        let html = `<div style="font-weight:600;margin-bottom:6px">${first.axisValueLabel || first.name}</div>`
-        list.forEach((p: any) => {
-          html += `<div style="display:flex;align-items:center;gap:6px;line-height:22px">
+  chartInstance.setOption(
+    {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'line' },
+        formatter: (params: any) => {
+          const list = Array.isArray(params) ? params : [params]
+          const first = list[0]
+          let html = `<div style="font-weight:600;margin-bottom:6px">${first.axisValueLabel || first.name}</div>`
+          list.forEach((p: any) => {
+            html += `<div style="display:flex;align-items:center;gap:6px;line-height:22px">
                     <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color}"></span>
                     <span style="color:#606266">${p.seriesName}</span>
                     <span style="font-weight:600;color:var(--app-text-heading)">${Number(p.value).toLocaleString()}</span>
                   </div>`
-        })
-        return html
+          })
+          return html
+        },
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderColor: 'var(--app-brand-soft)',
+        borderWidth: 1,
+        textStyle: { color: 'var(--app-text-heading)' },
+        extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 8px;',
       },
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      borderColor: 'var(--app-brand-soft)',
-      borderWidth: 1,
-      textStyle: { color: 'var(--app-text-heading)' },
-      extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 8px;'
-    },
-    legend: {
-      top: 0,
-      right: 0,
-      icon: 'roundRect',
-      itemWidth: 14,
-      itemHeight: 8,
-      textStyle: { color: '#606266' },
-      data: seriesMeta.map(m => m.name)
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      top: '15%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      data: labels.value,
-      axisLine: { lineStyle: { color: '#e4e7ed' } },
-      axisLabel: {
-        color: '#606266',
-        interval: 0,
-        rotate: labels.value.length > 12 ? 30 : 0
+      legend: {
+        top: 0,
+        right: 0,
+        icon: 'roundRect',
+        itemWidth: 14,
+        itemHeight: 8,
+        textStyle: { color: '#606266' },
+        data: seriesMeta.map((m) => m.name),
       },
-      axisTick: { alignWithLabel: true }
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        top: '15%',
+        containLabel: true,
+      },
+      xAxis: {
+        type: 'category',
+        boundaryGap: false,
+        data: labels.value,
+        axisLine: { lineStyle: { color: '#e4e7ed' } },
+        axisLabel: {
+          color: '#606266',
+          interval: 0,
+          rotate: labels.value.length > 12 ? 30 : 0,
+        },
+        axisTick: { alignWithLabel: true },
+      },
+      yAxis: {
+        type: 'value',
+        name: '次数',
+        minInterval: 1,
+        axisLine: { show: false },
+        axisTick: { show: false },
+        splitLine: { lineStyle: { color: '#f2f6fc' } },
+        axisLabel: { color: '#606266' },
+      },
+      series,
     },
-    yAxis: {
-      type: 'value',
-      name: '次数',
-      minInterval: 1,
-      axisLine: { show: false },
-      axisTick: { show: false },
-      splitLine: { lineStyle: { color: '#f2f6fc' } },
-      axisLabel: { color: '#606266' }
-    },
-    series
-  }, true)
+    true
+  )
 }
 
 // 具名 resize 回调：匿名函数无法被 removeEventListener 移除，反复进出页面会不断堆积监听器

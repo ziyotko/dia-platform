@@ -1,21 +1,11 @@
 <template>
   <div class="error-page">
-    <el-result
-      icon="error"
-      title="404"
-      sub-title="抱歉，您访问的页面不存在"
-    >
+    <el-result icon="error" title="404" sub-title="抱歉，您访问的页面不存在">
       <template #icon>
-        <el-image
-          src="@/assets/illustration-404.svg"
-          alt="页面未找到"
-          style="width: 300px;"
-        />
+        <el-image src="@/assets/illustration-404.svg" alt="页面未找到" style="width: 300px" />
       </template>
       <template #extra>
-        <el-button type="primary" @click="goHome">
-          返回首页
-        </el-button>
+        <el-button type="primary" @click="goHome">返回首页</el-button>
       </template>
     </el-result>
   </div>

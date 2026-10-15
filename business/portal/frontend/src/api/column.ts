@@ -15,7 +15,11 @@ export interface ColumnForm {
   workflowId?: number
 }
 
-export function getColumns(params?: { templateId?: number; parentId?: number; displayType?: number }) {
+export function getColumns(params?: {
+  templateId?: number
+  parentId?: number
+  displayType?: number
+}) {
   return request.get('/columns', { params })
 }
 

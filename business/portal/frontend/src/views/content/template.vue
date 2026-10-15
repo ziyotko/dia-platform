@@ -3,7 +3,12 @@
     <el-card shadow="hover" class="search-card">
       <el-form :model="queryForm" inline>
         <el-form-item label="模板名称">
-          <el-input v-model="queryForm.name" placeholder="请输入模板名称" clearable @keyup.enter="handleSearch" />
+          <el-input
+            v-model="queryForm.name"
+            placeholder="请输入模板名称"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </el-form-item>
         <el-form-item label="模板类型">
           <el-select v-model="queryForm.type" placeholder="全部类型" clearable style="width: 140px">
@@ -15,10 +20,12 @@
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>查询
+            <el-icon><Search /></el-icon>
+            查询
           </el-button>
           <el-button @click="resetQuery">
-            <el-icon><RefreshRight /></el-icon>重置
+            <el-icon><RefreshRight /></el-icon>
+            重置
           </el-button>
         </el-form-item>
       </el-form>
@@ -28,13 +35,11 @@
       <template #header>
         <div class="card-header">
           <span>模板列表</span>
-          <el-button type="primary" @click="handleAdd">
-            新增模板
-          </el-button>
+          <el-button type="primary" @click="handleAdd">新增模板</el-button>
         </div>
       </template>
 
-      <el-table :data="tableData" v-loading="loading" border stripe>
+      <el-table v-loading="loading" :data="tableData" border stripe>
         <el-table-column type="index" width="60" align="center" />
         <el-table-column prop="name" label="模板名称" min-width="100" show-overflow-tooltip />
         <el-table-column prop="type" label="模板类型" width="120" align="center">
@@ -69,14 +74,10 @@
               模板设计
             </el-button>
             <el-button v-if="isAdmin" link type="primary" @click="handlePreview(row)">
-             预览模板
+              预览模板
             </el-button>
-            <el-button link type="primary" @click="handleEdit(row)">
-            编辑信息
-            </el-button>
-            <el-button link type="danger" @click="handleDelete(row)">
-            删除模板
-            </el-button>
+            <el-button link type="primary" @click="handleEdit(row)">编辑信息</el-button>
+            <el-button link type="danger" @click="handleDelete(row)">删除模板</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -102,12 +103,7 @@
       destroy-on-close
       :close-on-click-modal="false"
     >
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="formRules"
-        label-width="90px"
-      >
+      <el-form ref="formRef" :model="form" :rules="formRules" label-width="90px">
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="模板名称" prop="name">
@@ -133,7 +129,10 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="访问路径" prop="routePath">
-              <el-input v-model="form.routePath" placeholder="如 /news（详情页/栏目页路由拼接用）" />
+              <el-input
+                v-model="form.routePath"
+                placeholder="如 /news（详情页/栏目页路由拼接用）"
+              />
             </el-form-item>
           </el-col>
         </el-row>
@@ -144,14 +143,27 @@
                 <el-radio :value="1">启用</el-radio>
                 <el-radio :value="0">禁用</el-radio>
               </el-radio-group>
-              <div style="width: 100%; font-size: 12px; color: #909399; line-height: 1.5; margin-top: 4px">
+              <div
+                style="
+                  width: 100%;
+                  font-size: 12px;
+                  color: #909399;
+                  line-height: 1.5;
+                  margin-top: 4px;
+                "
+              >
                 栏目页 / 详情页模板同时只能启用一个，启用后同类型的其他模板会自动禁用
               </div>
             </el-form-item>
           </el-col>
         </el-row>
         <el-form-item label="模板描述" prop="description">
-          <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入模板描述" />
+          <el-input
+            v-model="form.description"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入模板描述"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -180,7 +192,9 @@
       </div>
       <template #footer>
         <el-button @click="designDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="designSubmitLoading" @click="handleDesignSave">保存设计</el-button>
+        <el-button type="primary" :loading="designSubmitLoading" @click="handleDesignSave">
+          保存设计
+        </el-button>
       </template>
     </el-dialog>
 
@@ -217,18 +231,14 @@ import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { hasAdminRole } from '@/utils/permission'
-import {
-  Search,
-  RefreshRight,
-  Monitor
-} from '@element-plus/icons-vue'
+import { Search, RefreshRight, Monitor } from '@element-plus/icons-vue'
 import {
   getTemplateList,
   createTemplate,
   updateTemplate,
   deleteTemplate,
   updateTemplateStatus,
-  saveTemplateDesign
+  saveTemplateDesign,
 } from '@/api/template'
 
 interface TemplateItem {
@@ -262,7 +272,7 @@ const queryForm = reactive({
   name: '',
   type: '',
   page: 1,
-  pageSize: 10
+  pageSize: 10,
 })
 
 const form = reactive<Partial<TemplateItem>>({
@@ -272,18 +282,18 @@ const form = reactive<Partial<TemplateItem>>({
   type: 'home',
   routePath: '',
   description: '',
-  status: 1
+  status: 1,
 })
 
 const formRules = {
   name: [{ required: true, message: '请输入模板名称', trigger: 'blur' }],
-  type: [{ required: true, message: '请选择模板类型', trigger: 'change' }]
+  type: [{ required: true, message: '请选择模板类型', trigger: 'change' }],
 }
 
 const designForm = reactive({
   id: undefined as number | undefined,
   name: '',
-  sourceCode: ''
+  sourceCode: '',
 })
 
 const tableData = ref<TemplateItem[]>([])
@@ -326,19 +336,25 @@ const previewHtml = computed(() => {
   if (previewRow.value.layout) {
     try {
       const items = JSON.parse(previewRow.value.layout) as Array<{
-        type: string; label: string; x?: number; y?: number;
-        bgColor?: string; fullWidth?: boolean;
+        type: string
+        label: string
+        x?: number
+        y?: number
+        bgColor?: string
+        fullWidth?: boolean
       }>
-      const componentsHtml = items.map((item, idx) => {
-        const width = item.fullWidth ? 'calc(100% - 32px)' : '260px'
-        const bg = item.bgColor || '#ffffff'
-        const left = item.x ?? 20
-        const top = item.y ?? (idx * 140 + 20)
-        return `    <div class="comp-block" style="position:absolute;left:${left}px;top:${top}px;width:${width};background:${bg};border-radius:12px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);border:1px solid #e2e8f0;">
+      const componentsHtml = items
+        .map((item, idx) => {
+          const width = item.fullWidth ? 'calc(100% - 32px)' : '260px'
+          const bg = item.bgColor || '#ffffff'
+          const left = item.x ?? 20
+          const top = item.y ?? idx * 140 + 20
+          return `    <div class="comp-block" style="position:absolute;left:${left}px;top:${top}px;width:${width};background:${bg};border-radius:12px;padding:14px 16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);border:1px solid #e2e8f0;">
       <div style="font-weight:700;font-size:13px;color:#1f2937;margin-bottom:4px;">${item.label}</div>
       <div style="font-size:12px;color:#94a3b8;">${item.type} 组件</div>
     </div>`
-      }).join('\n')
+        })
+        .join('\n')
 
       return `
 <!DOCTYPE html>
@@ -383,12 +399,22 @@ ${componentsHtml}
 })
 
 const typeLabel = (type: string) => {
-  const map: Record<string, string> = { home: '首页', column: '栏目页', detail: '详情页', special: '专题页' }
+  const map: Record<string, string> = {
+    home: '首页',
+    column: '栏目页',
+    detail: '详情页',
+    special: '专题页',
+  }
   return map[type] || type
 }
 
 const typeTagType = (type: string) => {
-  const map: Record<string, any> = { home: 'success', column: 'primary', detail: 'warning', special: 'danger' }
+  const map: Record<string, any> = {
+    home: 'success',
+    column: 'primary',
+    detail: 'warning',
+    special: 'danger',
+  }
   return map[type] || 'info'
 }
 
@@ -399,11 +425,12 @@ const fetchData = async () => {
       page: queryForm.page,
       pageSize: queryForm.pageSize,
       name: queryForm.name || undefined,
-      type: queryForm.type || undefined
+      type: queryForm.type || undefined,
     })
     tableData.value = res.data.list || []
     total.value = res.data.total || 0
-  } catch {} finally {
+  } catch {
+  } finally {
     loading.value = false
   }
 }
@@ -438,7 +465,7 @@ const handleEdit = (row: TemplateItem) => {
     type: row.type,
     routePath: row.routePath,
     description: row.description,
-    status: row.status
+    status: row.status,
   })
   dialogVisible.value = true
 }
@@ -455,14 +482,16 @@ const handleDelete = (row: TemplateItem) => {
   ElMessageBox.confirm(msg, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    try {
-      await deleteTemplate(row.id)
-      ElMessage.success('删除成功')
-      fetchData()
-    } catch {}
-  }).catch(() => {})
+    type: 'warning',
+  })
+    .then(async () => {
+      try {
+        await deleteTemplate(row.id)
+        ElMessage.success('删除成功')
+        fetchData()
+      } catch {}
+    })
+    .catch(() => {})
 }
 
 const handleStatusChange = async (row: TemplateItem, val: number) => {
@@ -496,7 +525,7 @@ const handleSubmit = async () => {
         type: form.type || 'home',
         routePath: form.routePath || '',
         description: form.description,
-        status: form.status ?? 1
+        status: form.status ?? 1,
       })
       ElMessage.success('修改成功')
     } else {
@@ -506,13 +535,14 @@ const handleSubmit = async () => {
         type: form.type || 'home',
         routePath: form.routePath || '',
         description: form.description,
-        status: form.status ?? 1
+        status: form.status ?? 1,
       })
       ElMessage.success('新增成功')
     }
     dialogVisible.value = false
     fetchData()
-  } catch {} finally {
+  } catch {
+  } finally {
     submitLoading.value = false
   }
 }
@@ -536,7 +566,9 @@ const isAdmin = computed(() => hasAdminRole(userStore.userInfo?.roleIds))
 const handleDesign = (row: TemplateItem) => {
   designForm.id = row.id
   designForm.name = row.name
-  designForm.sourceCode = row.sourceCode || `<template>\n  <!-- ${row.name} -->\n  <div class="template-${row.id}">\n    \n  </div>\n</template>\n`
+  designForm.sourceCode =
+    row.sourceCode ||
+    `<template>\n  <!-- ${row.name} -->\n  <div class="template-${row.id}">\n    \n  </div>\n</template>\n`
   designDialogVisible.value = true
 }
 
@@ -544,12 +576,13 @@ const handleDesignSave = async () => {
   designSubmitLoading.value = true
   try {
     await saveTemplateDesign(designForm.id!, {
-      sourceCode: designForm.sourceCode
+      sourceCode: designForm.sourceCode,
     })
     ElMessage.success('模板设计保存成功')
     designDialogVisible.value = false
     fetchData()
-  } catch {} finally {
+  } catch {
+  } finally {
     designSubmitLoading.value = false
   }
 }

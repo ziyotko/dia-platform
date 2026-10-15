@@ -215,10 +215,6 @@ func applyEnvOverrides() {
 		AppConfig.JWT.MemberSecret = v
 	}
 
-	if v := os.Getenv("PORTAL_JWT_SECRET"); v != "" {
-		AppConfig.JWT.Secret = v
-	}
-
 	if AppConfig.JWT.Secret == "" || AppConfig.JWT.Secret == "PORTAL_JWT_SECRET" {
 		log.Printf("[WARN] 未设置 JWT 密钥！必须设置环境变量 PORTAL_JWT_SECRET。")
 		log.Fatal("程序退出")

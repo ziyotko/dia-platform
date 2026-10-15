@@ -3,10 +3,20 @@
     <el-card shadow="hover" class="search-card">
       <el-form :model="queryForm" inline>
         <el-form-item label="用户名">
-          <el-input v-model="queryForm.username" placeholder="请输入用户名" clearable @keyup.enter="handleSearch" />
+          <el-input
+            v-model="queryForm.username"
+            placeholder="请输入用户名"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </el-form-item>
         <el-form-item label="登录状态">
-          <el-select v-model="queryForm.status" placeholder="全部状态" clearable style="width: 140px">
+          <el-select
+            v-model="queryForm.status"
+            placeholder="全部状态"
+            clearable
+            style="width: 140px"
+          >
             <el-option label="成功" value="1" />
             <el-option label="失败" value="0" />
           </el-select>
@@ -23,10 +33,12 @@
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>查询
+            <el-icon><Search /></el-icon>
+            查询
           </el-button>
           <el-button @click="resetQuery">
-            <el-icon><RefreshRight /></el-icon>重置
+            <el-icon><RefreshRight /></el-icon>
+            重置
           </el-button>
         </el-form-item>
       </el-form>
@@ -37,12 +49,13 @@
         <div class="card-header">
           <span>登录日志</span>
           <el-button type="danger" plain @click="handleClear">
-            <el-icon><Delete /></el-icon>清空历史日志
+            <el-icon><Delete /></el-icon>
+            清空历史日志
           </el-button>
         </div>
       </template>
 
-      <el-table :data="tableData" v-loading="loading" border stripe>
+      <el-table v-loading="loading" :data="tableData" border stripe>
         <el-table-column type="index" width="60" align="center" />
         <el-table-column prop="username" label="用户名" width="120" />
         <el-table-column prop="ip" label="IP地址" width="140" />
@@ -51,7 +64,9 @@
         <el-table-column prop="device" label="设备" min-width="120" show-overflow-tooltip />
         <el-table-column prop="statusText" label="状态" width="80" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">{{ row.statusText }}</el-tag>
+            <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">
+              {{ row.statusText }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="createdAt" label="登录时间" width="170" />
@@ -87,7 +102,7 @@ const queryForm = reactive({
   pageSize: 10,
   username: '',
   status: '',
-  dateRange: [] as string[]
+  dateRange: [] as string[],
 })
 
 const tableData = ref<any[]>([])
@@ -112,7 +127,7 @@ const fetchData = async () => {
       page: queryForm.page,
       pageSize: queryForm.pageSize,
       username: queryForm.username,
-      status: queryForm.status
+      status: queryForm.status,
     }
     if (queryForm.dateRange && queryForm.dateRange.length === 2) {
       params.startDate = queryForm.dateRange[0]
@@ -123,7 +138,8 @@ const fetchData = async () => {
       tableData.value = res.data.list || []
       total.value = res.data.total || 0
     }
-  } catch {} finally {
+  } catch {
+  } finally {
     loading.value = false
   }
 }
@@ -142,16 +158,18 @@ const handleClear = () => {
   ElMessageBox.confirm(buildClearLogsConfirmText(), '警告', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    try {
-      const res: any = await clearLoginLogs()
-      if (res.code === 0) {
-        ElMessage.success(buildClearLogsSuccessText(res.data?.count ?? 0))
-        fetchData()
-      }
-    } catch {}
-  }).catch(() => {})
+    type: 'warning',
+  })
+    .then(async () => {
+      try {
+        const res: any = await clearLoginLogs()
+        if (res.code === 0) {
+          ElMessage.success(buildClearLogsSuccessText(res.data?.count ?? 0))
+          fetchData()
+        }
+      } catch {}
+    })
+    .catch(() => {})
 }
 
 onMounted(() => {

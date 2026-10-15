@@ -7,6 +7,6 @@ export function uploadFile(file: File, dir?: string) {
     formData.append('dir', dir)
   }
   return request.post('/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
+    headers: { 'Content-Type': 'multipart/form-data' },
   })
 }

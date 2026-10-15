@@ -4,7 +4,10 @@
       <el-col :xs="24" :sm="12" :md="8">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
+            <div
+              class="stat-icon"
+              style="background: var(--el-color-primary-light-9); color: var(--el-color-primary)"
+            >
               <el-icon size="28"><User /></el-icon>
             </div>
             <div class="stat-info">
@@ -17,7 +20,10 @@
       <el-col :xs="24" :sm="12" :md="8">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
+            <div
+              class="stat-icon"
+              style="background: var(--el-color-primary-light-9); color: var(--el-color-primary)"
+            >
               <el-icon size="28"><DocumentChecked /></el-icon>
             </div>
             <div class="stat-info">
@@ -30,7 +36,10 @@
       <el-col :xs="24" :sm="12" :md="8">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
+            <div
+              class="stat-icon"
+              style="background: var(--el-color-primary-light-9); color: var(--el-color-primary)"
+            >
               <el-icon size="28"><Trophy /></el-icon>
             </div>
             <div class="stat-info">
@@ -114,77 +123,80 @@ const fetchData = async () => {
 const updateChart = () => {
   if (!chartInstance) return
 
-  const authors = chartData.value.map(item => item.author || '未知')
-  const values = chartData.value.map(item => item.count || 0)
+  const authors = chartData.value.map((item) => item.author || '未知')
+  const values = chartData.value.map((item) => item.count || 0)
 
-  chartInstance.setOption({
-    tooltip: {
-      trigger: 'axis',
-      axisPointer: { type: 'shadow' },
-      formatter: (params: any) => {
-        const p = Array.isArray(params) ? params[0] : params
-        return `<div style="font-weight:600;margin-bottom:4px">${p.name}</div>
+  chartInstance.setOption(
+    {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        formatter: (params: any) => {
+          const p = Array.isArray(params) ? params[0] : params
+          return `<div style="font-weight:600;margin-bottom:4px">${p.name}</div>
                 <div>${periodText.value}已发布：${Number(p.value).toLocaleString()} 篇</div>`
-      },
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      borderColor: 'var(--app-brand-soft)',
-      borderWidth: 1,
-      textStyle: { color: 'var(--app-text-heading)' },
-      extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 8px;'
-    },
-    grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      top: '12%',
-      containLabel: true
-    },
-    xAxis: {
-      type: 'category',
-      data: authors,
-      axisLine: { lineStyle: { color: '#e4e7ed' } },
-      axisLabel: {
-        color: '#606266',
-        interval: 0,
-        rotate: authors.length > 12 ? 30 : 0
-      },
-      axisTick: { alignWithLabel: true }
-    },
-    yAxis: {
-      type: 'value',
-      name: '文章数',
-      minInterval: 1,
-      axisLine: { show: false },
-      axisTick: { show: false },
-      splitLine: { lineStyle: { color: '#f2f6fc' } },
-      axisLabel: { color: '#606266' }
-    },
-    series: [
-      {
-        type: 'bar',
-        data: values,
-        barWidth: '60%',
-        itemStyle: {
-          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: BRAND_THEME_COLOR },
-            { offset: 1, color: '#4d6dc1' }
-          ]),
-          borderRadius: [6, 6, 0, 0]
         },
-        emphasis: {
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderColor: 'var(--app-brand-soft)',
+        borderWidth: 1,
+        textStyle: { color: 'var(--app-text-heading)' },
+        extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 8px;',
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        top: '12%',
+        containLabel: true,
+      },
+      xAxis: {
+        type: 'category',
+        data: authors,
+        axisLine: { lineStyle: { color: '#e4e7ed' } },
+        axisLabel: {
+          color: '#606266',
+          interval: 0,
+          rotate: authors.length > 12 ? 30 : 0,
+        },
+        axisTick: { alignWithLabel: true },
+      },
+      yAxis: {
+        type: 'value',
+        name: '文章数',
+        minInterval: 1,
+        axisLine: { show: false },
+        axisTick: { show: false },
+        splitLine: { lineStyle: { color: '#f2f6fc' } },
+        axisLabel: { color: '#606266' },
+      },
+      series: [
+        {
+          type: 'bar',
+          data: values,
+          barWidth: '60%',
           itemStyle: {
-            color: '#4d6dc1'
-          }
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: BRAND_THEME_COLOR },
+              { offset: 1, color: '#4d6dc1' },
+            ]),
+            borderRadius: [6, 6, 0, 0],
+          },
+          emphasis: {
+            itemStyle: {
+              color: '#4d6dc1',
+            },
+          },
+          label: {
+            show: true,
+            position: 'top',
+            color: BRAND_THEME_COLOR,
+            fontWeight: 600,
+          },
         },
-        label: {
-          show: true,
-          position: 'top',
-          color: BRAND_THEME_COLOR,
-          fontWeight: 600
-        }
-      }
-    ]
-  }, true)
+      ],
+    },
+    true
+  )
 }
 
 // 具名 resize 回调：匿名函数无法被 removeEventListener 移除，反复进出页面会不断堆积监听器

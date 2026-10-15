@@ -31,8 +31,8 @@
       </template>
 
       <el-table
-        :data="templateTableData"
         v-loading="templateLoading"
+        :data="templateTableData"
         highlight-current-row
         border
         stripe
@@ -40,7 +40,12 @@
       >
         <el-table-column type="index" width="60" align="center" />
         <el-table-column prop="name" label="模板名称" min-width="160" show-overflow-tooltip />
-        <el-table-column prop="description" label="模板描述" min-width="180" show-overflow-tooltip />
+        <el-table-column
+          prop="description"
+          label="模板描述"
+          min-width="180"
+          show-overflow-tooltip
+        />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 1 ? 'success' : 'info'" size="small">
@@ -51,7 +56,11 @@
         <el-table-column prop="createdAt" label="创建时间" width="170" />
       </el-table>
 
-      <el-empty v-if="!templateTableData.length && !templateLoading" description="该页面类型下暂无启用的模板" :image-size="80" />
+      <el-empty
+        v-if="!templateTableData.length && !templateLoading"
+        description="该页面类型下暂无启用的模板"
+        :image-size="80"
+      />
     </el-card>
 
     <el-card v-if="selectedTemplate" shadow="hover" class="column-card">
@@ -63,14 +72,15 @@
             <span class="list-name">栏目列表</span>
           </div>
           <el-button type="primary" @click="handleAddColumn">
-            <el-icon><Plus /></el-icon>新增栏目
+            <el-icon><Plus /></el-icon>
+            新增栏目
           </el-button>
         </div>
       </template>
 
       <el-table
-        :data="columnTableData"
         v-loading="columnLoading"
+        :data="columnTableData"
         row-key="id"
         border
         stripe
@@ -95,7 +105,9 @@
         </el-table-column>
         <el-table-column prop="workflow" label="栏目审核" min-width="140" show-overflow-tooltip>
           <template #default="{ row }">
-            <el-tag v-if="row.workflow?.name" size="small" type="warning">{{ row.workflow.name }}</el-tag>
+            <el-tag v-if="row.workflow?.name" size="small" type="warning">
+              {{ row.workflow.name }}
+            </el-tag>
             <span v-else style="color: var(--app-text-secondary)">未绑定</span>
           </template>
         </el-table-column>
@@ -113,22 +125,34 @@
         <el-table-column label="操作" width="220" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleAddChildColumn(row)">
-              <el-icon><CirclePlus /></el-icon>子栏目
+              <el-icon><CirclePlus /></el-icon>
+              子栏目
             </el-button>
             <el-button link type="primary" @click="handleEditColumn(row)">
-              <el-icon><Edit /></el-icon>编辑
+              <el-icon><Edit /></el-icon>
+              编辑
             </el-button>
             <el-button link type="danger" @click="handleDeleteColumn(row)">
-              <el-icon><Delete /></el-icon>删除
+              <el-icon><Delete /></el-icon>
+              删除
             </el-button>
           </template>
         </el-table-column>
       </el-table>
 
-      <el-empty v-if="!columnTableData.length && !columnLoading" description="该模板下暂无栏目，请添加" :image-size="80" />
+      <el-empty
+        v-if="!columnTableData.length && !columnLoading"
+        description="该模板下暂无栏目，请添加"
+        :image-size="80"
+      />
     </el-card>
 
-    <el-empty v-else description="请先在上方模板列表中选择模板" class="select-tip" :image-size="80" />
+    <el-empty
+      v-else
+      description="请先在上方模板列表中选择模板"
+      class="select-tip"
+      :image-size="80"
+    />
 
     <el-dialog
       v-model="columnDialogVisible"
@@ -141,7 +165,11 @@
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="所属模板">
-              <el-input :model-value="selectedTemplate?.name || ''" disabled placeholder="请先选择模板" />
+              <el-input
+                :model-value="selectedTemplate?.name || ''"
+                disabled
+                placeholder="请先选择模板"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -177,10 +205,19 @@
           <el-input v-model="columnForm.routePath" placeholder="如 /news/company" />
         </el-form-item>
         <el-form-item label="栏目描述" prop="description">
-          <el-input v-model="columnForm.description" type="textarea" :rows="3" placeholder="请输入栏目描述" />
+          <el-input
+            v-model="columnForm.description"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入栏目描述"
+          />
         </el-form-item>
         <el-form-item label="展示方式" prop="displayType">
-          <el-select v-model="columnForm.displayType" placeholder="请选择展示方式" style="width: 100%">
+          <el-select
+            v-model="columnForm.displayType"
+            placeholder="请选择展示方式"
+            style="width: 100%"
+          >
             <el-option
               v-for="opt in displayTypeOptions"
               :key="opt.value"
@@ -190,13 +227,13 @@
           </el-select>
         </el-form-item>
         <el-form-item label="栏目审核" prop="workflowId">
-          <el-select v-model="columnForm.workflowId" placeholder="请选择审核流程（可选）" clearable style="width: 100%">
-            <el-option
-              v-for="wf in workflowList"
-              :key="wf.id"
-              :label="wf.name"
-              :value="wf.id"
-            />
+          <el-select
+            v-model="columnForm.workflowId"
+            placeholder="请选择审核流程（可选）"
+            clearable
+            style="width: 100%"
+          >
+            <el-option v-for="wf in workflowList" :key="wf.id" :label="wf.name" :value="wf.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="状态" prop="status">
@@ -208,7 +245,9 @@
       </el-form>
       <template #footer>
         <el-button @click="columnDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="columnSubmitLoading" @click="handleColumnSubmit">确定</el-button>
+        <el-button type="primary" :loading="columnSubmitLoading" @click="handleColumnSubmit">
+          确定
+        </el-button>
       </template>
     </el-dialog>
   </div>
@@ -218,12 +257,7 @@
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete, CirclePlus, ArrowRight, Tickets } from '@element-plus/icons-vue'
-import {
-  getColumns,
-  createColumn,
-  updateColumn,
-  deleteColumn
-} from '@/api/column'
+import { getColumns, createColumn, updateColumn, deleteColumn } from '@/api/column'
 import { getAllTemplates } from '@/api/template'
 import { getAllWorkflows } from '@/api/workflow'
 import pinyin from 'js-pinyin'
@@ -275,7 +309,7 @@ const displayTypeMap: Record<number, string> = {
   6: '报刊展示',
   7: '数据展示',
   8: '视频展示',
-  9: '其他展示'
+  9: '其他展示',
 }
 
 const displayTypeOptions = [
@@ -285,9 +319,9 @@ const displayTypeOptions = [
   { label: '广告展示', value: 4 },
   { label: '友链展示', value: 5 },
   { label: '报刊展示', value: 6 },
-    { label: '数据展示', value: 7 },
-      { label: '视频展示', value: 8 },
-  { label: '其他展示', value: 9 }
+  { label: '数据展示', value: 7 },
+  { label: '视频展示', value: 8 },
+  { label: '其他展示', value: 9 },
 ]
 
 const columnForm = reactive<Partial<ColumnItem>>({
@@ -301,7 +335,7 @@ const columnForm = reactive<Partial<ColumnItem>>({
   sort: 0,
   status: 1,
   displayType: 1,
-  workflowId: undefined
+  workflowId: undefined,
 })
 
 const workflowList = ref<any[]>([])
@@ -315,30 +349,30 @@ const fetchWorkflows = async () => {
 
 const columnFormRules = {
   name: [{ required: true, message: '请输入栏目名称', trigger: 'blur' }],
-  code: [{ required: true, message: '请输入栏目编码', trigger: 'blur' }]
+  code: [{ required: true, message: '请输入栏目编码', trigger: 'blur' }],
 }
 
 const pageTypeList = computed(() => [
   {
     value: 'home',
     label: '首页',
-    description: '网站门户页'
+    description: '网站门户页',
   },
   {
     value: 'column',
     label: '栏目页',
-    description: '文章栏目聚合页'
+    description: '文章栏目聚合页',
   },
   {
     value: 'detail',
     label: '详情页',
-    description: '内容详情展示页'
+    description: '内容详情展示页',
   },
   {
     value: 'special',
     label: '专题页',
-    description: '专题活动展示页'
-  }
+    description: '专题活动展示页',
+  },
 ])
 
 // 模板列表：仅展示当前页面类型、且状态为启用的模板（模板 type 与页面类型同值：home/column/detail/special）
@@ -356,15 +390,15 @@ const columnTableData = computed(() => {
   if (!templateId) return []
   const buildTree = (items: ColumnItem[], parentId?: number): ColumnItem[] => {
     return items
-      .filter(item => {
+      .filter((item) => {
         if (item.templateId !== templateId) return false
         if (parentId === undefined) return isRootColumn(item)
         return item.parentId === parentId
       })
       .sort((a, b) => a.sort - b.sort)
-      .map(item => ({
+      .map((item) => ({
         ...item,
-        children: buildTree(items, item.id)
+        children: buildTree(items, item.id),
       }))
   }
   return buildTree(allColumns.value, undefined)
@@ -394,7 +428,7 @@ const columnTreeOptions = computed(() => {
   const blocked = excludedParentIds.value
   const buildOptions = (items: ColumnItem[], parentId?: number): any[] => {
     return items
-      .filter(item => {
+      .filter((item) => {
         if (item.templateId !== templateId) return false
         // 编辑时剔除自身及其全部下级：否则可以把栏目挂到自己的后代下形成环，
         // 该枝栏目会从栏目树/投放树中永久消失（后端已拦截，这里提前避免误选）
@@ -403,10 +437,10 @@ const columnTreeOptions = computed(() => {
         return item.parentId === parentId
       })
       .sort((a, b) => a.sort - b.sort)
-      .map(item => ({
+      .map((item) => ({
         id: item.id,
         name: item.name,
-        children: buildOptions(items, item.id)
+        children: buildOptions(items, item.id),
       }))
   }
   return buildOptions(allColumns.value, undefined)
@@ -418,7 +452,8 @@ const fetchTemplates = async () => {
   try {
     const res: any = await getAllTemplates(activePageType.value)
     templateList.value = res.data.list || []
-  } catch {} finally {
+  } catch {
+  } finally {
     templateLoading.value = false
   }
 }
@@ -433,20 +468,24 @@ const fetchColumns = async () => {
   try {
     const res: any = await getColumns({ templateId })
     allColumns.value = res.data || []
-  } catch {} finally {
+  } catch {
+  } finally {
     columnLoading.value = false
   }
 }
 
-watch(() => columnForm.name, (val) => {
-  // 仅「新增」时按名称自动生成编码/访问路径：编辑时 handleEditColumn 会先写入原有 code/routePath，
-  // 本回调随后触发并把它们覆盖为名称拼音，保存后原编码/访问路径丢失（静态化路径也随之变化）。
-  if (columnForm.id) return
-  if (val) {
-    columnForm.code = toPinyinCode(val)
-    columnForm.routePath = `/${toPinyinCode(val)}`
+watch(
+  () => columnForm.name,
+  (val) => {
+    // 仅「新增」时按名称自动生成编码/访问路径：编辑时 handleEditColumn 会先写入原有 code/routePath，
+    // 本回调随后触发并把它们覆盖为名称拼音，保存后原编码/访问路径丢失（静态化路径也随之变化）。
+    if (columnForm.id) return
+    if (val) {
+      columnForm.code = toPinyinCode(val)
+      columnForm.routePath = `/${toPinyinCode(val)}`
+    }
   }
-})
+)
 
 const handleTypeChange = () => {
   // 注意：选项值已由 el-radio-group 的 v-model 写入 activePageType，这里只负责重载数据
@@ -490,14 +529,14 @@ const handleEditColumn = (row: ColumnItem) => {
     sort: row.sort,
     status: row.status,
     displayType: row.displayType,
-    workflowId: row.workflowId
+    workflowId: row.workflowId,
   })
   columnDialogVisible.value = true
 }
 
 const handleDeleteColumn = async (row: ColumnItem) => {
   // 后端在存在子栏目时拒绝删除（不做级联删除），这里提前拦下，避免“一并删除”的误导文案
-  const hasChildren = allColumns.value.some(c => c.parentId === row.id)
+  const hasChildren = allColumns.value.some((c) => c.parentId === row.id)
   if (hasChildren) {
     ElMessage.warning(`栏目 「${row.name}」 下存在子栏目，请先删除或调整子栏目后再删除`)
     return
@@ -507,7 +546,7 @@ const handleDeleteColumn = async (row: ColumnItem) => {
     await ElMessageBox.confirm(msg, '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
-      type: 'warning'
+      type: 'warning',
     })
     await deleteColumn(row.id)
     ElMessage.success('删除成功')
@@ -529,7 +568,7 @@ const handleColumnStatusChange = async (row: ColumnItem, val: number) => {
       sort: row.sort,
       status: val,
       displayType: row.displayType,
-      workflowId: row.workflowId
+      workflowId: row.workflowId,
     })
     ElMessage.success(`栏目状态已${val === 1 ? '启用' : '禁用'}`)
   } catch (error) {
@@ -552,7 +591,7 @@ const handleColumnSubmit = async () => {
       sort: columnForm.sort ?? 0,
       status: columnForm.status ?? 1,
       displayType: columnForm.displayType ?? 1,
-      workflowId: columnForm.workflowId
+      workflowId: columnForm.workflowId,
     }
     if (columnForm.id) {
       await updateColumn(columnForm.id, payload)
@@ -665,7 +704,11 @@ onMounted(() => {
       }
 
       /* 覆盖 EP 默认的主色实心块，改为白色胶囊 + 品牌蓝文字 */
-      :deep(.el-radio-button.is-active .el-radio-button__original-radio:not(:disabled) + .el-radio-button__inner) {
+      :deep(
+        .el-radio-button.is-active
+          .el-radio-button__original-radio:not(:disabled)
+          + .el-radio-button__inner
+      ) {
         color: var(--el-color-primary);
         background-color: #fff;
         box-shadow: 0 2px 8px rgba(0, 47, 167, 0.16);

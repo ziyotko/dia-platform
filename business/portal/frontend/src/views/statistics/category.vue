@@ -5,7 +5,11 @@
         <div class="card-header">
           <span>分类文章统计</span>
           <div class="header-extra">
-            <span class="total-info">总文章数：<strong>{{ Number(totalCount).toLocaleString() }}</strong> 篇</span>
+            <span class="total-info">
+              总文章数：
+              <strong>{{ Number(totalCount).toLocaleString() }}</strong>
+              篇
+            </span>
           </div>
         </div>
       </template>
@@ -60,7 +64,7 @@ const colors = [
   '#8b5cf6',
   '#22c55e',
   '#0ea5e9',
-  '#ef4444'
+  '#ef4444',
 ]
 
 const fetchData = async () => {
@@ -70,7 +74,10 @@ const fetchData = async () => {
     if (res && res.data) {
       chartData.value = res.data.list || []
       // total 现在与 /tags/stats 口径一致（= 统计条目数），百分比分母改用已发布文章数合计
-      totalCount.value = chartData.value.reduce((sum: number, item: any) => sum + (item.count || 0), 0)
+      totalCount.value = chartData.value.reduce(
+        (sum: number, item: any) => sum + (item.count || 0),
+        0
+      )
       nextTick(() => updateChart())
     }
   } catch (error) {
@@ -83,93 +90,96 @@ const fetchData = async () => {
 const updateChart = () => {
   if (!chartInstance || chartData.value.length === 0) return
 
-  const data = chartData.value.map(item => ({
+  const data = chartData.value.map((item) => ({
     value: item.count,
-    name: item.categoryName || '未分类'
+    name: item.categoryName || '未分类',
   }))
 
-  chartInstance.setOption({
-    color: colors,
-    tooltip: {
-      trigger: 'item',
-      formatter: (params: any) => {
-        return `<div style="font-weight:600;margin-bottom:4px">${params.name}</div>
+  chartInstance.setOption(
+    {
+      color: colors,
+      tooltip: {
+        trigger: 'item',
+        formatter: (params: any) => {
+          return `<div style="font-weight:600;margin-bottom:4px">${params.name}</div>
                 <div>文章数：${Number(params.value || 0).toLocaleString()} 篇</div>
                 <div>占比：${params.percent}%</div>`
+        },
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderColor: 'var(--app-brand-soft)',
+        borderWidth: 1,
+        textStyle: { color: 'var(--app-text-heading)' },
+        extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 8px;',
       },
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      borderColor: 'var(--app-brand-soft)',
-      borderWidth: 1,
-      textStyle: { color: 'var(--app-text-heading)' },
-      extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-radius: 8px;'
-    },
-    legend: { show: false },
-    series: [
-      {
-        type: 'pie',
-        radius: ['45%', '72%'],
-        center: ['50%', '50%'],
-        avoidLabelOverlap: true,
-        itemStyle: {
-          borderRadius: 8,
-          borderColor: '#fff',
-          borderWidth: 3
-        },
-        label: {
-          show: true,
-          formatter: '{b}\n{d}%（{c} 篇）',
-          color: '#606266',
-          fontSize: 13,
-          lineHeight: 18
-        },
-        labelLine: {
-          show: true,
-          length: 16,
-          length2: 12,
-          smooth: true,
-          lineStyle: { color: '#c0c4cc' }
-        },
-        emphasis: {
+      legend: { show: false },
+      series: [
+        {
+          type: 'pie',
+          radius: ['45%', '72%'],
+          center: ['50%', '50%'],
+          avoidLabelOverlap: true,
+          itemStyle: {
+            borderRadius: 8,
+            borderColor: '#fff',
+            borderWidth: 3,
+          },
           label: {
             show: true,
-            fontSize: 14,
-            fontWeight: 'bold'
+            formatter: '{b}\n{d}%（{c} 篇）',
+            color: '#606266',
+            fontSize: 13,
+            lineHeight: 18,
           },
-          itemStyle: {
-            shadowBlur: 10,
-            shadowOffsetX: 0,
-            shadowColor: 'rgba(0, 0, 0, 0.2)'
-          }
+          labelLine: {
+            show: true,
+            length: 16,
+            length2: 12,
+            smooth: true,
+            lineStyle: { color: '#c0c4cc' },
+          },
+          emphasis: {
+            label: {
+              show: true,
+              fontSize: 14,
+              fontWeight: 'bold',
+            },
+            itemStyle: {
+              shadowBlur: 10,
+              shadowOffsetX: 0,
+              shadowColor: 'rgba(0, 0, 0, 0.2)',
+            },
+          },
+          data,
         },
-        data
-      }
-    ],
-    graphic: [
-      {
-        type: 'text',
-        left: 'center',
-        top: '42%',
-        style: {
-          text: '总文章数',
-          textAlign: 'center',
-          fill: '#909399',
-          fontSize: 14
-        }
-      },
-      {
-        type: 'text',
-        left: 'center',
-        top: '52%',
-        style: {
-          text: String(totalCount.value),
-          textAlign: 'center',
-          fill: '#2c3e50',
-          fontSize: 28,
-          fontWeight: 'bold'
-        }
-      }
-    ]
-  }, true)
+      ],
+      graphic: [
+        {
+          type: 'text',
+          left: 'center',
+          top: '42%',
+          style: {
+            text: '总文章数',
+            textAlign: 'center',
+            fill: '#909399',
+            fontSize: 14,
+          },
+        },
+        {
+          type: 'text',
+          left: 'center',
+          top: '52%',
+          style: {
+            text: String(totalCount.value),
+            textAlign: 'center',
+            fill: '#2c3e50',
+            fontSize: 28,
+            fontWeight: 'bold',
+          },
+        },
+      ],
+    },
+    true
+  )
 }
 
 // 具名 resize 回调：匿名函数无法被 removeEventListener 移除，反复进出页面会不断堆积监听器

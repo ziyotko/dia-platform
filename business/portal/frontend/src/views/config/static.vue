@@ -9,7 +9,11 @@
             静态化服务监控
           </span>
           <div class="monitor-actions">
-            <el-tag :type="monitorData.online ? 'success' : 'danger'" effect="dark" class="status-tag">
+            <el-tag
+              :type="monitorData.online ? 'success' : 'danger'"
+              effect="dark"
+              class="status-tag"
+            >
               <el-icon v-if="monitorData.online"><CircleCheck /></el-icon>
               <el-icon v-else><CircleClose /></el-icon>
               {{ monitorData.online ? '运行中' : '已停止' }}
@@ -29,7 +33,10 @@
       <el-col :xs="24" :sm="12" :md="8" :lg="4">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
+            <div
+              class="stat-icon"
+              style="background: var(--el-color-primary-light-9); color: var(--el-color-primary)"
+            >
               <el-icon size="28"><DocumentChecked /></el-icon>
             </div>
             <div class="stat-info">
@@ -42,7 +49,10 @@
       <el-col :xs="24" :sm="12" :md="8" :lg="4">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
+            <div
+              class="stat-icon"
+              style="background: var(--el-color-primary-light-9); color: var(--el-color-primary)"
+            >
               <el-icon size="28"><Clock /></el-icon>
             </div>
             <div class="stat-info">
@@ -55,7 +65,10 @@
       <el-col :xs="24" :sm="12" :md="8" :lg="4">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
+            <div
+              class="stat-icon"
+              style="background: var(--el-color-primary-light-9); color: var(--el-color-primary)"
+            >
               <el-icon size="28"><HomeFilled /></el-icon>
             </div>
             <div class="stat-info">
@@ -68,7 +81,10 @@
       <el-col :xs="24" :sm="12" :md="8" :lg="4">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
+            <div
+              class="stat-icon"
+              style="background: var(--el-color-primary-light-9); color: var(--el-color-primary)"
+            >
               <el-icon size="28"><Menu /></el-icon>
             </div>
             <div class="stat-info">
@@ -81,7 +97,7 @@
       <el-col :xs="24" :sm="12" :md="8" :lg="4">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <div class="stat-icon" style="background: rgba(155, 89, 182, 0.1); color: #9b59b6;">
+            <div class="stat-icon" style="background: rgba(155, 89, 182, 0.1); color: #9b59b6">
               <el-icon size="28"><Document /></el-icon>
             </div>
             <div class="stat-info">
@@ -94,7 +110,7 @@
       <el-col :xs="24" :sm="12" :md="8" :lg="4">
         <el-card shadow="hover" class="stat-card">
           <div class="stat-content">
-            <div class="stat-icon" style="background: rgba(230, 162, 60, 0.12); color: #e6a23c;">
+            <div class="stat-icon" style="background: rgba(230, 162, 60, 0.12); color: #e6a23c">
               <el-icon size="28"><Collection /></el-icon>
             </div>
             <div class="stat-info">
@@ -196,7 +212,13 @@
                 静态化任务
               </span>
             </div>
-            <el-table :data="jobList" v-loading="jobLoading" border stripe empty-text="暂无静态化任务，点击上方按钮发起批量操作">
+            <el-table
+              v-loading="jobLoading"
+              :data="jobList"
+              border
+              stripe
+              empty-text="暂无静态化任务，点击上方按钮发起批量操作"
+            >
               <el-table-column label="任务ID" min-width="150" show-overflow-tooltip>
                 <template #default="{ row }">
                   <span class="job-id">{{ row.id }}</span>
@@ -210,7 +232,9 @@
               <el-table-column label="状态" width="120" align="center">
                 <template #default="{ row }">
                   <el-tag :type="row.statusType" effect="dark">
-                    <el-icon v-if="row.status === 'running'" class="is-loading"><Loading /></el-icon>
+                    <el-icon v-if="row.status === 'running'" class="is-loading">
+                      <Loading />
+                    </el-icon>
                     {{ row.statusText }}
                   </el-tag>
                 </template>
@@ -219,7 +243,9 @@
                 <template #default="{ row }">
                   <div class="job-progress">
                     <div class="progress-stage">
-                      {{ row.progress?.stage || (row.status === 'succeeded' ? '已完成' : '等待执行') }}
+                      {{
+                        row.progress?.stage || (row.status === 'succeeded' ? '已完成' : '等待执行')
+                      }}
                     </div>
                     <el-progress
                       :percentage="row.progressPercent"
@@ -228,7 +254,9 @@
                       :stroke-width="10"
                     />
                     <div class="progress-meta">
-                      <span>已处理 {{ row.progress?.processed ?? 0 }} / {{ row.progress?.total ?? 0 }}</span>
+                      <span>
+                        已处理 {{ row.progress?.processed ?? 0 }} / {{ row.progress?.total ?? 0 }}
+                      </span>
                       <span>已生成文件 {{ row.progress?.generated_files ?? 0 }}</span>
                     </div>
                   </div>
@@ -242,8 +270,14 @@
               </el-table-column>
               <el-table-column label="操作" width="90" align="center" fixed="right">
                 <template #default="{ row }">
-                  <el-button link type="primary" :loading="row.refreshing" @click="refreshJob(row.id)">
-                    <el-icon><Refresh /></el-icon>刷新
+                  <el-button
+                    link
+                    type="primary"
+                    :loading="row.refreshing"
+                    @click="refreshJob(row.id)"
+                  >
+                    <el-icon><Refresh /></el-icon>
+                    刷新
                   </el-button>
                 </template>
               </el-table-column>
@@ -256,21 +290,39 @@
           <el-tabs v-model="activeTab" @tab-change="handleTabChange">
             <!-- 首页 -->
             <el-tab-pane label="首页" name="home">
-              <el-table :data="homePagedList" v-loading="loading" border stripe>
+              <el-table v-loading="loading" :data="homePagedList" border stripe>
                 <el-table-column type="index" width="60" align="center" />
                 <el-table-column prop="id" label="ID" width="80" align="center" />
                 <el-table-column prop="name" label="模板名称" min-width="160" />
-                <el-table-column prop="routePath" label="访问路径" min-width="140" show-overflow-tooltip />
+                <el-table-column
+                  prop="routePath"
+                  label="访问路径"
+                  min-width="140"
+                  show-overflow-tooltip
+                />
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
                 <el-table-column label="操作" width="280" align="center" fixed="right">
                   <template #default="{ row }">
-                    <el-button link type="primary" :loading="row.generating" :disabled="!monitorData.online" @click="handleGenerateSingle(row)">
-                      <el-icon><Refresh /></el-icon>重新生成
+                    <el-button
+                      link
+                      type="primary"
+                      :loading="row.generating"
+                      :disabled="!monitorData.online"
+                      @click="handleGenerateSingle(row)"
+                    >
+                      <el-icon><Refresh /></el-icon>
+                      重新生成
                     </el-button>
                     <el-tooltip :content="previewTooltip(row)" placement="top">
                       <span>
-                        <el-button link type="success" :disabled="!row.url" @click="handlePreview(row)">
-                          <el-icon><View /></el-icon>预览
+                        <el-button
+                          link
+                          type="success"
+                          :disabled="!row.url"
+                          @click="handlePreview(row)"
+                        >
+                          <el-icon><View /></el-icon>
+                          预览
                         </el-button>
                       </span>
                     </el-tooltip>
@@ -292,21 +344,39 @@
 
             <!-- 栏目页 -->
             <el-tab-pane label="栏目页" name="column">
-              <el-table :data="columnPagedList" v-loading="loading" border stripe>
+              <el-table v-loading="loading" :data="columnPagedList" border stripe>
                 <el-table-column type="index" width="60" align="center" />
                 <el-table-column prop="id" label="ID" width="80" align="center" />
                 <el-table-column prop="name" label="栏目名称" min-width="160" />
-                <el-table-column prop="template" label="模板名称" min-width="120" show-overflow-tooltip />
+                <el-table-column
+                  prop="template"
+                  label="模板名称"
+                  min-width="120"
+                  show-overflow-tooltip
+                />
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
                 <el-table-column label="操作" width="280" align="center" fixed="right">
                   <template #default="{ row }">
-                    <el-button link type="primary" :loading="row.generating" :disabled="!monitorData.online" @click="handleGenerateSingle(row)">
-                      <el-icon><Refresh /></el-icon>重新生成
+                    <el-button
+                      link
+                      type="primary"
+                      :loading="row.generating"
+                      :disabled="!monitorData.online"
+                      @click="handleGenerateSingle(row)"
+                    >
+                      <el-icon><Refresh /></el-icon>
+                      重新生成
                     </el-button>
                     <el-tooltip :content="previewTooltip(row)" placement="top">
                       <span>
-                        <el-button link type="success" :disabled="!row.url" @click="handlePreview(row)">
-                          <el-icon><View /></el-icon>预览
+                        <el-button
+                          link
+                          type="success"
+                          :disabled="!row.url"
+                          @click="handlePreview(row)"
+                        >
+                          <el-icon><View /></el-icon>
+                          预览
                         </el-button>
                       </span>
                     </el-tooltip>
@@ -328,28 +398,53 @@
 
             <!-- 详情页 -->
             <el-tab-pane label="详情页" name="detail">
-              <el-table :data="detailPagedList" v-loading="loading" border stripe>
+              <el-table v-loading="loading" :data="detailPagedList" border stripe>
                 <el-table-column type="index" width="60" align="center" />
                 <el-table-column prop="id" label="ID" width="80" align="center" />
                 <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
-                <el-table-column prop="name" label="模板名称" min-width="60" show-overflow-tooltip />
+                <el-table-column
+                  prop="name"
+                  label="模板名称"
+                  min-width="60"
+                  show-overflow-tooltip
+                />
                 <el-table-column prop="author" label="作者" min-width="60" />
                 <el-table-column prop="source" label="来源" min-width="100" />
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
                 <el-table-column label="操作" width="340" align="center" fixed="right">
                   <template #default="{ row }">
-                    <el-button link type="primary" :loading="row.generating" :disabled="!monitorData.online" @click="handleGenerateSingle(row)">
-                      <el-icon><Refresh /></el-icon>重新生成
+                    <el-button
+                      link
+                      type="primary"
+                      :loading="row.generating"
+                      :disabled="!monitorData.online"
+                      @click="handleGenerateSingle(row)"
+                    >
+                      <el-icon><Refresh /></el-icon>
+                      重新生成
                     </el-button>
                     <el-tooltip :content="previewTooltip(row)" placement="top">
                       <span>
-                        <el-button link type="success" :disabled="!row.url" @click="handlePreview(row)">
-                          <el-icon><View /></el-icon>预览
+                        <el-button
+                          link
+                          type="success"
+                          :disabled="!row.url"
+                          @click="handlePreview(row)"
+                        >
+                          <el-icon><View /></el-icon>
+                          预览
                         </el-button>
                       </span>
                     </el-tooltip>
-                    <el-button link type="danger" :loading="row.deleting" :disabled="!monitorData.online" @click="handleDeleteArticle(row)">
-                      <el-icon><Delete /></el-icon>删除
+                    <el-button
+                      link
+                      type="danger"
+                      :loading="row.deleting"
+                      :disabled="!monitorData.online"
+                      @click="handleDeleteArticle(row)"
+                    >
+                      <el-icon><Delete /></el-icon>
+                      删除
                     </el-button>
                   </template>
                 </el-table-column>
@@ -369,26 +464,51 @@
 
             <!-- 专题页 -->
             <el-tab-pane label="专题页" name="topic">
-              <el-table :data="topicPagedList" v-loading="loading" border stripe>
+              <el-table v-loading="loading" :data="topicPagedList" border stripe>
                 <el-table-column type="index" width="60" align="center" />
                 <el-table-column prop="id" label="ID" width="80" align="center" />
                 <el-table-column prop="name" label="模板名称" min-width="160" />
-                <el-table-column prop="routePath" label="访问路径" min-width="140" show-overflow-tooltip />
+                <el-table-column
+                  prop="routePath"
+                  label="访问路径"
+                  min-width="140"
+                  show-overflow-tooltip
+                />
                 <el-table-column prop="updatedAt" label="更新时间" width="170" />
                 <el-table-column label="操作" width="340" align="center" fixed="right">
                   <template #default="{ row }">
-                    <el-button link type="primary" :loading="row.generating" :disabled="!monitorData.online" @click="handleGenerateSingle(row)">
-                      <el-icon><Refresh /></el-icon>重新生成
+                    <el-button
+                      link
+                      type="primary"
+                      :loading="row.generating"
+                      :disabled="!monitorData.online"
+                      @click="handleGenerateSingle(row)"
+                    >
+                      <el-icon><Refresh /></el-icon>
+                      重新生成
                     </el-button>
                     <el-tooltip :content="previewTooltip(row)" placement="top">
                       <span>
-                        <el-button link type="success" :disabled="!row.url" @click="handlePreview(row)">
-                          <el-icon><View /></el-icon>预览
+                        <el-button
+                          link
+                          type="success"
+                          :disabled="!row.url"
+                          @click="handlePreview(row)"
+                        >
+                          <el-icon><View /></el-icon>
+                          预览
                         </el-button>
                       </span>
                     </el-tooltip>
-                    <el-button link type="danger" :loading="row.deleting" :disabled="!monitorData.online" @click="handleDeleteTopic(row)">
-                      <el-icon><Delete /></el-icon>删除
+                    <el-button
+                      link
+                      type="danger"
+                      :loading="row.deleting"
+                      :disabled="!monitorData.online"
+                      @click="handleDeleteTopic(row)"
+                    >
+                      <el-icon><Delete /></el-icon>
+                      删除
                     </el-button>
                   </template>
                 </el-table-column>
@@ -405,8 +525,6 @@
                 />
               </div>
             </el-tab-pane>
-
-            
           </el-tabs>
         </el-tab-pane>
       </el-tabs>
@@ -417,10 +535,11 @@
       <div class="log-dialog-body">
         <div class="log-toolbar">
           <el-button type="danger" link @click="clearLogs">
-            <el-icon><Delete /></el-icon>清空历史日志
+            <el-icon><Delete /></el-icon>
+            清空历史日志
           </el-button>
         </div>
-        <div class="log-scroll-container" v-loading="logLoading">
+        <div v-loading="logLoading" class="log-scroll-container">
           <el-timeline v-if="logList.length">
             <el-timeline-item
               v-for="log in logList"
@@ -436,19 +555,24 @@
                 </div>
                 <div class="log-meta">
                   <span v-if="log.pageName" class="log-meta-item">
-                    <el-icon size="12"><Document /></el-icon> {{ log.pageName }}
+                    <el-icon size="12"><Document /></el-icon>
+                    {{ log.pageName }}
                   </span>
                   <span v-if="log.path" class="log-meta-item">
-                    <el-icon size="12"><HomeFilled /></el-icon> {{ log.path }}
+                    <el-icon size="12"><HomeFilled /></el-icon>
+                    {{ log.path }}
                   </span>
                   <span v-if="log.duration" class="log-meta-item">
-                    <el-icon size="12"><Timer /></el-icon> {{ log.duration }}
+                    <el-icon size="12"><Timer /></el-icon>
+                    {{ log.duration }}
                   </span>
                   <span v-if="log.fileSize" class="log-meta-item">
-                    <el-icon size="12"><DocumentChecked /></el-icon> {{ log.fileSize }}
+                    <el-icon size="12"><DocumentChecked /></el-icon>
+                    {{ log.fileSize }}
                   </span>
                   <span v-if="log.operator" class="log-meta-item">
-                    <el-icon size="12"><User /></el-icon> {{ log.operator }}
+                    <el-icon size="12"><User /></el-icon>
+                    {{ log.operator }}
                   </span>
                 </div>
                 <span class="log-detail">{{ log.message }}</span>
@@ -493,14 +617,23 @@ import {
   CircleCheck,
   Warning,
   User,
-  Monitor
+  Monitor,
 } from '@element-plus/icons-vue'
 import { getArticleColumnPublishes } from '@/api/article'
 import { getColumnPublishes } from '@/api/column'
 import { getStaticPages } from '@/api/static_page'
 import { getStaticLogList, clearStaticLogs, getStaticLatestTimes } from '@/api/static_log'
 import { getStaticMonitor } from '@/api/static_monitor'
-import { startStaticJob, getStaticJob, startStaticPage, startStaticList, startStaticArticle, deleteStaticArticle, startStaticTopic, deleteStaticTopic } from '@/api/static_job'
+import {
+  startStaticJob,
+  getStaticJob,
+  startStaticPage,
+  startStaticList,
+  startStaticArticle,
+  deleteStaticArticle,
+  startStaticTopic,
+  deleteStaticTopic,
+} from '@/api/static_job'
 import type { StaticJob, StaticJobStatus } from '@/api/static_job'
 import { getSettings } from '@/api/settings'
 import { getErrorMessage } from '@/utils/request'
@@ -531,7 +664,7 @@ const kindMap: Record<string, { text: string; type: string }> = {
   pages: { text: '生成首页', type: 'success' },
   lists: { text: '生成栏目页', type: 'warning' },
   articles: { text: '生成详情页', type: 'danger' },
-  topics: { text: '生成专题页', type: 'info' }
+  topics: { text: '生成专题页', type: 'info' },
 }
 
 const jobStatusMap: Record<StaticJobStatus, { text: string; type: string }> = {
@@ -539,20 +672,18 @@ const jobStatusMap: Record<StaticJobStatus, { text: string; type: string }> = {
   running: { text: '正在执行', type: 'warning' },
   succeeded: { text: '执行成功', type: 'success' },
   failed: { text: '执行失败', type: 'danger' },
-  interrupted: { text: '已中断', type: 'danger' }
+  interrupted: { text: '已中断', type: 'danger' },
 }
 
 const hasActiveJob = computed(() =>
-  jobList.value.some(j => j.status === 'queued' || j.status === 'running')
+  jobList.value.some((j) => j.status === 'queued' || j.status === 'running')
 )
 
 // 格式化 ISO 时间字符串：去掉中间的 T，仅保留到秒（例如 2026-08-24 12:34:56）
-const formatTime = (t?: string) =>
-  t ? t.replace('T', ' ').slice(0, 19) : '-'
+const formatTime = (t?: string) => (t ? t.replace('T', ' ').slice(0, 19) : '-')
 
 // 格式化时间字符串：仅保留到分钟，不显示秒（例如 2026-08-24 12:34）
-const formatShortTime = (t?: string) =>
-  t ? t.replace('T', ' ').slice(0, 16) : '-'
+const formatShortTime = (t?: string) => (t ? t.replace('T', ' ').slice(0, 16) : '-')
 
 // 将后端任务结构标准化为前端展示结构
 const normalizeJob = (job: StaticJob) => {
@@ -562,11 +693,14 @@ const normalizeJob = (job: StaticJob) => {
   const total = Number(progress.total) || 0
   const processed = Number(progress.processed) || 0
   const isActive = job.status === 'queued' || job.status === 'running'
-  const percent = job.status === 'succeeded'
-    ? 100
-    : total > 0
-      ? Math.min(99, Math.round((processed / total) * 100))
-      : isActive ? 0 : 100
+  const percent =
+    job.status === 'succeeded'
+      ? 100
+      : total > 0
+        ? Math.min(99, Math.round((processed / total) * 100))
+        : isActive
+          ? 0
+          : 100
   return {
     ...job,
     kindText: kindInfo.text,
@@ -574,11 +708,14 @@ const normalizeJob = (job: StaticJob) => {
     statusText: statusInfo.text,
     statusType: statusInfo.type,
     progressPercent: percent,
-    progressStatus: job.status === 'failed' || job.status === 'interrupted'
-      ? 'exception'
-      : job.status === 'succeeded' ? 'success' : undefined,
+    progressStatus:
+      job.status === 'failed' || job.status === 'interrupted'
+        ? 'exception'
+        : job.status === 'succeeded'
+          ? 'success'
+          : undefined,
     progressIndeterminate: isActive && total === 0,
-    refreshing: false
+    refreshing: false,
   }
 }
 
@@ -597,13 +734,16 @@ const loadStaticSettings = async () => {
 }
 
 // 发起批量操作任务（后端透传静态化程序 202 + 任务信息）
-const runStaticJob = async (kind: 'site' | 'pages' | 'lists' | 'articles' | 'topics', title: string) => {
+const runStaticJob = async (
+  kind: 'site' | 'pages' | 'lists' | 'articles' | 'topics',
+  title: string
+) => {
   submitting.value = kind
   try {
     const res = await startStaticJob(kind, grayEnabled.value ? 1 : 2)
     if (res.status === 202 && res.data?.ok && res.data.job) {
       const job = normalizeJob(res.data.job)
-      const idx = jobList.value.findIndex(j => j.id === job.id)
+      const idx = jobList.value.findIndex((j) => j.id === job.id)
       if (idx >= 0) {
         jobList.value[idx] = job
       } else {
@@ -629,21 +769,24 @@ const runStaticJob = async (kind: 'site' | 'pages' | 'lists' | 'articles' | 'top
 }
 
 // 通用确认：每个静态化操作先弹出确认框，确认后再发起任务
-const confirmRun = (kind: 'site' | 'pages' | 'lists' | 'articles' | 'topics', title: string, message?: string) => {
-  ElMessageBox.confirm(
-    message || `确定要执行${title}吗？`,
-    '确认操作',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(() => {
-    runStaticJob(kind, title)
-  }).catch(() => {})
+const confirmRun = (
+  kind: 'site' | 'pages' | 'lists' | 'articles' | 'topics',
+  title: string,
+  message?: string
+) => {
+  ElMessageBox.confirm(message || `确定要执行${title}吗？`, '确认操作', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning',
+  })
+    .then(() => {
+      runStaticJob(kind, title)
+    })
+    .catch(() => {})
 }
 
-const handleGenerateAll = () => confirmRun('site', '生成全站', '确定要执行生成全站吗？此操作可能需要较长时间。')
+const handleGenerateAll = () =>
+  confirmRun('site', '生成全站', '确定要执行生成全站吗？此操作可能需要较长时间。')
 const handleGenerateHome = () => confirmRun('pages', '生成首页')
 const handleGenerateColumn = () => confirmRun('lists', '生成栏目页')
 const handleGenerateDetail = () => confirmRun('articles', '生成详情页')
@@ -669,10 +812,12 @@ const stopPolling = () => {
 const refreshAllJobs = async (showLoading = false) => {
   // 自动轮询只跟活动任务；手动点「刷新任务」时把已停止轮询的「状态未知」任务一并重试
   const ids = showLoading
-    ? Array.from(new Set([
-      ...activeJobIds,
-      ...jobList.value.filter(j => j.status === 'unknown').map(j => j.id)
-    ]))
+    ? Array.from(
+        new Set([
+          ...activeJobIds,
+          ...jobList.value.filter((j) => j.status === 'unknown').map((j) => j.id),
+        ])
+      )
     : Array.from(activeJobIds)
   if (ids.length === 0) {
     stopPolling()
@@ -680,7 +825,7 @@ const refreshAllJobs = async (showLoading = false) => {
   }
   if (showLoading) jobLoading.value = true
   try {
-    await Promise.all(ids.map(id => refreshJob(id)))
+    await Promise.all(ids.map((id) => refreshJob(id)))
   } finally {
     if (showLoading) jobLoading.value = false
   }
@@ -695,7 +840,7 @@ const handleJobRefreshFailure = (id: string) => {
   }
   jobRefreshFailures.delete(id)
   activeJobIds.delete(id)
-  const row = jobList.value.find(j => j.id === id)
+  const row = jobList.value.find((j) => j.id === id)
   if (row) {
     row.status = 'unknown'
     row.statusText = '状态未知'
@@ -709,7 +854,7 @@ const handleJobRefreshFailure = (id: string) => {
 
 // 刷新单个任务状态
 const refreshJob = async (id: string) => {
-  const row = jobList.value.find(j => j.id === id)
+  const row = jobList.value.find((j) => j.id === id)
   if (row) row.refreshing = true
   try {
     const res = await getStaticJob(id)
@@ -718,11 +863,14 @@ const refreshJob = async (id: string) => {
       jobRefreshFailures.delete(id)
       const prevStatus = row?.status
       const updated = normalizeJob(res.data.job)
-      const idx = jobList.value.findIndex(j => j.id === id)
+      const idx = jobList.value.findIndex((j) => j.id === id)
       if (idx >= 0) jobList.value[idx] = updated
 
-      if (prevStatus && prevStatus !== updated.status
-        && ['succeeded', 'failed', 'interrupted'].includes(updated.status)) {
+      if (
+        prevStatus &&
+        prevStatus !== updated.status &&
+        ['succeeded', 'failed', 'interrupted'].includes(updated.status)
+      ) {
         notifyJobDone(updated)
       }
 
@@ -741,7 +889,7 @@ const refreshJob = async (id: string) => {
     // 单个任务刷新失败：累计次数，超限即停止轮询（否则会永久轮询一个查不到的任务）
     handleJobRefreshFailure(id)
   } finally {
-    const r = jobList.value.find(j => j.id === id)
+    const r = jobList.value.find((j) => j.id === id)
     if (r) r.refreshing = false
   }
 }
@@ -765,7 +913,7 @@ const monitorData = reactive({
   address: '',
   httpStatus: 0,
   lastCheckTime: '-',
-  message: '尚未获取'
+  message: '尚未获取',
 })
 
 const fetchStaticMonitor = async () => {
@@ -779,7 +927,8 @@ const fetchStaticMonitor = async () => {
       monitorData.lastCheckTime = res.data?.lastCheckTime || new Date().toLocaleString()
       monitorData.message = res.data?.message || ''
     }
-  } catch {} finally {
+  } catch {
+  } finally {
     monitorLoading.value = false
   }
 }
@@ -790,7 +939,7 @@ const statData = reactive({
   homeLastTime: '-',
   columnLastTime: '-',
   detailLastTime: '-',
-  topicLastTime: '-'
+  topicLastTime: '-',
 })
 
 // 读取静态化日志最新成功时间及今日成功文件数，填充统计卡片
@@ -813,7 +962,7 @@ const fetchStaticStat = async () => {
 
 const queryForm = reactive({
   page: 1,
-  pageSize: 10
+  pageSize: 10,
 })
 
 const homeList = ref<any[]>([])
@@ -854,7 +1003,7 @@ const logTotal = ref(0)
 const logLoading = ref(false)
 const logQueryForm = reactive({
   page: 1,
-  pageSize: 10
+  pageSize: 10,
 })
 
 // 打开静态化日志弹窗：重置到第一页并加载
@@ -868,14 +1017,14 @@ const statusIconMap: Record<string, any> = {
   success: markRaw(Check),
   warning: markRaw(Warning),
   danger: markRaw(CircleClose),
-  primary: markRaw(DocumentChecked)
+  primary: markRaw(DocumentChecked),
 }
 
 const statusTextMap: Record<string, string> = {
   success: '成功',
   warning: '警告',
   danger: '失败',
-  primary: '信息'
+  primary: '信息',
 }
 
 const fetchLogList = async () => {
@@ -883,18 +1032,19 @@ const fetchLogList = async () => {
   try {
     const res: any = await getStaticLogList({
       page: logQueryForm.page,
-      pageSize: logQueryForm.pageSize
+      pageSize: logQueryForm.pageSize,
     })
     if (res.code === 0) {
       logList.value = (res.data.list || []).map((item: any) => ({
         ...item,
         statusText: statusTextMap[item.status] || item.status,
         icon: markRaw(statusIconMap[item.status] || DocumentChecked),
-        time: item.createdAt
+        time: item.createdAt,
       }))
       logTotal.value = res.data.total || 0
     }
-  } catch {} finally {
+  } catch {
+  } finally {
     logLoading.value = false
   }
 }
@@ -922,7 +1072,7 @@ const fetchPageList = async () => {
     } else if (activeTab.value === 'detail') {
       const res: any = await getArticleColumnPublishes({
         page: queryForm.page,
-        pageSize: queryForm.pageSize
+        pageSize: queryForm.pageSize,
       })
       detailList.value = res.data?.list || []
       detailTotal.value = res.data?.total || 0
@@ -930,7 +1080,8 @@ const fetchPageList = async () => {
       const res: any = await getStaticPages({ pageType: 'special' })
       topicList.value = res.data || []
     }
-  } catch {} finally {
+  } catch {
+  } finally {
     loading.value = false
   }
 }
@@ -998,11 +1149,10 @@ const handleGenerateSingle = async (row: any) => {
       const generatedAt = r.generated_at
         ? String(r.generated_at).replace('T', ' ').slice(0, 19)
         : '-'
-      ElMessageBox.alert(
-        `生成时间：${generatedAt}`,
-        `「${name}」生成成功`,
-        { confirmButtonText: '确定', type: 'success' }
-      )
+      ElMessageBox.alert(`生成时间：${generatedAt}`, `「${name}」生成成功`, {
+        confirmButtonText: '确定',
+        type: 'success',
+      })
       fetchPageList()
       fetchStaticStat()
     } else {
@@ -1038,29 +1188,31 @@ const handleDeleteArticle = (row: any) => {
     {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
-      type: 'warning'
+      type: 'warning',
     }
-  ).then(async () => {
-    row.deleting = true
-    try {
-      const res = await deleteStaticArticle(row.id, staticPath.value)
-      const data: any = res.data || {}
-      if (res.status === 200 && data.ok) {
-        ElMessage.success(`「${name}」静态文件已删除`)
-        fetchPageList()
-        fetchStaticStat()
-      } else {
-        const msg = data.message || data.msg || '删除失败'
+  )
+    .then(async () => {
+      row.deleting = true
+      try {
+        const res = await deleteStaticArticle(row.id, staticPath.value)
+        const data: any = res.data || {}
+        if (res.status === 200 && data.ok) {
+          ElMessage.success(`「${name}」静态文件已删除`)
+          fetchPageList()
+          fetchStaticStat()
+        } else {
+          const msg = data.message || data.msg || '删除失败'
+          ElMessage.error(`「${name}」删除失败：${msg}`)
+        }
+      } catch (error: any) {
+        const msg = getErrorMessage(error)
+        // raw 模式（拦截器不提示），失败原因需在此展示
         ElMessage.error(`「${name}」删除失败：${msg}`)
+      } finally {
+        row.deleting = false
       }
-    } catch (error: any) {
-      const msg = getErrorMessage(error)
-      // raw 模式（拦截器不提示），失败原因需在此展示
-      ElMessage.error(`「${name}」删除失败：${msg}`)
-    } finally {
-      row.deleting = false
-    }
-  }).catch(() => {})
+    })
+    .catch(() => {})
 }
 
 // 删除专题页静态文件：调用后端代理 DELETE /static/topic?id={专题ID}&path={输出目录}
@@ -1083,29 +1235,31 @@ const handleDeleteTopic = (row: any) => {
     {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
-      type: 'warning'
+      type: 'warning',
     }
-  ).then(async () => {
-    row.deleting = true
-    try {
-      const res = await deleteStaticTopic(row.id, staticPath.value)
-      const data: any = res.data || {}
-      if (res.status === 200 && data.ok) {
-        ElMessage.success(`「${name}」静态文件已删除`)
-        fetchPageList()
-        fetchStaticStat()
-      } else {
-        const msg = data.message || data.msg || '删除失败'
+  )
+    .then(async () => {
+      row.deleting = true
+      try {
+        const res = await deleteStaticTopic(row.id, staticPath.value)
+        const data: any = res.data || {}
+        if (res.status === 200 && data.ok) {
+          ElMessage.success(`「${name}」静态文件已删除`)
+          fetchPageList()
+          fetchStaticStat()
+        } else {
+          const msg = data.message || data.msg || '删除失败'
+          ElMessage.error(`「${name}」删除失败：${msg}`)
+        }
+      } catch (error: any) {
+        const msg = getErrorMessage(error)
+        // raw 模式（拦截器不提示），失败原因需在此展示
         ElMessage.error(`「${name}」删除失败：${msg}`)
+      } finally {
+        row.deleting = false
       }
-    } catch (error: any) {
-      const msg = getErrorMessage(error)
-      // raw 模式（拦截器不提示），失败原因需在此展示
-      ElMessage.error(`「${name}」删除失败：${msg}`)
-    } finally {
-      row.deleting = false
-    }
-  }).catch(() => {})
+    })
+    .catch(() => {})
 }
 
 // 静态化预览：在新窗口打开列表行返回的「访问地址」（url 字段），不做任何前端拼接。
@@ -1128,7 +1282,7 @@ const clearLogs = () => {
   ElMessageBox.confirm(buildClearLogsConfirmText(), '警告', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'warning'
+    type: 'warning',
   })
     .then(async () => {
       try {

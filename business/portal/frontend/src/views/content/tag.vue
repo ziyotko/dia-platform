@@ -3,20 +3,32 @@
     <el-card shadow="hover" class="search-card">
       <el-form :model="queryForm" inline>
         <el-form-item label="标签名称">
-          <el-input v-model="queryForm.name" placeholder="请输入标签名称" clearable @keyup.enter="handleSearch" />
+          <el-input
+            v-model="queryForm.name"
+            placeholder="请输入标签名称"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="queryForm.status" placeholder="全部状态" clearable style="width: 120px">
+          <el-select
+            v-model="queryForm.status"
+            placeholder="全部状态"
+            clearable
+            style="width: 120px"
+          >
             <el-option label="启用" :value="1" />
             <el-option label="禁用" :value="0" />
           </el-select>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>查询
+            <el-icon><Search /></el-icon>
+            查询
           </el-button>
           <el-button @click="resetQuery">
-            <el-icon><RefreshRight /></el-icon>重置
+            <el-icon><RefreshRight /></el-icon>
+            重置
           </el-button>
         </el-form-item>
       </el-form>
@@ -27,12 +39,13 @@
         <div class="card-header">
           <span>标签列表</span>
           <el-button type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon>新增标签
+            <el-icon><Plus /></el-icon>
+            新增标签
           </el-button>
         </div>
       </template>
 
-      <el-table :data="tableData" v-loading="loading" border stripe>
+      <el-table v-loading="loading" :data="tableData" border stripe>
         <el-table-column type="index" width="60" align="center" />
         <el-table-column prop="name" label="标签名称" min-width="150" />
         <el-table-column prop="color" label="标签颜色" width="100" align="center">
@@ -55,10 +68,12 @@
         <el-table-column label="操作" width="180" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleEdit(row)">
-              <el-icon><Edit /></el-icon>编辑
+              <el-icon><Edit /></el-icon>
+              编辑
             </el-button>
             <el-button link type="danger" @click="handleDelete(row)">
-              <el-icon><Delete /></el-icon>删除
+              <el-icon><Delete /></el-icon>
+              删除
             </el-button>
           </template>
         </el-table-column>
@@ -84,12 +99,7 @@
       destroy-on-close
       :close-on-click-modal="false"
     >
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="formRules"
-        label-width="90px"
-      >
+      <el-form ref="formRef" :model="form" :rules="formRules" label-width="90px">
         <el-form-item label="标签名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入标签名称" />
         </el-form-item>
@@ -114,20 +124,8 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import {
-  Search,
-  RefreshRight,
-  Plus,
-  Edit,
-  Delete
-} from '@element-plus/icons-vue'
-import {
-  getTags,
-  createTag,
-  updateTag,
-  updateTagStatus,
-  deleteTag
-} from '@/api/tag'
+import { Search, RefreshRight, Plus, Edit, Delete } from '@element-plus/icons-vue'
+import { getTags, createTag, updateTag, updateTagStatus, deleteTag } from '@/api/tag'
 import { BRAND_THEME_COLOR } from '@/stores/app'
 
 const loading = ref(false)
@@ -141,19 +139,19 @@ const queryForm = reactive({
   page: 1,
   pageSize: 10,
   name: '',
-  status: undefined as number | undefined
+  status: undefined as number | undefined,
 })
 
 const form = reactive({
   id: undefined as number | undefined,
   name: '',
   color: BRAND_THEME_COLOR,
-  status: 1
+  status: 1,
 })
 
 const formRules = {
   name: [{ required: true, message: '请输入标签名称', trigger: 'blur' }],
-  color: [{ required: true, message: '请选择标签颜色', trigger: 'change' }]
+  color: [{ required: true, message: '请选择标签颜色', trigger: 'change' }],
 }
 
 const tableData = ref<any[]>([])
@@ -163,7 +161,7 @@ const fetchData = async () => {
   try {
     const params: any = {
       page: queryForm.page,
-      pageSize: queryForm.pageSize
+      pageSize: queryForm.pageSize,
     }
     if (queryForm.name) params.name = queryForm.name
     if (queryForm.status !== undefined) params.status = queryForm.status
@@ -201,7 +199,7 @@ const handleEdit = (row: any) => {
     id: row.id,
     name: row.name,
     color: row.color,
-    status: row.status
+    status: row.status,
   })
   dialogVisible.value = true
 }
@@ -210,12 +208,14 @@ const handleDelete = (row: any) => {
   ElMessageBox.confirm(`确定要删除标签 「${row.name}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    await deleteTag(row.id)
-    ElMessage.success('删除成功')
-    fetchData()
-  }).catch(() => {})
+    type: 'warning',
+  })
+    .then(async () => {
+      await deleteTag(row.id)
+      ElMessage.success('删除成功')
+      fetchData()
+    })
+    .catch(() => {})
 }
 
 const handleStatusChange = async (row: any, val: number) => {

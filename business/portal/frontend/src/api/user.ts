@@ -58,7 +58,7 @@ export function updateUserStatus(id: number, status: number) {
 
 export function checkUserUnique(field: string, value: string, excludeId?: number) {
   return request.get('/users/check-unique', {
-    params: { field, value, excludeId }
+    params: { field, value, excludeId },
   })
 }
 
@@ -67,7 +67,7 @@ export function importUsers(file: File) {
   formData.append('file', file)
   return request.post('/users/import', formData, {
     headers: {
-      'Content-Type': 'multipart/form-data'
-    }
+      'Content-Type': 'multipart/form-data',
+    },
   })
 }

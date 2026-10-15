@@ -3,14 +3,21 @@
     <el-card shadow="hover" class="search-card">
       <el-form :model="queryForm" inline>
         <el-form-item label="流程名称">
-          <el-input v-model="queryForm.name" placeholder="请输入流程名称" clearable @keyup.enter="handleSearch" />
+          <el-input
+            v-model="queryForm.name"
+            placeholder="请输入流程名称"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>查询
+            <el-icon><Search /></el-icon>
+            查询
           </el-button>
           <el-button @click="resetQuery">
-            <el-icon><RefreshRight /></el-icon>重置
+            <el-icon><RefreshRight /></el-icon>
+            重置
           </el-button>
         </el-form-item>
       </el-form>
@@ -21,12 +28,13 @@
         <div class="card-header">
           <span>流程列表</span>
           <el-button type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon>新增流程
+            <el-icon><Plus /></el-icon>
+            新增流程
           </el-button>
         </div>
       </template>
 
-      <el-table :data="tableData" v-loading="loading" border stripe>
+      <el-table v-loading="loading" :data="tableData" border stripe>
         <el-table-column type="index" width="60" align="center" />
         <el-table-column prop="name" label="流程名称" min-width="180" />
         <el-table-column prop="status" label="状态" width="100" align="center">
@@ -41,13 +49,16 @@
         <el-table-column label="操作" width="280" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleDesign(row)">
-              <el-icon><SetUp /></el-icon>设计流程
+              <el-icon><SetUp /></el-icon>
+              设计流程
             </el-button>
             <el-button link type="primary" @click="handleEdit(row)">
-              <el-icon><Edit /></el-icon>编辑
+              <el-icon><Edit /></el-icon>
+              编辑
             </el-button>
             <el-button link type="danger" @click="handleDelete(row)">
-              <el-icon><Delete /></el-icon>删除
+              <el-icon><Delete /></el-icon>
+              删除
             </el-button>
           </template>
         </el-table-column>
@@ -74,12 +85,7 @@
       destroy-on-close
       :close-on-click-modal="false"
     >
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="formRules"
-        label-width="90px"
-      >
+      <el-form ref="formRef" :model="form" :rules="formRules" label-width="90px">
         <el-form-item label="流程名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入流程名称" />
         </el-form-item>
@@ -90,7 +96,12 @@
           </el-radio-group>
         </el-form-item>
         <el-form-item label="流程说明" prop="description">
-          <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入流程说明" />
+          <el-input
+            v-model="form.description"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入流程说明"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -110,7 +121,8 @@
       <div class="design-header">
         <div class="design-title">{{ currentFlow.name }}</div>
         <el-button type="primary" size="small" @click="addNode">
-          <el-icon><Plus /></el-icon>添加节点
+          <el-icon><Plus /></el-icon>
+          添加节点
         </el-button>
       </div>
 
@@ -119,11 +131,7 @@
       </div>
 
       <div v-else class="node-list">
-        <div
-          v-for="(node, index) in nodeList"
-          :key="node.id"
-          class="node-item"
-        >
+        <div v-for="(node, index) in nodeList" :key="node.id" class="node-item">
           <div class="node-index">{{ index + 1 }}</div>
           <div class="node-card">
             <div class="node-row">
@@ -195,7 +203,8 @@
                 :disabled="index === 0"
                 @click="moveNode(index, -1)"
               >
-                <el-icon><ArrowUp /></el-icon>上移
+                <el-icon><ArrowUp /></el-icon>
+                上移
               </el-button>
               <el-button
                 link
@@ -204,10 +213,12 @@
                 :disabled="index === nodeList.length - 1"
                 @click="moveNode(index, 1)"
               >
-                <el-icon><ArrowDown /></el-icon>下移
+                <el-icon><ArrowDown /></el-icon>
+                下移
               </el-button>
               <el-button link type="danger" size="small" @click="removeNode(index)">
-                <el-icon><Delete /></el-icon>删除
+                <el-icon><Delete /></el-icon>
+                删除
               </el-button>
             </div>
           </div>
@@ -239,7 +250,7 @@ import {
   SetUp,
   ArrowUp,
   ArrowDown,
-  Bottom
+  Bottom,
 } from '@element-plus/icons-vue'
 import { getAllUsers } from '@/api/user'
 import { getAllWorkflowRoles } from '@/api/workflow-role'
@@ -249,7 +260,7 @@ import {
   updateWorkflow,
   deleteWorkflow,
   getWorkflowNodes,
-  saveWorkflowNodes
+  saveWorkflowNodes,
 } from '@/api/workflow'
 
 const loading = ref(false)
@@ -262,18 +273,18 @@ const formRef = ref()
 const queryForm = reactive({
   page: 1,
   pageSize: 10,
-  name: ''
+  name: '',
 })
 
 const form = reactive({
   id: undefined as number | undefined,
   name: '',
   status: 1,
-  description: ''
+  description: '',
 })
 
 const formRules = {
-  name: [{ required: true, message: '请输入流程名称', trigger: 'blur' }]
+  name: [{ required: true, message: '请输入流程名称', trigger: 'blur' }],
 }
 
 const tableData = ref<any[]>([])
@@ -288,12 +299,12 @@ const workflowRoleList = ref<any[]>([])
 const APPROVER_TYPES = [
   { value: 'user', label: '指定成员' },
   { value: 'dept_head', label: '部门负责人' },
-  { value: 'role', label: '角色' }
+  { value: 'role', label: '角色' },
 ]
 
 const getApproverTypes = (index: number) => {
   if (index === 0) return APPROVER_TYPES
-  return APPROVER_TYPES.filter(t => t.value !== 'dept_head')
+  return APPROVER_TYPES.filter((t) => t.value !== 'dept_head')
 }
 
 const fetchData = async () => {
@@ -302,11 +313,12 @@ const fetchData = async () => {
     const res: any = await getWorkflows({
       page: queryForm.page,
       pageSize: queryForm.pageSize,
-      name: queryForm.name || undefined
+      name: queryForm.name || undefined,
     })
     tableData.value = res.data?.list || []
     total.value = res.data?.total || 0
-  } catch {} finally {
+  } catch {
+  } finally {
     loading.value = false
   }
 }
@@ -352,7 +364,7 @@ const handleEdit = (row: any) => {
     id: row.id,
     name: row.name,
     status: row.status,
-    description: row.description || ''
+    description: row.description || '',
   })
   dialogVisible.value = true
 }
@@ -361,14 +373,16 @@ const handleDelete = (row: any) => {
   ElMessageBox.confirm(`确定要删除流程 「${row.name}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    try {
-      await deleteWorkflow(row.id)
-      ElMessage.success('删除成功')
-      fetchData()
-    } catch {}
-  }).catch(() => {})
+    type: 'warning',
+  })
+    .then(async () => {
+      try {
+        await deleteWorkflow(row.id)
+        ElMessage.success('删除成功')
+        fetchData()
+      } catch {}
+    })
+    .catch(() => {})
 }
 
 const handleSubmit = async () => {
@@ -379,7 +393,7 @@ const handleSubmit = async () => {
     const data = {
       name: form.name,
       status: form.status,
-      description: form.description
+      description: form.description,
     }
     if (form.id) {
       await updateWorkflow(form.id, data)
@@ -390,7 +404,8 @@ const handleSubmit = async () => {
     }
     dialogVisible.value = false
     fetchData()
-  } catch {} finally {
+  } catch {
+  } finally {
     submitLoading.value = false
   }
 }
@@ -423,7 +438,7 @@ const handleDesign = async (row: any) => {
       id: n.id,
       name: n.name,
       approverType: (n.approverType === 'dept_head' && idx > 0 ? 'user' : n.approverType) || 'user',
-      approverId: n.approverType === 'dept_head' && idx > 0 ? undefined : n.approverId
+      approverId: n.approverType === 'dept_head' && idx > 0 ? undefined : n.approverId,
     }))
   } catch {
     nodeList.value = []
@@ -436,7 +451,7 @@ const addNode = () => {
     id: `n${Date.now()}`,
     name: '',
     approverType: 'user',
-    approverId: undefined
+    approverId: undefined,
   })
 }
 
@@ -461,7 +476,9 @@ const handleSaveDesign = async () => {
       return
     }
     if ((node.approverType === 'user' || node.approverType === 'role') && !node.approverId) {
-      ElMessage.warning(`第 ${i + 1} 个节点请选择${node.approverType === 'user' ? '成员' : '流程角色'}`)
+      ElMessage.warning(
+        `第 ${i + 1} 个节点请选择${node.approverType === 'user' ? '成员' : '流程角色'}`
+      )
       return
     }
     if (node.approverType === 'dept_head' && i > 0) {
@@ -475,13 +492,14 @@ const handleSaveDesign = async () => {
       name: n.name,
       approverType: n.approverType,
       approverId: n.approverId || undefined,
-      sortOrder: idx
+      sortOrder: idx,
     }))
     await saveWorkflowNodes(currentFlow.id, nodes)
     ElMessage.success('流程设计保存成功')
     designVisible.value = false
     fetchData()
-  } catch {} finally {
+  } catch {
+  } finally {
     designLoading.value = false
   }
 }

@@ -2,7 +2,7 @@
   <div class="page-container">
     <el-row :gutter="20">
       <el-col :xs="24" :md="8">
-        <el-card shadow="hover" class="profile-card" v-loading="profileLoading">
+        <el-card v-loading="profileLoading" shadow="hover" class="profile-card">
           <div class="profile-header">
             <div class="avatar-wrapper">
               <el-upload
@@ -33,7 +33,13 @@
                     <span>更换头像</span>
                   </div>
                 </el-upload>
-                <el-button class="avatar-delete-btn" type="danger" size="small" circle @click="handleRemoveAvatar">
+                <el-button
+                  class="avatar-delete-btn"
+                  type="danger"
+                  size="small"
+                  circle
+                  @click="handleRemoveAvatar"
+                >
                   <el-icon><Delete /></el-icon>
                 </el-button>
               </div>
@@ -102,32 +108,52 @@
               <el-input v-model="form.bio" type="textarea" :rows="4" placeholder="请输入个人简介" />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" :loading="submitLoading" @click="handleSubmit">保存修改</el-button>
+              <el-button type="primary" :loading="submitLoading" @click="handleSubmit">
+                保存修改
+              </el-button>
             </el-form-item>
           </el-form>
         </el-card>
 
-        <el-card shadow="hover" class="edit-card" style="margin-top: 20px;">
+        <el-card shadow="hover" class="edit-card" style="margin-top: 20px">
           <template #header>
             <div class="card-header">修改密码</div>
           </template>
-          <el-form
-            ref="pwdFormRef"
-            :model="pwdForm"
-            :rules="pwdRules"
-            label-width="90px"
-          >
+          <el-form ref="pwdFormRef" :model="pwdForm" :rules="pwdRules" label-width="90px">
             <el-form-item label="原密码" prop="oldPassword">
-              <el-input v-model="pwdForm.oldPassword" type="password" show-password clearable placeholder="请输入原密码" maxlength="64" />
+              <el-input
+                v-model="pwdForm.oldPassword"
+                type="password"
+                show-password
+                clearable
+                placeholder="请输入原密码"
+                maxlength="64"
+              />
             </el-form-item>
             <el-form-item label="新密码" prop="newPassword">
-              <el-input v-model="pwdForm.newPassword" type="password" show-password clearable :placeholder="`请输入新密码，长度不少于${appStore.minPasswordLength}位`" maxlength="64" />
+              <el-input
+                v-model="pwdForm.newPassword"
+                type="password"
+                show-password
+                clearable
+                :placeholder="`请输入新密码，长度不少于${appStore.minPasswordLength}位`"
+                maxlength="64"
+              />
             </el-form-item>
             <el-form-item label="确认密码" prop="confirmPassword">
-              <el-input v-model="pwdForm.confirmPassword" type="password" show-password clearable placeholder="请再次输入新密码" maxlength="64" />
+              <el-input
+                v-model="pwdForm.confirmPassword"
+                type="password"
+                show-password
+                clearable
+                placeholder="请再次输入新密码"
+                maxlength="64"
+              />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" :loading="pwdLoading" @click="handleChangePassword">确认修改</el-button>
+              <el-button type="primary" :loading="pwdLoading" @click="handleChangePassword">
+                确认修改
+              </el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -165,7 +191,7 @@ const profile = reactive<ProfileUser>({
   onlineDays: 0,
   articleCount: 0,
   operationCount: 0,
-  bio: ''
+  bio: '',
 })
 
 const formRef = ref()
@@ -177,28 +203,32 @@ const form = reactive({
   email: '',
   phone: '',
   bio: '',
-  avatar: ''
+  avatar: '',
 })
 
 const rules = {
   email: [
     { required: true, message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '邮箱格式不正确', trigger: 'blur' }
+    { type: 'email', message: '邮箱格式不正确', trigger: 'blur' },
   ],
-  phone: [{ required: true, message: '请输入手机号', trigger: 'blur' }]
+  phone: [{ required: true, message: '请输入手机号', trigger: 'blur' }],
 }
 
 const pwdForm = reactive({
   oldPassword: '',
   newPassword: '',
-  confirmPassword: ''
+  confirmPassword: '',
 })
 
 const pwdRules = computed(() => ({
   oldPassword: [{ required: true, message: '请输入原密码', trigger: 'blur' }],
   newPassword: [
     { required: true, message: '请输入新密码', trigger: 'blur' },
-    { min: appStore.minPasswordLength, message: `密码长度不能少于${appStore.minPasswordLength}位`, trigger: 'blur' }
+    {
+      min: appStore.minPasswordLength,
+      message: `密码长度不能少于${appStore.minPasswordLength}位`,
+      trigger: 'blur',
+    },
   ],
   confirmPassword: [
     { required: true, message: '请确认密码', trigger: 'blur' },
@@ -210,9 +240,9 @@ const pwdRules = computed(() => ({
           callback()
         }
       },
-      trigger: 'blur'
-    }
-  ]
+      trigger: 'blur',
+    },
+  ],
 }))
 
 const handleAvatarUpload = async (options: any) => {
@@ -225,12 +255,12 @@ const handleAvatarUpload = async (options: any) => {
       email: form.email,
       phone: form.phone,
       bio: form.bio,
-      avatar: url
+      avatar: url,
     })
     if (userStore.userInfo) {
       userStore.setUserInfo({
         ...userStore.userInfo,
-        avatar: url
+        avatar: url,
       })
     }
     ElMessage.success('头像上传成功')
@@ -247,12 +277,12 @@ const handleRemoveAvatar = async () => {
       email: form.email,
       phone: form.phone,
       bio: form.bio,
-      avatar: ''
+      avatar: '',
     })
     if (userStore.userInfo) {
       userStore.setUserInfo({
         ...userStore.userInfo,
-        avatar: ''
+        avatar: '',
       })
     }
     ElMessage.success('头像删除成功')
@@ -270,7 +300,7 @@ const handleSubmit = async () => {
       email: form.email,
       phone: form.phone,
       bio: form.bio,
-      avatar: form.avatar || profile.avatar || ''
+      avatar: form.avatar || profile.avatar || '',
     })
     ElMessage.success('保存成功')
     await loadProfile()
@@ -288,7 +318,7 @@ const handleChangePassword = async () => {
   try {
     await changePassword({
       oldPassword: pwdForm.oldPassword,
-      newPassword: pwdForm.newPassword
+      newPassword: pwdForm.newPassword,
     })
     ElMessage.success('密码修改成功，请使用新密码重新登录')
     pwdForm.oldPassword = ''
@@ -324,17 +354,21 @@ const loadProfile = async () => {
     if (userStore.userInfo) {
       userStore.setUserInfo({
         ...userStore.userInfo,
-        avatar: data.avatar || ''
+        avatar: data.avatar || '',
       })
     }
-  } catch {} finally {
+  } catch {
+  } finally {
     profileLoading.value = false
   }
 }
 
-watch(() => appStore.refreshKey, () => {
-  loadProfile()
-})
+watch(
+  () => appStore.refreshKey,
+  () => {
+    loadProfile()
+  }
+)
 
 onMounted(() => {
   loadProfile()

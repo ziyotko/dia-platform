@@ -3,7 +3,12 @@
     <el-card shadow="hover" class="search-card">
       <el-form :model="queryForm" inline>
         <el-form-item label="网站名称">
-          <el-input v-model="queryForm.name" placeholder="请输入网站名称" clearable @keyup.enter="handleSearch" />
+          <el-input
+            v-model="queryForm.name"
+            placeholder="请输入网站名称"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </el-form-item>
         <el-form-item label="友链位置">
           <el-select
@@ -36,17 +41,24 @@
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="queryForm.status" placeholder="全部状态" clearable style="width: 120px">
+          <el-select
+            v-model="queryForm.status"
+            placeholder="全部状态"
+            clearable
+            style="width: 120px"
+          >
             <el-option label="启用" :value="1" />
             <el-option label="禁用" :value="0" />
           </el-select>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>查询
+            <el-icon><Search /></el-icon>
+            查询
           </el-button>
           <el-button @click="resetQuery">
-            <el-icon><RefreshRight /></el-icon>重置
+            <el-icon><RefreshRight /></el-icon>
+            重置
           </el-button>
         </el-form-item>
       </el-form>
@@ -57,12 +69,13 @@
         <div class="card-header">
           <span>友链列表</span>
           <el-button type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon>新增友链
+            <el-icon><Plus /></el-icon>
+            新增友链
           </el-button>
         </div>
       </template>
 
-      <el-table :data="tableData" v-loading="loading" border stripe>
+      <el-table v-loading="loading" :data="tableData" border stripe>
         <el-table-column type="index" width="60" align="center" />
         <el-table-column prop="name" label="网站名称" min-width="150" />
         <el-table-column label="友链位置" min-width="180">
@@ -77,7 +90,9 @@
         </el-table-column>
         <el-table-column prop="url" label="网站链接" min-width="220" show-overflow-tooltip>
           <template #default="{ row }">
-            <el-link v-if="row.url" :href="row.url" target="_blank" type="primary">{{ row.url }}</el-link>
+            <el-link v-if="row.url" :href="row.url" target="_blank" type="primary">
+              {{ row.url }}
+            </el-link>
             <span v-else>-</span>
           </template>
         </el-table-column>
@@ -93,7 +108,12 @@
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="description" label="网站描述" min-width="200" show-overflow-tooltip />
+        <el-table-column
+          prop="description"
+          label="网站描述"
+          min-width="200"
+          show-overflow-tooltip
+        />
         <el-table-column prop="sort" label="排序" width="80" align="center" />
         <el-table-column prop="author" label="作者" width="100" />
         <el-table-column prop="status" label="状态" width="100" align="center">
@@ -110,10 +130,12 @@
         <el-table-column label="操作" width="180" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleEdit(row)">
-              <el-icon><Edit /></el-icon>编辑
+              <el-icon><Edit /></el-icon>
+              编辑
             </el-button>
             <el-button link type="danger" @click="handleDelete(row)">
-              <el-icon><Delete /></el-icon>删除
+              <el-icon><Delete /></el-icon>
+              删除
             </el-button>
           </template>
         </el-table-column>
@@ -139,12 +161,7 @@
       destroy-on-close
       :close-on-click-modal="false"
     >
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="formRules"
-        label-width="90px"
-      >
+      <el-form ref="formRef" :model="form" :rules="formRules" label-width="90px">
         <el-form-item label="网站名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入网站名称" />
         </el-form-item>
@@ -202,14 +219,20 @@
               />
               <div class="logo-actions">
                 <el-button type="danger" size="small" @click="handleRemoveLogo">
-                  <el-icon><Delete /></el-icon>删除
+                  <el-icon><Delete /></el-icon>
+                  删除
                 </el-button>
               </div>
             </div>
           </div>
         </el-form-item>
         <el-form-item label="网站描述" prop="description">
-          <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入网站描述" />
+          <el-input
+            v-model="form.description"
+            type="textarea"
+            :rows="3"
+            placeholder="请输入网站描述"
+          />
         </el-form-item>
         <el-row :gutter="16">
           <el-col :span="12">
@@ -238,22 +261,9 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import {
-  Search,
-  RefreshRight,
-  Plus,
-  Edit,
-  Delete,
-  ArrowRight
-} from '@element-plus/icons-vue'
+import { Search, RefreshRight, Plus, Edit, Delete, ArrowRight } from '@element-plus/icons-vue'
 
-import {
-  getLinks,
-  createLink,
-  updateLink,
-  deleteLink,
-  updateLinkStatus
-} from '@/api/link'
+import { getLinks, createLink, updateLink, deleteLink, updateLinkStatus } from '@/api/link'
 import { getAllTemplates } from '@/api/template'
 import { getColumns } from '@/api/column'
 import { uploadFile } from '@/api/upload'
@@ -271,7 +281,7 @@ const queryForm = reactive({
   name: '',
   templateId: undefined as number | undefined,
   columnId: undefined as number | undefined,
-  status: undefined as number | undefined
+  status: undefined as number | undefined,
 })
 
 const form = reactive({
@@ -283,7 +293,7 @@ const form = reactive({
   templateId: undefined as number | undefined,
   columnId: undefined as number | undefined,
   sort: 0,
-  status: 1
+  status: 1,
 })
 
 const formRules = {
@@ -292,8 +302,8 @@ const formRules = {
   columnId: [{ required: true, message: '请选择栏目', trigger: 'change' }],
   url: [
     { required: true, message: '请输入网站链接', trigger: 'blur' },
-    { pattern: /^https?:\/\/.+/, message: '链接格式不正确', trigger: 'blur' }
-  ]
+    { pattern: /^https?:\/\/.+/, message: '链接格式不正确', trigger: 'blur' },
+  ],
 }
 
 const tableData = ref<any[]>([])
@@ -343,7 +353,7 @@ const fetchData = async () => {
       name: queryForm.name || undefined,
       templateId: queryForm.templateId || undefined,
       columnId: queryForm.columnId || undefined,
-      status: queryForm.status !== undefined ? queryForm.status : undefined
+      status: queryForm.status !== undefined ? queryForm.status : undefined,
     }
     const res: any = await getLinks(params)
     const data = res.data || {}
@@ -392,7 +402,7 @@ const handleEdit = async (row: any) => {
     templateId: row.templateId,
     columnId: row.columnId || undefined,
     sort: row.sort,
-    status: row.status
+    status: row.status,
   })
   dialogVisible.value = true
 }
@@ -401,16 +411,18 @@ const handleDelete = (row: any) => {
   ElMessageBox.confirm(`确定要删除友链 「${row.name}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    try {
-      await deleteLink(row.id)
-      ElMessage.success('删除成功')
-      fetchData()
-    } catch {
-      // 失败提示由 request 拦截器统一给出
-    }
-  }).catch(() => {})
+    type: 'warning',
+  })
+    .then(async () => {
+      try {
+        await deleteLink(row.id)
+        ElMessage.success('删除成功')
+        fetchData()
+      } catch {
+        // 失败提示由 request 拦截器统一给出
+      }
+    })
+    .catch(() => {})
 }
 
 const handleStatusChange = async (row: any, val: number) => {
@@ -436,7 +448,7 @@ const handleSubmit = async () => {
       templateId: form.templateId as number,
       columnId: form.columnId,
       sort: form.sort,
-      status: form.status
+      status: form.status,
     }
     if (form.id) {
       await updateLink(form.id, payload)

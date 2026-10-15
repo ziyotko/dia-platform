@@ -7,7 +7,12 @@ export interface TagForm {
   status: number
 }
 
-export function getTags(params: { name?: string; status?: number; page?: number; pageSize?: number }) {
+export function getTags(params: {
+  name?: string
+  status?: number
+  page?: number
+  pageSize?: number
+}) {
   return request.get('/tags', { params })
 }
 

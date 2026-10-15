@@ -46,7 +46,9 @@
               <el-input v-model="basicForm.orgCode" placeholder="请输入机构编码" />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" :loading="loading" @click="handleSaveBasic">保存设置</el-button>
+              <el-button type="primary" :loading="loading" @click="handleSaveBasic">
+                保存设置
+              </el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
@@ -74,7 +76,9 @@
               <el-input-number v-model="securityForm.tokenExpire" :min="1" :max="72" />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" :loading="loading" @click="handleSaveSecurity">保存设置</el-button>
+              <el-button type="primary" :loading="loading" @click="handleSaveSecurity">
+                保存设置
+              </el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
@@ -94,14 +98,23 @@
               <el-input v-model="emailForm.fromName" placeholder="请输入发件人名称" />
             </el-form-item>
             <el-form-item label="邮箱密码">
-              <el-input v-model="emailForm.password" type="password" show-password placeholder="请输入邮箱密码或授权码" />
+              <el-input
+                v-model="emailForm.password"
+                type="password"
+                show-password
+                placeholder="请输入邮箱密码或授权码"
+              />
             </el-form-item>
             <el-form-item label="启用 SSL">
               <el-switch v-model="emailForm.ssl" />
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" :loading="testingEmail" @click="handleTestEmail">测试连接</el-button>
-              <el-button type="primary" :loading="loading" @click="handleSaveEmail">保存设置</el-button>
+              <el-button type="primary" :loading="testingEmail" @click="handleTestEmail">
+                测试连接
+              </el-button>
+              <el-button type="primary" :loading="loading" @click="handleSaveEmail">
+                保存设置
+              </el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
@@ -138,7 +151,9 @@
             </el-form-item>
 
             <el-form-item>
-              <el-button type="primary" :loading="loading" @click="handleSaveStatic">保存设置</el-button>
+              <el-button type="primary" :loading="loading" @click="handleSaveStatic">
+                保存设置
+              </el-button>
               <span class="form-tip">此项保存后不会退出登录</span>
             </el-form-item>
           </el-form>
@@ -207,7 +222,7 @@ const basicForm = reactive({
   icp: '',
   copyright: '',
   orgName: '',
-  orgCode: ''
+  orgCode: '',
 })
 
 const securityForm = reactive({
@@ -216,7 +231,7 @@ const securityForm = reactive({
   maxFailCount: 5,
   lockDuration: 30,
   minPasswordLength: 8,
-  tokenExpire: 24
+  tokenExpire: 24,
 })
 
 const emailForm = reactive({
@@ -225,14 +240,14 @@ const emailForm = reactive({
   fromEmail: '',
   fromName: '',
   password: '',
-  ssl: true
+  ssl: true,
 })
 
 const staticForm = reactive({
   staticPath: '',
   staticProgramAddr: '',
   staticProgramTokenName: '',
-  homeGray: false
+  homeGray: false,
 })
 
 // positiveOr 数值项回退：非正数或非法值统一回落到界面默认值
@@ -262,7 +277,7 @@ const loadSettings = async () => {
     securityForm.tokenExpire = positiveOr(data.tokenExpire, 24)
 
     appStore.setSecuritySettings({
-      minPasswordLength: securityForm.minPasswordLength
+      minPasswordLength: securityForm.minPasswordLength,
     })
     emailForm.smtpHost = data.smtpHost || ''
     emailForm.smtpPort = data.smtpPort || ''
@@ -323,7 +338,7 @@ const handleSaveBasic = () => {
     icp: basicForm.icp,
     copyright: basicForm.copyright,
     orgName: basicForm.orgName,
-    orgCode: basicForm.orgCode
+    orgCode: basicForm.orgCode,
   })
 }
 
@@ -334,10 +349,10 @@ const handleSaveSecurity = async () => {
     maxFailCount: securityForm.maxFailCount,
     lockDuration: securityForm.lockDuration,
     minPasswordLength: securityForm.minPasswordLength,
-    tokenExpire: securityForm.tokenExpire
+    tokenExpire: securityForm.tokenExpire,
   })
   appStore.setSecuritySettings({
-    minPasswordLength: securityForm.minPasswordLength
+    minPasswordLength: securityForm.minPasswordLength,
   })
 }
 
@@ -348,7 +363,7 @@ const handleSaveEmail = () => {
     fromEmail: emailForm.fromEmail,
     fromName: emailForm.fromName,
     emailPassword: emailForm.password,
-    ssl: emailForm.ssl
+    ssl: emailForm.ssl,
   })
 }
 
@@ -372,7 +387,7 @@ const handleSaveStatic = async () => {
       staticPath: staticForm.staticPath,
       staticProgramAddr: staticForm.staticProgramAddr,
       staticProgramTokenName: staticForm.staticProgramTokenName,
-      homeGray: staticForm.homeGray
+      homeGray: staticForm.homeGray,
     })
     ElMessage.success('保存成功')
   } catch {
@@ -382,9 +397,12 @@ const handleSaveStatic = async () => {
   }
 }
 
-watch(() => appStore.refreshKey, () => {
-  loadSettings()
-})
+watch(
+  () => appStore.refreshKey,
+  () => {
+    loadSettings()
+  }
+)
 
 onMounted(() => {
   loadSettings()

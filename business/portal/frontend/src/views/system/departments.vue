@@ -3,20 +3,32 @@
     <el-card shadow="hover" class="search-card">
       <el-form :model="queryForm" inline>
         <el-form-item label="部门名称">
-          <el-input v-model="queryForm.name" placeholder="请输入部门名称" clearable @keyup.enter="handleSearch" />
+          <el-input
+            v-model="queryForm.name"
+            placeholder="请输入部门名称"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="queryForm.status" placeholder="全部状态" clearable style="width: 120px">
+          <el-select
+            v-model="queryForm.status"
+            placeholder="全部状态"
+            clearable
+            style="width: 120px"
+          >
             <el-option label="启用" :value="1" />
             <el-option label="禁用" :value="0" />
           </el-select>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>查询
+            <el-icon><Search /></el-icon>
+            查询
           </el-button>
           <el-button @click="resetQuery">
-            <el-icon><RefreshRight /></el-icon>重置
+            <el-icon><RefreshRight /></el-icon>
+            重置
           </el-button>
         </el-form-item>
       </el-form>
@@ -28,18 +40,20 @@
           <span>部门列表</span>
           <div class="header-actions">
             <el-button type="success" @click="handleImport">
-              <el-icon><Upload /></el-icon>导入部门
+              <el-icon><Upload /></el-icon>
+              导入部门
             </el-button>
             <el-button type="primary" @click="handleAdd">
-              <el-icon><Plus /></el-icon>新增部门
+              <el-icon><Plus /></el-icon>
+              新增部门
             </el-button>
           </div>
         </div>
       </template>
 
       <el-table
-        :data="filteredTableData"
         v-loading="loading"
+        :data="filteredTableData"
         row-key="id"
         border
         stripe
@@ -48,7 +62,9 @@
       >
         <el-table-column prop="name" label="部门名称" min-width="280">
           <template #default="{ row }">
-            <el-icon style="margin-right: 6px; color: var(--el-color-primary);"><OfficeBuilding /></el-icon>
+            <el-icon style="margin-right: 6px; color: var(--el-color-primary)">
+              <OfficeBuilding />
+            </el-icon>
             <span>{{ row.name }}</span>
           </template>
         </el-table-column>
@@ -68,19 +84,24 @@
         <el-table-column label="操作" width="420" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleAddChild(row)">
-              <el-icon><CirclePlus /></el-icon>子部门
+              <el-icon><CirclePlus /></el-icon>
+              子部门
             </el-button>
             <el-button link type="primary" @click="handleAssignUsers(row)">
-              <el-icon><User /></el-icon>选人
+              <el-icon><User /></el-icon>
+              选人
             </el-button>
             <el-button link type="primary" @click="handleViewUsers(row)">
-              <el-icon><User /></el-icon>人员查看
+              <el-icon><User /></el-icon>
+              人员查看
             </el-button>
             <el-button link type="primary" @click="handleEdit(row)">
-              <el-icon><Edit /></el-icon>编辑
+              <el-icon><Edit /></el-icon>
+              编辑
             </el-button>
             <el-button link type="danger" @click="handleDelete(row)">
-              <el-icon><Delete /></el-icon>删除
+              <el-icon><Delete /></el-icon>
+              删除
             </el-button>
           </template>
         </el-table-column>
@@ -95,12 +116,7 @@
       destroy-on-close
       :close-on-click-modal="false"
     >
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="formRules"
-        label-width="90px"
-      >
+      <el-form ref="formRef" :model="form" :rules="formRules" label-width="90px">
         <el-form-item label="所属机构" prop="orgId">
           <el-tree-select
             v-model="form.orgId"
@@ -145,9 +161,11 @@
               :label="user.username"
               :value="String(user.id)"
             >
-              <span style="display: flex; align-items: center; justify-content: space-between;">
+              <span style="display: flex; align-items: center; justify-content: space-between">
                 <span>{{ user.username }} ({{ user.account }})</span>
-                <el-icon v-if="form.leaderCode === String(user.id)" color="var(--el-color-primary)"><Check /></el-icon>
+                <el-icon v-if="form.leaderCode === String(user.id)" color="var(--el-color-primary)">
+                  <Check />
+                </el-icon>
               </span>
             </el-option>
           </el-select>
@@ -191,27 +209,26 @@
       >
         <el-icon class="el-icon--upload"><Upload /></el-icon>
         <div class="el-upload__text">
-          拖拽文件到此处或 <em>点击上传</em>
+          拖拽文件到此处或
+          <em>点击上传</em>
         </div>
         <template #tip>
           <div class="el-upload__tip">
-            仅支持 .xlsx / .xls 文件，第一行为标题：上级部门ID（没有就是0）、部门名称、部门编码、机构名称
+            仅支持 .xlsx / .xls
+            文件，第一行为标题：上级部门ID（没有就是0）、部门名称、部门编码、机构名称
           </div>
         </template>
       </el-upload>
       <template #footer>
         <el-button @click="importDialogVisible = false">关闭</el-button>
-        <el-button type="primary" :loading="importLoading" @click="handleImportSubmit">确定导入</el-button>
+        <el-button type="primary" :loading="importLoading" @click="handleImportSubmit">
+          确定导入
+        </el-button>
       </template>
     </el-dialog>
 
     <!-- 部门人员查看弹窗 -->
-    <el-dialog
-      v-model="viewUserDialogVisible"
-      title="部门人员"
-      width="700px"
-      destroy-on-close
-    >
+    <el-dialog v-model="viewUserDialogVisible" title="部门人员" width="700px" destroy-on-close>
       <div class="user-select-header">
         <span>当前部门：{{ viewCurrentDeptName }}</span>
         <el-input
@@ -222,8 +239,8 @@
         />
       </div>
       <el-table
-        :data="paginatedViewUserOptions"
         v-loading="viewUserLoading"
+        :data="paginatedViewUserOptions"
         border
         stripe
         height="360"
@@ -271,13 +288,13 @@
         />
       </div>
       <el-table
-        :data="filteredUserOptions"
+        ref="userTableRef"
         v-loading="userLoading"
+        :data="filteredUserOptions"
         border
         stripe
         height="360"
         @selection-change="handleUserSelectionChange"
-        ref="userTableRef"
       >
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column prop="username" label="用户名" min-width="120" />
@@ -286,7 +303,9 @@
       </el-table>
       <template #footer>
         <el-button @click="userDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="userSubmitLoading" @click="handleUserSubmit">确定</el-button>
+        <el-button type="primary" :loading="userSubmitLoading" @click="handleUserSubmit">
+          确定
+        </el-button>
       </template>
     </el-dialog>
   </div>
@@ -305,7 +324,7 @@ import {
   User,
   OfficeBuilding,
   Check,
-  Upload
+  Upload,
 } from '@element-plus/icons-vue'
 import {
   getDepartmentList,
@@ -314,7 +333,7 @@ import {
   deleteDepartment,
   getDepartmentUsers,
   assignDepartmentUsers,
-  importDepartments
+  importDepartments,
 } from '@/api/department'
 import { getAllUsers } from '@/api/user'
 import { getOrgTree, getOrgUsers, type OrgItem } from '@/api/org'
@@ -375,7 +394,7 @@ const viewUserOptions = ref<UserItem[]>([])
 
 const queryForm = reactive({
   name: '',
-  status: undefined as number | undefined
+  status: undefined as number | undefined,
 })
 
 const form = reactive({
@@ -388,14 +407,14 @@ const form = reactive({
   leaderCode: '',
   sort: 0,
   status: 1,
-  description: ''
+  description: '',
 })
 
 const formRules = {
   name: [{ required: true, message: '请输入部门名称', trigger: 'blur' }],
   code: [{ required: true, message: '请输入部门编码', trigger: 'blur' }],
   orgId: [{ required: true, message: '请选择所属机构', trigger: 'change' }],
-  sort: [{ required: true, message: '请输入排序', trigger: 'blur' }]
+  sort: [{ required: true, message: '请输入排序', trigger: 'blur' }],
 }
 
 const userOptions = ref<UserItem[]>([])
@@ -407,9 +426,7 @@ const filteredUserOptions = computed(() => {
   if (!userSearch.value) return userOptions.value
   const keyword = userSearch.value.toLowerCase()
   return userOptions.value.filter(
-    (u) =>
-      u.username.toLowerCase().includes(keyword) ||
-      u.account.toLowerCase().includes(keyword)
+    (u) => u.username.toLowerCase().includes(keyword) || u.account.toLowerCase().includes(keyword)
   )
 })
 
@@ -417,9 +434,7 @@ const filteredViewUserOptions = computed(() => {
   if (!viewUserSearch.value) return viewUserOptions.value
   const keyword = viewUserSearch.value.toLowerCase()
   return viewUserOptions.value.filter(
-    (u) =>
-      u.username.toLowerCase().includes(keyword) ||
-      u.account.toLowerCase().includes(keyword)
+    (u) => u.username.toLowerCase().includes(keyword) || u.account.toLowerCase().includes(keyword)
   )
 })
 
@@ -476,12 +491,13 @@ const fetchData = async () => {
   try {
     const res: any = await getDepartmentList({
       name: queryForm.name || undefined,
-      status: queryForm.status
+      status: queryForm.status,
     })
     if (res && res.code === 0) {
       tableData.value = res.data.list || []
     }
-  } catch {} finally {
+  } catch {
+  } finally {
     loading.value = false
   }
 }
@@ -524,7 +540,7 @@ const handleEdit = async (row: DeptItem) => {
     leaderCode: row.leaderCode,
     sort: row.sort,
     status: row.status,
-    description: row.description
+    description: row.description,
   })
   await Promise.all([fetchOrgTreeData(), fetchDialogUsers()])
   await refreshDialogUsers()
@@ -539,16 +555,18 @@ const handleDelete = (row: DeptItem) => {
   ElMessageBox.confirm(`确定要删除部门 「${row.name}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    try {
-      const res: any = await deleteDepartment(row.id)
-      if (res && res.code === 0) {
-        ElMessage.success('删除成功')
-        fetchData()
-      }
-    } catch {}
-  }).catch(() => {})
+    type: 'warning',
+  })
+    .then(async () => {
+      try {
+        const res: any = await deleteDepartment(row.id)
+        if (res && res.code === 0) {
+          ElMessage.success('删除成功')
+          fetchData()
+        }
+      } catch {}
+    })
+    .catch(() => {})
 }
 
 const handleSubmit = async () => {
@@ -565,7 +583,7 @@ const handleSubmit = async () => {
       leaderCode: form.leaderCode,
       sort: form.sort,
       status: form.status,
-      description: form.description
+      description: form.description,
     }
     let res: any
     if (form.id) {
@@ -578,7 +596,8 @@ const handleSubmit = async () => {
       dialogVisible.value = false
       fetchData()
     }
-  } catch {} finally {
+  } catch {
+  } finally {
     submitLoading.value = false
   }
 }
@@ -619,17 +638,20 @@ const handleImportSubmit = async () => {
     const res: any = await importDepartments(importFile.value)
     if (res && res.code === 0) {
       const data = res.data || {}
-      ElMessage.success(`导入完成，成功 ${data.successCount || 0} 条，失败 ${data.failCount || 0} 条`)
+      ElMessage.success(
+        `导入完成，成功 ${data.successCount || 0} 条，失败 ${data.failCount || 0} 条`
+      )
       if (data.failDetails && data.failDetails.length > 0) {
         ElMessageBox.alert(data.failDetails.join('\n'), '导入失败详情', {
           confirmButtonText: '知道了',
-          customStyle: { whiteSpace: 'pre-line', maxHeight: '60vh', overflow: 'auto' }
+          customStyle: { whiteSpace: 'pre-line', maxHeight: '60vh', overflow: 'auto' },
         })
       }
       importDialogVisible.value = false
       fetchData()
     }
-  } catch {} finally {
+  } catch {
+  } finally {
     importLoading.value = false
   }
 }
@@ -649,15 +671,18 @@ const syncLeaderFromCode = () => {
 
 watch(() => form.leaderCode, syncLeaderFromCode)
 watch(() => dialogUserOptions.value, syncLeaderFromCode)
-watch(() => form.orgId, () => {
-  // 编辑态必须跳过：handleEdit 用 Object.assign 回填 form.orgId 会触发本 watch，
-  // 而此刻负责人候选（allDialogUsers）可能尚未加载完，refreshDialogUsers 会把已保存的
-  // 负责人误判为「不属于所选机构」而清空 —— 用户点「确定」就把负责人写成空。
-  // 编辑流程在用户数据到位后由 handleEdit 显式调用 refreshDialogUsers()；
-  // 用户主动切换机构走模板上的 @change="handleOrgChange"。
-  if (form.id) return
-  refreshDialogUsers()
-})
+watch(
+  () => form.orgId,
+  () => {
+    // 编辑态必须跳过：handleEdit 用 Object.assign 回填 form.orgId 会触发本 watch，
+    // 而此刻负责人候选（allDialogUsers）可能尚未加载完，refreshDialogUsers 会把已保存的
+    // 负责人误判为「不属于所选机构」而清空 —— 用户点「确定」就把负责人写成空。
+    // 编辑流程在用户数据到位后由 handleEdit 显式调用 refreshDialogUsers()；
+    // 用户主动切换机构走模板上的 @change="handleOrgChange"。
+    if (form.id) return
+    refreshDialogUsers()
+  }
+)
 watch(viewUserSearch, () => {
   viewUserPage.value = 1
 })
@@ -673,7 +698,7 @@ const handleViewUsers = async (row: DeptItem) => {
   try {
     const [usersRes, deptUsersRes]: any[] = await Promise.all([
       getAllUsers(),
-      getDepartmentUsers(row.id)
+      getDepartmentUsers(row.id),
     ])
     const allUsers = usersRes?.data?.list || []
     const deptUserIds = new Set((deptUsersRes?.data || []).map((id: any) => Number(id)))
@@ -685,9 +710,10 @@ const handleViewUsers = async (row: DeptItem) => {
         id: u.id,
         username: u.username,
         account: u.account,
-        phone: u.phone || u.mobile || ''
+        phone: u.phone || u.mobile || '',
       }))
-  } catch {} finally {
+  } catch {
+  } finally {
     viewUserLoading.value = false
   }
 }
@@ -700,7 +726,7 @@ const fetchDialogUsers = async () => {
         id: u.id,
         username: u.username,
         account: u.account,
-        phone: u.phone || u.mobile || ''
+        phone: u.phone || u.mobile || '',
       }))
     }
   } catch {}
@@ -747,7 +773,7 @@ const handleAssignUsers = async (row: DeptItem) => {
     const [usersRes, orgUsersRes, deptUsersRes]: any[] = await Promise.all([
       getAllUsers(),
       getOrgUsers(row.orgId),
-      getDepartmentUsers(row.id)
+      getDepartmentUsers(row.id),
     ])
     const allUsers = usersRes?.data?.list || []
     const orgUserIds = new Set((orgUsersRes?.data || []).map((id: any) => Number(id)))
@@ -757,7 +783,7 @@ const handleAssignUsers = async (row: DeptItem) => {
         id: u.id,
         username: u.username,
         account: u.account,
-        phone: u.phone || u.mobile || ''
+        phone: u.phone || u.mobile || '',
       }))
     selectedUserIds.value = deptUsersRes?.data || []
     nextTick(() => {
@@ -766,7 +792,8 @@ const handleAssignUsers = async (row: DeptItem) => {
         userTableRef.value?.toggleRowSelection(r, true)
       })
     })
-  } catch {} finally {
+  } catch {
+  } finally {
     userLoading.value = false
   }
 }
@@ -784,7 +811,8 @@ const handleUserSubmit = async () => {
       userDialogVisible.value = false
       fetchData()
     }
-  } catch {} finally {
+  } catch {
+  } finally {
     userSubmitLoading.value = false
   }
 }

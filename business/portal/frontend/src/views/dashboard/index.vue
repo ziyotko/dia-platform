@@ -8,7 +8,10 @@
               <div class="stat-label">今日访问量</div>
               <div class="stat-value">{{ stats.todayVisit.toLocaleString() }}</div>
             </div>
-            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
+            <div
+              class="stat-icon"
+              style="background: var(--el-color-primary-light-9); color: var(--el-color-primary)"
+            >
               <el-icon :size="26"><View /></el-icon>
             </div>
           </div>
@@ -21,7 +24,10 @@
               <div class="stat-label">已发布文章</div>
               <div class="stat-value">{{ stats.articleCount.toLocaleString() }}</div>
             </div>
-            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
+            <div
+              class="stat-icon"
+              style="background: var(--el-color-primary-light-9); color: var(--el-color-primary)"
+            >
               <el-icon :size="26"><DocumentChecked /></el-icon>
             </div>
           </div>
@@ -34,7 +40,10 @@
               <div class="stat-label">我的草稿文章</div>
               <div class="stat-value">{{ stats.myDraftCount.toLocaleString() }}</div>
             </div>
-            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
+            <div
+              class="stat-icon"
+              style="background: var(--el-color-primary-light-9); color: var(--el-color-primary)"
+            >
               <el-icon :size="26"><Document /></el-icon>
             </div>
           </div>
@@ -47,7 +56,10 @@
               <div class="stat-label">我的已发布文章</div>
               <div class="stat-value">{{ stats.myArticleCount.toLocaleString() }}</div>
             </div>
-            <div class="stat-icon" style="background: var(--el-color-primary-light-9); color: var(--el-color-primary);">
+            <div
+              class="stat-icon"
+              style="background: var(--el-color-primary-light-9); color: var(--el-color-primary)"
+            >
               <el-icon :size="26"><EditPen /></el-icon>
             </div>
           </div>
@@ -56,7 +68,12 @@
       <el-col :xs="24" :lg="8">
         <el-card shadow="never">
           <div class="quick-links">
-            <div v-for="(item, index) in visibleQuickLinks" :key="index" class="quick-item" @click="$router.push(item.path)">
+            <div
+              v-for="(item, index) in visibleQuickLinks"
+              :key="index"
+              class="quick-item"
+              @click="$router.push(item.path)"
+            >
               <div class="quick-icon" :style="{ background: item.bg, color: item.color }">
                 <el-icon size="24"><component :is="item.icon" /></el-icon>
               </div>
@@ -78,8 +95,12 @@
                   <el-option v-for="y in yearOptions" :key="y" :label="`${y}年`" :value="y" />
                 </el-select>
                 <el-radio-group v-model="chartPeriod" size="small">
-                  <el-radio-button value="week" :disabled="!isVisitCurrentYear">本周</el-radio-button>
-                  <el-radio-button value="month" :disabled="!isVisitCurrentYear">本月</el-radio-button>
+                  <el-radio-button value="week" :disabled="!isVisitCurrentYear">
+                    本周
+                  </el-radio-button>
+                  <el-radio-button value="month" :disabled="!isVisitCurrentYear">
+                    本月
+                  </el-radio-button>
                   <el-radio-button value="year">全年</el-radio-button>
                 </el-radio-group>
               </div>
@@ -88,12 +109,18 @@
           <div ref="chartRef" class="chart-container"></div>
         </el-card>
       </el-col>
-            <el-col :xs="24" :lg="8">
+      <el-col :xs="24" :lg="8">
         <el-card class="notice-card" shadow="hover">
           <template #header>
             <div class="card-header">
               <span>待处理</span>
-              <el-link type="primary" underline="never" @click="gotoIfAllowed('/content/pending-audits', '待审核')">更多</el-link>
+              <el-link
+                type="primary"
+                underline="never"
+                @click="gotoIfAllowed('/content/pending-audits', '待审核')"
+              >
+                更多
+              </el-link>
             </div>
           </template>
           <div class="notice-list">
@@ -124,8 +151,12 @@
                   <el-option v-for="y in yearOptions" :key="y" :label="`${y}年`" :value="y" />
                 </el-select>
                 <el-radio-group v-model="articleChartPeriod" size="small">
-                  <el-radio-button value="week" :disabled="!isArticleCurrentYear">本周</el-radio-button>
-                  <el-radio-button value="month" :disabled="!isArticleCurrentYear">本月</el-radio-button>
+                  <el-radio-button value="week" :disabled="!isArticleCurrentYear">
+                    本周
+                  </el-radio-button>
+                  <el-radio-button value="month" :disabled="!isArticleCurrentYear">
+                    本月
+                  </el-radio-button>
                   <el-radio-button value="year">全年</el-radio-button>
                 </el-radio-group>
               </div>
@@ -139,25 +170,33 @@
           <template #header>
             <div class="card-header">
               <span>登录日志</span>
-              <el-link type="primary" underline="never" @click="gotoIfAllowed('/system/login-logs', '登录日志')">更多</el-link>
+              <el-link
+                type="primary"
+                underline="never"
+                @click="gotoIfAllowed('/system/login-logs', '登录日志')"
+              >
+                更多
+              </el-link>
             </div>
           </template>
           <div class="table-container">
-          <el-table :data="loginLogs" class="login-log-table" size="small" :show-header="false">
-            <el-table-column prop="time" width="150" />
-            <el-table-column prop="username" width="90" />
-            <el-table-column prop="ip" width="120" />
-            <el-table-column>
-              <template #default="{ row }">
-                <span>{{ row.browser }} / {{ row.os }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column width="60">
-              <template #default="{ row }">
-                <el-tag :type="row.status === '成功' ? 'success' : 'danger'" size="small">{{ row.status }}</el-tag>
-              </template>
-            </el-table-column>
-          </el-table>
+            <el-table :data="loginLogs" class="login-log-table" size="small" :show-header="false">
+              <el-table-column prop="time" width="150" />
+              <el-table-column prop="username" width="90" />
+              <el-table-column prop="ip" width="120" />
+              <el-table-column>
+                <template #default="{ row }">
+                  <span>{{ row.browser }} / {{ row.os }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column width="60">
+                <template #default="{ row }">
+                  <el-tag :type="row.status === '成功' ? 'success' : 'danger'" size="small">
+                    {{ row.status }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+            </el-table>
           </div>
         </el-card>
       </el-col>
@@ -170,14 +209,15 @@ import { ref, computed, onMounted, reactive, watch, onUnmounted, nextTick } from
 import { useRouter } from 'vue-router'
 import * as echarts from 'echarts'
 import type { ECharts } from 'echarts'
-import {
-  DocumentChecked,
-  View,
-  Document,
-  EditPen
-} from '@element-plus/icons-vue'
+import { DocumentChecked, View, Document, EditPen } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { getDashboardStats, getLoginLogs, getVisitTrend, getArticleTrend, getMyAuditArticles } from '@/api/dashboard'
+import {
+  getDashboardStats,
+  getLoginLogs,
+  getVisitTrend,
+  getArticleTrend,
+  getMyAuditArticles,
+} from '@/api/dashboard'
 import { useUserStore } from '@/stores/user'
 import { canAccessPath } from '@/utils/permission'
 import { BRAND_THEME_COLOR } from '@/stores/app'
@@ -190,7 +230,7 @@ const stats = reactive({
   articleCount: 0,
   todayVisit: 0,
   myDraftCount: 0,
-  myArticleCount: 0
+  myArticleCount: 0,
 })
 
 const fetchStats = async () => {
@@ -246,7 +286,7 @@ const handleAuditClick = (item: any) => {
   }
   router.push({
     path: '/content/article',
-    query: { auditArticleId: String(item.id) }
+    query: { auditArticleId: String(item.id) },
   })
 }
 
@@ -281,7 +321,7 @@ const visitData = ref<{ label: string; value: number }[]>([
   { label: '周四', value: 0 },
   { label: '周五', value: 0 },
   { label: '周六', value: 0 },
-  { label: '周日', value: 0 }
+  { label: '周日', value: 0 },
 ])
 
 const chartRef = ref<HTMLDivElement | null>(null)
@@ -289,29 +329,34 @@ let chartInstance: ECharts | null = null
 
 const updateChart = () => {
   if (!chartInstance) return
-  const labels = visitData.value.map(item => item.label)
-  const values = visitData.value.map(item => item.value)
-  chartInstance.setOption({
-    tooltip: { trigger: 'axis' },
-    grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
-    xAxis: { type: 'category', boundaryGap: false, data: labels },
-    yAxis: { type: 'value', name: '访问次数', minInterval: 1 },
-    series: [{
-      type: 'line',
-      data: values,
-      smooth: true,
-      symbol: 'circle',
-      symbolSize: 8,
-      itemStyle: { color: BRAND_THEME_COLOR },
-      lineStyle: { width: 3, color: BRAND_THEME_COLOR },
-      areaStyle: {
-        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(0, 47, 167, 0.3)' },
-          { offset: 1, color: 'rgba(0, 47, 167, 0.05)' }
-        ])
-      }
-    }]
-  }, true)
+  const labels = visitData.value.map((item) => item.label)
+  const values = visitData.value.map((item) => item.value)
+  chartInstance.setOption(
+    {
+      tooltip: { trigger: 'axis' },
+      grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
+      xAxis: { type: 'category', boundaryGap: false, data: labels },
+      yAxis: { type: 'value', name: '访问次数', minInterval: 1 },
+      series: [
+        {
+          type: 'line',
+          data: values,
+          smooth: true,
+          symbol: 'circle',
+          symbolSize: 8,
+          itemStyle: { color: BRAND_THEME_COLOR },
+          lineStyle: { width: 3, color: BRAND_THEME_COLOR },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: 'rgba(0, 47, 167, 0.3)' },
+              { offset: 1, color: 'rgba(0, 47, 167, 0.05)' },
+            ]),
+          },
+        },
+      ],
+    },
+    true
+  )
 }
 
 // 具名 resize 回调：匿名函数无法被 removeEventListener 移除，反复进出页面会不断堆积监听器
@@ -330,7 +375,7 @@ const fetchVisitTrend = async () => {
     if (res && Array.isArray(res.data) && res.data.length > 0) {
       visitData.value = res.data.map((item: any) => ({
         label: item.label,
-        value: Number(item.value) || 0
+        value: Number(item.value) || 0,
       }))
       nextTick(() => updateChart())
     }
@@ -360,9 +405,13 @@ watch(visitYear, (newYear) => {
   }
 })
 
-watch(visitData, () => {
-  updateChart()
-}, { deep: true })
+watch(
+  visitData,
+  () => {
+    updateChart()
+  },
+  { deep: true }
+)
 
 const articleChartPeriod = ref('week')
 const articleYear = ref(currentYear)
@@ -376,7 +425,7 @@ const articleVisitData = ref<{ label: string; value: number }[]>([
   { label: '周四', value: 0 },
   { label: '周五', value: 0 },
   { label: '周六', value: 0 },
-  { label: '周日', value: 0 }
+  { label: '周日', value: 0 },
 ])
 
 const articleChartRef = ref<HTMLDivElement | null>(null)
@@ -384,29 +433,34 @@ let articleChartInstance: ECharts | null = null
 
 const updateArticleChart = () => {
   if (!articleChartInstance) return
-  const labels = articleVisitData.value.map(item => item.label)
-  const values = articleVisitData.value.map(item => item.value)
-  articleChartInstance.setOption({
-    tooltip: { trigger: 'axis' },
-    grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
-    xAxis: { type: 'category', boundaryGap: false, data: labels },
-    yAxis: { type: 'value', name: '文章数量', minInterval: 1 },
-    series: [{
-      type: 'line',
-      data: values,
-      smooth: true,
-      symbol: 'circle',
-      symbolSize: 8,
-      itemStyle: { color: BRAND_THEME_COLOR },
-      lineStyle: { width: 3, color: BRAND_THEME_COLOR },
-      areaStyle: {
-        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(0, 47, 167, 0.3)' },
-          { offset: 1, color: 'rgba(0, 47, 167, 0.05)' }
-        ])
-      }
-    }]
-  }, true)
+  const labels = articleVisitData.value.map((item) => item.label)
+  const values = articleVisitData.value.map((item) => item.value)
+  articleChartInstance.setOption(
+    {
+      tooltip: { trigger: 'axis' },
+      grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
+      xAxis: { type: 'category', boundaryGap: false, data: labels },
+      yAxis: { type: 'value', name: '文章数量', minInterval: 1 },
+      series: [
+        {
+          type: 'line',
+          data: values,
+          smooth: true,
+          symbol: 'circle',
+          symbolSize: 8,
+          itemStyle: { color: BRAND_THEME_COLOR },
+          lineStyle: { width: 3, color: BRAND_THEME_COLOR },
+          areaStyle: {
+            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+              { offset: 0, color: 'rgba(0, 47, 167, 0.3)' },
+              { offset: 1, color: 'rgba(0, 47, 167, 0.05)' },
+            ]),
+          },
+        },
+      ],
+    },
+    true
+  )
 }
 
 const resizeArticleChart = () => articleChartInstance?.resize()
@@ -424,7 +478,7 @@ const fetchArticleTrend = async () => {
     if (res && Array.isArray(res.data) && res.data.length > 0) {
       articleVisitData.value = res.data.map((item: any) => ({
         label: item.label,
-        value: Number(item.value) || 0
+        value: Number(item.value) || 0,
       }))
       nextTick(() => updateArticleChart())
     }
@@ -454,9 +508,13 @@ watch(articleYear, (newYear) => {
   }
 })
 
-watch(articleVisitData, () => {
-  updateArticleChart()
-}, { deep: true })
+watch(
+  articleVisitData,
+  () => {
+    updateArticleChart()
+  },
+  { deep: true }
+)
 
 onUnmounted(() => {
   window.removeEventListener('resize', resizeVisitChart)
@@ -467,14 +525,42 @@ onUnmounted(() => {
   articleChartInstance = null
 })
 
-
-
 const quickLinks = [
-  { name: '用户管理', icon: 'User', path: '/system/users', bg: 'var(--el-color-primary-light-9)', color: 'var(--el-color-primary)' },
-  { name: '内容发布', icon: 'EditPen', path: '/content/article', bg: 'var(--el-color-primary-light-9)', color: 'var(--el-color-primary)' },
-  { name: '广告管理', icon: 'Promotion', path: '/content/ad', bg: 'var(--el-color-primary-light-9)', color: 'var(--el-color-primary)' },
-  { name: '静态化管理', icon: 'DocumentChecked', path: '/config/static', bg: 'var(--el-color-primary-light-9)', color: 'var(--el-color-primary)' },
-  { name: '系统设置', icon: 'Setting', path: '/settings', bg: 'var(--el-color-primary-light-9)', color: 'var(--el-color-primary)' }
+  {
+    name: '用户管理',
+    icon: 'User',
+    path: '/system/users',
+    bg: 'var(--el-color-primary-light-9)',
+    color: 'var(--el-color-primary)',
+  },
+  {
+    name: '内容发布',
+    icon: 'EditPen',
+    path: '/content/article',
+    bg: 'var(--el-color-primary-light-9)',
+    color: 'var(--el-color-primary)',
+  },
+  {
+    name: '广告管理',
+    icon: 'Promotion',
+    path: '/content/ad',
+    bg: 'var(--el-color-primary-light-9)',
+    color: 'var(--el-color-primary)',
+  },
+  {
+    name: '静态化管理',
+    icon: 'DocumentChecked',
+    path: '/config/static',
+    bg: 'var(--el-color-primary-light-9)',
+    color: 'var(--el-color-primary)',
+  },
+  {
+    name: '系统设置',
+    icon: 'Setting',
+    path: '/settings',
+    bg: 'var(--el-color-primary-light-9)',
+    color: 'var(--el-color-primary)',
+  },
 ]
 
 // 快捷入口按当前用户已授权菜单过滤：动态路由由菜单生成，未授权菜单的路径不存在，
@@ -491,9 +577,9 @@ const accessiblePaths = computed(() => {
   return paths
 })
 
-const visibleQuickLinks = computed(() => quickLinks.filter((link) => accessiblePaths.value.has(link.path)))
-
-
+const visibleQuickLinks = computed(() =>
+  quickLinks.filter((link) => accessiblePaths.value.has(link.path))
+)
 </script>
 
 <style scoped lang="scss">
@@ -503,7 +589,9 @@ const visibleQuickLinks = computed(() => quickLinks.filter((link) => accessibleP
   }
 
   .stat-card {
-    transition: transform 0.3s, box-shadow 0.3s;
+    transition:
+      transform 0.3s,
+      box-shadow 0.3s;
 
     &:hover {
       transform: translateY(-3px);
@@ -583,7 +671,7 @@ const visibleQuickLinks = computed(() => quickLinks.filter((link) => accessibleP
   }
 
   .notice-list {
-     height: 360px;
+    height: 360px;
     .notice-empty {
       text-align: center;
       padding: 24px 0;
@@ -662,7 +750,7 @@ const visibleQuickLinks = computed(() => quickLinks.filter((link) => accessibleP
         border-radius: 12px;
         display: flex;
         align-items: center;
-        justify-content:center;
+        justify-content: center;
       }
 
       .quick-name {

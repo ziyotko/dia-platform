@@ -3,23 +3,40 @@
     <el-card shadow="hover" class="search-card">
       <el-form :model="queryForm" inline>
         <el-form-item label="用户名">
-          <el-input v-model="queryForm.username" placeholder="请输入用户名" clearable @keyup.enter="handleSearch" />
+          <el-input
+            v-model="queryForm.username"
+            placeholder="请输入用户名"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </el-form-item>
         <el-form-item label="用户账号">
-          <el-input v-model="queryForm.account" placeholder="请输入用户账号" clearable @keyup.enter="handleSearch" />
+          <el-input
+            v-model="queryForm.account"
+            placeholder="请输入用户账号"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="queryForm.status" placeholder="全部状态" clearable style="width: 120px">
+          <el-select
+            v-model="queryForm.status"
+            placeholder="全部状态"
+            clearable
+            style="width: 120px"
+          >
             <el-option label="启用" :value="1" />
             <el-option label="禁用" :value="0" />
           </el-select>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>查询
+            <el-icon><Search /></el-icon>
+            查询
           </el-button>
           <el-button @click="resetQuery">
-            <el-icon><RefreshRight /></el-icon>重置
+            <el-icon><RefreshRight /></el-icon>
+            重置
           </el-button>
         </el-form-item>
       </el-form>
@@ -33,17 +50,19 @@
             <!-- 导入/新增/编辑/删除/状态变更均为管理员接口（admin 组），非管理员只读展示，避免点了必然报「无权限」 -->
             <template v-if="isAdmin">
               <el-button type="success" @click="handleImport">
-                <el-icon><Upload /></el-icon>导入用户
+                <el-icon><Upload /></el-icon>
+                导入用户
               </el-button>
               <el-button type="primary" @click="handleAdd">
-                <el-icon><Plus /></el-icon>新增用户
+                <el-icon><Plus /></el-icon>
+                新增用户
               </el-button>
             </template>
           </div>
         </div>
       </template>
 
-      <el-table :data="tableData" v-loading="loading" border stripe>
+      <el-table v-loading="loading" :data="tableData" border stripe>
         <el-table-column type="index" width="60" align="center" />
         <el-table-column prop="username" label="用户名" min-width="120" />
         <el-table-column prop="account" label="用户账号" min-width="120" />
@@ -75,10 +94,12 @@
           <template #default="{ row }">
             <template v-if="isAdmin">
               <el-button link type="primary" @click="handleEdit(row)">
-                <el-icon><Edit /></el-icon>编辑
+                <el-icon><Edit /></el-icon>
+                编辑
               </el-button>
               <el-button v-if="row.id !== 1" link type="danger" @click="handleDelete(row)">
-                <el-icon><Delete /></el-icon>删除
+                <el-icon><Delete /></el-icon>
+                删除
               </el-button>
             </template>
             <span v-else>-</span>
@@ -106,17 +127,16 @@
       destroy-on-close
       :close-on-click-modal="false"
     >
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="formRules"
-        label-width="90px"
-      >
+      <el-form ref="formRef" :model="form" :rules="formRules" label-width="90px">
         <el-form-item label="用户名" prop="username">
           <el-input v-model="form.username" placeholder="请输入用户名" :disabled="isReadonly" />
         </el-form-item>
         <el-form-item label="用户账号" prop="account">
-          <el-input v-model="form.account" placeholder="请输入用户账号" :disabled="isReadonly || isEditing" />
+          <el-input
+            v-model="form.account"
+            placeholder="请输入用户账号"
+            :disabled="isReadonly || isEditing"
+          />
         </el-form-item>
         <el-form-item label="所属机构" prop="orgIds">
           <el-tree-select
@@ -138,14 +158,26 @@
           <el-input v-model="form.phone" placeholder="请输入手机号" :disabled="isReadonly" />
         </el-form-item>
         <el-form-item label="性别" prop="sex">
-          <el-select v-model="form.sex" placeholder="请选择性别" clearable style="width: 100%" :disabled="isReadonly">
+          <el-select
+            v-model="form.sex"
+            placeholder="请选择性别"
+            clearable
+            style="width: 100%"
+            :disabled="isReadonly"
+          >
             <el-option label="男" :value="1" />
             <el-option label="女" :value="2" />
             <el-option label="未知" :value="0" />
           </el-select>
         </el-form-item>
         <el-form-item label="角色" prop="roleIds">
-          <el-select v-model="form.roleIds" multiple placeholder="请选择角色" style="width: 100%" :disabled="isReadonly">
+          <el-select
+            v-model="form.roleIds"
+            multiple
+            placeholder="请选择角色"
+            style="width: 100%"
+            :disabled="isReadonly"
+          >
             <el-option
               v-for="role in assignableRoles"
               :key="role.id"
@@ -172,7 +204,9 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button v-if="!isReadonly" type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+        <el-button v-if="!isReadonly" type="primary" :loading="submitLoading" @click="handleSubmit">
+          确定
+        </el-button>
       </template>
     </el-dialog>
 
@@ -195,7 +229,8 @@
       >
         <el-icon class="el-icon--upload"><Upload /></el-icon>
         <div class="el-upload__text">
-          拖拽文件到此处或 <em>点击上传</em>
+          拖拽文件到此处或
+          <em>点击上传</em>
         </div>
         <template #tip>
           <div class="el-upload__tip">
@@ -205,12 +240,20 @@
       </el-upload>
       <template #footer>
         <el-button @click="importDialogVisible = false">关闭</el-button>
-        <el-button type="primary" :loading="importLoading" @click="handleImportSubmit">确定导入</el-button>
+        <el-button type="primary" :loading="importLoading" @click="handleImportSubmit">
+          确定导入
+        </el-button>
       </template>
     </el-dialog>
 
     <!-- 初始密码 / 导入结果 -->
-    <el-dialog v-model="credentialDialogVisible" :title="credentialTitle" width="600px" destroy-on-close :close-on-click-modal="false">
+    <el-dialog
+      v-model="credentialDialogVisible"
+      :title="credentialTitle"
+      width="600px"
+      destroy-on-close
+      :close-on-click-modal="false"
+    >
       <template v-if="credentialList.length > 0">
         <el-alert
           type="warning"
@@ -229,13 +272,22 @@
           失败详情（{{ importFailDetails.length }} 条）
         </div>
         <div
-          style="max-height: 240px; overflow: auto; margin-top: 8px; color: #909399; font-size: 13px; line-height: 1.8"
+          style="
+            max-height: 240px;
+            overflow: auto;
+            margin-top: 8px;
+            color: #909399;
+            font-size: 13px;
+            line-height: 1.8;
+          "
         >
           <div v-for="(item, idx) in importFailDetails" :key="idx">{{ item }}</div>
         </div>
       </template>
       <template #footer>
-        <el-button v-if="credentialList.length > 0" @click="copyCredentials">复制账号密码</el-button>
+        <el-button v-if="credentialList.length > 0" @click="copyCredentials">
+          复制账号密码
+        </el-button>
         <el-button type="primary" @click="credentialDialogVisible = false">知道了</el-button>
       </template>
     </el-dialog>
@@ -245,15 +297,16 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Search, RefreshRight, Plus, Edit, Delete, Upload } from '@element-plus/icons-vue'
 import {
-  Search,
-  RefreshRight,
-  Plus,
-  Edit,
-  Delete,
-  Upload
-} from '@element-plus/icons-vue'
-import { getUserList, createUser, updateUser, deleteUser, updateUserStatus, importUsers, checkUserUnique } from '@/api/user'
+  getUserList,
+  createUser,
+  updateUser,
+  deleteUser,
+  updateUserStatus,
+  importUsers,
+  checkUserUnique,
+} from '@/api/user'
 import { getAllRoles } from '@/api/role'
 import { getOrgList, type OrgItem } from '@/api/org'
 import { useUserStore } from '@/stores/user'
@@ -309,7 +362,7 @@ const queryForm = reactive({
   pageSize: 10,
   username: '',
   account: '',
-  status: undefined as number | undefined
+  status: undefined as number | undefined,
 })
 
 const form = reactive({
@@ -323,7 +376,7 @@ const form = reactive({
   roleIds: [] as number[],
   sex: undefined as number | undefined,
   // 重置密码：仅编辑时可用，留空表示不修改
-  password: ''
+  password: '',
 })
 
 const checkUnique = (field: string, label: string) => {
@@ -349,17 +402,17 @@ const formRules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   account: [
     { required: true, message: '请输入用户账号', trigger: 'blur' },
-    { validator: checkUnique('account', '用户账号'), trigger: 'blur' }
+    { validator: checkUnique('account', '用户账号'), trigger: 'blur' },
   ],
   email: [
     { required: true, message: '请输入邮箱', trigger: 'blur' },
     { type: 'email', message: '邮箱格式不正确', trigger: 'blur' },
-    { validator: checkUnique('email', '邮箱'), trigger: 'blur' }
+    { validator: checkUnique('email', '邮箱'), trigger: 'blur' },
   ],
   phone: [
     { required: true, message: '请输入手机号', trigger: 'blur' },
     { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' },
-    { validator: checkUnique('phone', '手机号'), trigger: 'blur' }
+    { validator: checkUnique('phone', '手机号'), trigger: 'blur' },
   ],
   roleIds: [{ required: true, message: '请选择角色', trigger: 'change', type: 'array' }],
   password: [
@@ -376,9 +429,9 @@ const formRules = {
         }
         callback()
       },
-      trigger: 'blur'
-    }
-  ]
+      trigger: 'blur',
+    },
+  ],
 }
 
 const tableData = ref<any[]>([])
@@ -399,7 +452,10 @@ const currentMinRoleId = computed(() => {
   const roleIds = Array.isArray(raw)
     ? raw.map(Number).filter((n) => !Number.isNaN(n))
     : typeof raw === 'string' && raw.trim()
-      ? raw.split(',').map((s) => Number(s.trim())).filter((n) => !Number.isNaN(n))
+      ? raw
+          .split(',')
+          .map((s) => Number(s.trim()))
+          .filter((n) => !Number.isNaN(n))
       : []
   if (roleIds.length === 0) return 0
   return Math.min(...roleIds)
@@ -450,11 +506,12 @@ const fetchData = async () => {
       pageSize: queryForm.pageSize,
       username: queryForm.username || undefined,
       account: queryForm.account || undefined,
-      status: queryForm.status
+      status: queryForm.status,
     })
     tableData.value = res.data.list || []
     total.value = res.data.total || 0
-  } catch {} finally {
+  } catch {
+  } finally {
     loading.value = false
   }
 }
@@ -481,7 +538,7 @@ const handleEdit = (row: any) => {
     status: row.status,
     roleIds: row.roleIds || [],
     sex: row.sex,
-    password: ''
+    password: '',
   })
   dialogVisible.value = true
 }
@@ -490,14 +547,16 @@ const handleDelete = (row: any) => {
   ElMessageBox.confirm(`确定要删除用户 「${row.username}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    try {
-      await deleteUser(row.id)
-      ElMessage.success('删除成功')
-      fetchData()
-    } catch {}
-  }).catch(() => {})
+    type: 'warning',
+  })
+    .then(async () => {
+      try {
+        await deleteUser(row.id)
+        ElMessage.success('删除成功')
+        fetchData()
+      } catch {}
+    })
+    .catch(() => {})
 }
 
 const handleStatusChange = async (row: any, val: number) => {
@@ -529,7 +588,7 @@ const handleSubmit = async () => {
         orgIds: form.orgIds,
         sex: form.sex,
         // 留空表示不修改密码（后端仅在非空时写入）
-        password: form.password || undefined
+        password: form.password || undefined,
       })
       ElMessage.success('修改成功')
     } else {
@@ -541,7 +600,7 @@ const handleSubmit = async () => {
         status: form.status,
         roleIds: form.roleIds,
         orgIds: form.orgIds,
-        sex: form.sex
+        sex: form.sex,
       })
       ElMessage.success('新增成功')
       // 后端随机生成初始密码，仅在创建响应中返回一次，需展示给管理员
@@ -552,7 +611,8 @@ const handleSubmit = async () => {
     }
     dialogVisible.value = false
     fetchData()
-  } catch {} finally {
+  } catch {
+  } finally {
     submitLoading.value = false
   }
 }
@@ -593,12 +653,14 @@ const handleImportSubmit = async () => {
     const res: any = await importUsers(importFile.value)
     if (res && res.code === 0) {
       const data = res.data || {}
-      ElMessage.success(`导入完成，成功 ${data.successCount || 0} 条，失败 ${data.failCount || 0} 条`)
+      ElMessage.success(
+        `导入完成，成功 ${data.successCount || 0} 条，失败 ${data.failCount || 0} 条`
+      )
       // 导入时后端为每个成功账号生成随机初始密码（仅本次返回），与失败明细一并展示
       const generated: Record<string, string> = data.generatedPasswords || {}
       const credentials = Object.entries(generated).map(([account, password]) => ({
         account,
-        password: String(password)
+        password: String(password),
       }))
       const failDetails: string[] = data.failDetails || []
       if (credentials.length > 0 || failDetails.length > 0) {
@@ -607,7 +669,8 @@ const handleImportSubmit = async () => {
       importDialogVisible.value = false
       fetchData()
     }
-  } catch {} finally {
+  } catch {
+  } finally {
     importLoading.value = false
   }
 }

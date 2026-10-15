@@ -5,22 +5,16 @@
         <div class="card-header">
           <span>菜单管理</span>
           <el-button v-if="canManageMenus" type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon>新增菜单
+            <el-icon><Plus /></el-icon>
+            新增菜单
           </el-button>
         </div>
       </template>
 
-      <el-table
-        :data="tableData"
-        v-loading="loading"
-        row-key="id"
-        border
-        stripe
-        default-expand-all
-      >
+      <el-table v-loading="loading" :data="tableData" row-key="id" border stripe default-expand-all>
         <el-table-column prop="name" label="菜单名称" min-width="160">
           <template #default="{ row }">
-            <el-icon v-if="row.icon" style="margin-right: 6px;">
+            <el-icon v-if="row.icon" style="margin-right: 6px">
               <component :is="row.icon" />
             </el-icon>
             <span>{{ row.name }}</span>
@@ -47,13 +41,16 @@
         <el-table-column label="操作" width="280" align="center" fixed="right">
           <template #default="{ row }">
             <el-button v-if="canManageMenus" link type="primary" @click="handleAddChild(row)">
-              <el-icon><CirclePlus /></el-icon>子菜单
+              <el-icon><CirclePlus /></el-icon>
+              子菜单
             </el-button>
             <el-button v-if="canManageMenus" link type="primary" @click="handleEdit(row)">
-              <el-icon><Edit /></el-icon>编辑
+              <el-icon><Edit /></el-icon>
+              编辑
             </el-button>
             <el-button v-if="canManageMenus" link type="danger" @click="handleDelete(row)">
-              <el-icon><Delete /></el-icon>删除
+              <el-icon><Delete /></el-icon>
+              删除
             </el-button>
           </template>
         </el-table-column>
@@ -67,12 +64,7 @@
       destroy-on-close
       :close-on-click-modal="false"
     >
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="formRules"
-        label-width="90px"
-      >
+      <el-form ref="formRef" :model="form" :rules="formRules" label-width="90px">
         <el-form-item label="上级菜单">
           <el-tree-select
             v-model="form.parentId"
@@ -96,10 +88,10 @@
         <el-form-item label="路由路径" prop="path">
           <el-input v-model="form.path" placeholder="请输入路由路径" />
         </el-form-item>
-        <el-form-item label="组件路径" v-if="form.type === 'menu'">
+        <el-form-item v-if="form.type === 'menu'" label="组件路径">
           <el-input v-model="form.component" placeholder="请输入组件路径" />
         </el-form-item>
-        <el-form-item label="接口前缀" v-if="form.type === 'menu'">
+        <el-form-item v-if="form.type === 'menu'" label="接口前缀">
           <el-input v-model="form.apiPrefix" placeholder="请输入接口前缀，如 /api/content" />
         </el-form-item>
         <el-form-item label="菜单图标">
@@ -129,7 +121,14 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button v-if="canManageMenus" type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+        <el-button
+          v-if="canManageMenus"
+          type="primary"
+          :loading="submitLoading"
+          @click="handleSubmit"
+        >
+          确定
+        </el-button>
       </template>
     </el-dialog>
 
@@ -173,7 +172,14 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete, CirclePlus, Search, Close } from '@element-plus/icons-vue'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
-import { getMenuList, createMenu, updateMenu, deleteMenu, type MenuItem, type MenuForm } from '@/api/menus'
+import {
+  getMenuList,
+  createMenu,
+  updateMenu,
+  deleteMenu,
+  type MenuItem,
+  type MenuForm,
+} from '@/api/menus'
 import { useUserStore } from '@/stores/user'
 import { hasAdminRole } from '@/utils/permission'
 
@@ -218,13 +224,13 @@ const form = reactive<MenuForm>({
   icon: '',
   type: 'directory',
   sort: 0,
-  status: 1
+  status: 1,
 })
 
 const formRules = {
   name: [{ required: true, message: '请输入菜单名称', trigger: 'blur' }],
   path: [{ required: true, message: '请输入路由路径', trigger: 'blur' }],
-  sort: [{ required: true, message: '请输入排序', trigger: 'blur' }]
+  sort: [{ required: true, message: '请输入排序', trigger: 'blur' }],
 }
 
 const menuTreeData = ref<MenuItem[]>([])
@@ -234,8 +240,24 @@ const fetchMenus = async () => {
   try {
     const res: any = await getMenuList()
     tableData.value = res.data || []
-    menuTreeData.value = [{ id: 0, parentId: 0, name: '顶级菜单', path: '', component: '', apiPrefix: '', icon: '', type: 'directory', sort: 0, status: 1, children: [] }, ...tableData.value]
-  } catch {} finally {
+    menuTreeData.value = [
+      {
+        id: 0,
+        parentId: 0,
+        name: '顶级菜单',
+        path: '',
+        component: '',
+        apiPrefix: '',
+        icon: '',
+        type: 'directory',
+        sort: 0,
+        status: 1,
+        children: [],
+      },
+      ...tableData.value,
+    ]
+  } catch {
+  } finally {
     loading.value = false
   }
 }
@@ -265,7 +287,7 @@ const handleEdit = (row: MenuItem) => {
     icon: row.icon,
     type: row.type,
     sort: row.sort,
-    status: row.status
+    status: row.status,
   })
   dialogVisible.value = true
 }
@@ -274,14 +296,16 @@ const handleDelete = (row: MenuItem) => {
   ElMessageBox.confirm(`确定要删除菜单 「${row.name}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    try {
-      await deleteMenu(row.id)
-      ElMessage.success('删除成功')
-      fetchMenus()
-    } catch {}
-  }).catch(() => {})
+    type: 'warning',
+  })
+    .then(async () => {
+      try {
+        await deleteMenu(row.id)
+        ElMessage.success('删除成功')
+        fetchMenus()
+      } catch {}
+    })
+    .catch(() => {})
 }
 
 const handleSubmit = async () => {
@@ -300,7 +324,8 @@ const handleSubmit = async () => {
     }
     dialogVisible.value = false
     fetchMenus()
-  } catch {} finally {
+  } catch {
+  } finally {
     submitLoading.value = false
   }
 }

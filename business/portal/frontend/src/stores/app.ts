@@ -13,7 +13,7 @@ const mixColor = (color1: string, color2: string, weight: number): string => {
   const r = mix((c1 >> 16) & 255, (c2 >> 16) & 255)
   const g = mix((c1 >> 8) & 255, (c2 >> 8) & 255)
   const b = mix(c1 & 255, c2 & 255)
-  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')
+  return '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')
 }
 
 const storedSecurity = localStorage.getItem('app-security')
@@ -59,15 +59,14 @@ export const useAppStore = defineStore('app', () => {
     root.style.setProperty('--el-color-primary-dark-2', mixColor(primary, '#000000', 0.2))
   }
 
-  function setSecuritySettings(settings: {
-    minPasswordLength?: number
-  }) {
-    if (settings.minPasswordLength !== undefined) minPasswordLength.value = settings.minPasswordLength
+  function setSecuritySettings(settings: { minPasswordLength?: number }) {
+    if (settings.minPasswordLength !== undefined)
+      minPasswordLength.value = settings.minPasswordLength
 
     localStorage.setItem(
       'app-security',
       JSON.stringify({
-        minPasswordLength: minPasswordLength.value
+        minPasswordLength: minPasswordLength.value,
       })
     )
   }
@@ -82,6 +81,6 @@ export const useAppStore = defineStore('app', () => {
     toggleSidebar,
     triggerRefresh,
     applyTheme,
-    setSecuritySettings
+    setSecuritySettings,
   }
 })

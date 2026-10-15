@@ -3,14 +3,21 @@
     <el-card shadow="hover" class="search-card">
       <el-form :model="queryForm" inline>
         <el-form-item label="角色名称">
-          <el-input v-model="queryForm.name" placeholder="请输入角色名称" clearable @keyup.enter="handleSearch" />
+          <el-input
+            v-model="queryForm.name"
+            placeholder="请输入角色名称"
+            clearable
+            @keyup.enter="handleSearch"
+          />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
-            <el-icon><Search /></el-icon>查询
+            <el-icon><Search /></el-icon>
+            查询
           </el-button>
           <el-button @click="resetQuery">
-            <el-icon><RefreshRight /></el-icon>重置
+            <el-icon><RefreshRight /></el-icon>
+            重置
           </el-button>
         </el-form-item>
       </el-form>
@@ -21,12 +28,13 @@
         <div class="card-header">
           <span>流程角色列表</span>
           <el-button type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon>新增流程角色
+            <el-icon><Plus /></el-icon>
+            新增流程角色
           </el-button>
         </div>
       </template>
 
-      <el-table :data="tableData" v-loading="loading" border stripe>
+      <el-table v-loading="loading" :data="tableData" border stripe>
         <el-table-column type="index" width="60" align="center" />
         <el-table-column prop="name" label="角色名称" min-width="140" />
         <el-table-column prop="code" label="角色编码" min-width="140" />
@@ -42,13 +50,16 @@
         <el-table-column label="操作" width="220" align="center" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="handleMembers(row)">
-              <el-icon><User /></el-icon>成员
+              <el-icon><User /></el-icon>
+              成员
             </el-button>
             <el-button link type="primary" @click="handleEdit(row)">
-              <el-icon><Edit /></el-icon>编辑
+              <el-icon><Edit /></el-icon>
+              编辑
             </el-button>
             <el-button link type="danger" @click="handleDelete(row)">
-              <el-icon><Delete /></el-icon>删除
+              <el-icon><Delete /></el-icon>
+              删除
             </el-button>
           </template>
         </el-table-column>
@@ -74,12 +85,7 @@
       destroy-on-close
       :close-on-click-modal="false"
     >
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="formRules"
-        label-width="90px"
-      >
+      <el-form ref="formRef" :model="form" :rules="formRules" label-width="90px">
         <el-form-item label="角色名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入角色名称" />
         </el-form-item>
@@ -131,7 +137,9 @@
       />
       <template #footer>
         <el-button @click="membersVisible = false">取消</el-button>
-        <el-button type="primary" :loading="membersLoading" @click="handleMembersSubmit">确定</el-button>
+        <el-button type="primary" :loading="membersLoading" @click="handleMembersSubmit">
+          确定
+        </el-button>
       </template>
     </el-dialog>
   </div>
@@ -141,21 +149,14 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { formatDateTime } from '@/utils/format'
-import {
-  Search,
-  RefreshRight,
-  Plus,
-  Edit,
-  Delete,
-  User
-} from '@element-plus/icons-vue'
+import { Search, RefreshRight, Plus, Edit, Delete, User } from '@element-plus/icons-vue'
 import {
   getWorkflowRoleList,
   createWorkflowRole,
   updateWorkflowRole,
   deleteWorkflowRole,
   getWorkflowRoleUsers,
-  updateWorkflowRoleUsers
+  updateWorkflowRoleUsers,
 } from '@/api/workflow-role'
 import { getAllUsers } from '@/api/user'
 
@@ -173,7 +174,7 @@ const currentRoleName = ref('')
 const queryForm = reactive({
   page: 1,
   pageSize: 10,
-  name: ''
+  name: '',
 })
 
 const form = reactive({
@@ -181,12 +182,12 @@ const form = reactive({
   name: '',
   code: '',
   description: '',
-  status: 1
+  status: 1,
 })
 
 const formRules = {
   name: [{ required: true, message: '请输入角色名称', trigger: 'blur' }],
-  code: [{ required: true, message: '请输入角色编码', trigger: 'blur' }]
+  code: [{ required: true, message: '请输入角色编码', trigger: 'blur' }],
 }
 
 const tableData = ref<any[]>([])
@@ -194,9 +195,9 @@ const userList = ref<any[]>([])
 const selectedUserIds = ref<number[]>([])
 
 const userTransferData = computed(() => {
-  return userList.value.map(user => ({
+  return userList.value.map((user) => ({
     id: user.id,
-    label: `${user.username || ''}（${user.account || ''}）`
+    label: `${user.username || ''}（${user.account || ''}）`,
   }))
 })
 
@@ -223,11 +224,12 @@ const fetchData = async () => {
       const list = res.data.list || []
       tableData.value = list.map((item: any) => ({
         ...item,
-        createdAt: formatDateTime(item.createdAt)
+        createdAt: formatDateTime(item.createdAt),
       }))
       total.value = res.data.total || 0
     }
-  } catch {} finally {
+  } catch {
+  } finally {
     loading.value = false
   }
 }
@@ -257,16 +259,18 @@ const handleDelete = (row: any) => {
   ElMessageBox.confirm(`确定要删除流程角色 「${row.name}」 吗？`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    try {
-      const res: any = await deleteWorkflowRole(row.id)
-      if (res && res.code === 0) {
-        ElMessage.success('删除成功')
-        fetchData()
-      }
-    } catch {}
-  }).catch(() => {})
+    type: 'warning',
+  })
+    .then(async () => {
+      try {
+        const res: any = await deleteWorkflowRole(row.id)
+        if (res && res.code === 0) {
+          ElMessage.success('删除成功')
+          fetchData()
+        }
+      } catch {}
+    })
+    .catch(() => {})
 }
 
 const handleMembers = async (row: any) => {
@@ -293,7 +297,8 @@ const handleMembersSubmit = async () => {
       ElMessage.success('成员设置成功')
       membersVisible.value = false
     }
-  } catch {} finally {
+  } catch {
+  } finally {
     membersLoading.value = false
   }
 }
@@ -307,7 +312,7 @@ const handleSubmit = async () => {
       name: form.name,
       code: form.code,
       description: form.description,
-      status: form.status
+      status: form.status,
     }
     let res: any
     if (form.id) {
@@ -320,7 +325,8 @@ const handleSubmit = async () => {
       dialogVisible.value = false
       fetchData()
     }
-  } catch {} finally {
+  } catch {
+  } finally {
     submitLoading.value = false
   }
 }

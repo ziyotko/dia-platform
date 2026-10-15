@@ -30,7 +30,20 @@ export interface ArticleForm {
   attachments?: ArticleAttachment[]
 }
 
-export function getArticles(params: { title?: string; categoryId?: number; tagId?: number; columnId?: number; templateId?: number; status?: number; auditStatus?: number; type?: number; author?: string; source?: string; page?: number; pageSize?: number }) {
+export function getArticles(params: {
+  title?: string
+  categoryId?: number
+  tagId?: number
+  columnId?: number
+  templateId?: number
+  status?: number
+  auditStatus?: number
+  type?: number
+  author?: string
+  source?: string
+  page?: number
+  pageSize?: number
+}) {
   return request.get('/articles', { params })
 }
 
@@ -82,7 +95,12 @@ export function deleteArticle(id: number) {
   return request.delete(`/articles/${id}`)
 }
 
-export function getArticleColumnPublishes(params: { articleTitle?: string; columnId?: number; page?: number; pageSize?: number }) {
+export function getArticleColumnPublishes(params: {
+  articleTitle?: string
+  columnId?: number
+  page?: number
+  pageSize?: number
+}) {
   return request.get('/articles/column-publishes', { params })
 }
 

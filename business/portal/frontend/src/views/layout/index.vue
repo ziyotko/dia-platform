@@ -1,9 +1,6 @@
 <template>
   <el-container class="layout-container">
-    <el-aside
-      :width="appStore.sidebarCollapsed ? '64px' : '220px'"
-      class="sidebar"
-    >
+    <el-aside :width="appStore.sidebarCollapsed ? '64px' : '220px'" class="sidebar">
       <div class="logo">
         <div class="logo-icon-wrap">
           <el-icon size="24" :color="appStore.themeColor"><Connection /></el-icon>
@@ -30,7 +27,10 @@
     <el-container>
       <el-header class="header">
         <div class="header-left">
-          <el-tooltip :content="appStore.sidebarCollapsed ? '展开菜单' : '折叠菜单'" placement="bottom">
+          <el-tooltip
+            :content="appStore.sidebarCollapsed ? '展开菜单' : '折叠菜单'"
+            placement="bottom"
+          >
             <el-icon
               class="collapse-btn"
               size="36"
@@ -58,10 +58,12 @@
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="profile">
-                  <el-icon><User /></el-icon>个人中心
+                  <el-icon><User /></el-icon>
+                  个人中心
                 </el-dropdown-item>
                 <el-dropdown-item divided command="logout">
-                  <el-icon><SwitchButton /></el-icon>退出登录
+                  <el-icon><SwitchButton /></el-icon>
+                  退出登录
                 </el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -120,23 +122,35 @@ const SidebarMenuItem = {
     return () => {
       const menu = props.menu
       const isExternal = /^https?:\/\//.test(menu.path)
-      const indexPath = isExternal ? menu.path : (menu.path.startsWith('/') ? menu.path : '/' + menu.path)
+      const indexPath = isExternal
+        ? menu.path
+        : menu.path.startsWith('/')
+          ? menu.path
+          : '/' + menu.path
       const iconComp = menu.icon ? (Icons as Record<string, any>)[menu.icon] : null
       if (menu.type === 'directory' && menu.children && menu.children.length > 0) {
-        return h(ElSubMenu, { index: indexPath }, {
-          title: () => [
-            iconComp ? h(ElIcon, null, () => h(iconComp)) : null,
-            h('span', null, menu.name)
-          ],
-          default: () => menu.children!.map((child) => h(SidebarMenuItem, { menu: child }))
-        })
+        return h(
+          ElSubMenu,
+          { index: indexPath },
+          {
+            title: () => [
+              iconComp ? h(ElIcon, null, () => h(iconComp)) : null,
+              h('span', null, menu.name),
+            ],
+            default: () => menu.children!.map((child) => h(SidebarMenuItem, { menu: child })),
+          }
+        )
       }
-      return h(ElMenuItem, { index: indexPath }, {
-        default: () => iconComp ? h(ElIcon, null, () => h(iconComp)) : null,
-        title: () => menu.name
-      })
+      return h(
+        ElMenuItem,
+        { index: indexPath },
+        {
+          default: () => (iconComp ? h(ElIcon, null, () => h(iconComp)) : null),
+          title: () => menu.name,
+        }
+      )
     }
-  }
+  },
 }
 
 const loadSiteInfo = async () => {
@@ -148,7 +162,7 @@ const loadSiteInfo = async () => {
       if (favicon && res.data.logo) {
         favicon.href = resolveLogoUrl(res.data.logo)
       }
-    } 
+    }
   } catch {
     // 使用默认值
   }
@@ -160,7 +174,7 @@ const loadSettings = async () => {
     const data = res.data as Settings
     if (data) {
       appStore.setSecuritySettings({
-        minPasswordLength: data.minPasswordLength ?? 8
+        minPasswordLength: data.minPasswordLength ?? 8,
       })
     }
   } catch {
@@ -202,18 +216,20 @@ const handleCommand = (command: string) => {
       ElMessageBox.confirm('确定要退出登录吗？', '提示', {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
-        type: 'warning'
-      }).then(async () => {
-        // 先通知后端将当前 Token 加入黑名单，避免登出后旧 Token 仍可使用；失败也继续清理本地会话
-        try {
-          await logoutApi()
-        } catch {
-          // 忽略：网络异常或 Token 已失效时仍需完成本地登出
-        }
-        userStore.logout()
-        ElMessage.success('已退出登录')
-        router.push('/login')
-      }).catch(() => {})
+        type: 'warning',
+      })
+        .then(async () => {
+          // 先通知后端将当前 Token 加入黑名单，避免登出后旧 Token 仍可使用；失败也继续清理本地会话
+          try {
+            await logoutApi()
+          } catch {
+            // 忽略：网络异常或 Token 已失效时仍需完成本地登出
+          }
+          userStore.logout()
+          ElMessage.success('已退出登录')
+          router.push('/login')
+        })
+        .catch(() => {})
       break
   }
 }
@@ -252,7 +268,11 @@ const handleCommand = (command: string) => {
     align-items: center;
     justify-content: center;
     border-radius: 12px;
-    background: linear-gradient(135deg, var(--el-color-primary-light-8) 0%, var(--el-color-primary-light-9) 100%);
+    background: linear-gradient(
+      135deg,
+      var(--el-color-primary-light-8) 0%,
+      var(--el-color-primary-light-9) 100%
+    );
     box-shadow: 0 4px 10px rgba(0, 47, 167, 0.2);
     transition: transform 0.3s;
 
@@ -270,7 +290,9 @@ const handleCommand = (command: string) => {
     font-weight: 700;
     color: var(--app-text-primary);
     white-space: nowrap;
-    transition: color 0.3s, opacity 0.2s;
+    transition:
+      color 0.3s,
+      opacity 0.2s;
     letter-spacing: 0.5px;
     background: linear-gradient(90deg, #1d2739 0%, var(--el-color-primary) 100%);
     -webkit-background-clip: text;
@@ -294,14 +316,20 @@ const handleCommand = (command: string) => {
     height: 44px;
     line-height: 44px;
     border-radius: 10px;
-    transition: background 0.3s, color 0.3s;
+    transition:
+      background 0.3s,
+      color 0.3s;
 
     &:hover {
       background: rgba(0, 47, 167, 0.06) !important;
     }
 
     &.is-active {
-      background: linear-gradient(90deg, rgba(0, 47, 167, 0.14) 0%, rgba(0, 47, 167, 0.06) 100%) !important;
+      background: linear-gradient(
+        90deg,
+        rgba(0, 47, 167, 0.14) 0%,
+        rgba(0, 47, 167, 0.06) 100%
+      ) !important;
       color: var(--el-color-primary);
       font-weight: 600;
 
@@ -324,7 +352,9 @@ const handleCommand = (command: string) => {
     height: 44px;
     line-height: 44px;
     border-radius: 10px;
-    transition: background 0.3s, color 0.3s;
+    transition:
+      background 0.3s,
+      color 0.3s;
 
     &:hover {
       background: rgba(0, 47, 167, 0.06) !important;

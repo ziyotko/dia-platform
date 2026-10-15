@@ -1161,7 +1161,12 @@ const injectSignedFileUrls = async (html: string) => {
   )
   // 并发签发：原先逐张 await，一篇含 20~30 张内联图的正文要串行等 20~30 个往返才弹出弹窗
   const entries = await Promise.all(
-    names.map(async (name): Promise<[string, string]> => [name, await ensureSignedFile(`/member-files/${name}`)])
+    names.map(
+      async (name): Promise<[string, string]> => [
+        name,
+        await ensureSignedFile(`/member-files/${name}`),
+      ]
+    )
   )
   const signed = new Map(entries.filter(([, url]) => !!url))
   return html.replace(

@@ -9,7 +9,12 @@ export interface CategoryForm {
   status: number
 }
 
-export function getCategories(params: { name?: string; status?: number; page?: number; pageSize?: number }) {
+export function getCategories(params: {
+  name?: string
+  status?: number
+  page?: number
+  pageSize?: number
+}) {
   return request.get('/categories', { params })
 }
 

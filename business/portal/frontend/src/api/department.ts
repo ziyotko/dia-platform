@@ -50,7 +50,7 @@ export function importDepartments(file: File) {
   formData.append('file', file)
   return request.post('/departments/import', formData, {
     headers: {
-      'Content-Type': 'multipart/form-data'
-    }
+      'Content-Type': 'multipart/form-data',
+    },
   })
 }
