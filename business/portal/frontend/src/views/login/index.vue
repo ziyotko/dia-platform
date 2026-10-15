@@ -109,7 +109,7 @@ import { getPublicSiteInfo } from '@/api/settings'
 import { resolveAssetUrl as resolveLogoUrl } from '@/utils/asset'
 
 // 前端版本号（每次发版同步更新，展示在登录页底部）
-const APP_VERSION = 'V202610141628'
+const APP_VERSION = 'V202610151034'
 
 const router = useRouter()
 const userStore = useUserStore()
