@@ -23,6 +23,10 @@ export function getColumns(params?: {
   return request.get('/columns', { params })
 }
 
+export function getColumnDataCounts(id: number) {
+  return request.get(`/columns/${id}/data-counts`)
+}
+
 export function getColumnPublishes() {
   return request.get('/columns/publishes')
 }

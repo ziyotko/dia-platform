@@ -9,9 +9,73 @@ import (
 	"portal/pkg/utils"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type ColumnService struct{}
+
+// columnDescendantIDs 返回自身及任意层级的子栏目，历史上直接挂在父栏目的数据也能被查询。
+func columnDescendantIDs(db *gorm.DB, root uint) ([]uint, error) {
+	var columns []models.Column
+	if err := db.Select("id, parent_id").Find(&columns).Error; err != nil {
+		return nil, err
+	}
+	children := make(map[uint][]uint, len(columns))
+	for _, column := range columns {
+		children[column.ParentID] = append(children[column.ParentID], column.ID)
+	}
+	ids := []uint{root}
+	seen := map[uint]bool{root: true}
+	for i := 0; i < len(ids); i++ {
+		for _, id := range children[ids[i]] {
+			if !seen[id] {
+				seen[id] = true
+				ids = append(ids, id)
+			}
+		}
+	}
+	return ids, nil
+}
+
+type ColumnDataCounts struct {
+	Articles     int64 `json:"articles"`
+	Publishes    int64 `json:"publishes"`
+	Audits       int64 `json:"audits"`
+	AuditHistory int64 `json:"auditHistory"`
+	Ads          int64 `json:"ads"`
+	Links        int64 `json:"links"`
+	HasData      bool  `json:"hasData"`
+}
+
+func columnDataCounts(db *gorm.DB, id uint) (ColumnDataCounts, error) {
+	var counts ColumnDataCounts
+	checks := []struct {
+		model any
+		count *int64
+	}{
+		{&models.ArticleColumn{}, &counts.Articles},
+		{&models.ArticleColumnPublish{}, &counts.Publishes},
+		{&models.ArticleColumnAudit{}, &counts.Audits},
+		{&models.ArticleColumnAuditHistory{}, &counts.AuditHistory},
+		{&models.Ad{}, &counts.Ads},
+		{&models.Link{}, &counts.Links},
+	}
+	for _, check := range checks {
+		if err := db.Model(check.model).Where("column_id = ?", id).Count(check.count).Error; err != nil {
+			return counts, err
+		}
+		counts.HasData = counts.HasData || *check.count > 0
+	}
+	return counts, nil
+}
+
+func (s *ColumnService) GetColumnDataCounts(id uint) (ColumnDataCounts, error) {
+	var column models.Column
+	if err := utils.DB.Select("id").First(&column, id).Error; err != nil {
+		return ColumnDataCounts{}, err
+	}
+	return columnDataCounts(utils.DB, id)
+}
 
 // ColumnPublishItem 栏目发布（静态化）列表项
 type ColumnPublishItem struct {
@@ -36,10 +100,31 @@ func (s *ColumnService) GetColumnPublishes() ([]ColumnPublishItem, error) {
 	var columns []ColumnItem
 	err := utils.DB.Model(&models.Column{}).
 		Select("id, name, route_path").
-		Where("id IN (SELECT DISTINCT column_id FROM article_column_publish) and display_type<>7").
+		Where("display_type <> 7").
 		Scan(&columns).Error
 	if err != nil {
 		return nil, err
+	}
+	var publishedColumnIDs []uint
+	if err := utils.DB.Model(&models.ArticleColumnPublish{}).Distinct("column_id").Pluck("column_id", &publishedColumnIDs).Error; err != nil {
+		return nil, err
+	}
+	var hierarchy []models.Column
+	if err := utils.DB.Select("id, parent_id").Find(&hierarchy).Error; err != nil {
+		return nil, err
+	}
+	parents := make(map[uint]uint, len(hierarchy))
+	for _, col := range hierarchy {
+		parents[col.ID] = col.ParentID
+	}
+	hasPublishedData := make(map[uint]bool)
+	for _, id := range publishedColumnIDs {
+		seen := make(map[uint]bool)
+		for id != 0 && !seen[id] {
+			seen[id] = true
+			hasPublishedData[id] = true
+			id = parents[id]
+		}
 	}
 
 	// 2. 查询栏目页模板（模板名称 + route_path + 创建/修改时间）
@@ -67,6 +152,9 @@ func (s *ColumnService) GetColumnPublishes() ([]ColumnPublishItem, error) {
 	baseURL := SiteBaseURL()
 	items := make([]ColumnPublishItem, 0, len(columns))
 	for _, col := range columns {
+		if !hasPublishedData[col.ID] {
+			continue
+		}
 		item := ColumnPublishItem{
 			ID:        col.ID,
 			Name:      col.Name,
@@ -173,7 +261,27 @@ func (s *ColumnService) CreateColumn(column *models.Column) error {
 		return err
 	}
 	// status / display_type 带 `default:1`：直接 Create 会把「新建时选禁用(0)」静默写成启用(1)
-	return utils.CreatePreservingZeroValues(utils.DB, column, "status", "display_type")
+	return utils.DB.Transaction(func(tx *gorm.DB) error {
+		if column.ParentID != 0 {
+			var parent models.Column
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&parent, column.ParentID).Error; err != nil {
+				return err
+			}
+		}
+		if err := utils.CreatePreservingZeroValues(tx, column, "status", "display_type"); err != nil {
+			return err
+		}
+		if column.ParentID == 0 {
+			return nil
+		}
+		// 新增子栏目后父栏目变为非末级：将直接关联的数据整体迁入新子栏目。
+		for _, model := range []any{&models.ArticleColumn{}, &models.ArticleColumnPublish{}, &models.ArticleColumnAudit{}, &models.ArticleColumnAuditHistory{}, &models.Ad{}, &models.Link{}} {
+			if err := tx.Model(model).Where("column_id = ?", column.ParentID).Update("column_id", column.ID).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 // columnWorkflowID 取栏目绑定的审核流程 ID（nil 与 0 等价，均表示未绑定流程）
@@ -250,18 +358,12 @@ func (s *ColumnService) DeleteColumn(id uint) error {
 	if childCount > 0 {
 		return fmt.Errorf("该栏目下仍有 %d 个子栏目，请先删除或调整子栏目后再删除", childCount)
 	}
-	// 广告/友链通过 template_id + column_id 关联栏目（无外键约束）：直接删除会留下悬挂 column_id，
-	// 「位置」列显示为空，且这些记录下次编辑保存时会被 ValidateTemplateColumn 判为「所选栏目不属于该模板」
-	// 而无法保存（与 DeleteTemplate 的处置口径一致）。
-	var adCount, linkCount int64
-	if err := utils.DB.Model(&models.Ad{}).Where("column_id = ?", id).Count(&adCount).Error; err != nil {
+	counts, err := columnDataCounts(utils.DB, id)
+	if err != nil {
 		return err
 	}
-	if err := utils.DB.Model(&models.Link{}).Where("column_id = ?", id).Count(&linkCount).Error; err != nil {
-		return err
-	}
-	if adCount > 0 || linkCount > 0 {
-		return fmt.Errorf("该栏目仍被 %d 条广告、%d 条友链使用，请先调整这些记录后再删除栏目", adCount, linkCount)
+	if counts.HasData {
+		return fmt.Errorf("该栏目仍有关联数据（文章 %d、广告 %d、友链 %d，含发布及审核记录），请先处理数据，再删除栏目", counts.Articles, counts.Ads, counts.Links)
 	}
 	return utils.DB.Delete(&column).Error
 }

@@ -52,6 +52,20 @@ func (c *ColumnController) GetColumns(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, utils.Success("获取栏目列表成功", columns))
 }
 
+func (c *ColumnController) GetColumnDataCounts(ctx *gin.Context) {
+	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
+	if err != nil || id == 0 {
+		ctx.JSON(http.StatusOK, utils.Error(1, "栏目ID无效"))
+		return
+	}
+	counts, err := c.columnService.GetColumnDataCounts(uint(id))
+	if err != nil {
+		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("获取栏目数据失败", err)))
+		return
+	}
+	ctx.JSON(http.StatusOK, utils.Success("获取栏目数据成功", counts))
+}
+
 // GetColumnPublishes 获取栏目发布（静态化）列表
 func (c *ColumnController) GetColumnPublishes(ctx *gin.Context) {
 	columns, err := c.columnService.GetColumnPublishes()

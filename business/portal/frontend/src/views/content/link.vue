@@ -327,8 +327,12 @@ const loadColumnsByTemplate = async (templateId: number | undefined, target: 'qu
   if (!templateId) return
   try {
     // 友链位置只展示栏目类型为「友链展示」的栏目
-    const res: any = await getColumns({ templateId, displayType: 5 })
-    list.value = res.data || []
+    const res: any = await getColumns({ templateId })
+    const columns: any[] = res.data || []
+    const parentIds = new Set(columns.map((column: any) => column.parentId))
+    list.value = columns.filter((column: any) =>
+      column.displayType === 5 && (target === 'query' || !parentIds.has(column.id))
+    )
   } catch {
     // ignore
   }

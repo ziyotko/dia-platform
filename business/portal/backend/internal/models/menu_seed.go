@@ -93,6 +93,7 @@ var defaultMenus = []menuSeedItem{
 			{Name: "分类管理", Path: "/content/category", Component: "content/category", Icon: "Folder", Type: "menu", Sort: 7, Status: 1, APIPrefix: "/categories"},
 			{Name: "标签管理", Path: "/content/tag", Component: "content/tag", Icon: "PriceTag", Type: "menu", Sort: 8, Status: 1, APIPrefix: "/tags"},
 			{Name: "会员专区", Path: "/content/member-zone", Component: "content/member-zone", Icon: "Star", Type: "menu", Sort: 9, Status: 1, APIPrefix: memberZoneAPIPrefix},
+			{Name: "公众号同步", Path: "/content/source-sync", Component: "content/source-sync", Icon: "Connection", Type: "menu", Sort: 10, Status: 1, APIPrefix: "/content-sources,/content-sync-logs"},
 		},
 	},
 	{

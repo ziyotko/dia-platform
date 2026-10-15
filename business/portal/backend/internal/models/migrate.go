@@ -198,6 +198,9 @@ func AllModels() []any {
 		&ArticleAttachment{},
 		&MemberColumn{},
 		&MemberContent{},
+		&ContentSource{},
+		&ContentImport{},
+		&ContentSyncLog{},
 	}
 }
 

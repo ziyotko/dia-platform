@@ -1689,9 +1689,11 @@ const getColumnsByTemplate = (templateId: number) => {
   return columnList.value.filter((col: any) => col.templateId === templateId)
 }
 
-// 投放弹窗专用：仅启用栏目可投放（与后端 SetArticleColumns 的校验一致）
+// 投放弹窗专用：仅启用的末级栏目可投放。
 const getPublishableColumnsByTemplate = (templateId: number) => {
-  return getColumnsByTemplate(templateId).filter((col: any) => col.status === 1)
+  const cols = getColumnsByTemplate(templateId)
+  const parentIds = new Set(cols.map((col: any) => col.parentId))
+  return cols.filter((col: any) => col.status === 1 && !parentIds.has(col.id))
 }
 
 const getColumnCountByTemplate = (templateId: number) => {
@@ -2072,7 +2074,7 @@ const fetchData = async () => {
     if (queryForm.columnPath && queryForm.columnPath.length > 0) {
       // 路径首项是模板、其后依次是各层栏目：
       // 只选了模板（长度 1）→ 按"该模板下的任意栏目"筛（templateId）；
-      // 选了具体栏目（长度 ≥2）→ 取最末级栏目精确匹配（columnId，不含其下级）。
+      // 选了具体栏目（长度 ≥2）→ 查询该栏目及全部下级栏目的文章。
       if (queryForm.columnPath.length === 1) {
         params.templateId = queryForm.columnPath[0]
       } else {

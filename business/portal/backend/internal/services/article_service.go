@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type ArticleService struct{}
@@ -25,8 +26,8 @@ func keywordCondition(column string) string {
 }
 
 // buildArticleListQuery 组装图文管理列表的筛选条件。
-// columnID 为最末级栏目的精确匹配（不含其下级栏目）；templateID 为「该模板下的任意栏目」（筛选只选到模板一层时使用）。
-func (s *ArticleService) buildArticleListQuery(title string, categoryID int, tagID int, columnID int, templateID int, status int, auditStatus int, articleType int, author string, authorCode string, source string) *gorm.DB {
+// columnIDs 包含所选栏目及其所有下级；templateID 为该模板下的任意栏目。
+func (s *ArticleService) buildArticleListQuery(title string, categoryID int, tagID int, templateID int, status int, auditStatus int, articleType int, author string, authorCode string, source string, columnIDs []uint) *gorm.DB {
 	query := utils.DB.Model(&models.Article{})
 	// authorCode：归属过滤（非管理员只能看到自己的文章），author：按作者名搜索
 	if authorCode != "" {
@@ -41,8 +42,8 @@ func (s *ArticleService) buildArticleListQuery(title string, categoryID int, tag
 	if tagID > 0 {
 		query = query.Where("article.id IN (SELECT article_id FROM article_tag WHERE tag_id = ?)", tagID)
 	}
-	if columnID > 0 {
-		query = query.Where("article.id IN (SELECT article_id FROM article_column WHERE column_id = ?)", columnID)
+	if len(columnIDs) > 0 {
+		query = query.Where("article.id IN (SELECT article_id FROM article_column WHERE column_id IN ?)", columnIDs)
 	}
 	if templateID > 0 {
 		// 文章只与栏目关联，模板条件展开为「该模板下的栏目」（`column` 是保留字，需加反引号）
@@ -67,14 +68,22 @@ func (s *ArticleService) buildArticleListQuery(title string, categoryID int, tag
 }
 
 func (s *ArticleService) GetArticles(title string, categoryID int, tagID int, columnID int, templateID int, status int, auditStatus int, articleType int, author string, authorCode string, source string, page int, pageSize int) ([]models.Article, int64, error) {
+	var columnIDs []uint
+	if columnID > 0 {
+		var err error
+		columnIDs, err = columnDescendantIDs(utils.DB, uint(columnID))
+		if err != nil {
+			return nil, 0, err
+		}
+	}
 	var total int64
-	countQuery := s.buildArticleListQuery(title, categoryID, tagID, columnID, templateID, status, auditStatus, articleType, author, authorCode, source)
+	countQuery := s.buildArticleListQuery(title, categoryID, tagID, templateID, status, auditStatus, articleType, author, authorCode, source, columnIDs)
 	if err := countQuery.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
 	offset := (page - 1) * pageSize
-	idQuery := s.buildArticleListQuery(title, categoryID, tagID, columnID, templateID, status, auditStatus, articleType, author, authorCode, source)
+	idQuery := s.buildArticleListQuery(title, categoryID, tagID, templateID, status, auditStatus, articleType, author, authorCode, source, columnIDs)
 	var ids []uint
 	if err := idQuery.Select("article.id").Order("article.is_top DESC, article.created_at DESC").Limit(pageSize).Offset(offset).Scan(&ids).Error; err != nil {
 		return nil, 0, err
@@ -431,7 +440,7 @@ func (s *ArticleService) SetArticleColumns(id uint, columnIDs []uint, operatorNa
 		}
 		var columns []models.Column
 		if len(unique) > 0 {
-			if err := tx.Where("id IN ?", unique).Find(&columns).Error; err != nil {
+			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id IN ?", unique).Find(&columns).Error; err != nil {
 				return err
 			}
 			if len(columns) != len(unique) {
@@ -440,6 +449,13 @@ func (s *ArticleService) SetArticleColumns(id uint, columnIDs []uint, operatorNa
 			for i := range columns {
 				if columns[i].Status != 1 {
 					return fmt.Errorf("栏目「%s」已禁用，不能投放文章", columns[i].Name)
+				}
+				var childCount int64
+				if err := tx.Model(&models.Column{}).Where("parent_id = ?", columns[i].ID).Count(&childCount).Error; err != nil {
+					return err
+				}
+				if childCount > 0 {
+					return fmt.Errorf("栏目「%s」是父栏目，只能将信息发布到最末级子栏目", columns[i].Name)
 				}
 			}
 			toBind := make([]models.Column, 0, len(unique))
@@ -1519,7 +1535,11 @@ func (s *ArticleService) GetArticleColumnPublishes(articleTitle string, columnID
 		query = query.Where("article.title LIKE ?", "%"+articleTitle+"%")
 	}
 	if columnID > 0 {
-		query = query.Where("article.id IN (SELECT article_id FROM article_column_publish WHERE column_id = ?)", columnID)
+		columnIDs, err := columnDescendantIDs(utils.DB, columnID)
+		if err != nil {
+			return nil, 0, err
+		}
+		query = query.Where("article.id IN (SELECT article_id FROM article_column_publish WHERE column_id IN ?)", columnIDs)
 	}
 	err := query.Count(&total).Error
 	if err != nil {

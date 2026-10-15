@@ -39,6 +39,7 @@ func SetupRoutes(router *gin.Engine) {
 	staticMonitorController := controllers.NewStaticMonitorController()
 	staticJobController := controllers.NewStaticJobController()
 	memberZoneController := controllers.NewMemberZoneController()
+	contentSourceController := controllers.NewContentSourceController()
 	apiPrefix := config.AppConfig.Server.ApiPrefix
 
 	public := router.Group(apiPrefix)
@@ -300,6 +301,16 @@ func SetupRoutes(router *gin.Engine) {
 		admin.GET("/settings", settingsController.GetSettings)
 		admin.GET("/static-logs/latest-times", staticLogController.GetLatestTimes)
 
+		// 外部内容源管理与公众号文章同步（仅管理员可配置凭据和触发采集）
+		admin.GET("/content-sources", contentSourceController.List)
+		admin.POST("/content-sources", contentSourceController.Create)
+		admin.PUT("/content-sources/:id", contentSourceController.Update)
+		admin.DELETE("/content-sources/:id", contentSourceController.Delete)
+		admin.POST("/content-sources/:id/test", contentSourceController.TestConnection)
+		admin.POST("/content-sources/:id/sync", contentSourceController.StartSync)
+		admin.GET("/content-sources/:id/logs", contentSourceController.ListLogs)
+		admin.GET("/content-sync-logs/:id", contentSourceController.GetLog)
+
 		// 模板管理
 		admin.POST("/templates", templateController.CreateTemplate)
 		admin.PUT("/templates/:id", templateController.UpdateTemplate)
@@ -309,6 +320,7 @@ func SetupRoutes(router *gin.Engine) {
 
 		// 栏目管理（写操作）
 		admin.POST("/columns", columnController.CreateColumn)
+		admin.GET("/columns/:id/data-counts", columnController.GetColumnDataCounts)
 		admin.PUT("/columns/:id", columnController.UpdateColumn)
 		admin.DELETE("/columns/:id", columnController.DeleteColumn)
 

@@ -257,7 +257,7 @@
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete, CirclePlus, ArrowRight, Tickets } from '@element-plus/icons-vue'
-import { getColumns, createColumn, updateColumn, deleteColumn } from '@/api/column'
+import { getColumns, getColumnDataCounts, createColumn, updateColumn, deleteColumn } from '@/api/column'
 import { getAllTemplates } from '@/api/template'
 import { getAllWorkflows } from '@/api/workflow'
 import pinyin from 'js-pinyin'
@@ -513,6 +513,7 @@ const handleAddChildColumn = (row: ColumnItem) => {
   resetColumnForm()
   columnForm.templateId = row.templateId
   columnForm.parentId = row.id
+  columnForm.displayType = row.displayType
   columnDialogVisible.value = true
 }
 
@@ -539,6 +540,11 @@ const handleDeleteColumn = async (row: ColumnItem) => {
   const hasChildren = allColumns.value.some((c) => c.parentId === row.id)
   if (hasChildren) {
     ElMessage.warning(`栏目 「${row.name}」 下存在子栏目，请先删除或调整子栏目后再删除`)
+    return
+  }
+  const countRes: any = await getColumnDataCounts(row.id)
+  if (countRes.data?.hasData) {
+    ElMessage.warning(`栏目「${row.name}」仍有数据，请先处理数据，再删除栏目`)
     return
   }
   const msg = `确定要删除栏目 「${row.name}」 吗？`
@@ -596,6 +602,21 @@ const handleColumnSubmit = async () => {
     if (columnForm.id) {
       await updateColumn(columnForm.id, payload)
     } else {
+      if (payload.parentId) {
+        const countRes: any = await getColumnDataCounts(payload.parentId)
+        if (countRes.data?.hasData) {
+          const counts = countRes.data
+          try {
+            await ElMessageBox.confirm(
+              `父栏目现有 ${counts.articles} 篇文章、${counts.ads} 条广告、${counts.links} 条友链及相关发布、审核数据。创建后，这些数据会全部转移到新子栏目「${payload.name}」中，是否继续？`,
+              '确认迁移父栏目数据',
+              { confirmButtonText: '继续创建', cancelButtonText: '取消', type: 'warning' }
+            )
+          } catch {
+            return
+          }
+        }
+      }
       await createColumn(payload)
     }
     ElMessage.success(columnForm.id ? '修改成功' : '新增成功')
