@@ -546,21 +546,21 @@ server {
 
 后台「内容管理 → 公众号同步」支持配置多个公众号，并把微信文章按外部文章 ID 幂等导入「图文管理」草稿箱。
 
-- `AppID`、账号名称与 `AppSecret` 在后台页面填写并保存到数据库，无需设置环境变量或重启后端。编辑时 AppSecret 留空表示保持原值。
-- 从旧版升级的账号若只保存过环境变量名，需在后台编辑该账号并填写一次 AppSecret；页面会显示“未配置”直到保存完成。
-- 列表接口只返回“凭据已配置”状态，不回传 AppSecret；数据库备份应按包含密钥的数据管理。
+- 后台页面填写 `AppID`、账号名称和 AppSecret **环境变量名**（例如 `PORTAL_WECHAT_APP_SECRET_CAMIE`）。只保存变量名，不保存密钥值。
+- 在运行 Portal 后端的进程环境中，把该变量设置为对应公众号的 AppSecret，然后重启后端。每个公众号可以使用不同的环境变量名；列表的“凭据已配置”状态以当前后端进程能否读取到非空变量值为准。
+- 接口不接受直接提交 `appSecret`，同步和连接测试只读取环境变量，不读取数据库里历史遗留的 `app_secret` 值。
 - “已发表文章”调用微信 `freepublish/batchget`；若账号没有该接口权限，可切换“永久图文素材”，调用 `material/batchget_material`。
 - 导入文章固定为草稿，不自动发布；同一内容源的同一微信文章（含多图文序号）只导入一次。
 - 每次同步作为异步任务执行，扫描数、新增数、跳过数及失败原因可在“同步记录”查看。
 
 ### 本功能上线时的数据库变更
 
-后端启动时通过 GORM `AutoMigrate` 在现有 Portal 数据库中创建 `content_source`（公众号账号与同步配置，`app_secret` 保存密钥）、`content_import`（微信文章与本地文章的去重映射）、`content_sync_log`（同步任务记录）三张表。文章正文继续写入原有 `article` 表，默认是草稿；若设置默认分类，还会写入原有 `article_category` 表。已有旧版 `content_source` 表时，启动迁移会补充 `app_secret` 列。
+后端启动时通过 GORM `AutoMigrate` 在现有 Portal 数据库中创建 `content_source`（公众号账号与同步配置，`secret_env` 保存环境变量名）、`content_import`（微信文章与本地文章的去重映射）、`content_sync_log`（同步任务记录）三张表。文章正文继续写入原有 `article` 表，默认是草稿；若设置默认分类，还会写入原有 `article_category` 表。旧版 `content_source.app_secret` 列暂时保留以兼容现有表结构，新版不读取或写入密钥值；编辑账号时会清空该账号在此列中的旧值。
 
-- 上线前备份目标数据库，并确认后端数据库账号有 `CREATE`、`ALTER`、建索引权限；不需要单独设置公众号 AppSecret 环境变量。
-- 先部署并启动新版 Portal 后端，检查启动日志中没有 `[migrate] 表结构同步失败`，并确认三张表及 `content_source.app_secret` 字段存在。当前启动逻辑会记录迁移错误但继续启动，因此日志检查不能省略。
+- 上线前备份目标数据库，并确认后端数据库账号有 `CREATE`、`ALTER`、建索引权限；为每个公众号设置 AppSecret 环境变量，并在管理后台登记对应变量名。
+- 部署并启动新版 Portal 后端，检查启动日志中没有 `[migrate] 表结构同步失败`，并确认三张表及 `content_source.secret_env` 字段存在。当前启动逻辑会记录迁移错误但继续启动，因此日志检查不能省略。
 - 再部署管理后台前端和 CAMIE 静态化程序，完成全站重新生成后检查栏目列表、侧栏链接和首页轮播。
-- 对仅保存过环境变量名的旧公众号账号，在管理后台补填一次 AppSecret；应用不会从旧环境变量自动复制密钥。
+- 对旧版曾直接保存 AppSecret 的公众号，先把各账号密钥迁移到后端进程环境变量，在后台为账号登记变量名，重启并逐个验证“连接测试”。确认所有账号正常后，清除数据库中旧密钥：`UPDATE content_source SET app_secret = '' WHERE app_secret <> '';`。在此之前应继续把包含历史 `app_secret` 的数据库备份按密钥管理。
 
 ## 六、部署顺序
 

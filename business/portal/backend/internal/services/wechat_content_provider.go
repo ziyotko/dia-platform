@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -115,6 +116,14 @@ func (p *WeChatContentProvider) InvalidateToken(sourceID uint) {
 }
 
 func (p *WeChatContentProvider) getAccessToken(ctx context.Context, source *models.ContentSource) (string, error) {
+	secretEnv := strings.TrimSpace(source.SecretEnv)
+	if secretEnv == "" {
+		return "", fmt.Errorf("未配置公众号密钥环境变量名，请在公众号同步页面设置")
+	}
+	secret := strings.TrimSpace(os.Getenv(secretEnv))
+	if secret == "" {
+		return "", fmt.Errorf("公众号密钥环境变量 %s 未设置，请在后端进程中配置后重启", secretEnv)
+	}
 	weChatTokenCache.Lock()
 	entry, ok := weChatTokenCache.items[source.ID]
 	weChatTokenCache.Unlock()
@@ -122,10 +131,6 @@ func (p *WeChatContentProvider) getAccessToken(ctx context.Context, source *mode
 		return entry.Token, nil
 	}
 
-	secret := strings.TrimSpace(source.AppSecret)
-	if secret == "" {
-		return "", fmt.Errorf("未配置公众号 AppSecret，请在公众号同步页面填写")
-	}
 	values := url.Values{}
 	values.Set("grant_type", "client_credential")
 	values.Set("appid", source.AppID)

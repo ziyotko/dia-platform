@@ -43,6 +43,7 @@
           <template #default="{ row }">{{ accountTypeText(row.accountType) }}</template>
         </el-table-column>
         <el-table-column prop="appId" label="AppID" min-width="190" show-overflow-tooltip />
+        <el-table-column prop="secretEnv" label="密钥环境变量" min-width="220" show-overflow-tooltip />
         <el-table-column label="凭据" width="105" align="center">
           <template #default="{ row }">
             <el-tag :type="row.secretConfigured ? 'success' : 'danger'" effect="light">
@@ -105,7 +106,7 @@
       </div>
     </el-card>
 
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="650px" destroy-on-close :close-on-click-modal="false" @closed="form.appSecret = ''">
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="650px" destroy-on-close :close-on-click-modal="false">
       <el-form ref="formRef" :model="form" :rules="formRules" label-width="120px">
         <el-form-item label="账号名称" prop="name">
           <el-input v-model="form.name" placeholder="例如：中国环保机械行业协会" />
@@ -124,10 +125,10 @@
         <el-form-item label="AppID" prop="appId">
           <el-input v-model="form.appId" placeholder="请输入公众号 AppID" />
         </el-form-item>
-        <el-form-item label="AppSecret" prop="appSecret">
-          <el-input v-model="form.appSecret" type="password" show-password autocomplete="new-password" :placeholder="form.secretConfigured ? '留空则保持原密钥' : '请输入公众号 AppSecret'" />
+        <el-form-item label="密钥环境变量" prop="secretEnv">
+          <el-input v-model="form.secretEnv" placeholder="例如 PORTAL_WECHAT_APP_SECRET_CAMIE" />
           <div class="form-help">
-            密钥保存在后台。已配置账号编辑时留空表示保持原密钥；列表不会显示密钥内容。
+            后台只保存变量名。请在 Portal 后端进程设置该环境变量为 AppSecret，然后重启后端；密钥不会写入数据库。
           </div>
         </el-form-item>
         <el-form-item label="采集范围" prop="syncMode">
@@ -243,7 +244,7 @@ const emptyForm = (): ContentSource => ({
   provider: 'wechat_official',
   accountType: 'service',
   appId: '',
-  appSecret: '',
+  secretEnv: '',
   secretConfigured: false,
   syncMode: 'published',
   status: 1,
@@ -254,9 +255,9 @@ const form = reactive<ContentSource>(emptyForm())
 const formRules = {
   name: [{ required: true, message: '请输入账号名称', trigger: 'blur' }],
   appId: [{ required: true, message: '请输入 AppID', trigger: 'blur' }],
-  appSecret: [{
+  secretEnv: [{
     validator: (_rule: unknown, value: string, callback: (error?: Error) => void) => {
-      if (!form.secretConfigured && !value?.trim()) callback(new Error('请输入公众号 AppSecret'))
+      if (!/^[A-Z][A-Z0-9_]*$/.test(value?.trim() || '')) callback(new Error('请输入大写字母、数字和下划线组成的环境变量名'))
       else callback()
     },
     trigger: 'blur'
@@ -307,7 +308,7 @@ const handleEdit = (row: ContentSource) => {
     provider: row.provider,
     accountType: row.accountType,
     appId: row.appId,
-    appSecret: '',
+    secretEnv: row.secretEnv || '',
     secretConfigured: row.secretConfigured,
     syncMode: row.syncMode,
     status: row.status,
@@ -322,7 +323,7 @@ const handleSubmit = async () => {
   if (!valid) return
   submitLoading.value = true
   try {
-    const payload = { ...form, appSecret: form.appSecret?.trim() || '' }
+    const payload = { ...form, secretEnv: form.secretEnv.trim() }
     if (payload.id) {
       await updateContentSource(payload.id, payload)
       ElMessage.success('公众号配置已更新')
@@ -330,7 +331,6 @@ const handleSubmit = async () => {
       await createContentSource(payload)
       ElMessage.success('公众号配置已创建')
     }
-    form.appSecret = ''
     dialogVisible.value = false
     await fetchData()
   } finally {

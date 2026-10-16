@@ -17,7 +17,7 @@ const (
 	ContentSyncStatusFailed  = "failed"
 )
 
-// ContentSource 保存公众号配置。AppSecret 入库供同步使用，但绝不序列化到接口响应。
+// ContentSource 只保存密钥的环境变量名。AppSecret 是兼容旧表结构的废弃列，不再用于同步。
 type ContentSource struct {
 	ID                uint       `gorm:"primarykey" json:"id"`
 	CreatedAt         time.Time  `json:"createdAt"`
@@ -26,8 +26,8 @@ type ContentSource struct {
 	Provider          string     `gorm:"size:32;not null;uniqueIndex:uk_content_source_provider_app,priority:1" json:"provider"`
 	AccountType       string     `gorm:"size:32;not null" json:"accountType"`
 	AppID             string     `gorm:"size:64;not null;uniqueIndex:uk_content_source_provider_app,priority:2" json:"appId"`
-	SecretEnv         string     `gorm:"size:128;not null" json:"-"` // 旧数据字段，停止使用
-	AppSecret         string     `gorm:"size:255" json:"-"`
+	SecretEnv         string     `gorm:"size:128;not null" json:"secretEnv"`
+	AppSecret         string     `gorm:"size:255" json:"-"` // 旧数据列；保存账号时清空
 	SyncMode          string     `gorm:"size:32;not null" json:"syncMode"`
 	Status            int        `gorm:"default:1;index" json:"status"`
 	DefaultCategoryID *uint      `gorm:"index" json:"defaultCategoryId"`

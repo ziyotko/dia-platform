@@ -55,8 +55,11 @@ func (c *ContentSourceController) Create(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
+	if strings.TrimSpace(req.AppSecret) != "" {
+		ctx.JSON(http.StatusOK, utils.Error(1, "AppSecret 不在后台保存，请填写环境变量名并在后端配置密钥"))
+		return
+	}
 	source := req.ContentSource
-	source.AppSecret = req.AppSecret
 	source.CreatedBy = ctx.GetUint("userID")
 	if err := c.service.Create(&source); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("创建内容源失败", err)))
@@ -75,8 +78,11 @@ func (c *ContentSourceController) Update(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
+	if strings.TrimSpace(req.AppSecret) != "" {
+		ctx.JSON(http.StatusOK, utils.Error(1, "AppSecret 不在后台保存，请填写环境变量名并在后端配置密钥"))
+		return
+	}
 	source := req.ContentSource
-	source.AppSecret = req.AppSecret
 	if err := c.service.Update(id, &source); err != nil {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("更新内容源失败", err)))
 		return

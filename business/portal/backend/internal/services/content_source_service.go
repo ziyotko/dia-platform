@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,6 +22,8 @@ var contentSyncLocks = struct {
 	sync.Mutex
 	running map[uint]bool
 }{running: make(map[uint]bool)}
+
+var contentSourceSecretEnvPattern = regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`)
 
 type ContentSourceView struct {
 	*models.ContentSource
@@ -81,8 +85,8 @@ func (s *ContentSourceService) Update(id uint, input *models.ContentSource) erro
 	if err := utils.DB.First(&old, id).Error; err != nil {
 		return err
 	}
-	if strings.TrimSpace(input.AppSecret) == "" {
-		input.AppSecret = old.AppSecret
+	if strings.TrimSpace(input.SecretEnv) == "" {
+		input.SecretEnv = old.SecretEnv
 	}
 	if err := normalizeAndValidateContentSource(input); err != nil {
 		return err
@@ -95,8 +99,8 @@ func (s *ContentSourceService) Update(id uint, input *models.ContentSource) erro
 		"provider":            input.Provider,
 		"account_type":        input.AccountType,
 		"app_id":              input.AppID,
-		"app_secret":          input.AppSecret,
-		"secret_env":          "",
+		"app_secret":          "",
+		"secret_env":          input.SecretEnv,
 		"sync_mode":           input.SyncMode,
 		"status":              input.Status,
 		"default_category_id": input.DefaultCategoryID,
@@ -321,11 +325,11 @@ func normalizeAndValidateContentSource(source *models.ContentSource) error {
 	source.Provider = strings.TrimSpace(source.Provider)
 	source.AccountType = strings.TrimSpace(source.AccountType)
 	source.AppID = strings.TrimSpace(source.AppID)
-	source.AppSecret = strings.TrimSpace(source.AppSecret)
-	source.SecretEnv = ""
+	source.AppSecret = ""
+	source.SecretEnv = strings.TrimSpace(source.SecretEnv)
 	source.SyncMode = strings.TrimSpace(source.SyncMode)
-	if source.Name == "" || source.AppID == "" || source.AppSecret == "" {
-		return fmt.Errorf("名称、AppID 和 AppSecret 均不能为空")
+	if source.Name == "" || source.AppID == "" || source.SecretEnv == "" {
+		return fmt.Errorf("名称、AppID 和密钥环境变量名均不能为空")
 	}
 	if source.Provider != models.ContentSourceProviderWeChat {
 		return fmt.Errorf("暂不支持该内容源类型")
@@ -336,8 +340,8 @@ func normalizeAndValidateContentSource(source *models.ContentSource) error {
 	if source.SyncMode != models.ContentSourceSyncPublished && source.SyncMode != models.ContentSourceSyncMaterials {
 		return fmt.Errorf("采集范围无效")
 	}
-	if len(source.AppSecret) > 255 {
-		return fmt.Errorf("AppSecret 长度不能超过 255 个字符")
+	if len(source.SecretEnv) > 128 || !contentSourceSecretEnvPattern.MatchString(source.SecretEnv) {
+		return fmt.Errorf("密钥环境变量名只能包含大写字母、数字和下划线，且必须以字母开头")
 	}
 	if source.Status != 0 && source.Status != 1 {
 		return fmt.Errorf("状态无效")
@@ -365,7 +369,7 @@ func validateDefaultCategory(id *uint) error {
 func contentSourceView(source *models.ContentSource) ContentSourceView {
 	return ContentSourceView{
 		ContentSource:    source,
-		SecretConfigured: strings.TrimSpace(source.AppSecret) != "",
+		SecretConfigured: source.SecretEnv != "" && strings.TrimSpace(os.Getenv(source.SecretEnv)) != "",
 	}
 }
 

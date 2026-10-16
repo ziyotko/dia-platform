@@ -11,7 +11,7 @@ export interface ContentSource {
   provider: ContentSourceProvider
   accountType: ContentSourceAccountType
   appId: string
-  appSecret?: string
+  secretEnv: string
   secretConfigured?: boolean
   syncMode: ContentSourceSyncMode
   status: number

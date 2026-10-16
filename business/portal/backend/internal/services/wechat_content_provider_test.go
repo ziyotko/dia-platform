@@ -11,6 +11,7 @@ import (
 )
 
 func TestWeChatContentProviderFetchPublishedArticles(t *testing.T) {
+	t.Setenv("PORTAL_WECHAT_TEST_SECRET", "test-secret")
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/cgi-bin/token":
@@ -45,7 +46,7 @@ func TestWeChatContentProviderFetchPublishedArticles(t *testing.T) {
 	defer func() { weChatAPIBaseURL = originalBaseURL }()
 	provider := &WeChatContentProvider{}
 	source := &models.ContentSource{
-		ID: 991, AppID: "wx-test", AppSecret: "test-secret",
+		ID: 991, AppID: "wx-test", SecretEnv: "PORTAL_WECHAT_TEST_SECRET", AppSecret: "ignored-db-secret",
 		SyncMode: models.ContentSourceSyncPublished,
 	}
 	provider.InvalidateToken(source.ID)
@@ -68,9 +69,10 @@ func TestWeChatContentProviderFetchPublishedArticles(t *testing.T) {
 	}
 }
 
-func TestWeChatContentProviderRequiresSavedSecret(t *testing.T) {
+func TestWeChatContentProviderRequiresEnvironmentSecret(t *testing.T) {
+	t.Setenv("PORTAL_WECHAT_MISSING_SECRET", "")
 	provider := &WeChatContentProvider{}
-	source := &models.ContentSource{ID: 992, AppID: "wx-test"}
+	source := &models.ContentSource{ID: 992, AppID: "wx-test", SecretEnv: "PORTAL_WECHAT_MISSING_SECRET", AppSecret: "legacy-db-secret"}
 	provider.InvalidateToken(source.ID)
 	if err := provider.TestConnection(context.Background(), source); err == nil {
 		t.Fatal("TestConnection() expected missing secret error")
