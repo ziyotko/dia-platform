@@ -44,6 +44,45 @@ func TestColumnRulesWithMySQL(t *testing.T) {
 	if err := service.CreateColumn(&parent); err != nil {
 		t.Fatal(err)
 	}
+	otherTemplate := models.Template{
+		Name:   fmt.Sprintf("栏目唯一性测试模板%d", stamp),
+		Code:   fmt.Sprintf("column-unique-test-%d", stamp),
+		Type:   templateTypeSpecial,
+		Status: 0,
+	}
+	if err := tx.Create(&otherTemplate).Error; err != nil {
+		t.Fatal(err)
+	}
+	crossTemplateDuplicate := models.Column{Name: parent.Name, Code: parent.Code, TemplateID: otherTemplate.ID, Status: 1, DisplayType: 2}
+	if err := service.CreateColumn(&crossTemplateDuplicate); err != nil {
+		t.Fatalf("same name/code in another template should be accepted: %v", err)
+	}
+	sameTemplateName := models.Column{Name: parent.Name, Code: fmt.Sprintf("test-name-conflict-%d", stamp), TemplateID: template.ID, Status: 1, DisplayType: 2}
+	if err := service.CreateColumn(&sameTemplateName); err == nil || !strings.Contains(err.Error(), "栏目名称") {
+		t.Fatalf("same name in one template should be rejected, got %v", err)
+	}
+	sameTemplateCode := models.Column{Name: fmt.Sprintf("栏目编码冲突测试%d", stamp), Code: parent.Code, TemplateID: template.ID, Status: 1, DisplayType: 2}
+	if err := service.CreateColumn(&sameTemplateCode); err == nil || !strings.Contains(err.Error(), "栏目编码") {
+		t.Fatalf("same code in one template should be rejected, got %v", err)
+	}
+	updateSource := models.Column{Name: fmt.Sprintf("栏目更新来源%d", stamp), Code: fmt.Sprintf("test-update-source-%d", stamp), TemplateID: template.ID, Status: 1, DisplayType: 2}
+	if err := service.CreateColumn(&updateSource); err != nil {
+		t.Fatal(err)
+	}
+	otherTemplateOnly := models.Column{Name: fmt.Sprintf("栏目跨模板更新%d", stamp), Code: fmt.Sprintf("test-cross-template-update-%d", stamp), TemplateID: otherTemplate.ID, Status: 1, DisplayType: 2}
+	if err := service.CreateColumn(&otherTemplateOnly); err != nil {
+		t.Fatal(err)
+	}
+	updateSource.Name = otherTemplateOnly.Name
+	updateSource.Code = otherTemplateOnly.Code
+	if err := service.UpdateColumn(updateSource.ID, &updateSource); err != nil {
+		t.Fatalf("updating to name/code used only by another template should be accepted: %v", err)
+	}
+	updateSource.Name = parent.Name
+	updateSource.Code = parent.Code
+	if err := service.UpdateColumn(updateSource.ID, &updateSource); err == nil || !strings.Contains(err.Error(), "已存在") {
+		t.Fatalf("updating to name/code used in the same template should be rejected, got %v", err)
+	}
 	article := models.Article{Title: fmt.Sprintf("栏目规则测试文章%d", stamp), Status: models.ArticleStatusPublished, Type: 1}
 	if err := tx.Create(&article).Error; err != nil {
 		t.Fatal(err)

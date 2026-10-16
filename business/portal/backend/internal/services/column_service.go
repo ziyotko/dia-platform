@@ -255,9 +255,8 @@ func (s *ColumnService) CreateColumn(column *models.Column) error {
 	if err := s.validateColumnBinding(0, column.TemplateID, column.ParentID); err != nil {
 		return err
 	}
-	// 栏目名称/编码全局唯一（与分类、标签、会员栏目口径一致）：
-	// 静态化按栏目名称/编码定位输出文件，跨模板重名会生成同一个静态文件相互覆盖，故不做「模板维度」放行。
-	if err := ensureNameCodeUnique(&models.Column{}, "栏目", column.Name, column.Code, 0, nil); err != nil {
+	// 栏目名称/编码在同一模板内唯一；不同模板之间允许复用。
+	if err := ensureNameCodeUnique(&models.Column{}, "栏目", column.Name, column.Code, 0, &uniqueScope{Field: "template_id", Value: column.TemplateID}); err != nil {
 		return err
 	}
 	// status / display_type 带 `default:1`：直接 Create 会把「新建时选禁用(0)」静默写成启用(1)
@@ -296,8 +295,8 @@ func (s *ColumnService) UpdateColumn(id uint, column *models.Column) error {
 	if err := s.validateColumnBinding(id, column.TemplateID, column.ParentID); err != nil {
 		return err
 	}
-	// 名称/编码全局唯一，编辑时排除自身（口径同 CreateColumn）
-	if err := ensureNameCodeUnique(&models.Column{}, "栏目", column.Name, column.Code, id, nil); err != nil {
+	// 名称/编码在同一模板内唯一，编辑时排除自身（口径同 CreateColumn）。
+	if err := ensureNameCodeUnique(&models.Column{}, "栏目", column.Name, column.Code, id, &uniqueScope{Field: "template_id", Value: column.TemplateID}); err != nil {
 		return err
 	}
 	var old models.Column
