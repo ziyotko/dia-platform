@@ -112,6 +112,10 @@
         <div class="card-header">
           <span>文章列表</span>
           <div class="header-actions">
+            <el-button type="danger" plain :disabled="selectedArticles.length === 0 || deleting" @click="handleBatchDelete">
+              <el-icon><Delete /></el-icon>
+              批量删除（{{ selectedArticles.length }}）
+            </el-button>
             <el-button type="primary" @click="handleAdd">
               <el-icon><Plus /></el-icon>
               新增文章
@@ -132,7 +136,8 @@
         </div>
       </template>
 
-      <el-table v-loading="loading" :data="tableData" border stripe>
+      <el-table ref="articleTableRef" v-loading="loading" :data="tableData" border stripe @selection-change="handleArticleSelectionChange">
+        <el-table-column type="selection" width="55" align="center" :selectable="canSelectArticleForDelete" />
         <el-table-column type="index" width="60" align="center" />
         <el-table-column label="文章标题" min-width="200" show-overflow-tooltip>
           <template #default="{ row }">
@@ -476,7 +481,7 @@
             </el-col>
             <el-col :xs="24" :sm="12" :md="8">
               <el-form-item label="标题颜色" prop="defaultColor">
-                <el-color-picker v-model="form.defaultColor" show-alpha />
+                <el-color-picker v-model="form.defaultColor" color-format="hex" />
               </el-form-item>
             </el-col>
           </el-row>
@@ -1682,6 +1687,8 @@ const route = useRoute()
 const router = useRouter()
 
 const tableData = ref<any[]>([])
+const articleTableRef = ref()
+const selectedArticles = ref<any[]>([])
 const categoryList = ref<any[]>([])
 const tagList = ref<any[]>([])
 
@@ -2062,6 +2069,8 @@ onBeforeUnmount(() => {
 })
 
 const fetchData = async () => {
+  selectedArticles.value = []
+  articleTableRef.value?.clearSelection()
   loading.value = true
   try {
     const params: any = {
@@ -2159,6 +2168,11 @@ const handleAddData = () => {
 
 const isAuthor = (row: any) => {
   return String(currentUserId.value) === String(row.authorCode)
+}
+
+const canSelectArticleForDelete = (row: any) => isAdmin.value || isAuthor(row)
+const handleArticleSelectionChange = (rows: any[]) => {
+  selectedArticles.value = rows
 }
 
 // 「栏目」按钮显示规则（与后端 SetArticleColumns 的校验口径一致）：
@@ -2283,6 +2297,45 @@ const handleDelete = (row: any) => {
       }
     })
     .catch(() => {})
+}
+
+const handleBatchDelete = async () => {
+  const ids = selectedArticles.value.map((row) => Number(row.id)).filter((id) => Number.isInteger(id) && id > 0)
+  if (ids.length === 0) return
+  try {
+    await ElMessageBox.confirm(
+      `确定删除本页选中的 ${ids.length} 篇文章吗？删除后不可恢复；公众号同步的文章下次同步会重新导入。`,
+      '批量删除确认',
+      { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' },
+    )
+  } catch {
+    return
+  }
+
+  deleting.value = true
+  let deleted = 0
+  let stoppedOnError = false
+  try {
+    for (const id of ids) {
+      deletingText.value = `批量删除中（${deleted + 1}/${ids.length}）...`
+      try {
+        await deleteArticle(id)
+        deleted++
+      } catch {
+        stoppedOnError = true
+        break
+      }
+    }
+    if (deleted > 0) {
+      const lastPage = Math.max(1, Math.ceil((total.value - deleted) / queryForm.pageSize))
+      if (queryForm.page > lastPage) queryForm.page = lastPage
+      await fetchData()
+    }
+    if (stoppedOnError) ElMessage.warning(`已删除 ${deleted} 篇，因错误停止，剩余 ${ids.length - deleted} 篇未处理`)
+    else ElMessage.success(`已删除 ${deleted} 篇文章`)
+  } finally {
+    deleting.value = false
+  }
 }
 
 const currentAuditRow = ref<any>(null)

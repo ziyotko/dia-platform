@@ -246,9 +246,27 @@ func (s *ContentSourceService) importArticle(source *models.ContentSource, exter
 		err := tx.Where("source_id = ? AND external_id = ? AND item_index = ?", source.ID, external.ExternalID, external.ItemIndex).
 			First(&existing).Error
 		if err == nil {
-			return nil
-		}
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			var articleCount int64
+			if err := tx.Model(&models.Article{}).Where("id = ?", existing.ArticleID).Count(&articleCount).Error; err != nil {
+				return err
+			}
+			if articleCount > 0 {
+				// 旧版将微信原文链接写入跳转地址。有正文且地址仍与采集链接一致时，
+				// 清除这个自动填入的地址；保留后台人员后来设置的其他跳转地址。
+				if strings.TrimSpace(external.Content) != "" && strings.TrimSpace(external.URL) != "" {
+					if err := tx.Model(&models.Article{}).
+						Where("id = ? AND url = ? AND TRIM(content) <> ''", existing.ArticleID, truncateRunes(external.URL, 500)).
+						Update("url", "").Error; err != nil {
+						return err
+					}
+				}
+				return nil
+			}
+			// 兼容修复旧版本删除文章后留下的去重映射。
+			if err := tx.Delete(&existing).Error; err != nil {
+				return err
+			}
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return err
 		}
 		author := strings.TrimSpace(external.Author)
@@ -268,7 +286,7 @@ func (s *ContentSourceService) importArticle(source *models.ContentSource, exter
 			AuthorCode:  strconv.FormatUint(uint64(source.CreatedBy), 10),
 			Source:      truncateRunes(source.Name, 200),
 			PublishTime: &publishTime,
-			URL:         truncateRunes(external.URL, 500),
+			URL:         importedArticleURL(external),
 		}
 		if err := tx.Create(article).Error; err != nil {
 			return err
@@ -291,6 +309,14 @@ func (s *ContentSourceService) importArticle(source *models.ContentSource, exter
 		return nil
 	})
 	return created, err
+}
+
+// 微信已返回正文时，文章应显示本站详情页；只有没有正文时才保留外链。
+func importedArticleURL(external ExternalContentArticle) string {
+	if strings.TrimSpace(external.Content) != "" {
+		return ""
+	}
+	return truncateRunes(strings.TrimSpace(external.URL), 500)
 }
 
 func (s *ContentSourceService) finishSync(logID, sourceID uint, scanned, created, skipped int, syncErr error) {
