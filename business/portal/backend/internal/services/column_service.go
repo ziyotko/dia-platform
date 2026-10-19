@@ -9,7 +9,6 @@ import (
 	"portal/pkg/utils"
 
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type ColumnService struct{}
@@ -260,27 +259,8 @@ func (s *ColumnService) CreateColumn(column *models.Column) error {
 		return err
 	}
 	// status / display_type 带 `default:1`：直接 Create 会把「新建时选禁用(0)」静默写成启用(1)
-	return utils.DB.Transaction(func(tx *gorm.DB) error {
-		if column.ParentID != 0 {
-			var parent models.Column
-			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&parent, column.ParentID).Error; err != nil {
-				return err
-			}
-		}
-		if err := utils.CreatePreservingZeroValues(tx, column, "status", "display_type"); err != nil {
-			return err
-		}
-		if column.ParentID == 0 {
-			return nil
-		}
-		// 新增子栏目后父栏目变为非末级：将直接关联的数据整体迁入新子栏目。
-		for _, model := range []any{&models.ArticleColumn{}, &models.ArticleColumnPublish{}, &models.ArticleColumnAudit{}, &models.ArticleColumnAuditHistory{}, &models.Ad{}, &models.Link{}} {
-			if err := tx.Model(model).Where("column_id = ?", column.ParentID).Update("column_id", column.ID).Error; err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	// 父子栏目均可以直接关联数据，新增子栏目时不迁移父栏目的已有数据。
+	return utils.CreatePreservingZeroValues(utils.DB, column, "status", "display_type")
 }
 
 // columnWorkflowID 取栏目绑定的审核流程 ID（nil 与 0 等价，均表示未绑定流程）

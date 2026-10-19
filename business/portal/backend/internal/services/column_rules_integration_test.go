@@ -104,12 +104,12 @@ func TestColumnRulesWithMySQL(t *testing.T) {
 		t.Fatal(err)
 	}
 	parentCounts, err := service.GetColumnDataCounts(parent.ID)
-	if err != nil || parentCounts.HasData {
-		t.Fatalf("parent still has direct data: %+v, %v", parentCounts, err)
+	if err != nil || parentCounts.Articles != 1 || parentCounts.Publishes != 1 || parentCounts.Audits != 1 || parentCounts.AuditHistory != 1 || parentCounts.Ads != 1 || parentCounts.Links != 1 {
+		t.Fatalf("parent data changed after creating child: %+v, %v", parentCounts, err)
 	}
 	childCounts, err := service.GetColumnDataCounts(child.ID)
-	if err != nil || childCounts.Articles != 1 || childCounts.Publishes != 1 || childCounts.Audits != 1 || childCounts.AuditHistory != 1 || childCounts.Ads != 1 || childCounts.Links != 1 {
-		t.Fatalf("migration incomplete: %+v, %v", childCounts, err)
+	if err != nil || childCounts.HasData {
+		t.Fatalf("new child unexpectedly inherited parent data: %+v, %v", childCounts, err)
 	}
 	articles, total, err := (&ArticleService{}).GetArticles("", 0, 0, int(parent.ID), 0, -1, -1, 0, "", "", "", 1, 10)
 	if err != nil || total != 1 || len(articles) != 1 || articles[0].ID != article.ID {
@@ -138,17 +138,14 @@ func TestColumnRulesWithMySQL(t *testing.T) {
 	if !foundParent {
 		t.Fatal("parent column missing from static publish list")
 	}
-	if err := (&ArticleService{}).SetArticleColumns(article.ID, []uint{parent.ID}, "test"); err == nil || !strings.Contains(err.Error(), "父栏目") {
-		t.Fatalf("parent publication should be rejected, got %v", err)
+	if err := (&ArticleService{}).SetArticleColumns(article.ID, []uint{parent.ID}, "test"); err != nil {
+		t.Fatalf("parent publication should be accepted, got %v", err)
 	}
-	if err := ValidateTemplateColumn(template.ID, parent.ID); err != ErrParentColumn {
-		t.Fatalf("parent ad/link placement should be rejected, got %v", err)
+	if err := ValidateTemplateColumn(template.ID, parent.ID); err != nil {
+		t.Fatalf("parent ad/link placement should be accepted, got %v", err)
 	}
 	if err := ValidateTemplateColumn(template.ID, child.ID); err != nil {
-		t.Fatalf("leaf ad/link placement should be accepted, got %v", err)
-	}
-	if err := service.DeleteColumn(child.ID); err == nil || !strings.Contains(err.Error(), "请先处理数据") {
-		t.Fatalf("nonempty column deletion should be rejected, got %v", err)
+		t.Fatalf("child ad/link placement should be accepted, got %v", err)
 	}
 	empty := models.Column{Name: fmt.Sprintf("栏目规则测试空%d", stamp), Code: fmt.Sprintf("testempty%d", stamp), TemplateID: template.ID, ParentID: parent.ID, Status: 1, DisplayType: 2}
 	if err := service.CreateColumn(&empty); err != nil {
@@ -162,8 +159,8 @@ func TestColumnRulesWithMySQL(t *testing.T) {
 		t.Fatal(err)
 	}
 	grandchildCounts, err := service.GetColumnDataCounts(grandchild.ID)
-	if err != nil || grandchildCounts.Articles != 1 {
-		t.Fatalf("second-level migration failed: %+v, %v", grandchildCounts, err)
+	if err != nil || grandchildCounts.HasData {
+		t.Fatalf("new grandchild unexpectedly inherited ancestor data: %+v, %v", grandchildCounts, err)
 	}
 	_, total, err = (&ArticleService{}).GetArticles("", 0, 0, int(parent.ID), 0, -1, -1, 0, "", "", "", 1, 10)
 	if err != nil || total != 1 {

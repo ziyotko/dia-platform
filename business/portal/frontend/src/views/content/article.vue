@@ -1696,11 +1696,10 @@ const getColumnsByTemplate = (templateId: number) => {
   return columnList.value.filter((col: any) => col.templateId === templateId)
 }
 
-// 投放弹窗专用：仅启用的末级栏目可投放。
+// 投放弹窗专用：父子栏目均可投放，仅排除已禁用栏目。
 const getPublishableColumnsByTemplate = (templateId: number) => {
   const cols = getColumnsByTemplate(templateId)
-  const parentIds = new Set(cols.map((col: any) => col.parentId))
-  return cols.filter((col: any) => col.status === 1 && !parentIds.has(col.id))
+  return cols.filter((col: any) => col.status === 1)
 }
 
 const getColumnCountByTemplate = (templateId: number) => {

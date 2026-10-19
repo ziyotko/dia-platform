@@ -450,13 +450,6 @@ func (s *ArticleService) SetArticleColumns(id uint, columnIDs []uint, operatorNa
 				if columns[i].Status != 1 {
 					return fmt.Errorf("栏目「%s」已禁用，不能投放文章", columns[i].Name)
 				}
-				var childCount int64
-				if err := tx.Model(&models.Column{}).Where("parent_id = ?", columns[i].ID).Count(&childCount).Error; err != nil {
-					return err
-				}
-				if childCount > 0 {
-					return fmt.Errorf("栏目「%s」是父栏目，只能将信息发布到最末级子栏目", columns[i].Name)
-				}
 			}
 			toBind := make([]models.Column, 0, len(unique))
 			for _, cid := range unique {

@@ -602,21 +602,6 @@ const handleColumnSubmit = async () => {
     if (columnForm.id) {
       await updateColumn(columnForm.id, payload)
     } else {
-      if (payload.parentId) {
-        const countRes: any = await getColumnDataCounts(payload.parentId)
-        if (countRes.data?.hasData) {
-          const counts = countRes.data
-          try {
-            await ElMessageBox.confirm(
-              `父栏目现有 ${counts.articles} 篇文章、${counts.ads} 条广告、${counts.links} 条友链及相关发布、审核数据。创建后，这些数据会全部转移到新子栏目「${payload.name}」中，是否继续？`,
-              '确认迁移父栏目数据',
-              { confirmButtonText: '继续创建', cancelButtonText: '取消', type: 'warning' }
-            )
-          } catch {
-            return
-          }
-        }
-      }
       await createColumn(payload)
     }
     ElMessage.success(columnForm.id ? '修改成功' : '新增成功')

@@ -353,10 +353,7 @@ const loadColumnsByTemplate = async (templateId: number | undefined, target: 'qu
     // 广告位置只展示栏目类型为「广告展示」的栏目
     const res: any = await getColumns({ templateId })
     const columns: any[] = res.data || []
-    const parentIds = new Set(columns.map((column: any) => column.parentId))
-    list.value = columns.filter((column: any) =>
-      column.displayType === 4 && (target === 'query' || !parentIds.has(column.id))
-    )
+    list.value = columns.filter((column: any) => column.displayType === 4)
   } catch {
     // ignore
   }

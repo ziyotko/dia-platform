@@ -14,7 +14,6 @@ var (
 	ErrColumnRequired = errors.New("请选择所属栏目")
 	// ErrColumnNotInTemplate 所选栏目不属于所选模板
 	ErrColumnNotInTemplate = errors.New("所选栏目不属于该模板，请重新选择")
-	ErrParentColumn        = errors.New("只能将信息发布到最末级子栏目，不能选择父栏目")
 )
 
 // ValidateTemplateColumn 校验「模板 + 栏目」归属（广告、友链等）：
@@ -36,12 +35,6 @@ func ValidateTemplateColumn(templateID, columnID uint) error {
 	}
 	if count == 0 {
 		return ErrColumnNotInTemplate
-	}
-	if err := utils.DB.Model(&models.Column{}).Where("parent_id = ?", columnID).Count(&count).Error; err != nil {
-		return err
-	}
-	if count > 0 {
-		return ErrParentColumn
 	}
 	return nil
 }
