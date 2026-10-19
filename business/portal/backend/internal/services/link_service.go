@@ -18,11 +18,7 @@ func (s *LinkService) GetLinks(name string, templateID int, columnID int, status
 		query = query.Where("template_id = ?", templateID)
 	}
 	if columnID > 0 {
-		ids, err := columnDescendantIDs(utils.DB, uint(columnID))
-		if err != nil {
-			return nil, 0, err
-		}
-		query = query.Where("column_id IN ?", ids)
+		query = query.Where("column_id = ?", columnID)
 	}
 	if status >= 0 {
 		query = query.Where("status = ?", status)

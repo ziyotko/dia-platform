@@ -13,29 +13,6 @@ import (
 
 type ColumnService struct{}
 
-// columnDescendantIDs 返回自身及任意层级的子栏目，历史上直接挂在父栏目的数据也能被查询。
-func columnDescendantIDs(db *gorm.DB, root uint) ([]uint, error) {
-	var columns []models.Column
-	if err := db.Select("id, parent_id").Find(&columns).Error; err != nil {
-		return nil, err
-	}
-	children := make(map[uint][]uint, len(columns))
-	for _, column := range columns {
-		children[column.ParentID] = append(children[column.ParentID], column.ID)
-	}
-	ids := []uint{root}
-	seen := map[uint]bool{root: true}
-	for i := 0; i < len(ids); i++ {
-		for _, id := range children[ids[i]] {
-			if !seen[id] {
-				seen[id] = true
-				ids = append(ids, id)
-			}
-		}
-	}
-	return ids, nil
-}
-
 type ColumnDataCounts struct {
 	Articles     int64 `json:"articles"`
 	Publishes    int64 `json:"publishes"`

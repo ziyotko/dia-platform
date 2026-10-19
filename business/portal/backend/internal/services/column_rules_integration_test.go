@@ -111,9 +111,23 @@ func TestColumnRulesWithMySQL(t *testing.T) {
 	if err != nil || childCounts.HasData {
 		t.Fatalf("new child unexpectedly inherited parent data: %+v, %v", childCounts, err)
 	}
+	childArticle := models.Article{Title: fmt.Sprintf("栏目精确筛选子栏目文章%d", stamp), Status: models.ArticleStatusPublished, Type: 1}
+	if err := tx.Create(&childArticle).Error; err != nil {
+		t.Fatal(err)
+	}
+	for _, model := range []any{
+		&models.ArticleColumn{ArticleID: childArticle.ID, ColumnID: child.ID},
+		&models.ArticleColumnPublish{ArticleID: childArticle.ID, ColumnID: child.ID, TemplateID: template.ID, ArticleTitle: childArticle.Title},
+		&models.Ad{Name: "栏目精确筛选子栏目广告", ColumnID: child.ID, TemplateID: template.ID, Status: 1},
+		&models.Link{Name: "栏目精确筛选子栏目友链", Url: "https://example.com", ColumnID: child.ID, TemplateID: template.ID, Status: 1},
+	} {
+		if err := tx.Create(model).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
 	articles, total, err := (&ArticleService{}).GetArticles("", 0, 0, int(parent.ID), 0, -1, -1, 0, "", "", "", 1, 10)
 	if err != nil || total != 1 || len(articles) != 1 || articles[0].ID != article.ID {
-		t.Fatalf("parent article query failed: total=%d, err=%v", total, err)
+		t.Fatalf("parent article query included child data: total=%d, err=%v", total, err)
 	}
 	_, publishedTotal, err := (&ArticleService{}).GetArticleColumnPublishes("", parent.ID, 1, 10)
 	if err != nil || publishedTotal != 1 {
@@ -125,7 +139,23 @@ func TestColumnRulesWithMySQL(t *testing.T) {
 	}
 	links, linkTotal, err := (&LinkService{}).GetLinks("", 0, int(parent.ID), -1, 1, 10)
 	if err != nil || linkTotal != 1 || len(links) != 1 {
-		t.Fatalf("parent link query failed: total=%d, err=%v", linkTotal, err)
+		t.Fatalf("parent link query included child data: total=%d, err=%v", linkTotal, err)
+	}
+	childArticles, childTotal, err := (&ArticleService{}).GetArticles("", 0, 0, int(child.ID), 0, -1, -1, 0, "", "", "", 1, 10)
+	if err != nil || childTotal != 1 || len(childArticles) != 1 || childArticles[0].ID != childArticle.ID {
+		t.Fatalf("child article query is not exact: total=%d, err=%v", childTotal, err)
+	}
+	_, childPublishedTotal, err := (&ArticleService{}).GetArticleColumnPublishes("", child.ID, 1, 10)
+	if err != nil || childPublishedTotal != 1 {
+		t.Fatalf("child publish query is not exact: total=%d, err=%v", childPublishedTotal, err)
+	}
+	childAds, childAdTotal, err := (&AdService{}).GetAds("", 0, int(child.ID), -1, 1, 10)
+	if err != nil || childAdTotal != 1 || len(childAds) != 1 {
+		t.Fatalf("child ad query is not exact: total=%d, err=%v", childAdTotal, err)
+	}
+	childLinks, childLinkTotal, err := (&LinkService{}).GetLinks("", 0, int(child.ID), -1, 1, 10)
+	if err != nil || childLinkTotal != 1 || len(childLinks) != 1 {
+		t.Fatalf("child link query is not exact: total=%d, err=%v", childLinkTotal, err)
 	}
 	staticColumns, err := service.GetColumnPublishes()
 	if err != nil {
