@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -55,8 +56,7 @@ func (c *ContentSourceController) Create(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
-	if strings.TrimSpace(req.AppSecret) != "" {
-		ctx.JSON(http.StatusOK, utils.Error(1, "AppSecret 不在后台保存，请填写环境变量名并在后端配置密钥"))
+	if rejectLegacyAppSecret(ctx, req.AppSecret) {
 		return
 	}
 	source := req.ContentSource
@@ -78,8 +78,7 @@ func (c *ContentSourceController) Update(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, utils.Error(1, utils.SanitizeError("参数错误", err)))
 		return
 	}
-	if strings.TrimSpace(req.AppSecret) != "" {
-		ctx.JSON(http.StatusOK, utils.Error(1, "AppSecret 不在后台保存，请填写环境变量名并在后端配置密钥"))
+	if rejectLegacyAppSecret(ctx, req.AppSecret) {
 		return
 	}
 	source := req.ContentSource
@@ -160,6 +159,20 @@ func (c *ContentSourceController) GetLog(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, utils.Success("获取成功", log))
+}
+
+// 只保存环境变量名的版本发布前，前端会直接提交 appSecret；
+// 收到该字段说明管理后台仍是旧版页面，日志留痕便于区分「环境变量没配」和「前端没更新」。
+func rejectLegacyAppSecret(ctx *gin.Context, appSecret string) bool {
+	if strings.TrimSpace(appSecret) == "" {
+		return false
+	}
+	log.Printf("[content-source] 拒绝旧版页面提交 appSecret（userID=%d, ip=%s, ua=%s），请重新部署管理后台前端",
+		ctx.GetUint("userID"), ctx.ClientIP(), ctx.Request.UserAgent())
+	ctx.JSON(http.StatusOK, utils.Error(1,
+		"AppSecret 不在后台保存，请填写环境变量名并在后端配置密钥"+
+			"（本次请求仍提交了 appSecret，说明管理后台前端是旧版本，请部署最新前端后强制刷新页面）"))
+	return true
 }
 
 func parseContentSourceID(ctx *gin.Context) (uint, bool) {
