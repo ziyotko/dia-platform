@@ -77,7 +77,7 @@ func (s *ArticleService) GetArticles(title string, categoryID int, tagID int, co
 	offset := (page - 1) * pageSize
 	idQuery := s.buildArticleListQuery(title, categoryID, tagID, templateID, status, auditStatus, articleType, author, authorCode, source, columnID)
 	var ids []uint
-	if err := idQuery.Select("article.id").Order("article.is_top DESC, article.created_at DESC").Limit(pageSize).Offset(offset).Scan(&ids).Error; err != nil {
+	if err := idQuery.Select("article.id").Order("article.publish_time DESC, article.id DESC").Limit(pageSize).Offset(offset).Scan(&ids).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -90,7 +90,7 @@ func (s *ArticleService) GetArticles(title string, categoryID int, tagID int, co
 	// 列表接口只用到栏目与附件（分类/标签不在响应里），故不做 Categories/Tags 的 Preload——每次请求省 2 条查询。
 	err := utils.DB.Omit("Content").
 		Where("id IN ?", ids).
-		Order("is_top DESC, created_at DESC").
+		Order("publish_time DESC, id DESC").
 		Preload("Columns").Preload("Attachments").
 		Find(&articles).Error
 	return articles, total, err

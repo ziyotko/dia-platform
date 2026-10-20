@@ -70,8 +70,7 @@ func (LocalTime) GORMDataType() string {
 
 type Article struct {
 	ID uint `gorm:"primarykey" json:"id"`
-	// CreatedAt 参与列表排序（见下），与 is_top 组成复合索引支撑
-	// `ORDER BY is_top DESC, created_at DESC`，避免每次列表请求对全表做 filesort。
+	// CreatedAt 由 GORM 自动维护，仅表示建稿时间；文章列表按 PublishTime 倒序排列。
 	CreatedAt    time.Time           `gorm:"index:idx_article_top_created,priority:2" json:"createdAt"`
 	UpdatedAt    time.Time           `json:"updatedAt"`
 	Title        string              `gorm:"size:200;not null" json:"title"`
