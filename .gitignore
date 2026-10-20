@@ -1,3 +1,6 @@
 server.exe
 logs/
 *.log
+business/portal/backend/environment-portal
+business/portal/backend/comp.bat
+business/member/backend/environment-member

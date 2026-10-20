@@ -1,3 +1,3 @@
 set goos=linux
 
-go build -o portal main.go
+go build -o environment-portal main.go
