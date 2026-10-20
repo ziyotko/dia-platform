@@ -14,6 +14,11 @@ type Config struct {
 	JWT         JWTConfig         `mapstructure:"jwt"`
 	Log         LogConfig         `mapstructure:"log"`
 	Certificate CertificateConfig `mapstructure:"certificate"`
+	Features    FeaturesConfig    `mapstructure:"features"`
+}
+
+type FeaturesConfig struct {
+	FeesEnabled bool `mapstructure:"fees_enabled"`
 }
 
 // CertificateConfig 会员证书 PDF 生成配置。
@@ -86,6 +91,8 @@ type LogConfig struct {
 var Cfg *Config
 
 func Load(path string) {
+	// 向后兼容旧部署：配置项缺失时保持原有会费功能开启。
+	viper.SetDefault("features.fees_enabled", true)
 	viper.SetConfigFile(path)
 	viper.SetConfigType("yaml")
 	if err := viper.ReadInConfig(); err != nil {

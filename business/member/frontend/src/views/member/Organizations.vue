@@ -2,7 +2,7 @@
   <div class="orgs-page" v-loading="loading">
     <div class="page-header">
       <h3>加入的组织机构信息</h3>
-      <el-tooltip v-if="!hasPaidOrg" content="暂无缴费加入的组织，无法加入新组织" placement="top">
+      <el-tooltip v-if="!hasMembership" content="暂无有效会籍，无法加入新组织" placement="top">
         <el-button type="primary" disabled>新的加入</el-button>
       </el-tooltip>
       <el-button v-else type="primary" @click="showJoin = true">新的加入</el-button>
@@ -35,7 +35,7 @@
                 effect="plain"
                 size="small"
               >
-                {{ item._type === 'application' ? '缴费加入' : '主动加入' }}
+                {{ item._type === 'application' ? '入会机构' : '所属机构' }}
               </el-tag>
               <span class="meta-time">{{ formatDate(item._type === 'org' ? item.joined_at : item.created_at) }}</span>
             </div>
@@ -135,7 +135,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { orgApi, applicationApi, feeApi } from '@/api/index'
+import { orgApi, applicationApi } from '@/api/index'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Check } from '@element-plus/icons-vue'
 import { useIntroToggle } from '@/utils/introToggle'
@@ -144,7 +144,6 @@ const myOrgs = ref<any[]>([])
 const memberLevel = ref('')
 const orgTree = ref<any[]>([])
 const approvedApps = ref<any[]>([])
-const paidFees = ref<any[]>([])
 const loading = ref(true)
 const showJoin = ref(false)
 const joining = ref(false)
@@ -153,7 +152,7 @@ const searchQuery = ref('')
 const treeRef = ref<any>(null)
 
 // 机构简介映射：从机构树按 id 索引。
-// 缴费加入的费用记录只带 org_id/org_name，没有 org 对象，需回查机构树补简介。
+// 历史申请或会籍关系可能只有机构 ID，需回查机构树补简介。
 const orgIntroMap = computed(() => {
   const map = new Map<number, string>()
   const walk = (nodes: any[]) => {
@@ -178,13 +177,9 @@ function introKey(item: any) {
 }
 
 const combinedList = computed(() => {
-  // 分类与后台「加入机构」保持一致：
-  //   缴费加入 = 已缴费（含免缴）的费用记录所属机构（总会会籍）；
-  //   主动加入 = member_user_orgs 中的加入记录（分会/代表机构、自主加入）。
+  // 会籍关系以 member_user_orgs 为主，已通过申请仅作为历史数据兜底。
   // 同一组织机构可能同时存在多条记录，按组织 ID 去重，
-  // 优先级：已缴费费用记录 > member_user_orgs > 已批准入会申请（历史数据兜底）。
-  // 注意：审批通过的分会/代表机构已写入 member_user_orgs，应显示为「主动加入」，
-  // 不能再被入会申请覆盖成「缴费加入」。
+  // 优先级：member_user_orgs > 已批准入会申请（历史数据兜底）。
   const seen = new Set<number>()
   const list: any[] = []
   const pushUnique = (orgId: any, item: any) => {
@@ -196,18 +191,7 @@ const combinedList = computed(() => {
     list.push(item)
   }
 
-  // 1. 缴费加入：已缴费（含免缴）的费用记录
-  paidFees.value.forEach((f: any) => {
-    pushUnique(f.org_id, {
-      ...f,
-      _type: 'application',
-      _key: 'fee-' + f.id,
-      org: { id: f.org_id, name: f.org_name, parent_id: 0 },
-      created_at: f.paid_date || f.paid_at
-    })
-  })
-
-  // 2. 主动加入：member_user_orgs 加入记录
+  // 1. 中性会籍关系
   myOrgs.value.forEach((o: any) => {
     pushUnique(o.org_id ?? o.org?.id, {
       ...o,
@@ -217,8 +201,7 @@ const combinedList = computed(() => {
     })
   })
 
-  // 3. 兜底：已批准的入会申请（历史数据可能尚无 member_user_orgs 记录）。
-  //    申请总会（一级组织）仍按缴费加入展示，申请分会/代表机构按主动加入展示。
+  // 2. 兜底：已批准的入会申请（历史数据可能尚无会籍关系）。
   approvedApps.value.forEach((a: any) => {
     const isRoot = (a.org?.parent_id ?? 0) === 0
     pushUnique(a.org_id ?? a.org?.id, {
@@ -235,15 +218,13 @@ const combinedList = computed(() => {
 // 数据/文本变化后重新测量是否被截断（已展开的项不会被误判）
 watch(combinedList, () => { void measureIntro() }, { immediate: true })
 
-// 是否有通过缴费加入的组织（已批准入会申请，或已缴费/免缴的会费记录）
-const hasPaidOrg = computed(() => approvedApps.value.length > 0 || paidFees.value.length > 0)
+const hasMembership = computed(() => approvedApps.value.length > 0 || myOrgs.value.length > 0)
 
 // 已加入的组织 ID 集合（含申请批准的 + 直接加入的）
 const joinedOrgIds = computed(() => {
   const ids = new Set<number>()
   myOrgs.value.forEach((o: any) => ids.add(o.org_id ?? o.org?.id))
   approvedApps.value.forEach((a: any) => ids.add(a.org_id ?? a.org?.id))
-  paidFees.value.forEach((f: any) => { if (f.org_id) ids.add(f.org_id) })
   return ids
 })
 
@@ -347,28 +328,19 @@ const canJoin = computed(() => !!selectedOrg.value && !selectedOrg.value.disable
 
 onMounted(async () => {
   try {
-    // 会费记录**不按年度过滤**：后端 JoinOrg 的「是否已缴费加入」判定不限年度
-    // （status=paid 即算）。若这里只取当年，管理员直录 / 往年缴费今年未续费的会员
-    // 会被显示成「暂未加入任何组织机构」，且「新的加入」按钮被错误禁用。
-    // 接口按 year DESC 返回，下面的 pushUnique 因此保留的是最近年度的记录。
-    const [myRes, treeRes, appRes, feeRes, levelRes] = await Promise.all([
+    const [myRes, treeRes, appRes, levelRes] = await Promise.all([
       orgApi.getMyOrgs(),
       orgApi.getTree(),
       applicationApi.getMyApplications(),
-      feeApi.getMyFees(),
       orgApi.getMemberLevels()
     ])
     myOrgs.value = myRes.data || []
     orgTree.value = treeRes.data || []
     approvedApps.value = (appRes.data || []).filter((a: any) => a.status === 'approved')
     allLevels.value = levelRes.data || []
-    const fees: any[] = feeRes.data || []
-    // 优先显示已缴费级别（列表按年度倒序，取到的即最近一次缴费的等级），没有则显示未缴费级别
-    const paid = fees.find((f: any) => f.status === 'paid')
-    const unpaid = fees.find((f: any) => f.status === 'unpaid')
-    memberLevel.value = paid?.level_name || unpaid?.level_name || ''
-    // 已缴费且带机构信息的费用记录（如新增会员的免缴总会）计入已加入组织
-    paidFees.value = fees.filter((f: any) => f.status === 'paid' && f.org_name)
+    const membershipWithLevel = myOrgs.value.find((o: any) => o.level_id)
+    const currentLevel = allLevels.value.find((l: any) => l.id === membershipWithLevel?.level_id)
+    memberLevel.value = currentLevel?.name || ''
   } catch {} finally { loading.value = false }
 })
 

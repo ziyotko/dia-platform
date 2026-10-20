@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"member/config"
 	"member/internal/middleware"
 	"member/internal/models"
 	"member/internal/service"
@@ -214,7 +215,7 @@ func (ctrl *MemberController) ListProfileChanges(c *gin.Context) {
 	})
 }
 
-// GetMemberLevelOptions returns the levels this member can be changed to (from paid memberships)
+// GetMemberLevelOptions returns the levels supported by this member's organizations.
 func (ctrl *MemberController) GetMemberLevelOptions(c *gin.Context) {
 	id := parseUint(c.Param("id"))
 	levels, err := ctrl.memberService.GetMemberAvailableLevels(id)
@@ -258,16 +259,24 @@ func (ctrl *MemberController) GetMemberStats(c *gin.Context) {
 	// 会员统计不包含管理员
 	db.DB.Model(&models.Member{}).Where("is_admin = ?", false).Count(&total)
 	db.DB.Model(&models.Member{}).Where("is_admin = ? AND status = ?", false, "active").Count(&active)
-	db.DB.Model(&models.Member{}).Where("is_admin = ? AND status IN ?", false, []string{"pending_review", "pending_payment", "registering"}).Count(&pending)
+	pendingStatuses := []string{"pending_review", "registering"}
+	if config.Cfg.Features.FeesEnabled {
+		pendingStatuses = append(pendingStatuses, models.MemberStatusPendingPay)
+	}
+	db.DB.Model(&models.Member{}).Where("is_admin = ? AND status IN ?", false, pendingStatuses).Count(&pending)
 	db.DB.Model(&models.Member{}).Where("is_admin = ? AND status = ?", false, "rejected").Count(&rejected)
-	db.DB.Model(&models.Member{}).Where("is_admin = ? AND status = ?", false, "pending_payment").Count(&pendingPayment)
+	if config.Cfg.Features.FeesEnabled {
+		db.DB.Model(&models.Member{}).Where("is_admin = ? AND status = ?", false, models.MemberStatusPendingPay).Count(&pendingPayment)
+	}
 	// 「待处理」= 注册中 + 待审核（不含待缴费，待缴费另有单独卡片，避免重复计数）
 	db.DB.Model(&models.Member{}).Where("is_admin = ? AND status IN ?", false, []string{"registering", "pending_review"}).Count(&pendingHandle)
 	db.DB.Model(&models.Member{}).Where("is_admin = ? AND created_at >= ?", false, todayStart).Count(&todayNew)
 
 	// 待办事项统计
 	db.DB.Model(&models.Application{}).Where("status = ?", models.AppStatusPendingReview).Count(&pendingApplications)
-	db.DB.Model(&models.FeeRecord{}).Where("status = ?", models.FeeStatusPending).Count(&pendingFees)
+	if config.Cfg.Features.FeesEnabled {
+		db.DB.Model(&models.FeeRecord{}).Where("status = ?", models.FeeStatusPending).Count(&pendingFees)
+	}
 	db.DB.Model(&models.MemberMessage{}).Where("status <> ?", models.MessageStatusReplied).Count(&pendingMessages)
 	db.DB.Model(&models.Article{}).Where("status = ?", models.ArticleStatusPending).Count(&pendingArticles)
 

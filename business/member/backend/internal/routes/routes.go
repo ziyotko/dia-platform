@@ -6,9 +6,14 @@ import (
 	"member/config"
 	"member/internal/controllers"
 	"member/internal/middleware"
+	"member/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )
+
+func feesClosed(c *gin.Context) {
+	response.Error(c, response.CodeFail, "会费功能已关闭")
+}
 
 // 以下限流参数可在 config.yaml 的 server.*_rate_limit 覆盖（次数/分钟，按真实客户端 IP）。
 // 仅作防脚本刷量的兜底：正常浏览（首屏 site-info + 公告/等级/机构树/章程）远低于这些值。
@@ -96,20 +101,11 @@ func Register(r *gin.Engine) {
 		// 协会章程正文 + PDF 附件信息（富文本，后台「协会章程」维护）
 		public.GET("/charter-content", middleware.RateLimitMiddleware("public", publicReadLimit, time.Minute), charterCtrl.GetCharter)
 
-		// Announcements (public)
-		public.GET("/announcements", middleware.RateLimitMiddleware("public", publicReadLimit, time.Minute), announceCtrl.GetPublishedAnnouncements)
-		public.GET("/announcements/:id", middleware.RateLimitMiddleware("public", publicReadLimit, time.Minute), announceCtrl.GetAnnouncement)
-
 		// Organizations (public tree for registration)
 		public.GET("/organizations/tree", middleware.RateLimitMiddleware("public", publicReadLimit, time.Minute), orgCtrl.GetTree)
 
 		// Member levels (public list for dropdowns)
 		public.GET("/member-levels", middleware.RateLimitMiddleware("public", publicReadLimit, time.Minute), levelCtrl.List)
-
-		// 已发布文章（公开内容，与公告同口径；原先挂在需登录的 member 组，
-		// 导致公开页面无法展示、且与 /announcements 的组归属不一致）
-		public.GET("/published-articles", middleware.RateLimitMiddleware("public", publicReadLimit, time.Minute), articleCtrl.ListArticles)
-		public.GET("/published-articles/:id", middleware.RateLimitMiddleware("public", publicReadLimit, time.Minute), articleCtrl.GetPublishedArticle)
 
 		// 注册流程专用上传（匿名）：仅允许组织机构证，
 		// 服务端强制子目录 certs + 图片/PDF 白名单，限流 20 次/分钟/IP
@@ -142,10 +138,22 @@ func Register(r *gin.Engine) {
 		member.GET("/applications", appCtrl.GetMyApplications)
 		member.GET("/applications/:id", appCtrl.GetApplication)
 
-		// Fees
-		member.GET("/fees", feeCtrl.GetMyFees)
-		member.POST("/fees/:id/pay", feeCtrl.PayFee)
-		member.POST("/fees/:id/invoice", feeCtrl.ApplyInvoice)
+		// 会员资讯仅登录会员可见。
+		member.GET("/announcements", announceCtrl.GetPublishedAnnouncements)
+		member.GET("/announcements/:id", announceCtrl.GetAnnouncement)
+		member.GET("/published-articles", articleCtrl.ListArticles)
+		member.GET("/published-articles/:id", articleCtrl.GetPublishedArticle)
+
+		// Fees：关闭时保留路径用于兼容旧客户端，但统一拒绝业务操作。
+		if config.Cfg.Features.FeesEnabled {
+			member.GET("/fees", feeCtrl.GetMyFees)
+			member.POST("/fees/:id/pay", feeCtrl.PayFee)
+			member.POST("/fees/:id/invoice", feeCtrl.ApplyInvoice)
+		} else {
+			member.GET("/fees", feesClosed)
+			member.POST("/fees/:id/pay", feesClosed)
+			member.POST("/fees/:id/invoice", feesClosed)
+		}
 
 		// Certificates
 		member.GET("/certificates", certCtrl.GetMyCertificates)
@@ -198,13 +206,23 @@ func Register(r *gin.Engine) {
 		admin.PUT("/admin/applications/:id/review", appCtrl.ReviewApplication)
 
 		// Fee management
-		admin.GET("/admin/members/:id/fee-info", feeCtrl.GetMemberFeeInfo)
-		admin.POST("/admin/fees", feeCtrl.CreateFee)
-		admin.PUT("/admin/fees/:id", feeCtrl.UpdateFee)
-		admin.POST("/admin/fees/:id/confirm", feeCtrl.ConfirmFee)
-		admin.DELETE("/admin/fees/:id", feeCtrl.DeleteFee)
-		admin.GET("/admin/fees", feeCtrl.ListAllFees)
-		admin.POST("/admin/fees/:id/issue-invoice", feeCtrl.IssueInvoice)
+		if config.Cfg.Features.FeesEnabled {
+			admin.GET("/admin/members/:id/fee-info", feeCtrl.GetMemberFeeInfo)
+			admin.POST("/admin/fees", feeCtrl.CreateFee)
+			admin.PUT("/admin/fees/:id", feeCtrl.UpdateFee)
+			admin.POST("/admin/fees/:id/confirm", feeCtrl.ConfirmFee)
+			admin.DELETE("/admin/fees/:id", feeCtrl.DeleteFee)
+			admin.GET("/admin/fees", feeCtrl.ListAllFees)
+			admin.POST("/admin/fees/:id/issue-invoice", feeCtrl.IssueInvoice)
+		} else {
+			admin.GET("/admin/members/:id/fee-info", feesClosed)
+			admin.POST("/admin/fees", feesClosed)
+			admin.PUT("/admin/fees/:id", feesClosed)
+			admin.POST("/admin/fees/:id/confirm", feesClosed)
+			admin.DELETE("/admin/fees/:id", feesClosed)
+			admin.GET("/admin/fees", feesClosed)
+			admin.POST("/admin/fees/:id/issue-invoice", feesClosed)
+		}
 
 		// Certificate management
 		// 注：原先还暴露了 POST /admin/certificates 与 PUT /admin/certificates/:id，
@@ -238,11 +256,19 @@ func Register(r *gin.Engine) {
 		admin.PUT("/admin/member-levels/:id/move-down", levelCtrl.MoveDown)
 
 		// Fee standard management
-		admin.GET("/admin/fee-standards", feeStdCtrl.ListAll)
-		admin.GET("/admin/fee-standards/levels/:levelId", feeStdCtrl.ListByLevel)
-		admin.POST("/admin/fee-standards", feeStdCtrl.Upsert)
-		admin.POST("/admin/fee-standards/batch", feeStdCtrl.BatchUpsert)
-		admin.DELETE("/admin/fee-standards/:id", feeStdCtrl.Delete)
+		if config.Cfg.Features.FeesEnabled {
+			admin.GET("/admin/fee-standards", feeStdCtrl.ListAll)
+			admin.GET("/admin/fee-standards/levels/:levelId", feeStdCtrl.ListByLevel)
+			admin.POST("/admin/fee-standards", feeStdCtrl.Upsert)
+			admin.POST("/admin/fee-standards/batch", feeStdCtrl.BatchUpsert)
+			admin.DELETE("/admin/fee-standards/:id", feeStdCtrl.Delete)
+		} else {
+			admin.GET("/admin/fee-standards", feesClosed)
+			admin.GET("/admin/fee-standards/levels/:levelId", feesClosed)
+			admin.POST("/admin/fee-standards", feesClosed)
+			admin.POST("/admin/fee-standards/batch", feesClosed)
+			admin.DELETE("/admin/fee-standards/:id", feesClosed)
+		}
 
 		// Message management
 		admin.GET("/admin/messages", msgCtrl.ListAllMessages)

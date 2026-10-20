@@ -8,9 +8,9 @@
         <span class="blob blob-3"></span>
         <div class="hero-grid"></div>
         <div class="float-chip chip-1"><el-icon><DocumentChecked /></el-icon></div>
-        <div class="float-chip chip-2"><el-icon><Coin /></el-icon></div>
+        <div class="float-chip chip-2"><el-icon><Reading /></el-icon></div>
         <div class="float-chip chip-3"><el-icon><Medal /></el-icon></div>
-        <div class="float-chip chip-4"><el-icon><ChatDotRound /></el-icon></div>
+        <div class="float-chip chip-4"><el-icon><UserFilled /></el-icon></div>
       </div>
       <div class="container hero-content">
         <div class="hero-badge">
@@ -32,7 +32,7 @@
       <div class="container">
         <div class="section-head">
           <h2>入会流程</h2>
-          <p>先注册会员，再提交申请，五步完成入会，全程在线跟踪办理进度</p>
+          <p>注册账号、提交申请并通过审核后，即可成为会员并领取证书</p>
         </div>
         <div class="process-steps">
           <div class="step" v-for="(s, i) in processSteps" :key="s.title">
@@ -79,8 +79,7 @@ const processSteps: ProcessStep[] = [
     to: '/member/applications'
   },
   { icon: 'View', title: '协会审核', desc: '协会对申请资料进行审核' },
-  { icon: 'Wallet', title: '缴纳会费', desc: '审核通过后按会员等级缴纳年度会费' },
-  { icon: 'Medal', title: '成为会员', desc: '颁发会员证书，享会员权益与服务' }
+  { icon: 'Medal', title: '成为会员并领取证书', desc: '审核通过后成为正式会员并领取会员证书' }
 ]
 
 function goStep(s: ProcessStep) {
@@ -261,7 +260,7 @@ $text-secondary: #6b7280;
 }
 .process-steps {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 24px;
   padding: 20px 0 40px;
   .step {

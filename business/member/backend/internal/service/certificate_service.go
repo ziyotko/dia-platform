@@ -304,15 +304,17 @@ func (s *CertificateService) RenewMyCertificate(memberID uint64) (*models.Certif
 		return nil, errors.New("仅正式会员可续证")
 	}
 
-	// 校验当年已缴费
-	var paidCount int64
-	if err := db.DB.Model(&models.FeeRecord{}).
-		Where("member_id = ? AND year = ? AND status = ?", memberID, time.Now().Year(), models.FeeStatusPaid).
-		Count(&paidCount).Error; err != nil {
-		return nil, err
-	}
-	if paidCount == 0 {
-		return nil, errors.New("当年尚未缴费，暂不能续证")
+	// 会费开启时保持原缴费校验；关闭时正式会员不再依赖费用表。
+	if config.Cfg.Features.FeesEnabled {
+		var paidCount int64
+		if err := db.DB.Model(&models.FeeRecord{}).
+			Where("member_id = ? AND year = ? AND status = ?", memberID, time.Now().Year(), models.FeeStatusPaid).
+			Count(&paidCount).Error; err != nil {
+			return nil, err
+		}
+		if paidCount == 0 {
+			return nil, errors.New("当年尚未缴费，暂不能续证")
+		}
 	}
 
 	// 频次限制：已有生效且文件正常时不允许重复续证（前端也只在无生效证书时展示入口）。

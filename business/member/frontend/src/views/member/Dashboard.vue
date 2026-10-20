@@ -38,7 +38,7 @@
               <el-icon><Edit /></el-icon> 申请入会
             </el-button>
             <el-button
-              v-if="dash.member.status === 'pending_payment'"
+              v-if="siteStore.feesEnabled && dash.member.status === 'pending_payment'"
               type="warning" size="small"
               @click="$router.push({ name: 'Fees' })"
             >
@@ -92,13 +92,13 @@
           <template #header>
             <div class="section-header">
               <span><el-icon style="vertical-align:-3px;margin-right:6px"><Bell /></el-icon>最新公告</span>
-              <el-button text type="primary" size="small" @click="$router.push({ name: 'Announcements' })">
+              <el-button text type="primary" size="small" @click="$router.push({ name: 'MemberNews' })">
                 查看全部 <el-icon><ArrowRight /></el-icon>
               </el-button>
             </div>
           </template>
           <div class="announce-list">
-            <div class="announce-item" v-for="a in dash.latest_announcements" :key="a.id" @click="$router.push(`/announcements/${a.id}`)">
+            <div class="announce-item" v-for="a in dash.latest_announcements" :key="a.id" @click="$router.push({ name: 'MemberNews' })">
               <div class="announce-left">
                 <el-tag v-if="a.is_pinned" size="small" type="danger" effect="dark" class="pin-tag">置顶</el-tag>
                 <el-tag v-else :type="announceTypeTag(a.type)" size="small" effect="plain" class="type-tag">
@@ -153,7 +153,7 @@
         </el-card>
 
         <!-- Fee Summary -->
-        <el-card class="section-card fee-card" shadow="never" style="margin-top:16px">
+        <el-card v-if="siteStore.feesEnabled" class="section-card fee-card" shadow="never" style="margin-top:16px">
           <template #header>
             <span><el-icon style="vertical-align:-3px;margin-right:6px"><Coin /></el-icon>会费概览</span>
           </template>
@@ -214,15 +214,17 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { dashboardApi } from '@/api/index'
+import { useSiteStore } from '@/stores/site'
 
 const dash = ref<any>(null)
 const loading = ref(true)
+const siteStore = useSiteStore()
 
 // ── Status ──
 const statusMap: Record<string, { text: string; type: string }> = {
   registering: { text: '注册会员', type: 'info' },
   pending_review: { text: '入会待审核', type: 'warning' },
-  pending_payment: { text: '待缴费', type: 'danger' },
+  pending_payment: { text: '待处理', type: 'warning' },
   active: { text: '正式会员', type: 'success' },
   rejected: { text: '已拒绝', type: 'danger' },
   expired: { text: '已过期', type: 'info' }
@@ -266,21 +268,21 @@ const memberTypeLabel = computed(() => {
 })
 
 // ── Quick Actions ──
-const quickActions = [
+const quickActions = computed(() => [
   { name: 'Applications', icon: 'DocumentChecked', label: '我的申请', bg: '#ebf0ea', color: '#366d28' },
-  { name: 'Fees', icon: 'Coin', label: '会费管理', bg: '#fef3c7', color: '#f59e0b' },
+  ...(siteStore.feesEnabled ? [{ name: 'Fees', icon: 'Coin', label: '会费管理', bg: '#fef3c7', color: '#f59e0b' }] : []),
   { name: 'Certificates', icon: 'Medal', label: '我的证书', bg: '#dcfce7', color: '#22c55e' },
   { name: 'Articles', icon: 'EditPen', label: '我的文章', bg: '#ede9fe', color: '#8b5cf6' },
-  { name: 'Messages', icon: 'ChatDotRound', label: '会员留言', bg: '#fce7f3', color: '#ec4899' },
+  { name: 'MemberNews', icon: 'Reading', label: '会员资讯', bg: '#fce7f3', color: '#ec4899' },
   { name: 'Organizations', icon: 'OfficeBuilding', label: '加入信息', bg: '#e0f2fe', color: '#0ea5e9' },
-]
+])
 
 // ── Stats ──
 const stats = computed(() => [
   { icon: 'DocumentChecked', label: '我的申请', value: dash.value?.application?.label || '暂无', color: '#366d28', bg: '#d7e2d4' },
-  { icon: 'ChatDotRound', label: '未读消息', value: dash.value?.unread_messages || 0, color: '#f59e0b', bg: '#fef3c7' },
   { icon: 'EditPen', label: '我的文章', value: dash.value?.article_count || 0, color: '#22c55e', bg: '#dcfce7' },
-  { icon: 'Coin', label: '已缴年数', value: (dash.value?.fee_summary?.paid_count || 0) + ' 年', color: '#8b5cf6', bg: '#ede9fe' }
+  ...(siteStore.feesEnabled ? [{ icon: 'Coin', label: '已缴年数', value: (dash.value?.fee_summary?.paid_count || 0) + ' 年', color: '#8b5cf6', bg: '#ede9fe' }] : []),
+  { icon: 'Medal', label: '会员证书', value: dash.value?.member?.status === 'active' ? '可用' : '待办理', color: '#8b5cf6', bg: '#ede9fe' }
 ])
 
 // ── Fee ──

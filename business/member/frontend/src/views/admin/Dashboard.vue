@@ -15,7 +15,7 @@
 
     <!-- 统计卡片行 -->
     <el-row :gutter="20" class="stat-row">
-      <el-col :xs="12" :sm="8" :md="6" :lg="4" v-for="s in stats" :key="s.label">
+      <el-col :xs="12" :sm="8" :md="6" :lg="4" v-for="s in displayedStats" :key="s.label">
         <el-card class="stat-card" shadow="never" :style="{ '--card-color': s.color, '--card-color-light': s.bg }">
           <div class="stat-icon" :style="{ background: s.bg }">
             <el-icon :size="24" :color="s.color"><component :is="s.icon" /></el-icon>
@@ -120,7 +120,7 @@
             </div>
           </template>
           <div class="todo-list">
-            <div class="todo-item" v-for="(todo, i) in todos" :key="i" @click="todo.path && $router.push(todo.path)">
+            <div class="todo-item" v-for="(todo, i) in displayedTodos" :key="i" @click="todo.path && $router.push(todo.path)">
               <div class="todo-dot" :style="{ background: todo.color }"></div>
               <div class="todo-content">
                 <p class="todo-text">{{ todo.text }}</p>
@@ -138,10 +138,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import * as echarts from 'echarts'
 import { adminApi } from '@/api/admin'
 import CountUp from '@/components/CountUp.vue'
+import { useSiteStore } from '@/stores/site'
 import {
   UserFilled, Refresh,
   PieChart, DataAnalysis, Lightning, Bell,
@@ -151,6 +152,7 @@ import {
 const loading = ref(true)
 const lastUpdate = ref('')
 const recentMembers = ref<any[]>([])
+const siteStore = useSiteStore()
 
 // ===== 统计卡片 =====
 const stats = ref([
@@ -158,9 +160,10 @@ const stats = ref([
   { icon: 'User', label: '正式会员', value: 0, color: '#22c55e', bg: '#dcfce7' },
   { icon: 'TrendCharts', label: '今日新增', value: 0, color: '#8b5cf6', bg: '#ede9fe' },
   { icon: 'Clock', label: '待处理', value: 0, color: '#f59e0b', bg: '#fef3c7' },
-  { icon: 'Money', label: '待缴费', value: 0, color: '#f97316', bg: '#fff7ed' },
-  { icon: 'CircleClose', label: '已拒绝', value: 0, color: '#ef4444', bg: '#fee2e2' }
+  { icon: 'CircleClose', label: '已拒绝', value: 0, color: '#ef4444', bg: '#fee2e2' },
+  { icon: 'Money', label: '待缴费', value: 0, color: '#f97316', bg: '#fff7ed', feeOnly: true }
 ])
+const displayedStats = computed(() => stats.value.filter((item: any) => !item.feeOnly || siteStore.feesEnabled))
 
 // ===== ECharts =====
 const typeChartRef = ref<HTMLElement>()
@@ -273,12 +276,13 @@ function statusChartOption(data: { label: string; value: number; color: string }
 function updateCharts() {
   nextTick(() => {
     typeChart?.setOption(typeChartOption(), true)
-    statusChart?.setOption(statusChartOption([
+    const statusItems = [
       { label: '正式会员', value: stats.value[1].value, color: '#22c55e' },
       { label: '待处理', value: stats.value[3].value, color: '#f59e0b' },
-      { label: '待缴费', value: stats.value[4].value, color: '#f97316' },
-      { label: '已拒绝', value: stats.value[5].value, color: '#ef4444' }
-    ]), true)
+      { label: '已拒绝', value: stats.value[4].value, color: '#ef4444' }
+    ]
+    if (siteStore.feesEnabled) statusItems.splice(2, 0, { label: '待缴费', value: stats.value[5].value, color: '#f97316' })
+    statusChart?.setOption(statusChartOption(statusItems), true)
   })
 }
 
@@ -288,22 +292,22 @@ function handleResize() {
 }
 
 // ===== 快捷操作 =====
-const quickActions = [
+const quickActions = computed(() => [
   { icon: 'DocumentChecked', label: '入会审核', desc: '审核新会员申请', path: '/admin/applications', color: '#366d28', bg: '#d7e2d4' },
-  { icon: 'Money', label: '会费管理', desc: '查看会费缴纳记录', path: '/admin/fees', color: '#22c55e', bg: '#dcfce7' },
+  ...(siteStore.feesEnabled ? [{ icon: 'Money', label: '会费管理', desc: '查看会费缴纳记录', path: '/admin/fees', color: '#22c55e', bg: '#dcfce7' }] : []),
   { icon: 'Medal', label: '证书管理', desc: '管理会员证书发放', path: '/admin/certificates', color: '#8b5cf6', bg: '#ede9fe' },
   { icon: 'UserFilled', label: '会员管理', desc: '查看和管理所有会员', path: '/admin/members', color: '#f59e0b', bg: '#fef3c7' },
-  { icon: 'ChatDotRound', label: '会员留言', desc: '查看和回复留言', path: '/admin/messages', color: '#ec4899', bg: '#fce7f3' },
+  { icon: 'Document', label: '文章管理', desc: '审核会员投稿', path: '/admin/articles', color: '#ec4899', bg: '#fce7f3' },
   { icon: 'Bell', label: '公告管理', desc: '发布系统公告', path: '/admin/announcements', color: '#06b6d4', bg: '#cffafe' }
-]
+])
 
 // ===== 待办事项 =====
 const todos = ref([
   { text: '待处理入会申请', tag: 'warning' as const, color: '#f59e0b', count: 0, path: '/admin/applications' },
-  { text: '待确认缴费记录', tag: 'danger' as const, color: '#f97316', count: 0, path: '/admin/fees' },
-  { text: '待回复会员留言', tag: 'primary' as const, color: '#366d28', count: 0, path: '/admin/messages' },
-  { text: '待审核会员文章', tag: 'primary' as const, color: '#8b5cf6', count: 0, path: '/admin/articles' }
+  { text: '待审核会员文章', tag: 'primary' as const, color: '#8b5cf6', count: 0, path: '/admin/articles' },
+  { text: '待确认缴费记录', tag: 'danger' as const, color: '#f97316', count: 0, path: '/admin/fees', feeOnly: true }
 ])
+const displayedTodos = computed(() => todos.value.filter((item: any) => !item.feeOnly || siteStore.feesEnabled))
 
 // ===== 工具函数 =====
 function formatTime(t?: string) {
@@ -314,7 +318,7 @@ function formatTime(t?: string) {
 const statusMap: Record<string, { l: string; t: string }> = {
   registering: { l: '注册中', t: 'info' },
   pending_review: { l: '待审核', t: 'warning' },
-  pending_payment: { l: '待缴费', t: 'danger' },
+  pending_payment: { l: '待处理', t: 'warning' },
   active: { l: '正式会员', t: 'success' },
   rejected: { l: '已拒绝', t: 'danger' },
   expired: { l: '已过期', t: 'info' }
@@ -343,8 +347,8 @@ async function fetchData() {
     stats.value[1].value = active
     stats.value[2].value = d.today_new || 0
     stats.value[3].value = pendingHandle
-    stats.value[4].value = d.pending_payment || 0
-    stats.value[5].value = rejected
+    stats.value[4].value = rejected
+    stats.value[5].value = d.pending_payment || 0
 
     // 2. 获取类型分布（并行查询）
     const [unitRes, personalRes] = await Promise.all([
@@ -356,9 +360,8 @@ async function fetchData() {
 
     // 3. 待办事项（后端返回真实待处理数量）
     todos.value[0].count = d.pending_applications || 0
-    todos.value[1].count = d.pending_fees || 0
-    todos.value[2].count = d.pending_messages || 0
-    todos.value[3].count = d.pending_articles || 0
+    todos.value[1].count = d.pending_articles || 0
+    todos.value[2].count = d.pending_fees || 0
 
     // 5. 最近注册会员
     try {

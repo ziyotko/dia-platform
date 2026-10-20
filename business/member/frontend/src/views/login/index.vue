@@ -13,7 +13,7 @@
           </div>
           <div class="feature-item">
             <el-icon><Check /></el-icon>
-            <span>会费在线缴纳，年度管理</span>
+            <span>会籍信息在线管理</span>
           </div>
           <div class="feature-item">
             <el-icon><Check /></el-icon>
@@ -25,7 +25,7 @@
           </div>
           <div class="feature-item">
             <el-icon><Check /></el-icon>
-            <span>意见反馈与诉求直达</span>
+            <span>会员投稿与资讯共享</span>
           </div>
         </div>
       </div>

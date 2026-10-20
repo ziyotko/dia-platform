@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"member/config"
 	"member/internal/models"
 	"member/pkg/db"
 )
@@ -31,13 +32,16 @@ func (s *MemberOrgService) JoinOrg(memberID, orgID, levelID uint64) error {
 	if err := db.DB.Where("member_id = ? AND org_id = ?", memberID, orgID).First(&exist).Error; err == nil {
 		return errors.New("已加入该组织")
 	}
-	// 会员需有缴费加入的组织（已批准的入会申请，或已缴费/免缴的会费记录）
+	// 会员需已有正式会籍；会费开启时兼容历史已缴费判断。
 	var approvedCount int64
 	db.DB.Model(&models.Application{}).Where("member_id = ? AND status = ?", memberID, models.AppStatusApproved).Count(&approvedCount)
-	var paidFeeCount int64
-	db.DB.Model(&models.FeeRecord{}).Where("member_id = ? AND status = ? AND org_name <> ''", memberID, models.FeeStatusPaid).Count(&paidFeeCount)
-	if approvedCount == 0 && paidFeeCount == 0 {
-		return errors.New("暂无缴费加入的组织，无法加入新组织")
+	var membershipCount int64
+	db.DB.Model(&models.MemberOrganization{}).Where("member_id = ?", memberID).Count(&membershipCount)
+	if config.Cfg.Features.FeesEnabled {
+		db.DB.Model(&models.FeeRecord{}).Where("member_id = ? AND status = ? AND org_name <> ''", memberID, models.FeeStatusPaid).Count(&membershipCount)
+	}
+	if approvedCount == 0 && membershipCount == 0 {
+		return errors.New("暂无有效会籍，无法加入新组织")
 	}
 	// If levelID is provided, verify it belongs to this org
 	if levelID > 0 {

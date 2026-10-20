@@ -12,6 +12,7 @@ import (
 	"member/internal/models"
 	"member/internal/routes"
 	"member/internal/seed"
+	"member/internal/service"
 	"member/pkg/db"
 	"member/pkg/redis"
 	"member/pkg/response"
@@ -67,6 +68,9 @@ func main() {
 
 	// Seed default data
 	seed.Run()
+
+	// 会费关闭时幂等回填历史会籍、状态与证书；不改动任何历史费用数据。
+	service.MigrateFeesDisabledData()
 
 	// Setup Gin
 	// gin.SetMode 遇到非法值会 panic，因此统一走 normalizeGinMode（空/非法回退 release）

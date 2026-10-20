@@ -18,15 +18,13 @@
         <el-menu-item index="/admin/dashboard"><el-icon><DataAnalysis /></el-icon><span>管理首页</span></el-menu-item>
         <el-menu-item index="/admin/applications"><el-icon><DocumentChecked /></el-icon><span>入会审核</span></el-menu-item>
         <el-menu-item index="/admin/members"><el-icon><UserFilled /></el-icon><span>会员管理</span></el-menu-item>
-        <el-menu-item index="/admin/fees"><el-icon><Money /></el-icon><span>会费管理</span></el-menu-item>
+        <el-menu-item v-if="siteStore.feesEnabled" index="/admin/fees"><el-icon><Money /></el-icon><span>会费管理</span></el-menu-item>
         <el-menu-item index="/admin/certificates"><el-icon><Medal /></el-icon><span>证书管理</span></el-menu-item>
         <el-menu-item index="/admin/organizations"><el-icon><Connection /></el-icon><span>组织机构</span></el-menu-item>
         <el-menu-item index="/admin/member-levels"><el-icon><Sort /></el-icon><span>会员等级</span></el-menu-item>
-        <el-menu-item index="/admin/fee-standards"><el-icon><Coin /></el-icon><span>会费标准</span></el-menu-item>
-        <el-menu-item index="/admin/messages"><el-icon><ChatDotRound /></el-icon><span>会员留言</span></el-menu-item>
+        <el-menu-item v-if="siteStore.feesEnabled" index="/admin/fee-standards"><el-icon><Coin /></el-icon><span>会费标准</span></el-menu-item>
         <el-menu-item index="/admin/articles"><el-icon><Document /></el-icon><span>文章管理</span></el-menu-item>
         <el-menu-item index="/admin/announcements"><el-icon><Notification /></el-icon><span>公告管理</span></el-menu-item>
-        <el-menu-item index="/admin/charter"><el-icon><Notebook /></el-icon><span>协会章程</span></el-menu-item>
         <el-menu-item index="/admin/system-config"><el-icon><Setting /></el-icon><span>系统管理</span></el-menu-item>
         <el-menu-item index="/admin/profile"><el-icon><User /></el-icon><span>我的资料</span></el-menu-item>
         <el-menu-item index="/admin/member-level-changes"><el-icon><Switch /></el-icon><span>会籍记录</span></el-menu-item>
@@ -67,10 +65,12 @@ import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { UserFilled, Fold, Expand, Coin, User, Switch, EditPen } from '@element-plus/icons-vue'
+import { useSiteStore } from '@/stores/site'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const siteStore = useSiteStore()
 const collapsed = ref(false)
 
 function toggleCollapse() {

@@ -67,3 +67,7 @@ certificate:
   # 留空则按系统常见字体自动查找（Windows: simhei/Deng，Linux: Noto Sans CJK 等）。
   # 也可用环境变量 MEMBER_CERT_FONT 覆盖。
   font_path: ""
+
+# 可恢复功能开关；旧部署缺失该配置时默认开启。
+features:
+  fees_enabled: false

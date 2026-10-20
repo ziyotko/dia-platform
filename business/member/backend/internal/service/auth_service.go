@@ -608,15 +608,16 @@ var publicSiteConfigKeys = map[string]bool{
 	"bank_account_name": true,
 }
 
-func (s *AuthService) GetSiteConfig() map[string]string {
+func (s *AuthService) GetSiteConfig() map[string]interface{} {
 	var configs []models.SystemConfig
 	db.DB.Find(&configs)
-	result := make(map[string]string)
+	result := make(map[string]interface{})
 	for _, c := range configs {
 		if publicSiteConfigKeys[c.Key] {
 			result[c.Key] = c.Value
 		}
 	}
+	result["features"] = map[string]bool{"fees_enabled": config.Cfg.Features.FeesEnabled}
 	return result
 }
 

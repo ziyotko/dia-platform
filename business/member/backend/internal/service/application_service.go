@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"member/config"
 	"member/internal/models"
 	"member/pkg/db"
 	"member/pkg/utils"
@@ -158,7 +159,11 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 	newMemberStatus := models.MemberStatusRejected
 	if approved {
 		newStatus = models.AppStatusApproved
-		newMemberStatus = models.MemberStatusPendingPay
+		if config.Cfg.Features.FeesEnabled {
+			newMemberStatus = models.MemberStatusPendingPay
+		} else {
+			newMemberStatus = models.MemberStatusActive
+		}
 	}
 
 	tx := db.DB.Begin()
@@ -242,20 +247,29 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 		}
 		levelID := orgLevel.LevelID
 		levelName := orgLevel.Level.Name
+		if !config.Cfg.Features.FeesEnabled {
+			if err := tx.Model(&models.Member{}).Where("id = ?", app.MemberID).
+				Updates(map[string]interface{}{"status": models.MemberStatusActive, "member_level": levelID}).Error; err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
 
 		// 会费标准取「等级 + 当年」；未配置时暂用兜底金额并记 Warn，便于排查
 		var feeAmount float64 = 2000.00
 		var feeStandardID uint64
-		var std models.MemberFeeStandard
-		if err := tx.Where("level_id = ? AND year = ?", levelID, now.Year()).First(&std).Error; err == nil {
-			feeAmount = std.Amount
-			feeStandardID = std.ID
-		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
-			tx.Rollback()
-			return err
-		} else {
-			utils.LogWarn("审核通过时未找到 %d 年度等级 %d 的会费标准，暂按 %.2f 元创建费用记录（member_id=%d）",
-				now.Year(), levelID, feeAmount, app.MemberID)
+		if config.Cfg.Features.FeesEnabled {
+			var std models.MemberFeeStandard
+			if err := tx.Where("level_id = ? AND year = ?", levelID, now.Year()).First(&std).Error; err == nil {
+				feeAmount = std.Amount
+				feeStandardID = std.ID
+			} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+				tx.Rollback()
+				return err
+			} else {
+				utils.LogWarn("审核通过时未找到 %d 年度等级 %d 的会费标准，暂按 %.2f 元创建费用记录（member_id=%d）",
+					now.Year(), levelID, feeAmount, app.MemberID)
+			}
 		}
 
 		// 证书样式（含最低等级回退）与「同一会员同时只保留一张生效证书」统一由
@@ -272,13 +286,15 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 		// 幂等保护：若该会员当年已有费用记录（例如管理员提前手工建过），不重复创建，
 		// 否则会与 member_fee_records 的唯一索引 uk_member_year 冲突。
 		var existFee int64
-		if err := tx.Model(&models.FeeRecord{}).
-			Where("member_id = ? AND year = ?", app.MemberID, now.Year()).
-			Count(&existFee).Error; err != nil {
-			tx.Rollback()
-			return err
+		if config.Cfg.Features.FeesEnabled {
+			if err := tx.Model(&models.FeeRecord{}).
+				Where("member_id = ? AND year = ?", app.MemberID, now.Year()).
+				Count(&existFee).Error; err != nil {
+				tx.Rollback()
+				return err
+			}
 		}
-		if existFee == 0 {
+		if config.Cfg.Features.FeesEnabled && existFee == 0 {
 			fee := models.FeeRecord{
 				MemberID:      app.MemberID,
 				Year:          now.Year(),
@@ -294,26 +310,28 @@ func (s *ApplicationService) ReviewApplication(id, reviewerID uint64, approved b
 				tx.Rollback()
 				return err
 			}
-		} else {
+		} else if config.Cfg.Features.FeesEnabled {
 			utils.LogWarn("审核通过时该会员 %d 年度已有费用记录，跳过创建（member_id=%d）", now.Year(), app.MemberID)
 		}
 
-		// 申请的是分支机构/代表机构时，写入 member_user_orgs（总会不写入该表）
+		// 会费关闭时总会和申请机构都以中性的会籍关系记录；开启时保持旧逻辑。
+		if !config.Cfg.Features.FeesEnabled {
+			if err := ensureMemberOrganizationTx(tx, app.MemberID, rootOrg.ID, levelID, now); err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
 		if appliedOrg.ID != rootOrg.ID {
-			var exists int64
-			tx.Model(&models.MemberOrganization{}).
-				Where("member_id = ? AND org_id = ?", app.MemberID, appliedOrg.ID).Count(&exists)
-			if exists == 0 {
-				mo := models.MemberOrganization{
-					MemberID: app.MemberID,
-					OrgID:    appliedOrg.ID,
-					LevelID:  levelID,
-					JoinedAt: now,
-				}
-				if err := tx.Create(&mo).Error; err != nil {
-					tx.Rollback()
-					return err
-				}
+			if err := ensureMemberOrganizationTx(tx, app.MemberID, appliedOrg.ID, levelID, now); err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+		if !config.Cfg.Features.FeesEnabled {
+			if err := writeMembershipChangeTx(tx, &member, now.Year(), appliedOrg.ID, appliedOrg.Name,
+				0, "", levelID, levelName, models.ReasonMemberCreate, "系统审批"); err != nil {
+				tx.Rollback()
+				return err
 			}
 		}
 	}

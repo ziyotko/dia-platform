@@ -6,7 +6,7 @@
         <el-input v-model="keyword" placeholder="搜索用户名/公司名" clearable style="width:200px" @clear="search" @keyup.enter="search" />
         <el-select v-model="filterStatus" placeholder="状态" clearable style="width:130px" @change="search">
           <el-option label="注册中" value="registering" /><el-option label="待审核" value="pending_review" />
-          <el-option label="待缴费" value="pending_payment" /><el-option label="正式会员" value="active" />
+          <el-option v-if="siteStore.feesEnabled" label="待缴费" value="pending_payment" /><el-option label="正式会员" value="active" />
           <el-option label="已拒绝" value="rejected" /><el-option label="已过期" value="expired" />
         </el-select>
         <el-select v-model="filterType" placeholder="会员类型" clearable style="width:130px" @change="search">
@@ -50,7 +50,7 @@
     <!-- 变更会员等级弹窗 -->
     <el-dialog v-model="levelDialogVisible" title="变更会员等级" width="460px" class="member-level-dialog" :close-on-click-modal="false" append-to-body>
       <div v-loading="levelLoading">
-        <p class="level-hint">仅可为该会员选择其已缴费加入的机构所支持的会员等级。</p>
+        <p class="level-hint">仅可选择该会员所属机构支持的会员等级。</p>
         <el-form label-width="90px">
           <el-form-item label="当前等级">
             <span>{{ levelName(levelTarget?.member_level) }}</span>
@@ -59,7 +59,7 @@
             <el-select v-model="selectedLevel" placeholder="请选择会员等级" style="width:100%">
               <el-option v-for="lvl in levelOptions" :key="lvl.id" :label="lvl.name" :value="lvl.id" />
             </el-select>
-            <div v-if="!levelLoading && !levelOptions.length" class="level-empty">该会员暂无已缴费加入机构可选的会员等级</div>
+            <div v-if="!levelLoading && !levelOptions.length" class="level-empty">该会员所属机构暂无可选会员等级</div>
           </el-form-item>
           <el-form-item label="变更原因" required>
             <el-input v-model="levelReason" type="textarea" :rows="3" maxlength="500" show-word-limit placeholder="请输入变更原因" />
@@ -74,7 +74,7 @@
 
     <!-- 会籍状态变更弹窗（到期 / 恢复会籍） -->
     <el-dialog v-model="statusDialogVisible" title="会籍状态变更" width="460px" class="member-status-dialog" :close-on-click-modal="false" append-to-body>
-      <div class="level-hint">仅支持「正式会员 ⇄ 已过期」的会籍变更；注册中 / 待审核 / 待缴费 / 已拒绝由入会审批与缴费流程自动维护。</div>
+      <div class="level-hint">仅支持「正式会员 ⇄ 已过期」的会籍变更；注册中、待审核和已拒绝状态由入会审核流程维护。</div>
       <el-form label-width="90px">
         <el-form-item label="会员"><span>{{ statusTarget ? displayName(statusTarget) : '' }}</span></el-form-item>
         <el-form-item label="当前状态">
@@ -86,7 +86,7 @@
             <el-radio value="expired">已过期</el-radio>
           </el-radio-group>
           <div v-if="statusTargetValue === 'expired'" class="level-empty">置为已过期会同时作废该会员名下的生效证书，并写入一条「会员到期」会籍记录。</div>
-          <div v-else class="level-empty">恢复会籍不会自动恢复证书（会员缴费后可自行续证），并写入一条「恢复会籍」会籍记录。</div>
+          <div v-else class="level-empty">恢复会籍不会自动恢复证书，会员可在恢复后自行续证，并写入一条「恢复会籍」会籍记录。</div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -128,44 +128,21 @@
       <div v-loading="orgsLoading" class="orgs-body">
         <div class="orgs-section">
           <div class="orgs-section-title">
-            <span>付费加入</span>
-            <el-tag type="success" effect="plain" size="small">{{ orgsInfo.paid.length }}</el-tag>
+            <span>所属机构</span>
+            <el-tag type="success" effect="plain" size="small">{{ orgsInfo.memberships.length }}</el-tag>
           </div>
-          <el-table v-if="orgsInfo.paid.length" :data="orgsInfo.paid" size="small" class="orgs-table">
+          <el-table v-if="orgsInfo.memberships.length" :data="orgsInfo.memberships" size="small" class="orgs-table">
             <el-table-column prop="org_name" label="机构名称" min-width="180">
               <template #default="{row}">{{ row.org_name || '-' }}</template>
             </el-table-column>
             <el-table-column label="会员等级" min-width="120">
               <template #default="{row}">{{ row.level_name || '-' }}</template>
             </el-table-column>
-            <el-table-column prop="year" label="年度" width="80" />
-            <el-table-column label="缴费金额" min-width="120">
-              <template #default="{row}">{{ fmtMoney(row.paid_amount > 0 ? row.paid_amount : row.amount) }}</template>
-            </el-table-column>
-            <el-table-column label="缴费日期" min-width="150">
-              <template #default="{row}">{{ fmt(row.paid_date) }}</template>
-            </el-table-column>
-          </el-table>
-          <el-empty v-else description="暂无付费加入记录" image-size="60" />
-        </div>
-
-        <div class="orgs-section">
-          <div class="orgs-section-title">
-            <span>主动加入</span>
-            <el-tag type="info" effect="plain" size="small">{{ orgsInfo.voluntary.length }}</el-tag>
-          </div>
-          <el-table v-if="orgsInfo.voluntary.length" :data="orgsInfo.voluntary" size="small" class="orgs-table">
-            <el-table-column prop="org_name" label="机构名称" min-width="200">
-              <template #default="{row}">{{ row.org_name || '-' }}</template>
-            </el-table-column>
-            <el-table-column label="会员等级" min-width="140">
-              <template #default="{row}">{{ row.level_name || '-' }}</template>
-            </el-table-column>
             <el-table-column label="加入时间" min-width="150">
               <template #default="{row}">{{ fmt(row.joined_at) }}</template>
             </el-table-column>
           </el-table>
-          <el-empty v-else description="暂无主动加入记录" image-size="60" />
+          <el-empty v-else description="暂无会籍记录" image-size="60" />
         </div>
       </div>
     </el-dialog>
@@ -249,6 +226,9 @@ import MemberDetailDialog from '@/components/MemberDetailDialog.vue'
 import { orgApi } from '@/api/index'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Right } from '@element-plus/icons-vue'
+import { useSiteStore } from '@/stores/site'
+
+const siteStore = useSiteStore()
 
 const list = ref<any[]>([])
 const levels = ref<any[]>([])
@@ -286,7 +266,7 @@ const historyBodyRef = ref<HTMLElement | null>(null)
 const orgsVisible = ref(false)
 const orgsTarget = ref<any>(null)
 const orgsLoading = ref(false)
-const orgsInfo = ref<{ paid: any[]; voluntary: any[] }>({ paid: [], voluntary: [] })
+const orgsInfo = ref<{ memberships: any[]; paid: any[]; voluntary: any[] }>({ memberships: [], paid: [], voluntary: [] })
 
 const createVisible = ref(false)
 const createLoading = ref(false)
@@ -450,7 +430,7 @@ const createRules = {
 
 const statusMap: Record<string, { l: string; t: string }> = {
   registering: { l: '注册中', t: 'info' }, pending_review: { l: '待审核', t: 'warning' },
-  pending_payment: { l: '待缴费', t: 'danger' },
+  pending_payment: { l: '待处理', t: 'warning' },
   active: { l: '正式会员', t: 'success' }, rejected: { l: '已拒绝', t: 'danger' },
   expired: { l: '已过期', t: 'info' }
 }
@@ -729,21 +709,15 @@ function onHistoryScroll() {
 
 async function openOrgs(row: any) {
   orgsTarget.value = row
-  orgsInfo.value = { paid: [], voluntary: [] }
+  orgsInfo.value = { memberships: [], paid: [], voluntary: [] }
   orgsVisible.value = true
   orgsLoading.value = true
   try {
     const res = await adminApi.getMemberOrgs(row.id)
-    orgsInfo.value = res.data || { paid: [], voluntary: [] }
+    orgsInfo.value = res.data || { memberships: [], paid: [], voluntary: [] }
   } catch {} finally { orgsLoading.value = false }
 }
 
-function fmtMoney(n: any) {
-  if (n === null || n === undefined || n === '') return '-'
-  const num = Number(n)
-  if (!isFinite(num)) return '-'
-  return '¥' + num.toFixed(2)
-}
 </script>
 
 <style scoped lang="scss">

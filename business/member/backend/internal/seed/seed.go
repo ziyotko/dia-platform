@@ -1,6 +1,7 @@
 package seed
 
 import (
+	"member/config"
 	"member/internal/models"
 	"member/internal/service"
 	"member/pkg/db"
@@ -33,7 +34,9 @@ func Run() {
 	// 机构关联等级 + 当年会费标准（缺失时补默认值）：
 	// 「入会审批 / 管理员新增会员 / 会费确认」都要求这两种配置存在，否则主流程走不通。
 	associateDefaultOrgLevels()
-	createDefaultFeeStandards()
+	if config.Cfg.Features.FeesEnabled {
+		createDefaultFeeStandards()
+	}
 }
 
 func createAdmin() {

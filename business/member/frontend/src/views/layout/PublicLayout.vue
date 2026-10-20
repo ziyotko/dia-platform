@@ -83,10 +83,7 @@ const router = useRouter()
 const siteStore = useSiteStore()
 
 // 公共导航项（登录/注册单独排布）
-const navItems = [
-  { to: '/announcements', label: '公告动态' },
-  { to: '/charter', label: '协会章程' }
-]
+const navItems: Array<{ to: string; label: string }> = []
 
 const menuOpen = ref(false)
 const scrolled = ref(false)

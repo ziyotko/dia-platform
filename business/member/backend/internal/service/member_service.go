@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"member/config"
 	"member/internal/models"
 	"member/pkg/db"
 	"member/pkg/utils"
@@ -14,6 +15,24 @@ import (
 )
 
 type MemberService struct{}
+
+func ensureMemberOrganizationTx(tx *gorm.DB, memberID, orgID, levelID uint64, joinedAt time.Time) error {
+	if orgID == 0 {
+		return nil
+	}
+	var relation models.MemberOrganization
+	err := tx.Where("member_id = ? AND org_id = ?", memberID, orgID).First(&relation).Error
+	if err == nil {
+		if relation.LevelID != levelID && levelID > 0 {
+			return tx.Model(&relation).Update("level_id", levelID).Error
+		}
+		return nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+	return tx.Create(&models.MemberOrganization{MemberID: memberID, OrgID: orgID, LevelID: levelID, JoinedAt: joinedAt}).Error
+}
 
 // checkableMemberFields 允许查重的会员字段（防止 SQL 注入）
 var checkableMemberFields = map[string]bool{
@@ -204,7 +223,7 @@ func (s *MemberService) UpdateMemberStatus(id uint64, status string, operator st
 }
 
 // UpdateMemberLevel updates a member's level (admin). Only active members may change
-// level, and the target level must come from the member's paid memberships (会籍).
+// level, and the target level must come from the member's organization memberships.
 // Every successful change is recorded in the membership change log.
 func (s *MemberService) UpdateMemberLevel(id uint64, levelID uint64, operator string, reason string) error {
 	var m models.Member
@@ -229,17 +248,27 @@ func (s *MemberService) UpdateMemberLevel(id uint64, levelID uint64, operator st
 		return errors.New("新旧会员等级不能相同")
 	}
 
-	// 目标等级必须来自该会员已缴费加入的机构所支持的等级（member_org_levels）
+	// 目标等级必须来自该会员所属机构所支持的等级；会费开启时兼容原已缴费口径。
 	var cnt int64
-	if err := db.DB.Model(&models.MemberLevel{}).
-		Joins("JOIN member_org_levels mol ON mol.level_id = member_levels.id").
-		Joins("JOIN member_fee_records fr ON fr.org_id = mol.org_id").
-		Where("fr.member_id = ? AND fr.status = ? AND member_levels.id = ?", id, models.FeeStatusPaid, levelID).
-		Count(&cnt).Error; err != nil {
-		return err
+	if config.Cfg.Features.FeesEnabled {
+		if err := db.DB.Model(&models.MemberLevel{}).
+			Joins("JOIN member_org_levels mol ON mol.level_id = member_levels.id").
+			Joins("JOIN member_fee_records fr ON fr.org_id = mol.org_id").
+			Where("fr.member_id = ? AND fr.status = ? AND member_levels.id = ?", id, models.FeeStatusPaid, levelID).
+			Count(&cnt).Error; err != nil {
+			return err
+		}
+	} else {
+		if err := db.DB.Model(&models.MemberLevel{}).
+			Joins("JOIN member_org_levels mol ON mol.level_id = member_levels.id").
+			Joins("JOIN member_user_orgs muo ON muo.org_id = mol.org_id").
+			Where("muo.member_id = ? AND member_levels.id = ?", id, levelID).
+			Count(&cnt).Error; err != nil {
+			return err
+		}
 	}
 	if cnt == 0 {
-		return errors.New("该等级不在该会员已缴费加入的机构所支持的等级中")
+		return errors.New("该等级不在该会员所属机构支持的等级中")
 	}
 
 	// 主入会机构
@@ -289,6 +318,12 @@ func (s *MemberService) primaryOrg(m *models.Member) (uint64, string) {
 			}
 		}
 		return app.OrgID, name
+	}
+
+	var relation models.MemberOrganization
+	if err := db.DB.Preload("Org").Where("member_id = ?", m.ID).
+		Order("joined_at ASC, id ASC").First(&relation).Error; err == nil {
+		return relation.OrgID, relation.Org.Name
 	}
 
 	var fee models.FeeRecord
@@ -492,18 +527,26 @@ func parseUint(s string) uint64 {
 	return n
 }
 
-// GetMemberAvailableLevels returns the member levels supported by the organizations
-// the member has paid to join (已缴费加入机构的关联等级), used for the change-level dropdown.
+// GetMemberAvailableLevels returns levels supported by the member's organizations.
+// 会费开启时保持历史“已缴费机构”口径，关闭时使用中性会籍关系。
 func (s *MemberService) GetMemberAvailableLevels(memberID uint64) ([]models.MemberLevel, error) {
 	var levels []models.MemberLevel
-	err := db.DB.Raw(`
+	query := `
 		SELECT DISTINCT ml.id, ml.name, ml.level, ml.description, ml.created_at, ml.updated_at
 		FROM member_levels ml
 		JOIN member_org_levels mol ON mol.level_id = ml.id
-		JOIN member_fee_records fr ON fr.org_id = mol.org_id
-		WHERE fr.member_id = ? AND fr.status = ?
-		ORDER BY ml.level ASC
-	`, memberID, models.FeeStatusPaid).Scan(&levels).Error
+		JOIN member_user_orgs muo ON muo.org_id = mol.org_id
+		WHERE muo.member_id = ?
+		ORDER BY ml.level ASC`
+	args := []interface{}{memberID}
+	if config.Cfg.Features.FeesEnabled {
+		query = `SELECT DISTINCT ml.id, ml.name, ml.level, ml.description, ml.created_at, ml.updated_at
+			FROM member_levels ml JOIN member_org_levels mol ON mol.level_id = ml.id
+			JOIN member_fee_records fr ON fr.org_id = mol.org_id
+			WHERE fr.member_id = ? AND fr.status = ? ORDER BY ml.level ASC`
+		args = append(args, models.FeeStatusPaid)
+	}
+	err := db.DB.Raw(query, args...).Scan(&levels).Error
 	if err != nil {
 		return nil, err
 	}
@@ -512,8 +555,9 @@ func (s *MemberService) GetMemberAvailableLevels(memberID uint64) ([]models.Memb
 
 // MemberJoinedOrgInfo 会员加入组织机构信息（管理端查看）
 type MemberJoinedOrgInfo struct {
-	Paid      []MemberPaidJoin      `json:"paid"`      // 付费加入
-	Voluntary []MemberVoluntaryJoin `json:"voluntary"` // 主动加入
+	Memberships []MemberVoluntaryJoin `json:"memberships"` // 中性会籍列表（新前端使用）
+	Paid        []MemberPaidJoin      `json:"paid"`        // 付费加入
+	Voluntary   []MemberVoluntaryJoin `json:"voluntary"`   // 主动加入
 }
 
 // MemberPaidJoin 付费加入：已缴费会费记录对应的机构
@@ -544,9 +588,11 @@ type MemberVoluntaryJoin struct {
 //   - voluntary: 会员自主加入的组织（member_user_orgs）。
 func (s *MemberService) GetMemberJoinedOrgs(memberID uint64) (*MemberJoinedOrgInfo, error) {
 	info := &MemberJoinedOrgInfo{
-		Paid:      make([]MemberPaidJoin, 0),
-		Voluntary: make([]MemberVoluntaryJoin, 0),
+		Memberships: make([]MemberVoluntaryJoin, 0),
+		Paid:        make([]MemberPaidJoin, 0),
+		Voluntary:   make([]MemberVoluntaryJoin, 0),
 	}
+	membershipSeen := make(map[uint64]bool)
 
 	// 1) 付费加入：已缴费会费记录
 	var fees []models.FeeRecord
@@ -570,6 +616,12 @@ func (s *MemberService) GetMemberJoinedOrgs(memberID uint64) (*MemberJoinedOrgIn
 			PaidDate:   f.PaidDate,
 			PaidAt:     paidAt,
 		})
+		if f.OrgID > 0 && !membershipSeen[f.OrgID] {
+			membershipSeen[f.OrgID] = true
+			info.Memberships = append(info.Memberships, MemberVoluntaryJoin{
+				OrgID: f.OrgID, OrgName: f.OrgName, LevelID: f.LevelID, LevelName: f.LevelName, JoinedAt: paidAt,
+			})
+		}
 	}
 
 	// 2) 主动加入：会员自主加入组织记录
@@ -607,6 +659,10 @@ func (s *MemberService) GetMemberJoinedOrgs(memberID uint64) (*MemberJoinedOrgIn
 			LevelName: levelNames[o.LevelID],
 			JoinedAt:  o.JoinedAt.Format("2006-01-02 15:04"),
 		})
+		if o.OrgID > 0 && !membershipSeen[o.OrgID] {
+			membershipSeen[o.OrgID] = true
+			info.Memberships = append(info.Memberships, info.Voluntary[len(info.Voluntary)-1])
+		}
 	}
 
 	return info, nil
@@ -736,6 +792,9 @@ func (s *MemberService) CreateMember(req CreateMemberRequest, operator string) (
 	if req.Status == "" {
 		req.Status = models.MemberStatusActive
 	}
+	if !config.Cfg.Features.FeesEnabled && req.Status == models.MemberStatusPendingPay {
+		req.Status = models.MemberStatusActive
+	}
 	validStatuses := map[string]bool{
 		models.MemberStatusRegistering:   true,
 		models.MemberStatusPendingReview: true,
@@ -848,8 +907,7 @@ func (s *MemberService) CreateMember(req CreateMemberRequest, operator string) (
 			return err
 		}
 
-		// 总会通过缴费表记录（免缴、已缴费），不再写入 member_user_orgs；
-		// 分会/代表机构直接写入 member_user_orgs。
+		// 会费关闭时总会与分支机构都写入中性的会籍关系；开启时保留旧收费模型。
 		joined := make(map[uint64]bool)
 		if req.RootOrgID == 0 {
 			// 向后兼容：未指定总会时自动加入所有根组织
@@ -867,6 +925,12 @@ func (s *MemberService) CreateMember(req CreateMemberRequest, operator string) (
 				joined[root.ID] = true
 			}
 		}
+		if !config.Cfg.Features.FeesEnabled && req.RootOrgID > 0 {
+			if err := ensureMemberOrganizationTx(tx, member.ID, req.RootOrgID, req.LevelID, time.Now()); err != nil {
+				return err
+			}
+			joined[req.RootOrgID] = true
+		}
 		for _, orgID := range req.OrgIDs {
 			if orgID == 0 || joined[orgID] {
 				continue
@@ -883,34 +947,28 @@ func (s *MemberService) CreateMember(req CreateMemberRequest, operator string) (
 			joined[orgID] = true
 		}
 
-		// 将加入总会的信息写入缴费表（免缴、已缴费）
+		// 读取总会名称供会籍记录使用；仅在开关开启时创建“免缴”费用记录。
 		rootOrgName := ""
 		if req.RootOrgID > 0 && req.LevelID > 0 {
 			var rootOrg models.Organization
 			err := tx.Where("id = ? AND parent_id = ?", req.RootOrgID, 0).First(&rootOrg).Error
 			if err == nil {
 				rootOrgName = rootOrg.Name
-				now := time.Now()
-				// 会费金额 = 该总会所选会员等级对应年度的会费标准
-				var amount float64
-				var fs models.MemberFeeStandard
-				if err := tx.Where("level_id = ? AND year = ?", req.LevelID, now.Year()).First(&fs).Error; err == nil {
-					amount = fs.Amount
-				}
-				fee := models.FeeRecord{
-					MemberID:  member.ID,
-					Year:      now.Year(),
-					Amount:    amount,
-					Status:    models.FeeStatusPaid,
-					PaidAt:    &models.LocalTime{Time: now},
-					Remark:    "免缴",
-					OrgID:     rootOrg.ID,
-					OrgName:   rootOrg.Name,
-					LevelID:   req.LevelID,
-					LevelName: levelName,
-				}
-				if err := tx.Create(&fee).Error; err != nil {
-					return err
+				if config.Cfg.Features.FeesEnabled {
+					now := time.Now()
+					var amount float64
+					var fs models.MemberFeeStandard
+					if err := tx.Where("level_id = ? AND year = ?", req.LevelID, now.Year()).First(&fs).Error; err == nil {
+						amount = fs.Amount
+					}
+					fee := models.FeeRecord{
+						MemberID: member.ID, Year: now.Year(), Amount: amount, Status: models.FeeStatusPaid,
+						PaidAt: &models.LocalTime{Time: now}, Remark: "免缴", OrgID: rootOrg.ID,
+						OrgName: rootOrg.Name, LevelID: req.LevelID, LevelName: levelName,
+					}
+					if err := tx.Create(&fee).Error; err != nil {
+						return err
+					}
 				}
 			} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 				return err

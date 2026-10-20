@@ -27,7 +27,7 @@
           <el-icon><Document /></el-icon>
           <span>我的申请</span>
         </el-menu-item>
-        <el-menu-item index="/member/fees">
+        <el-menu-item v-if="siteStore.feesEnabled" index="/member/fees">
           <el-icon><Money /></el-icon>
           <span>会费管理</span>
         </el-menu-item>
@@ -43,13 +43,9 @@
           <el-icon><EditPen /></el-icon>
           <span>我的文章</span>
         </el-menu-item>
-        <el-menu-item index="/member/messages">
-          <el-icon><ChatDotRound /></el-icon>
-          <span>会员留言</span>
-        </el-menu-item>
-        <el-menu-item index="/member/service">
+        <el-menu-item index="/member/news">
           <el-icon><Reading /></el-icon>
-          <span>服务中心</span>
+          <span>会员资讯</span>
         </el-menu-item>
       </el-menu>
     </el-aside>
@@ -91,12 +87,14 @@ import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useAppStore } from '@/stores/app'
+import { useSiteStore } from '@/stores/site'
 import { ElMessage } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const appStore = useAppStore()
+const siteStore = useSiteStore()
 const collapsed = computed(() => appStore.collapsed)
 
 function handleCommand(cmd: string) {

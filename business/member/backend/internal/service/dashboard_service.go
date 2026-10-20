@@ -4,6 +4,7 @@ import (
 	"sort"
 	"strconv"
 
+	"member/config"
 	"member/internal/models"
 	"member/pkg/db"
 )
@@ -87,20 +88,25 @@ func (s *DashboardService) GetMemberDashboard(memberID uint64) (*MemberDashboard
 	// Latest announcements
 	db.DB.Where("published_at IS NOT NULL").Order("is_pinned DESC, published_at DESC").Limit(5).Find(&dash.LatestAnnouncements)
 
-	// Fee summary
+	// 兼容旧前端保留费用字段；关闭时固定返回零值。
 	fs := &FeeSummary{}
-	db.DB.Model(&models.FeeRecord{}).Where("member_id = ? AND status = ?", memberID, models.FeeStatusPaid).Count(&fs.PaidCount)
-	db.DB.Model(&models.FeeRecord{}).Where("member_id = ? AND status = ?", memberID, models.FeeStatusUnpaid).Count(&fs.UnpaidCount)
-	// 累计缴费按“实缴金额”统计：免缴记录 amount 为应缴标准但未实际缴费
-	db.DB.Model(&models.FeeRecord{}).Where("member_id = ? AND status = ?", memberID, models.FeeStatusPaid).
-		Select("COALESCE(SUM(paid_amount), 0)").Scan(&fs.TotalPaid)
+	if config.Cfg.Features.FeesEnabled {
+		db.DB.Model(&models.FeeRecord{}).Where("member_id = ? AND status = ?", memberID, models.FeeStatusPaid).Count(&fs.PaidCount)
+		db.DB.Model(&models.FeeRecord{}).Where("member_id = ? AND status = ?", memberID, models.FeeStatusUnpaid).Count(&fs.UnpaidCount)
+		db.DB.Model(&models.FeeRecord{}).Where("member_id = ? AND status = ?", memberID, models.FeeStatusPaid).
+			Select("COALESCE(SUM(paid_amount), 0)").Scan(&fs.TotalPaid)
+	}
 	dash.FeeSummary = fs
 
 	// Latest paid fee level — level name from the newest (most recent year) paid fee record
 	var latestFee models.FeeRecord
-	if err := db.DB.Where("member_id = ? AND status = ?", memberID, models.FeeStatusPaid).
-		Order("year DESC, id DESC").First(&latestFee).Error; err == nil {
-		dash.LatestFeeLevel = latestFee.LevelName
+	if config.Cfg.Features.FeesEnabled {
+		if err := db.DB.Where("member_id = ? AND status = ?", memberID, models.FeeStatusPaid).
+			Order("year DESC, id DESC").First(&latestFee).Error; err == nil {
+			dash.LatestFeeLevel = latestFee.LevelName
+		}
+	} else {
+		_, dash.LatestFeeLevel = resolveMemberLevel(member.MemberLevel)
 	}
 
 	// Organizations — 分类规则与后台「加入机构」/会员端「加入的组织机构」一致：
@@ -113,7 +119,9 @@ func (s *DashboardService) GetMemberDashboard(memberID uint64) (*MemberDashboard
 	// 1) 缴费加入：已缴费（含免缴）的费用记录，如新增会员的免缴总会
 	feeOrgIDs := make(map[uint64]bool)
 	var paidFees []models.FeeRecord
-	db.DB.Where("member_id = ? AND status = ? AND org_name <> ''", memberID, models.FeeStatusPaid).Find(&paidFees)
+	if config.Cfg.Features.FeesEnabled {
+		db.DB.Where("member_id = ? AND status = ? AND org_name <> ''", memberID, models.FeeStatusPaid).Find(&paidFees)
+	}
 	for _, f := range paidFees {
 		if f.OrgID == 0 || feeOrgIDs[f.OrgID] {
 			continue
