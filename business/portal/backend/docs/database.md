@@ -65,8 +65,13 @@
 | 30 | `login_log` | 系统管理 | 登录日志 |
 | 31 | `member_column` | 内容管理 | 会员栏目（会员专区栏目分类） |
 | 32 | `member_content` | 内容管理 | 会员专属内容（新闻/数据/视频） |
+| 33 | `content_source` | 内容管理 | 外部内容来源配置 |
+| 34 | `content_import` | 内容管理 | 外部内容导入记录 |
+| 35 | `content_sync_log` | 内容管理 | 外部内容同步日志 |
+| 36 | `member_statistics_dataset` | 会员专区 | 数据中心年度统计数据集 |
+| 37 | `member_statistics_row` | 会员专区 | Excel「总表」原始企业样本 |
 
-> 以上 32 张表全部由 `internal/models/migrate.go` 的 `AutoMigrate` 创建；其中 `article_tag`、`article_column` 是 GORM 自动生成的连接表（无对应模型文件）。
+> 以上 37 张表由 `internal/models/migrate.go` 声明并在启动时通过 GORM `AutoMigrate` 创建。`member_statistics_dataset` 和 `member_statistics_row` 也可由导入命令单独建表。
 
 ---
 

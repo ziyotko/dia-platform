@@ -19,10 +19,10 @@ server:
   analytics_rate_limit: 60
   analytics_rate_window_seconds: 60
   # 登录接口限流（防暴力破解，按真实客户端 IP）
-  login_rate_limit: 10
+  login_rate_limit: 100
   login_rate_window_seconds: 300
   # 验证码接口限流（防刷验证码，按真实客户端 IP）
-  captcha_rate_limit: 30
+  captcha_rate_limit: 300
   captcha_rate_window_seconds: 60
   # 公开只读接口限流（/site-info、/search/articles 等无需认证的查询接口，按真实客户端 IP）
   # 未配置时回退 60 次/60s
@@ -30,7 +30,7 @@ server:
   public_rate_window_seconds: 60
   # 文件上传限流（POST /upload，按真实客户端 IP）
   # 该接口对任意已认证账号开放且单文件上限 800MB，限流用于防止循环上传写满磁盘；未配置时回退 60 次/60s
-  upload_rate_limit: 30
+  upload_rate_limit: 300
   upload_rate_window_seconds: 60
   # 单账号每日上传量上限（MB）：按实际上传字节累计（按自然日分键，存 Redis anti 库），
   # 未配置/<=0 时回退 4096（4GB）。超出后返回「今日上传量已达上限」。
@@ -49,12 +49,12 @@ server:
 
 # 段名与 member / application / base 一致：mysql / redis / jwt / log
 mysql:
-  host: 10.3.1.95
-  port: 63400
+  host: 127.0.0.1
+  port: 3306
   user: 'root'
   # 请使用环境变量 PORTAL_DB_PASSWORD 注入，勿提交真实密码到仓库
   password: PORTAL_DB_PASSWORD
-  db_name: 'caam_portal'
+  db_name: 'camie_portal'
   charset: 'utf8mb4'
   parse_time: true
   loc: 'Asia/Shanghai'
