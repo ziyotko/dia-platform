@@ -946,7 +946,7 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="previewVisible" title="文章预览" width="800px" destroy-on-close>
+    <el-dialog v-model="previewVisible" title="文章预览" width="min(996px, calc(100vw - 32px))" destroy-on-close>
       <div class="preview-content">
         <h2>{{ previewData.title }}</h2>
         <div class="preview-meta">
@@ -3268,28 +3268,25 @@ onMounted(() => {
   }
 
   .editor-form-item {
-    flex: 1;
     margin-bottom: 0;
 
     :deep(.el-form-item__content) {
-      height: calc(100vh - 520px);
       display: block;
+      min-width: 0;
     }
   }
 }
 
 .editor-wrapper {
+  width: 100%;
   border: 1px solid #e4e7ed;
   border-radius: 8px;
   overflow: hidden;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
 
   :deep(.w-e-text-container) {
-    flex: 1;
-    overflow-y: auto;
+    height: clamp(520px, 72vh, 900px) !important;
+    overflow: hidden;
   }
 }
 
@@ -3377,9 +3374,21 @@ onMounted(() => {
   }
 
   .preview-body {
-    line-height: 1.8;
-    color: #333;
+    font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+    font-size: 17px;
+    line-height: 2.05;
+    color: #30343b;
     word-break: break-word;
+
+    :deep(:is(h1, h2, h3, h4, h5, h6)) {
+      font-size: inherit;
+      line-height: inherit;
+    }
+
+    :deep(p) {
+      margin: 0 0 16px;
+      text-indent: 2em;
+    }
 
     :deep(img) {
       max-width: 100%;
