@@ -5,6 +5,10 @@
         <div class="card-header">
           <span>会员专区</span>
           <div class="header-actions">
+            <el-button v-if="isAdmin" @click="statisticsVisible = true">
+              <el-icon><DataAnalysis /></el-icon>
+              年度统计
+            </el-button>
             <el-button v-if="isAdmin" @click="openColumnManager">
               <el-icon><Grid /></el-icon>
               会员栏目管理
@@ -156,6 +160,10 @@
         />
       </div>
     </el-card>
+
+    <el-drawer v-model="statisticsVisible" title="会员数据中心 · 年度统计" size="94%" destroy-on-close>
+      <MemberStatisticsPanel v-if="statisticsVisible" />
+    </el-drawer>
 
     <!-- 会员栏目管理：栏目列表与增删改全部收在该弹窗内，主界面不再展示栏目列表 -->
     <!-- 宽度按表格全部列的最小宽度之和（序号60 + 名称150 + 描述200 + 排序90 + 状态100 + 创建时间170 + 操作180 = 950）外加班内边距留出余量，避免横向滚动条 -->
@@ -579,6 +587,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
+  DataAnalysis,
   Delete,
   Edit,
   Grid,
@@ -592,6 +601,7 @@ import {
 import '@wangeditor/editor/dist/css/style.css'
 import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 import type { IDomEditor, IEditorConfig, IToolbarConfig } from '@wangeditor/editor'
+import MemberStatisticsPanel from './member-statistics-panel.vue'
 
 import { useUserStore } from '@/stores/user'
 import { hasAdminRole } from '@/utils/permission'
@@ -616,6 +626,7 @@ import {
 const userStore = useUserStore()
 // 会员栏目的新增/编辑/删除/改状态均为管理员接口（写路由在 admin 组）
 const isAdmin = computed(() => hasAdminRole(userStore.userInfo?.roleIds))
+const statisticsVisible = ref(false)
 
 // ============================ 会员栏目 ============================
 const columnManagerVisible = ref(false)

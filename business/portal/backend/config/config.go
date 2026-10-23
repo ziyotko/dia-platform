@@ -128,6 +128,28 @@ type LogConfig struct {
 
 var AppConfig Config
 
+// InitImportConfig 只加载离线导入所需的数据库配置。
+// 导入命令不提供 HTTP/JWT 服务，因此不要求门户 JWT 密钥。
+func InitImportConfig() error {
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath("./")
+	if err := viper.ReadInConfig(); err != nil {
+		return fmt.Errorf("读取 config.yaml 失败: %w", err)
+	}
+	normalizeLegacyConfigKeys()
+	if err := viper.Unmarshal(&AppConfig); err != nil {
+		return fmt.Errorf("解析 config.yaml 失败: %w", err)
+	}
+	if password := os.Getenv("PORTAL_DB_PASSWORD"); password != "" {
+		AppConfig.MySQL.Password = password
+	}
+	if AppConfig.MySQL.Password == "" || AppConfig.MySQL.Password == "PORTAL_DB_PASSWORD" {
+		return fmt.Errorf("数据库密码未配置：请在当前终端设置 PORTAL_DB_PASSWORD")
+	}
+	return nil
+}
+
 func InitConfig() {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")

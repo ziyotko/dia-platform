@@ -93,6 +93,7 @@ func getModule(path string) string {
 		// 会员专区与选项类接口的路径段较长，单独成组（否则会把上面整块的对齐拉宽）
 		"member-columns":            "会员专区",
 		"member-contents":           "会员专区",
+		"member-statistics":         "会员年度统计",
 		"member-files":              "会员专区",
 		"user-options":              "用户管理",
 		"workflow-role-options":     "流程角色",

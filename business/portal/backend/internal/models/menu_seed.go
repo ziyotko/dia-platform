@@ -28,7 +28,7 @@ const columnManagementAPIPrefix = "/columns,/templates,/workflows"
 // 「会员专区」页面同时维护会员栏目（/member-columns）与会员专属内容（/member-contents）两个模块，
 // 且两模块都带 /:id 写路由，故必须把两个前缀都声明上（豁免表是精确匹配，覆盖不到子路径）。
 // 内容封面/视频/附件复用 /upload（已在豁免表内）。
-const memberZoneAPIPrefix = "/member-columns,/member-contents"
+const memberZoneAPIPrefix = "/member-columns,/member-contents,/member-statistics"
 
 // 「管理首页」除仪表盘数据外，还会拉取「待我审核」列表（GET /articles/my-audits，member 组）用于「待处理」卡片，
 // 未同时授予「待审核」/「图文管理」菜单的角色否则会报「没有授权」并静默显示空列表。
@@ -164,6 +164,7 @@ func SeedDefaultMenus() {
 	upgradeMenuAPIPrefix("机构管理", "/organizations,/users", organizationManagementAPIPrefix)
 	upgradeMenuAPIPrefix("流程管理", "/workflows", workflowManagementAPIPrefix)
 	upgradeMenuAPIPrefix("流程角色", "/workflow-roles", workflowRoleManagementAPIPrefix)
+	upgradeMenuAPIPrefix("会员专区", "/member-columns,/member-contents", memberZoneAPIPrefix)
 	// 「静态化设置」独立页面已并入「系统设置」的「静态化设置」页签，清理旧环境残留菜单。
 	removeLegacyStaticizationMenu()
 	// 前端 src/views 目录按功能模块重排（2026-09-21）：待审核移入 content/、静态化管理与系统设置移入 config/、

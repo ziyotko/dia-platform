@@ -39,6 +39,7 @@ func SetupRoutes(router *gin.Engine) {
 	staticMonitorController := controllers.NewStaticMonitorController()
 	staticJobController := controllers.NewStaticJobController()
 	memberZoneController := controllers.NewMemberZoneController()
+	memberStatisticsController := controllers.NewMemberStatisticsController()
 	contentSourceController := controllers.NewContentSourceController()
 	apiPrefix := config.AppConfig.Server.ApiPrefix
 
@@ -227,6 +228,7 @@ func SetupRoutes(router *gin.Engine) {
 		externalMember.GET("/member-zone/member-contents/column/:key", memberZoneController.GetColumnMemberContents)
 		externalMember.GET("/member-zone/member-contents/detail/:id", memberZoneController.GetMemberContentDetail)
 		externalMember.GET("/member-zone/member-files/sign", memberZoneController.SignMemberFile)
+		externalMember.GET("/member-zone/statistics/dashboard", memberStatisticsController.GetPublishedDashboard)
 	}
 
 	// === 管理员路由（需认证 + 管理员角色）===
@@ -347,6 +349,11 @@ func SetupRoutes(router *gin.Engine) {
 		admin.PUT("/member-columns/:id", memberZoneController.UpdateMemberColumn)
 		admin.PATCH("/member-columns/:id/status", memberZoneController.UpdateMemberColumnStatus)
 		admin.DELETE("/member-columns/:id", memberZoneController.DeleteMemberColumn)
+		// 会员数据中心年度统计：仅后台管理员可查看明细和控制发布状态。
+		admin.GET("/member-statistics/datasets", memberStatisticsController.GetDatasets)
+		admin.GET("/member-statistics/datasets/:id", memberStatisticsController.GetDataset)
+		admin.GET("/member-statistics/datasets/:id/rows", memberStatisticsController.GetRows)
+		admin.PATCH("/member-statistics/datasets/:id/status", memberStatisticsController.UpdateStatus)
 
 		// 友情链接管理（写操作）
 		admin.POST("/links", linkController.CreateLink)
