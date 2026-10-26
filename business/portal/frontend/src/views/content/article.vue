@@ -1933,12 +1933,14 @@ const extractImagesFromRTF = (rtf: string): Blob[] => {
       for (let j = 0; j < hexStr.length; j += 2) {
         bytes[j / 2] = parseInt(hexStr.substring(j, j + 2), 16)
       }
-      let type = 'image/png'
-      if (bytes[0] === 0xff && bytes[1] === 0xd8) type = 'image/jpeg'
-      else if (bytes[0] === 0x47 && bytes[1] === 0x49) type = 'image/gif'
-      else if (bytes[0] === 0x89 && bytes[1] === 0x50) type = 'image/png'
+      // WPS/Word 会在 JPEG 照片旁附带 WMF/EMF 预览；不能把它们伪装成 PNG，
+      // 否则后续按顺序替换 HTML 图片时会出现坏图并错过真正的照片。
+      let type = ''
+      if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) type = 'image/jpeg'
+      else if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) type = 'image/gif'
+      else if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) type = 'image/png'
       else if (bytes[0] === 0x42 && bytes[1] === 0x4d) type = 'image/bmp'
-      blobs.push(new Blob([bytes], { type }))
+      if (type) blobs.push(new Blob([bytes], { type }))
     }
     pos = pictIdx + 1
   }
@@ -1989,7 +1991,7 @@ const handleCustomPaste = (editor: IDomEditor, event: ClipboardEvent) => {
     const blobs = extractImagesFromRTF(rtf)
     if (blobs.length > 0) {
       event.preventDefault()
-      Promise.all(
+      Promise.allSettled(
         blobs.map((blob) => {
           const ext = blob.type.split('/')[1] || 'png'
           const file = new File([blob], `image.${ext}`, { type: blob.type })
@@ -1999,23 +2001,19 @@ const handleCustomPaste = (editor: IDomEditor, event: ClipboardEvent) => {
             headers: { 'Content-Type': 'multipart/form-data' },
           })
         })
-      ).then((results: any[]) => {
-        const urls = results.map((res) => res.data?.url || '').filter(Boolean)
+      ).then((results) => {
+        const urls = results.map((result) => result.status === 'fulfilled' ? result.value.data?.url || '' : '')
         const div = document.createElement('div')
         div.innerHTML = html
         const imgs = div.querySelectorAll('img')
         imgs.forEach((img, index) => {
           if (urls[index]) {
             img.setAttribute('src', urls[index])
-          }
-        })
-        // 移除仍然带有本地路径的图片，避免浏览器报 Not allowed to load local resource
-        div.querySelectorAll('img').forEach((img) => {
-          const src = img.getAttribute('src') || ''
-          if (src.startsWith('file://')) {
+          } else {
             img.remove()
           }
         })
+        if (urls.filter(Boolean).length < imgs.length) ElMessage.warning('部分图片未能粘贴，请检查正文图片')
         editor.dangerouslyInsertHtml(div.innerHTML)
       })
       return false
@@ -3285,8 +3283,14 @@ onMounted(() => {
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
 
   :deep(.w-e-text-container) {
-    height: clamp(520px, 72vh, 900px) !important;
-    overflow: hidden;
+    min-height: 520px;
+    height: auto !important;
+  }
+
+  :deep(.w-e-text-container .w-e-scroll) {
+    height: auto;
+    min-height: 520px;
+    overflow: visible;
   }
 }
 
