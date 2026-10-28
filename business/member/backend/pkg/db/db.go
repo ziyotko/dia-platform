@@ -29,6 +29,16 @@ func (w *gormLogWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+// sqlLogLevel 让 SQL 日志跟随应用日志级别：debug 时打印全部 SQL；
+// info/warn/error 时只保留慢查询与错误——生产环境每条 SQL 都写文件的开销很大，
+// 且启动期 AutoMigrate / 种子数据会产生成百上千条 SQL。
+func sqlLogLevel() logger.LogLevel {
+	if config.Cfg != nil && strings.EqualFold(strings.TrimSpace(config.Cfg.Log.Level), "debug") {
+		return logger.Info
+	}
+	return logger.Warn
+}
+
 func Init(cfg *config.MySQLConfig) {
 	// 时区：优先用配置的 loc（推荐显式 Asia/Shanghai，不依赖部署机时区），留空回退 Local。
 	loc := cfg.Loc
@@ -53,7 +63,7 @@ func Init(cfg *config.MySQLConfig) {
 		log.New(&gormLogWriter{}, "\r\n", log.LstdFlags),
 		logger.Config{
 			SlowThreshold:             time.Second,
-			LogLevel:                  logger.Info,
+			LogLevel:                  sqlLogLevel(),
 			ParameterizedQueries:      true,
 			IgnoreRecordNotFoundError: true,
 			Colorful:                  false,

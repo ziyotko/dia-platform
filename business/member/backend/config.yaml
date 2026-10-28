@@ -18,6 +18,10 @@ server:
   # 可信反向代理 IP 列表（用于正确获取客户端真实 IP）
   trusted_proxies:
     - 127.0.0.1
+  # HTTP 服务端超时（Go duration 格式，如 15s / 2m；留空或非法值回退代码默认值）
+  # read_header_timeout 防 Slowloris，idle_timeout 控制 keep-alive 空闲连接回收
+  read_header_timeout: 15s
+  idle_timeout: 120s
   # 固定窗口限流（次数/分钟，按真实客户端 IP；未配置或 <=0 时回退代码默认值）
   login_rate_limit: 10
   captcha_rate_limit: 30
@@ -32,6 +36,8 @@ mysql:
   password: MEMBER_DB_PASSWORD
   db_name: caam_member
   charset: utf8mb4
+  # 连接池：空闲连接常驻 max_idle 条，连接最长存活 1 小时（代码内置）。
+  # 多实例部署时，实例数 × max_open 不要超过 MySQL 的 max_connections。
   max_open: 50
   max_idle: 10
   # 时区（与 portal 同名同义）：推荐显式写 Asia/Shanghai，不依赖部署机时区；
@@ -43,10 +49,18 @@ mysql:
   write_timeout: 100s
 
 redis:
+  # 验证码与防重放各用一个 DB，互不影响；
+  # 密码留空表示 Redis 未启用 auth（生产建议开启 requirepass 并配置到这里）。
   addr: 127.0.0.1:6379
   password: ""
   captcha_db: 4
   anti_replay_db: 5
+  # 连接 / 读写超时与连接池；留空或 <=0 用 go-redis 默认值（5s / 3s / 3s / 10×CPU）。
+  # Redis 不可达时 dial_timeout 决定请求被拖住多久，跨机房部署建议调小（如 1s）。
+  dial_timeout: 3s
+  read_timeout: 3s
+  write_timeout: 3s
+  pool_size: 0
 
 jwt:
   # 请使用环境变量 MEMBER_JWT_SECRET 注入强随机密钥
@@ -57,6 +71,7 @@ jwt:
 log:
   # 日志级别：debug/info/warn/error（非法值回退 info）
   level: info
+  # 相对路径基于进程工作目录，部署时请固定工作目录或改成绝对路径
   path: logs/member.log
   max_size: 100
   max_backups: 30
@@ -71,3 +86,15 @@ certificate:
 # 可恢复功能开关；旧部署缺失该配置时默认开启。
 features:
   fees_enabled: false
+
+# 启动阶段维护开关（缺失时按 true / true / false 处理，与历史行为一致）。
+# 生产环境表结构与初始数据稳定后，把 auto_migrate、auto_seed 置为 false 可明显缩短启动时间
+# （AutoMigrate 要逐表探测 information_schema，种子数据要逐表 COUNT）。
+# 对应环境变量 MEMBER_AUTO_MIGRATE / MEMBER_AUTO_SEED / MEMBER_SYNC_MIGRATE 优先级更高。
+startup:
+  # 建表 / 补字段 / 补唯一索引（关闭时需由发布流水线或 DBA 维护表结构）
+  auto_migrate: true
+  # 默认管理员、机构、文章分类、系统配置、会员等级等种子数据（幂等：仅表为空时写入）
+  auto_seed: true
+  # 会费关闭时的历史数据回填（默认异步，不阻塞端口就绪；true = 回填完成后才对外服务）
+  sync_migrate: false

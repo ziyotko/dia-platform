@@ -47,12 +47,17 @@ business/member/
 - `server.trusted_proxies`: **可信反向代理地址，生产必须填 Nginx 的 IP**（决定 `X-Forwarded-For`/`X-Real-IP` 是否被信任；默认仅 `127.0.0.1`）
 - `server.max_concurrent_ips`: 单个 IP 的并发请求上限（默认 100）
 - `server.max_json_body_mb`: 非 multipart（JSON）请求体上限，默认 64（MB，`<=0` 回退 64）。文件上传（multipart）不受此限制
+- `server.read_header_timeout` / `server.idle_timeout`: HTTP 服务端超时（Go duration，默认 `15s` / `120s`；留空或非法值回退默认）
 - `server.login_rate_limit` / `captcha_rate_limit` / `public_rate_limit` / `upload_rate_limit`: 固定窗口限流（次数/分钟，`<=0` 用代码默认值 10/30/300/20）
 - `mysql`: host / port / user / `password`（**只填占位值 `MEMBER_DB_PASSWORD`**）/ db_name / charset(`utf8mb4`) / max_open / max_idle / `loc`（时区，默认 `Asia/Shanghai`）/ `timeout` / `read_timeout` / `write_timeout`
-- `redis`: addr / password / `captcha_db`(4) / `anti_replay_db`(5)
+- `redis`: addr / password / `captcha_db`(4) / `anti_replay_db`(5) / `dial_timeout`(3s) / `read_timeout`(3s) / `write_timeout`(3s) / `pool_size`(0 = go-redis 默认 10×CPU)
 - `jwt`: `secret`（占位值 `MEMBER_JWT_SECRET`）/ `expire_hours`（默认 24）/ `issuer`（`business-member`）
-- `log`: `level`（debug/info/warn/error，默认 info）/ `path`（默认 `logs/member.log`）/ `max_size`(100MB) / `max_backups`(30) / `max_age`(180 天)
+- `log`: `level`（debug/info/warn/error，默认 info）/ `path`（默认 `logs/member.log`，相对路径基于工作目录）/ `max_size`(100MB) / `max_backups`(30) / `max_age`(180 天)。SQL 日志跟随该级别：仅 `debug` 打印全部 SQL，其余级别只记慢查询与错误
 - `certificate.font_path`: 证书 PDF 中文字体路径，留空按系统常见路径自动查找（可用 `MEMBER_CERT_FONT` 覆盖）
+- `startup`: 启动阶段维护开关（缺失时默认 `auto_migrate: true` / `auto_seed: true` / `sync_migrate: false`，与历史行为一致）
+  - `auto_migrate`: 关闭后跳过 AutoMigrate 与唯一索引补建（表结构需由发布流水线 / DBA 维护），**明显加快启动**
+  - `auto_seed`: 关闭后跳过种子数据初始化（默认管理员、机构、等级等），**加快启动**
+  - `sync_migrate`: `true` 时会费关闭的历史数据回填改为同步执行（默认异步，不阻塞端口就绪）
 
 > 注意：YAML 中不要出现重复 key（viper 解析会直接报错）。
 
@@ -63,7 +68,14 @@ business/member/
 | `MEMBER_DB_PASSWORD` | 是 | 数据库密码，覆盖 `mysql.password` |
 | `MEMBER_JWT_SECRET` | 是 | JWT 密钥（建议 ≥32 位随机串），覆盖 `jwt.secret` |
 | `MEMBER_MODE` | 否 | 覆盖 `server.mode`（如 `debug`） |
+| `MEMBER_DB_HOST` | 否 | 覆盖 `mysql.host` |
+| `MEMBER_DB_PORT` | 否 | 覆盖 `mysql.port`（非法值告警并保留配置文件中的端口） |
+| `MEMBER_DB_USER` | 否 | 覆盖 `mysql.user` |
+| `MEMBER_DB_NAME` | 否 | 覆盖 `mysql.db_name` |
 | `MEMBER_CERT_FONT` | 否 | 覆盖 `certificate.font_path`（证书中文字体） |
+| `MEMBER_AUTO_MIGRATE` | 否 | 覆盖 `startup.auto_migrate`；`false` 时跳过 AutoMigrate / 唯一索引补建（schema 由发布流水线维护时使用，加快启动） |
+| `MEMBER_AUTO_SEED` | 否 | 覆盖 `startup.auto_seed`；`false` 时跳过种子数据初始化（加快启动） |
+| `MEMBER_SYNC_MIGRATE` | 否 | 覆盖 `startup.sync_migrate`；`true` 时会费关闭的历史数据回填改为同步执行 |
 
 ```bash
 # Linux / macOS
