@@ -50,7 +50,7 @@ func OperationLog() gin.HandlerFunc {
 
 		// 截断过长内容，避免数据库膨胀；请求体先做敏感字段脱敏（口令等不入库）
 		params := paramsForLog(bodyBytes, operationLogParamsMax)
-		result := truncate(writer.body.String(), operationLogParamsMax)
+		result := resultForLog(writer.body.Bytes(), operationLogParamsMax)
 
 		log := models.OperationLog{
 			MemberID:    memberID,
@@ -141,6 +141,21 @@ func paramsForLog(body []byte, max int) string {
 	redacted, err := json.Marshal(redactSensitive(parsed))
 	if err != nil {
 		return truncate(string(body), max)
+	}
+	return truncate(string(redacted), max)
+}
+
+func resultForLog(body []byte, max int) string {
+	if len(body) == 0 {
+		return ""
+	}
+	var parsed any
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return truncate("[响应内容未记录：无法安全脱敏]", max)
+	}
+	redacted, err := json.Marshal(redactSensitive(parsed))
+	if err != nil {
+		return truncate("[响应内容未记录：无法安全脱敏]", max)
 	}
 	return truncate(string(redacted), max)
 }

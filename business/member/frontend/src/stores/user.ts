@@ -10,6 +10,7 @@ export const useUserStore = defineStore('user', () => {
 
   const isLoggedIn = computed(() => !!token.value)
   const isAdmin = computed(() => userInfo.value?.is_admin || false)
+  const isSuperAdmin = computed(() => userInfo.value?.is_super_admin || false)
 
   function setToken(val: string) {
     token.value = val
@@ -59,5 +60,5 @@ export const useUserStore = defineStore('user', () => {
     forceLogout()
   }
 
-  return { token, userInfo, menus, isLoggedIn, isAdmin, setToken, login, fetchUserInfo, clearSession, forceLogout, logout }
+  return { token, userInfo, menus, isLoggedIn, isAdmin, isSuperAdmin, setToken, login, fetchUserInfo, clearSession, forceLogout, logout }
 })

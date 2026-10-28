@@ -14,9 +14,10 @@ import (
 )
 
 const (
-	CtxMemberID = "memberID"
-	CtxUsername = "username"
-	CtxIsAdmin  = "isAdmin"
+	CtxMemberID     = "memberID"
+	CtxUsername     = "username"
+	CtxIsAdmin      = "isAdmin"
+	CtxIsSuperAdmin = "isSuperAdmin"
 	// CtxStatus 会员会籍状态（AdminOnly 用它判断管理员账号是否已停用）
 	CtxStatus = "memberStatus"
 	// CtxClaims 本次请求的 JWT 声明（登出需要 jti 与过期时间）
@@ -65,7 +66,7 @@ func Auth() gin.HandlerFunc {
 		// 2) 账号存活校验：被删除的账号立即失效（原先只验签名，删号后旧 Token 仍可用满 24h）。
 		//    member_users 按主键查询，代价可忽略。
 		var member models.Member
-		if err := db.DB.Select("id", "username", "is_admin", "status",
+		if err := db.DB.Select("id", "username", "is_admin", "is_super_admin", "status",
 			"password_changed_at", "token_invalid_before").First(&member, claims.MemberID).Error; err != nil {
 			response.Unauthorized(c, "账号不存在或已注销，请重新登录")
 			c.Abort()
@@ -102,6 +103,7 @@ func Auth() gin.HandlerFunc {
 		// 管理员标记以数据库为准（Token 里只是签发时的快照）：
 		// 取消管理员身份后旧 Token 立即失去管理员权限，而不是等它自然过期。
 		c.Set(CtxIsAdmin, member.IsAdmin)
+		c.Set(CtxIsSuperAdmin, member.IsSuperAdmin)
 		c.Set(CtxStatus, member.Status)
 		c.Set(CtxClaims, claims)
 		c.Next()
@@ -121,6 +123,18 @@ func AdminOnly() gin.HandlerFunc {
 		// 等于无法真正停用/降权（系统里也没有把 is_admin 置回 false 的入口）。
 		if status, _ := c.Get(CtxStatus); status != models.MemberStatusActive {
 			response.Forbidden(c, "管理员账号已停用，请联系超级管理员")
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+func SuperAdminOnly() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		isSuperAdmin, _ := c.Get(CtxIsSuperAdmin)
+		if isSuperAdmin == nil || !isSuperAdmin.(bool) {
+			response.Forbidden(c, "需要超级管理员权限")
 			c.Abort()
 			return
 		}

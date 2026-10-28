@@ -1,6 +1,13 @@
 import request from '@/utils/request'
 
 export const adminApi = {
+  // Subordinate administrator management (super administrator only)
+  getAdminAccounts: () => request.get('/admin/admin-accounts'),
+  createAdminAccount: (data: { username: string; mobile: string; email: string }) => request.post('/admin/admin-accounts', data),
+  updateAdminAccount: (id: number, data: { username: string; mobile: string; email: string }) => request.put(`/admin/admin-accounts/${id}`, data),
+  resetAdminAccountPassword: (id: number) => request.put(`/admin/admin-accounts/${id}/reset-password`),
+  deleteAdminAccount: (id: number) => request.delete(`/admin/admin-accounts/${id}`),
+
   // Member management
   getMembers: (params?: any) => request.get('/admin/members', { params }),
   createMember: (data: any) => request.post('/admin/members', data),

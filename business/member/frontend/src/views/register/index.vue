@@ -99,12 +99,11 @@
           <el-form-item prop="certFile">
             <div class="upload-wrapper">
               <el-upload
-                ref="uploadRef"
                 :auto-upload="false"
                 :show-file-list="true"
                 :limit="1"
                 :on-change="handleCertChange"
-                :on-exceed="() => ElMessage.warning('只能上传一个文件')"
+                :on-exceed="onCertUploadExceed"
                 accept=".jpg,.jpeg,.png,.pdf"
                 class="cert-upload"
               >
@@ -270,10 +269,13 @@ const captchaImage = ref('')
 const captchaId = ref('')
 const certFileUrl = ref('')
 const certFileName = ref('')
-const uploadRef = ref()
 const form1Ref = ref()
 const form2Ref = ref()
 const captchaFormRef = ref()
+
+function onCertUploadExceed() {
+  ElMessage.warning('只能上传一个文件')
+}
 
 const form1 = reactive({
   username: '', password: '', confirmPwd: '', mobile: '', email: '',

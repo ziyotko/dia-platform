@@ -73,6 +73,7 @@ func Register(r *gin.Engine) {
 	sysConfigCtrl := controllers.SystemConfigController{}
 	charterCtrl := controllers.CharterController{}
 	opLogCtrl := controllers.OperationLogController{}
+	adminAccountCtrl := controllers.AdminAccountController{}
 
 	// === Public routes (no auth) ===
 	public := r.Group(prefix)
@@ -183,6 +184,14 @@ func Register(r *gin.Engine) {
 	admin := r.Group(prefix)
 	admin.Use(middleware.Auth(), middleware.AdminOnly(), middleware.OperationLog())
 	{
+		superAdmin := admin.Group("")
+		superAdmin.Use(middleware.SuperAdminOnly())
+		superAdmin.GET("/admin/admin-accounts", adminAccountCtrl.List)
+		superAdmin.POST("/admin/admin-accounts", adminAccountCtrl.Create)
+		superAdmin.PUT("/admin/admin-accounts/:id", adminAccountCtrl.Update)
+		superAdmin.PUT("/admin/admin-accounts/:id/reset-password", adminAccountCtrl.ResetPassword)
+		superAdmin.DELETE("/admin/admin-accounts/:id", adminAccountCtrl.Delete)
+
 		// Member management
 		admin.POST("/admin/members", memberCtrl.CreateMember)
 		admin.GET("/admin/members", memberCtrl.ListMembers)

@@ -129,16 +129,17 @@ func (s *AuthService) Register(req RegisterRequest) (*LoginResponse, error) {
 	return &LoginResponse{
 		Token: token,
 		Member: &MemberInfo{
-			ID:          member.ID,
-			Username:    member.Username,
-			Mobile:      member.Mobile,
-			Email:       member.Email,
-			MemberType:  member.MemberType,
-			MemberLevel: member.MemberLevel,
-			Status:      member.Status,
-			IsAdmin:     member.IsAdmin,
-			Avatar:      member.Avatar,
-			CompanyName: member.CompanyName,
+			ID:           member.ID,
+			Username:     member.Username,
+			Mobile:       member.Mobile,
+			Email:        member.Email,
+			MemberType:   member.MemberType,
+			MemberLevel:  member.MemberLevel,
+			Status:       member.Status,
+			IsAdmin:      member.IsAdmin,
+			IsSuperAdmin: member.IsSuperAdmin,
+			Avatar:       member.Avatar,
+			CompanyName:  member.CompanyName,
 		},
 	}, nil
 }
@@ -252,16 +253,17 @@ func (s *AuthService) Login(req LoginRequest) (*LoginResponse, error) {
 	return &LoginResponse{
 		Token: token,
 		Member: &MemberInfo{
-			ID:          member.ID,
-			Username:    member.Username,
-			Mobile:      member.Mobile,
-			Email:       member.Email,
-			MemberType:  member.MemberType,
-			MemberLevel: member.MemberLevel,
-			Status:      member.Status,
-			IsAdmin:     member.IsAdmin,
-			Avatar:      member.Avatar,
-			CompanyName: member.CompanyName,
+			ID:           member.ID,
+			Username:     member.Username,
+			Mobile:       member.Mobile,
+			Email:        member.Email,
+			MemberType:   member.MemberType,
+			MemberLevel:  member.MemberLevel,
+			Status:       member.Status,
+			IsAdmin:      member.IsAdmin,
+			IsSuperAdmin: member.IsSuperAdmin,
+			Avatar:       member.Avatar,
+			CompanyName:  member.CompanyName,
 		},
 	}, nil
 }
@@ -550,6 +552,7 @@ type MemberInfo struct {
 	MemberLevel   string `json:"member_level"`
 	Status        string `json:"status"`
 	IsAdmin       bool   `json:"is_admin"`
+	IsSuperAdmin  bool   `json:"is_super_admin"`
 	Avatar        string `json:"avatar"`
 	CompanyName   string `json:"company_name"`
 	ContactPerson string `json:"contact_person"`
