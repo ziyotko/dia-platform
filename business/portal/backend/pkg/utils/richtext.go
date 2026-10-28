@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/base64"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -20,6 +21,10 @@ var dataURIBitmapPrefixes = []string{
 	"image/png;base64,",
 	"image/webp;base64,",
 }
+
+// wangEditor 把图片的跳转地址序列化到 img[data-href]，默认的 UGCPolicy
+// 会移除该属性。只保留 http(s) 外链和站内绝对路径，避免存入可执行协议。
+var safeImageLink = regexp.MustCompile(`(?i)^(?:https?://[^\s<>"']+|/(?:$|[^/\s<>"'][^\s<>"']*))$`)
 
 var (
 	richTextPolicyOnce sync.Once
@@ -41,6 +46,7 @@ var (
 func RichTextPolicy() *bluemonday.Policy {
 	richTextPolicyOnce.Do(func() {
 		p := bluemonday.UGCPolicy()
+		p.AllowAttrs("data-href").Matching(safeImageLink).OnElements("img")
 		// 内联 Base64 图片：仅位图格式（显式排除 svg+xml）
 		p.AllowURLSchemeWithCustomPolicy("data", allowBitmapDataURI)
 		p.AllowStyles(
