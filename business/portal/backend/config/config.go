@@ -131,10 +131,7 @@ var AppConfig Config
 // InitImportConfig 只加载离线导入所需的数据库配置。
 // 导入命令不提供 HTTP/JWT 服务，因此不要求门户 JWT 密钥。
 func InitImportConfig() error {
-	viper.SetConfigName("config")
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath("./")
-	if err := viper.ReadInConfig(); err != nil {
+	if err := readConfig(); err != nil {
 		return fmt.Errorf("读取 config.yaml 失败: %w", err)
 	}
 	normalizeLegacyConfigKeys()
@@ -151,11 +148,7 @@ func InitImportConfig() error {
 }
 
 func InitConfig() {
-	viper.SetConfigName("config")
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath("./")
-
-	if err := viper.ReadInConfig(); err != nil {
+	if err := readConfig(); err != nil {
 		log.Fatalf("Error reading config file: %s", err)
 	}
 
@@ -167,6 +160,17 @@ func InitConfig() {
 	}
 
 	applyEnvOverrides()
+}
+
+func readConfig() error {
+	if path := strings.TrimSpace(os.Getenv("PORTAL_CONFIG_FILE")); path != "" {
+		viper.SetConfigFile(path)
+	} else {
+		viper.SetConfigName("config")
+		viper.SetConfigType("yaml")
+		viper.AddConfigPath("./")
+	}
+	return viper.ReadInConfig()
 }
 
 // normalizeLegacyConfigKeys 把历史键名转成统一键名（新键名已存在时不覆盖，即新键优先）：
