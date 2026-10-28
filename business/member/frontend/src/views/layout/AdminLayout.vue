@@ -26,6 +26,7 @@
         <el-menu-item index="/admin/articles"><el-icon><Document /></el-icon><span>文章管理</span></el-menu-item>
         <el-menu-item index="/admin/announcements"><el-icon><Notification /></el-icon><span>公告管理</span></el-menu-item>
         <el-menu-item index="/admin/system-config"><el-icon><Setting /></el-icon><span>系统管理</span></el-menu-item>
+        <el-menu-item v-if="userStore.isSuperAdmin" index="/admin/admin-accounts"><el-icon><UserFilled /></el-icon><span>管理权限</span></el-menu-item>
         <el-menu-item index="/admin/profile"><el-icon><User /></el-icon><span>我的资料</span></el-menu-item>
         <el-menu-item index="/admin/member-level-changes"><el-icon><Switch /></el-icon><span>会籍记录</span></el-menu-item>
         <el-menu-item index="/admin/profile-changes"><el-icon><EditPen /></el-icon><span>资料记录</span></el-menu-item>

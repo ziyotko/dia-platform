@@ -1,5 +1,5 @@
 <template>
-  <span ref="elRef">{{ displayValue }}</span>
+  <span>{{ displayValue }}</span>
 </template>
 
 <script setup lang="ts">
@@ -12,7 +12,6 @@ const props = withDefaults(defineProps<{
   duration: 800
 })
 
-const elRef = ref<HTMLElement>()
 const displayValue = ref(0)
 let animId = 0
 

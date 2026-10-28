@@ -96,7 +96,6 @@
         </el-form-item>
         <el-form-item label="上传缴费回执单" required>
           <el-upload
-            ref="uploadRef"
             :auto-upload="false"
             accept=".pdf,.png,.jpg,.jpeg"
             :limit="1"
@@ -163,7 +162,7 @@ import { feeApi } from '@/api/index'
 import { authApi } from '@/api/auth'
 import { ElMessage } from 'element-plus'
 import { Upload } from '@element-plus/icons-vue'
-import type { UploadInstance, UploadFile } from 'element-plus'
+import type { UploadFile } from 'element-plus'
 import { fileUrl } from '@/utils/fileUrl'
 
 const fees = ref<any[]>([])
@@ -181,7 +180,6 @@ const showPayDialog = ref(false)
 const payTarget = ref<any>(null)
 const payDate = ref('')
 const fileList = ref<any[]>([])
-const uploadRef = ref<UploadInstance>()
 const uploadedUrl = ref('')
 const submitting = ref(false)
 const uploadFileRef = ref<File | null>(null)

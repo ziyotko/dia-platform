@@ -13,11 +13,12 @@ import (
 // 历史键名（database.*、redis.host|port、redis.db|db1|db2、jwt.expires_hour）仍可用，
 // 由 normalizeLegacyConfigKeys 在读取后转成新键名（仅用于老部署过渡）。
 type Config struct {
-	Server ServerConfig `mapstructure:"server"`
-	MySQL  MySQLConfig  `mapstructure:"mysql"`
-	Redis  RedisConfig  `mapstructure:"redis"`
-	JWT    JWTConfig    `mapstructure:"jwt"`
-	Log    LogConfig    `mapstructure:"log"`
+	Server  ServerConfig  `mapstructure:"server"`
+	MySQL   MySQLConfig   `mapstructure:"mysql"`
+	Redis   RedisConfig   `mapstructure:"redis"`
+	JWT     JWTConfig     `mapstructure:"jwt"`
+	Log     LogConfig     `mapstructure:"log"`
+	Startup StartupConfig `mapstructure:"startup"`
 }
 
 type ServerConfig struct {
@@ -63,6 +64,10 @@ type ServerConfig struct {
 	ReplayWindowSecs int `mapstructure:"replay_window_seconds"` // 时间戳新鲜度窗口（秒），默认 120
 	ReplayMaxFail    int `mapstructure:"replay_max_fail"`       // 触发临时封禁的失败次数
 	ReplayBanMinutes int `mapstructure:"replay_ban_minutes"`    // 临时封禁时长（分钟）
+
+	// HTTP 服务超时：ReadHeaderTimeout 防 Slowloris（默认 15s），IdleTimeout 控制 keep-alive 空闲连接（默认 120s）
+	ReadHeaderTimeout string `mapstructure:"read_header_timeout"`
+	IdleTimeout       string `mapstructure:"idle_timeout"`
 }
 
 // MySQLConfig 数据库连接（键名与 member / application / base 的 mysql 段一致）。
@@ -126,7 +131,34 @@ type LogConfig struct {
 	MaxAge     int    `mapstructure:"max_age"`
 }
 
+// StartupConfig 启动期维护动作开关（与 member 的 startup 段同名同义）。
+//
+// 这些动作都是幂等的，但开销差别很大：AutoMigrate 要对每张表探测 information_schema，
+// 历史软删除清理可能对缺少索引的大表做全表扫描。schema 稳定后按需关闭可显著缩短启动时间。
+type StartupConfig struct {
+	// AutoMigrate 启动时执行表结构同步（AutoMigrate + FULLTEXT 索引补齐）。
+	AutoMigrate bool `mapstructure:"auto_migrate"`
+	// AutoSeed 启动时初始化内置角色/用户/菜单/权限（幂等）。
+	AutoSeed bool `mapstructure:"auto_seed"`
+	// SyncMaintenance 维护任务是否同步执行：false（默认）= 端口监听后异步执行，不阻塞对外服务；
+	// true = 全部维护任务完成后才监听端口（首次部署或需要严格顺序时使用）。
+	SyncMaintenance bool `mapstructure:"sync_maintenance"`
+	// PurgeLegacySoftDeleted 启动时物理清理历史软删除残留（幂等；大表上可能是全表扫描）。
+	PurgeLegacySoftDeleted bool `mapstructure:"purge_legacy_soft_deleted"`
+}
+
 var AppConfig Config
+
+// setDefaults 设置默认值：老 config.yaml 没有 startup / 超时相关键时保持历史行为
+// （默认做迁移与播种、清理历史软删除、维护任务异步执行），避免升级后静默改变启动语义。
+func setDefaults() {
+	viper.SetDefault("startup.auto_migrate", true)
+	viper.SetDefault("startup.auto_seed", true)
+	viper.SetDefault("startup.sync_maintenance", false)
+	viper.SetDefault("startup.purge_legacy_soft_deleted", true)
+	viper.SetDefault("server.read_header_timeout", "15s")
+	viper.SetDefault("server.idle_timeout", "120s")
+}
 
 // InitImportConfig 只加载离线导入所需的数据库配置。
 // 导入命令不提供 HTTP/JWT 服务，因此不要求门户 JWT 密钥。
@@ -163,6 +195,7 @@ func InitConfig() {
 }
 
 func readConfig() error {
+	setDefaults()
 	if path := strings.TrimSpace(os.Getenv("PORTAL_CONFIG_FILE")); path != "" {
 		viper.SetConfigFile(path)
 	} else {

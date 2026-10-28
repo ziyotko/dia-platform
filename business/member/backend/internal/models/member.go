@@ -21,15 +21,16 @@ const (
 // Member represents a member user
 type Member struct {
 	BaseModel
-	Username    string `gorm:"uniqueIndex;size:64;not null" json:"username"`
-	Password    string `gorm:"size:255;not null" json:"-"`
-	Mobile      string `gorm:"size:20" json:"mobile"`
-	Email       string `gorm:"size:128" json:"email"`
-	MemberType  string `gorm:"size:20;default:unit" json:"member_type"`
-	MemberLevel string `gorm:"size:20;default:''" json:"member_level"`
-	Status      string `gorm:"size:20;default:registering" json:"status"`
-	IsAdmin     bool   `gorm:"default:false" json:"is_admin"`
-	Avatar      string `gorm:"size:255" json:"avatar"`
+	Username     string `gorm:"uniqueIndex;size:64;not null" json:"username"`
+	Password     string `gorm:"size:255;not null" json:"-"`
+	Mobile       string `gorm:"size:20" json:"mobile"`
+	Email        string `gorm:"size:128" json:"email"`
+	MemberType   string `gorm:"size:20;default:unit" json:"member_type"`
+	MemberLevel  string `gorm:"size:20;default:''" json:"member_level"`
+	Status       string `gorm:"size:20;default:registering" json:"status"`
+	IsAdmin      bool   `gorm:"default:false" json:"is_admin"`
+	IsSuperAdmin bool   `gorm:"default:false" json:"is_super_admin"`
+	Avatar       string `gorm:"size:255" json:"avatar"`
 
 	// 主入会机构（非数据库字段，管理端查询时由 service 填充）：
 	// 会员通过入会申请审批/缴费加入的机构名称。

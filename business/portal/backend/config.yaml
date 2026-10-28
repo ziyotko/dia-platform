@@ -46,6 +46,28 @@ server:
   allowed_origins:
     - http://localhost:3000
     - http://127.0.0.1:3000
+  # HTTP 服务超时：read_header_timeout 防 Slowloris（默认 15s），
+  # idle_timeout 控制 keep-alive 空闲连接（默认 120s）。
+  read_header_timeout: 15s
+  idle_timeout: 120s
+
+# 启动期维护动作开关（与 member 的 startup 段同名同义）。
+# 未配置时按「做迁移 + 做播种 + 异步维护」处理，即与历史行为一致。
+# 环境变量优先：PORTAL_AUTO_MIGRATE / PORTAL_AUTO_SEED / PORTAL_SYNC_MAINTENANCE / PORTAL_PURGE_SOFT_DELETED
+startup:
+  # 启动时执行表结构同步（AutoMigrate + FULLTEXT 索引补齐）。
+  # 这是启动阶段最重的一步（每张表都要探测 information_schema）。
+  # 开发/首次部署保持 true；生产 schema 稳定、已由发布流水线维护后可设为 false 显著加快启动。
+  auto_migrate: true
+  # 启动时初始化内置角色/用户/菜单/权限（幂等，缺失才创建）。
+  auto_seed: true
+  # 维护任务（播种 / 历史软删除清理 / 静态化参数预热）是否同步执行。
+  # false（默认）= 端口监听成功后异步执行，不推迟端口就绪时间；
+  # true = 全部执行完才对外提供服务（首次部署或需要严格顺序时使用）。
+  sync_maintenance: false
+  # 启动时物理清理历史软删除残留（deleted_at IS NOT NULL）。
+  # 幂等；残留为 0 时只做一次统计查询，但大表上该统计可能是全表扫描，故默认异步执行。
+  purge_legacy_soft_deleted: true
 
 # 段名与 member / application / base 一致：mysql / redis / jwt / log
 mysql:

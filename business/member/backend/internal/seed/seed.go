@@ -1,6 +1,7 @@
 package seed
 
 import (
+	"errors"
 	"member/config"
 	"member/internal/models"
 	"member/internal/service"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 // defaultFeeAmount 种子会费标准的占位金额：全新库若没有会费标准，会员端无法缴费、
@@ -40,24 +42,62 @@ func Run() {
 }
 
 func createAdmin() {
-	var count int64
-	db.DB.Model(&models.Member{}).Where("is_admin = ?", true).Count(&count)
-	if count > 0 {
+	var superAdminCount int64
+	if err := db.DB.Model(&models.Member{}).
+		Where("is_admin = ? AND is_super_admin = ?", true, true).Count(&superAdminCount).Error; err != nil {
+		utils.LogWarn("种子数据：查询超级管理员失败：%v", err)
+		return
+	}
+	if superAdminCount > 0 {
 		return
 	}
 
-	hashed, _ := bcrypt.GenerateFromPassword([]byte(service.DefaultPassword), bcrypt.DefaultCost)
-	admin := models.Member{
-		Username:    "admin",
-		Password:    string(hashed),
-		Mobile:      "13800000000",
-		Email:       "admin@test.com",
-		MemberType:  models.MemberTypeUnit,
-		Status:      models.MemberStatusActive,
-		IsAdmin:     true,
-		CompanyName: "XXX协会",
+	var count int64
+	if err := db.DB.Model(&models.Member{}).Where("is_admin = ?", true).Count(&count).Error; err != nil {
+		utils.LogWarn("种子数据：查询管理员账号失败：%v", err)
+		return
 	}
-	db.DB.Create(&admin)
+	if count > 0 {
+		var admin models.Member
+		err := db.DB.Where("is_admin = ?", true).Order("id ASC").First(&admin).Error
+		if err != nil {
+			utils.LogWarn("种子数据：查询管理员账号失败：%v", err)
+			return
+		}
+		var seededAdmin models.Member
+		if err := db.DB.Where("username = ? AND is_admin = ?", "admin", true).First(&seededAdmin).Error; err == nil {
+			admin = seededAdmin
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+			utils.LogWarn("种子数据：查询默认管理员失败：%v", err)
+			return
+		}
+		if !admin.IsSuperAdmin {
+			if err := db.DB.Model(&admin).Update("is_super_admin", true).Error; err != nil {
+				utils.LogWarn("种子数据：设置超级管理员失败：%v", err)
+			}
+		}
+		return
+	}
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte(service.DefaultPassword), bcrypt.DefaultCost)
+	if err != nil {
+		utils.LogWarn("种子数据：默认管理员密码加密失败：%v", err)
+		return
+	}
+	admin := models.Member{
+		Username:     "admin",
+		Password:     string(hashed),
+		Mobile:       "13800000000",
+		Email:        "admin@test.com",
+		MemberType:   models.MemberTypeUnit,
+		Status:       models.MemberStatusActive,
+		IsAdmin:      true,
+		IsSuperAdmin: true,
+		CompanyName:  "XXX协会",
+	}
+	if err := db.DB.Create(&admin).Error; err != nil {
+		utils.LogWarn("种子数据：创建默认管理员失败：%v", err)
+	}
 }
 
 func createDefaultOrgs() {

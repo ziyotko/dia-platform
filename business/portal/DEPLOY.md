@@ -115,8 +115,18 @@ powershell -ExecutionPolicy Bypass -File .\build-backends.ps1 -Only portal -Vet
 ./xxxx
 ```
 
-- 启动流程：读 `./config.yaml` → 注入环境变量（缺失直接退出） → 连 MySQL/Redis（**4 个连接：db 6/7/8 + 外部会员令牌黑名单库 `redis.member_token_db` 默认 4**；后者可用 `< 0` 关闭） → `AutoMigrate` 建表 → **幂等补齐文章搜索所需的 FULLTEXT 索引** → 播种默认角色/用户/菜单/菜单权限（幂等，含重复内置菜单去重） → 加载静态化参数到缓存（db 8） → 监听端口
-- 默认账号：`admin`（管理员，角色 ID=1），初始密码 `1qaz@WSX`，**上线后立即修改**
+- 启动流程：读 `./config.yaml` → 注入环境变量（缺失直接退出） → **并行**连 MySQL 与 Redis（**4 个连接：db 6/7/8 + 外部会员令牌黑名单库 `redis.member_token_db` 默认 4**；后者可用 `< 0` 关闭） → `AutoMigrate` 建表 + **幂等补齐文章搜索所需的 FULLTEXT 索引** → 监听端口（此时服务已就绪，日志打印 `[startup] 服务就绪 … 启动耗时 …`） → **异步**执行维护任务（清理历史软删除残留 → 播种默认角色/用户/菜单/菜单权限 → 加载静态化参数到缓存 db 8）
+
+#### 启动耗时与开关（2026-10-28）
+
+启动阶段的耗时集中在两处：`AutoMigrate`（逐表探测 `information_schema`）与维护任务（历史软删除清理可能对大表做全表扫描）。为此：
+
+- **维护任务默认异步**：端口监听成功后立即对外服务，维护任务在后台执行（幂等、失败只记日志，不影响服务）。需要「全部完成后才算启动」（如首次部署）时设 `startup.sync_maintenance: true` 或环境变量 `PORTAL_SYNC_MAINTENANCE=true`。
+- **可按需关闭逐项动作**（均在 `config.yaml` 的 `startup` 段，环境变量优先）：`auto_migrate`（表结构同步，默认 `true`；生产结构稳定后设 `false` 可显著缩短启动）、`auto_seed`（内置数据播种，默认 `true`）、`purge_legacy_soft_deleted`（历史软删除清理，默认 `true`）。
+- **SQL 日志跟随 `log.level`**：非 `debug` 级别只输出慢查询与错误，不再把启动期的数百条 SQL 全部格式化写盘。
+- **HTTP 超时可配**：`server.read_header_timeout`（默认 `15s`，防 Slowloris）、`server.idle_timeout`（默认 `120s`）；收到 SIGINT/SIGTERM 时优雅退出（给在途请求 10s 收尾）。
+
+- 默认账号：`admin`（管理员，角色 ID=1），初始密码由 `PORTAL_INIT_PASSWORD` 指定或首次启动随机生成（见下节），**上线后立即修改**
 - 首次对已有大表补 FULLTEXT 索引（`ALTER TABLE article ADD FULLTEXT INDEX`，共 3 个：title/author/source）会重建索引并短时占锁；表很大时建议部署窗口内手动先建好，启动逻辑检测到索引存在会自动跳过
 
 #### 升级说明（2026-09-21，无需手工 SQL）
@@ -405,10 +415,12 @@ ALTER TABLE `setting`
 后端已统一为**物理删除（硬删）**：模型不再内嵌 `gorm.DeletedAt`，代码里的 `Unscoped()` 与
 `deleted_at IS NULL` 条件全部移除，删除接口直接 `DELETE`（不再保留可恢复的"回收站"语义）。
 
-- **历史软删数据由启动期自动清理**：`models.PurgeLegacySoftDeletedRows()`（在 `main.go` 里 AutoMigrate 之前调用）
+- **历史软删数据由启动期自动清理**：`models.PurgeLegacySoftDeletedRows()`（在 `main.go` 的维护任务里调用，
+  默认在端口监听后**异步**执行；`startup.sync_maintenance: true` 时同步执行）
   会找出库里所有带 `deleted_at` 列的表并执行 `DELETE FROM x WHERE deleted_at IS NOT NULL`，
   日志形如 `[migrate] user 表物理删除 N 条历史软删除记录`。幂等：新库没有该列，直接跳过。
   必须走这一步，否则这些行会因查询不再过滤 `deleted_at` 而重新"出现"在列表里。
+  > 异步模式下，日志出现 `[startup] 历史软删除清理完成` 才表示已完成；删列前请等该行日志出现（或临时设 `PORTAL_SYNC_MAINTENANCE=true` 启动一次）。
 - **列与索引仍需手工 DROP**：`AutoMigrate` 不会删除已存在的列与索引，所以旧库仍会看到 `deleted_at` 列和
   `idx_<表名>_deleted_at` 索引（新库不受影响，无害），按下节 SQL 清理。
 

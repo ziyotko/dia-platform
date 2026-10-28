@@ -297,7 +297,6 @@
         </el-form-item>
         <el-form-item label="发票文件">
           <el-upload
-            ref="invoiceUploadRef"
             :auto-upload="false"
             accept=".pdf"
             :limit="1"
@@ -377,7 +376,6 @@ const showInvoice = ref(false)
 const invoiceTarget = ref<any>(null)
 const invoiceNo = ref('')
 const invoiceFileList = ref<any[]>([])
-const invoiceUploadRef = ref<any>(null)
 const issuingInvoice = ref(false)
 const editForm = reactive({ id: 0, memberId: 0, memberName: '', orgId: 0, orgName: '', levelId: null as number | null, levelName: '', year: 0, amount: 0, status: 'unpaid', remark: '' })
 const editLevelOptions = ref<any[]>([])
